@@ -1,5 +1,5 @@
 [project]
-name = "tcspc-lifetime-ai"
+name = "tcspc-lifetime-toolkit"
 version = "0.1.0"
 description = "Python toolkit for TCSPC lifetime analysis and ML-based lifetime estimation"
 requires-python = ">=3.11"
