@@ -1,6 +1,8 @@
 \# TCSPC Lifetime Toolkit
 
-A Python toolkit for processing synthetic and experimental-like TCSPC decay curves and estimating fluorescence / quantum-emitter lifetimes using classical fitting and machine-learning models.
+Classical and machine-learning lifetime estimation for simulated and experimental-like TCSPC data.
+
+UPD 20260720: As of now, it is only an idealized TCSPC decay without an IRF.
 
 \# Author
 
