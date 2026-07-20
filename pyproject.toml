@@ -1,9 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "tcspc-lifetime-toolkit"
 version = "0.1.0"
-description = "Python toolkit for TCSPC lifetime analysis and ML-based lifetime estimation"
+description = "Simulation and analysis of TCSPC decay data"
 requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "jupyter",
+    "pytest",
+]
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
+[tool.setuptools.packages.find]
+where = ["src"]
