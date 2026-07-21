@@ -1,5 +1,30 @@
+# Virtual environment
 .venv/
-.idea/
+
+# Python cache files
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Jupyter temporary files
 .ipynb_checkpoints/
+
+# PyCharm project settings
+.idea/
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+
+# Test and coverage caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Repeatedly generated data
+data/generated/*
+!data/generated/.gitkeep
