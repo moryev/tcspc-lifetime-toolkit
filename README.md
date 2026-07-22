@@ -55,7 +55,7 @@ where:
 For each time bin ($i$), the measured photon count is sampled according to
 
 $$
-N_i \sim \operatorname{Poisson}(\lambda_i),
+N_i \sim \mathrm{Poisson}(\lambda_i),
 $$
 
 where ($\lambda_i$) is the expected count predicted by the decay model.
@@ -113,12 +113,12 @@ python -m pip install -e .
 
 Editable installation allows changes made inside `src/tcspc_toolkit/` to become available without reinstalling the package after every edit.
 
-### Install Jupyter
+### Install the project together with the development dependencies
 
-If Jupyter is not already included in the project dependencies, install it separately:
+There are project-specific optional dependencies (such as Jupyter and pytest). If you want to install the project in editable mode together with these optional dependencies:
 
 ```bash
-python -m pip install jupyter
+python -m pip install -e ".[dev]"
 ```
 
 ## Minimal example
