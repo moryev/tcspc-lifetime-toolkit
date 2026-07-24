@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tcspc-lifetime-toolkit"
 version = "0.1.0"
-description = "Simulation and analysis of TCSPC decay data"
+description = "A scientific Python toolkit for simulating and analysing of TCSPC decay data"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,9 +21,12 @@ dev = [
     "pytest",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.scripts]
+tcspc = "tcspc_toolkit.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.setuptools.packages.find]
+where = ["src"]
