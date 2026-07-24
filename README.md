@@ -259,7 +259,10 @@ tcspc-lifetime-toolkit/
 ├── .gitignore
 │
 ├── data/
+│   ├── examples/
+│       └── ideal_tcspc_decay.csv
 │   └── generated/
+│       └── .gitkeep
 │
 ├── notebooks/
 │   ├── 01_tcspc_simulation.ipynb
@@ -268,12 +271,17 @@ tcspc-lifetime-toolkit/
 ├── src/
 │   └── tcspc_toolkit/
 │       ├── __init__.py
+│       ├── __main__.py
+│       ├── cli.py
 │       ├── models.py
 │       ├── simulation.py
 │       ├── fitting.py
 │       └── evaluation.py
 │
 └── tests/
+    ├── test_models.py
+    ├── test_simulation.py
+    └── test_fitting.py
 ```
 
 The modules currently have the following responsibilities:
@@ -282,8 +290,13 @@ The modules currently have the following responsibilities:
 * `simulation.py`: expected-curve generation and Poisson sampling;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
-* `notebooks/`: documented analysis workflows;
-* `tests/`: automated verification of package behaviour.
+* `cli.py`: command-line tools for simulating and fitting TCSPC data;
+* `__main__.py`: package entry point for python -m tcspc_toolkit;
+* `data/examples/`: small example datasets tracked by Git;
+* `data/generated/`: generated outputs that are not normally tracked by Git;
+* `notebooks/`: documented simulation and fitting workflows;
+* `tests/`: automated verification of physical, numerical, and package behaviour.
+* `pyproject.toml`: package metadata, dependencies, build configuration, and command-line entry points.
 
 ## Current limitations
 
