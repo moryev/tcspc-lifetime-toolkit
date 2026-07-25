@@ -260,7 +260,7 @@ tcspc-lifetime-toolkit/
 │
 ├── data/
 │   ├── examples/
-│       └── ideal_tcspc_decay.csv
+│   │   └── ideal_tcspc_decay.csv
 │   └── generated/
 │       └── .gitkeep
 │
@@ -273,15 +273,17 @@ tcspc-lifetime-toolkit/
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── cli.py
-│       ├── models.py
-│       ├── simulation.py
+│       ├── datasets.py
+│       ├── evaluation.py
 │       ├── fitting.py
-│       └── evaluation.py
+│       ├── models.py
+│       └── simulation.py
 │
 └── tests/
+    ├── test_datasets.py
+    ├── test_fitting.py
     ├── test_models.py
-    ├── test_simulation.py
-    └── test_fitting.py
+    └── test_simulation.py
 ```
 
 The modules currently have the following responsibilities:
