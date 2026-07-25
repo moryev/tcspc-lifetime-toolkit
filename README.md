@@ -266,7 +266,8 @@ tcspc-lifetime-toolkit/
 │
 ├── notebooks/
 │   ├── 01_tcspc_simulation.ipynb
-│   └── 02_classical_lifetime_fitting.ipynb
+│   ├── 02_classical_lifetime_fitting.ipynb
+│   └── 03_synthetic_dataset_analysis.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -294,9 +295,10 @@ The modules currently have the following responsibilities:
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
 * `__main__.py`: package entry point for python -m tcspc_toolkit;
+* `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
-* `notebooks/`: documented simulation and fitting workflows;
+* `notebooks/`: documented analysis workflows;
 * `tests/`: automated verification of physical, numerical, and package behaviour.
 * `pyproject.toml`: package metadata, dependencies, build configuration, and command-line entry points.
 
