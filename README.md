@@ -284,7 +284,8 @@ tcspc-lifetime-toolkit/
 ├── notebooks/
 │   ├── 01_tcspc_simulation.ipynb
 │   ├── 02_classical_lifetime_fitting.ipynb
-│   └── 03_synthetic_dataset_analysis.ipynb
+│   ├── 03_synthetic_dataset_analysis.ipynb
+│   └── 04_first_ml_baseline.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
