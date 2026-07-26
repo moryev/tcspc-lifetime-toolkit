@@ -85,7 +85,7 @@ where ($N_i$) is the measured count and ($\widehat{N}_i$) is the fitted count.
 Clone the repository and enter the project directory:
 
 ```bash
-git clone https://github.com/YevhM/tcspc-lifetime-toolkit.git
+git clone https://github.com/moryev/tcspc-lifetime-toolkit.git
 cd tcspc-lifetime-toolkit
 ```
 
