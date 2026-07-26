@@ -250,6 +250,23 @@ Demonstrates:
 * raw and Poisson-scaled residual analysis;
 * export of detailed and fit-level results.
 
+### `03_synthetic_dataset_analysis.ipynb`
+
+Demonstrates:
+
+* generation of multiple synthetic TCSPC decay curves;
+* creation of machine-learning matrices and lifetime targets;
+* inspection of curve-level metadata;
+* conversion from matrix to long-table representation;
+* validation of photon-count and metadata consistency;
+* visualization of selected decay curves;
+* analysis of lifetime and photon-count distributions;
+* comparison of target, expected, and measured photon counts;
+* grouping and averaging of curves by lifetime range;
+* normalization of decay curves for shape comparison;
+* CSV export of long-format data;
+* compressed NumPy export of the machine-learning dataset.
+
 ## Repository structure
 
 ```text
