@@ -390,3 +390,11 @@ This repository is under active development.
 
 The present codebase is an educational and scientific-software prototype. It is not yet intended as a validated replacement for established experimental TCSPC-analysis software.
 
+## Citation
+
+If you use this toolkit in scientific work, please cite:
+
+> Yevhenii Morozov, *TCSPC Lifetime Toolkit*, version 0.1.0,
+> https://github.com/moryev/tcspc-lifetime-toolkit
+
+Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).

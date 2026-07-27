@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software in scientific work, please cite it using the information below."
+title: "TCSPC Lifetime Toolkit"
+authors:
+  - family-names: "Morozov"
+    given-names: "Yevhenii"
+orcid: "https://orcid.org/0000-0001-9689-8641"
+version: 0.1.0
+repository-code: "https://github.com/moryev/tcspc-lifetime-toolkit"
+license: Apache-2.0
