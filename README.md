@@ -267,6 +267,24 @@ Demonstrates:
 * CSV export of long-format data;
 * compressed NumPy export of the machine-learning dataset.
 
+### `04_first_ml_baseline.ipynb`
+
+Demonstrates:
+
+* loading the compressed synthetic machine-learning dataset;
+* inspection of feature-matrix, target, and metadata shapes;
+* normalization of each TCSPC decay curve by its total photon count;
+* separation of the dataset into training and test subsets;
+* construction of a mean-prediction regression baseline;
+* training of Ridge regression, Random Forest, and Gradient Boosting models;
+* prediction of fluorescence lifetimes for previously unseen decay curves;
+* evaluation using mean absolute error, median absolute error, relative error, and $R^2$;
+* comparison of model performance against the mean baseline;
+* analysis of prediction error as a function of photon count;
+* analysis of prediction error as a function of true lifetime;
+* visualization of predicted versus true lifetimes;
+* collection of model-level metrics in a summary table.
+
 ## Repository structure
 
 ```text
@@ -295,25 +313,29 @@ tcspc-lifetime-toolkit/
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── fitting.py
+│       ├── ml_evaluation.py
 │       ├── models.py
 │       └── simulation.py
 │
 └── tests/
     ├── test_datasets.py
     ├── test_fitting.py
+    ├── test_ml_evaluation.py
     ├── test_models.py
     └── test_simulation.py
 ```
 
 The modules currently have the following responsibilities:
 
+* `__init__.py`: package initialization and definition of the public package interface;
+* `__main__.py`: package entry point for python -m tcspc_toolkit;
+* `cli.py`: command-line tools for simulating and fitting TCSPC data;
+* `datasets.py`: synthetic datasets generation for the consequent ML baseline;
+* `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
+* `fitting.py`: nonlinear parameter estimation and structured fit results;
+* `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
 * `models.py`: mathematical decay models;
 * `simulation.py`: expected-curve generation and Poisson sampling;
-* `fitting.py`: nonlinear parameter estimation and structured fit results;
-* `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
-* `cli.py`: command-line tools for simulating and fitting TCSPC data;
-* `__main__.py`: package entry point for python -m tcspc_toolkit;
-* `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
 * `notebooks/`: documented analysis workflows;
