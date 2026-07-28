@@ -420,3 +420,10 @@ If you use this toolkit in scientific work, please cite:
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
+
+## Contact
+
+If you are interested in the project, have questions, or would like to contribute, please feel free to contact me at:
+
+**Yevhenii Morozov**  
+Email: [morozov.ye.m@gmail.com](mailto:morozov.ye.m@gmail.com)
