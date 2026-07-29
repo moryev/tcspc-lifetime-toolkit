@@ -285,6 +285,26 @@ Demonstrates:
 * visualization of predicted versus true lifetimes;
 * collection of model-level metrics in a summary table.
 
+### `05_data_leakage_and_grouped_evaluation.ipynb`
+
+Demonstrates:
+
+* generation of repeated Poisson realizations from shared simulation parameter sets;
+* assignment of curve, parameter-group, and realization identifiers;
+* construction of a naive random row-level train–test split;
+* construction of a parameter-group-aware train–test split;
+* verification of row-level and parameter-group overlap between training and test subsets;
+* analysis of how repeated realizations are distributed across a naive random split;
+* training of mean-prediction, Ridge, Random Forest, and Gradient Boosting models under both splitting protocols;
+* comparison of model performance using mean absolute error, median absolute error, relative error, and $R^2$;
+* quantification of the performance difference between random and group-aware evaluation;
+* analysis of signed prediction residuals and systematic prediction bias;
+* analysis of prediction error as a function of true lifetime;
+* analysis of prediction error as a function of measured total photon count;
+* identification of lifetime and photon-count regions with the largest prediction errors;
+* discussion of interpolation performance, simulation-group leakage, and scientifically defensible test-set construction;
+* documentation of current limitations and future evaluation scenarios involving new noise regimes, model mismatch, and unfamiliar instrument response functions.
+
 ## Repository structure
 
 ```text
@@ -303,7 +323,8 @@ tcspc-lifetime-toolkit/
 │   ├── 01_tcspc_simulation.ipynb
 │   ├── 02_classical_lifetime_fitting.ipynb
 │   ├── 03_synthetic_dataset_analysis.ipynb
-│   └── 04_first_ml_baseline.ipynb
+│   ├── 04_first_ml_baseline.ipynb
+│   └── 05_data_leakage_and_grouped_evaluation.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -359,8 +380,6 @@ It does not yet include:
 * afterpulsing;
 * time-dependent background;
 * experimental file-format import;
-* automated initial-parameter estimation;
-* machine-learning lifetime estimation;
 * calibrated confidence or prediction intervals.
 
 The covariance-based standard errors returned by the current least-squares fit should therefore be interpreted as preliminary local uncertainty estimates.
