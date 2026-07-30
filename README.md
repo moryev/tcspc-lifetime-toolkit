@@ -389,7 +389,7 @@ The covariance-based standard errors returned by the current least-squares fit s
 Planned development stages include:
 
 1. improved mathematical models, including multi-exponential decays;
-2. Gaussian and measured IRF support;
+2. synthetic, Gaussian, automatic, and measured IRF support;
 3. IRF convolution and reconvolution fitting;
 4. Poisson-likelihood lifetime estimation;
 5. automated preprocessing and initial guesses;
