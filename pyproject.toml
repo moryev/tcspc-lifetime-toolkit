@@ -1,13 +1,19 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "tcspc-lifetime-toolkit"
 version = "0.1.0"
-description = "A scientific Python toolkit for simulating and analysing of TCSPC decay data"
+description = "A scientific Python toolkit for simulating and analysing TCSPC decay data"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Yevhenii M. Morozov", email = "morozov.ye.m@gmail.com" },
+]
+
 dependencies = [
     "numpy",
     "scipy",
@@ -21,6 +27,11 @@ dev = [
     "jupyter",
     "pytest",
 ]
+
+[project.urls]
+Homepage = "https://github.com/moryev/tcspc-lifetime-toolkit"
+Repository = "https://github.com/moryev/tcspc-lifetime-toolkit"
+Issues = "https://github.com/moryev/tcspc-lifetime-toolkit/issues"
 
 [project.scripts]
 tcspc = "tcspc_toolkit.cli:main"
