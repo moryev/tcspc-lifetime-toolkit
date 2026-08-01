@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.models import (
+    biexponential_decay,
+    monoexponential_decay,
+    multiexponential_decay,
+)
 
 
 def test_monoexponential_decay_preserves_time_shape() -> None:
@@ -159,3 +163,134 @@ def test_zero_background_signal_remains_non_negative() -> None:
     )
 
     assert np.all(signal >= 0.0)
+
+
+def test_biexponential_decay_matches_manual_calculation() -> None:
+    time = np.array(
+        [0.0, 1.0, 2.0],
+        dtype=np.float64,
+    )
+
+    amplitude_1 = 800.0
+    lifetime_1 = 1.5
+    amplitude_2 = 300.0
+    lifetime_2 = 4.0
+    background = 5.0
+
+    signal = biexponential_decay(
+        time=time,
+        amplitude_1=amplitude_1,
+        lifetime_1=lifetime_1,
+        amplitude_2=amplitude_2,
+        lifetime_2=lifetime_2,
+        background=background,
+    )
+
+    expected = (
+        amplitude_1 * np.exp(-time / lifetime_1)
+        + amplitude_2 * np.exp(-time / lifetime_2)
+        + background
+    )
+
+    np.testing.assert_allclose(
+        signal,
+        expected,
+    )
+
+
+def test_multiexponential_decay_matches_manual_calculation() -> None:
+    time = np.array(
+        [0.0, 1.0, 2.0],
+        dtype=np.float64,
+    )
+
+    amplitudes = np.array(
+        [800.0, 300.0, 100.0],
+        dtype=np.float64,
+    )
+    lifetimes = np.array(
+        [0.8, 2.5, 6.0],
+        dtype=np.float64,
+    )
+    background = 5.0
+
+    signal = multiexponential_decay(
+        time=time,
+        amplitudes=amplitudes,
+        lifetimes=lifetimes,
+        background=background,
+    )
+
+    expected = (
+        amplitudes[0] * np.exp(-time / lifetimes[0])
+        + amplitudes[1] * np.exp(-time / lifetimes[1])
+        + amplitudes[2] * np.exp(-time / lifetimes[2])
+        + background
+    )
+
+    np.testing.assert_allclose(
+        signal,
+        expected,
+    )
+
+
+def test_biexponential_decay_matches_multiexponential_decay() -> None:
+    time = np.linspace(
+        start=0.0,
+        stop=10.0,
+        num=100,
+        dtype=np.float64,
+    )
+
+    biexponential_signal = biexponential_decay(
+        time=time,
+        amplitude_1=800.0,
+        lifetime_1=1.5,
+        amplitude_2=300.0,
+        lifetime_2=4.0,
+        background=5.0,
+    )
+
+    multiexponential_signal = multiexponential_decay(
+        time=time,
+        amplitudes=np.array(
+            [800.0, 300.0],
+            dtype=np.float64,
+        ),
+        lifetimes=np.array(
+            [1.5, 4.0],
+            dtype=np.float64,
+        ),
+        background=5.0,
+    )
+
+    np.testing.assert_allclose(
+        biexponential_signal,
+        multiexponential_signal,
+    )
+
+
+def test_multiexponential_decay_rejects_mismatched_shapes() -> None:
+    time = np.linspace(
+        start=0.0,
+        stop=10.0,
+        num=100,
+        dtype=np.float64,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="amplitudes and lifetimes must have the same shape",
+    ):
+        multiexponential_decay(
+            time=time,
+            amplitudes=np.array(
+                [800.0, 300.0],
+                dtype=np.float64,
+            ),
+            lifetimes=np.array(
+                [1.5, 4.0, 6.0],
+                dtype=np.float64,
+            ),
+            background=5.0,
+        )
