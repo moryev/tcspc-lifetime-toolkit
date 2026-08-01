@@ -5,7 +5,7 @@ from tcspc_toolkit.fitting import (
     LifetimeFitResult,
     fit_monoexponential_decay,
 )
-from tcspc_toolkit.simulation import simulate_ideal_decay
+from tcspc_toolkit.simulation import simulate_monoexponential_decay
 
 
 def test_fit_returns_lifetime_fit_result() -> None:
@@ -16,7 +16,7 @@ def test_fit_returns_lifetime_fit_result() -> None:
         dtype=np.float64,
     )
 
-    _, measured_counts = simulate_ideal_decay(
+    _, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=100_000.0,
         lifetime=2.5,
@@ -50,7 +50,7 @@ def test_fit_recovers_lifetime_for_high_count_decay() -> None:
         dtype=np.float64,
     )
 
-    _, measured_counts = simulate_ideal_decay(
+    _, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=1_000_000.0,
         lifetime=true_lifetime,
@@ -81,7 +81,7 @@ def test_fitted_parameters_are_positive() -> None:
         dtype=np.float64,
     )
 
-    _, measured_counts = simulate_ideal_decay(
+    _, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=100_000.0,
         lifetime=2.5,

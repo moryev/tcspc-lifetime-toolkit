@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from tcspc_toolkit.fitting import fit_monoexponential_decay
-from tcspc_toolkit.simulation import simulate_ideal_decay
+from tcspc_toolkit.simulation import simulate_monoexponential_decay
 
 
 def run_simulation(args: Namespace) -> None:
@@ -17,7 +17,7 @@ def run_simulation(args: Namespace) -> None:
         num=args.bins,
     )
 
-    expected_counts, measured_counts = simulate_ideal_decay(
+    expected_counts, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=args.amplitude,
         lifetime=args.lifetime,

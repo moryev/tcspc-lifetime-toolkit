@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.datasets import generate_dataset
+from tcspc_toolkit.datasets import generate_monoexponential_dataset
 
 
 @pytest.fixture
@@ -15,10 +15,37 @@ def time_axis() -> np.ndarray:
     )
 
 
+def test_get_targets_returns_lifetime_column(
+    time_axis: np.ndarray,
+) -> None:
+    dataset = generate_monoexponential_dataset(
+        n_curves=5,
+        time=time_axis,
+        lifetime_range=(1.0, 4.0),
+        amplitude_range=(100.0, 1_000.0),
+        background_range=(0.0, 10.0),
+        photon_count_range=(1_000, 10_000),
+        random_seed=42,
+    )
+
+    targets = dataset.get_targets(
+        "lifetime_true"
+    )
+
+    expected = dataset.metadata[
+        ["lifetime_true"]
+    ].to_numpy(dtype=np.float64)
+
+    np.testing.assert_array_equal(
+        targets,
+        expected,
+    )
+
+
 def test_generate_dataset_returns_correct_shapes(
     time_axis: np.ndarray,
 ) -> None:
-    dataset = generate_dataset(
+    dataset = generate_monoexponential_dataset(
         n_curves=10,
         time=time_axis,
         lifetime_range=(1.0, 4.0),
@@ -28,13 +55,15 @@ def test_generate_dataset_returns_correct_shapes(
         random_seed=42,
     )
 
+    y = dataset.get_targets("lifetime_true").ravel()
+
     assert dataset.X.shape == (10, 128)
-    assert dataset.y.shape == (10,)
+    assert y.shape == (10,)
     assert dataset.time.shape == (128,)
     assert len(dataset.metadata) == 10
 
 
-def test_generate_dataset_is_reproducible(
+def test_generate_monoexponential_dataset_is_reproducible(
     time_axis: np.ndarray,
 ) -> None:
     arguments = {
@@ -47,11 +76,17 @@ def test_generate_dataset_is_reproducible(
         "random_seed": 42,
     }
 
-    first = generate_dataset(**arguments)
-    second = generate_dataset(**arguments)
+    first = generate_monoexponential_dataset(**arguments)
+    second = generate_monoexponential_dataset(**arguments)
 
-    np.testing.assert_array_equal(first.X, second.X)
-    np.testing.assert_array_equal(first.y, second.y)
+    np.testing.assert_array_equal(
+        first.time,
+        second.time,
+    )
+    np.testing.assert_array_equal(
+        first.X,
+        second.X,
+    )
     pd.testing.assert_frame_equal(
         first.metadata,
         second.metadata,
@@ -70,11 +105,11 @@ def test_different_seeds_produce_different_curves(
         "photon_count_range": (1_000, 10_000),
     }
 
-    first = generate_dataset(
+    first = generate_monoexponential_dataset(
         **common_arguments,
         random_seed=42,
     )
-    second = generate_dataset(
+    second = generate_monoexponential_dataset(
         **common_arguments,
         random_seed=43,
     )
@@ -85,7 +120,7 @@ def test_different_seeds_produce_different_curves(
 def test_metadata_matches_lifetime_targets(
     time_axis: np.ndarray,
 ) -> None:
-    dataset = generate_dataset(
+    dataset = generate_monoexponential_dataset(
         n_curves=10,
         time=time_axis,
         lifetime_range=(1.0, 4.0),
@@ -95,8 +130,10 @@ def test_metadata_matches_lifetime_targets(
         random_seed=42,
     )
 
+    y = dataset.get_targets("lifetime_true").ravel()
+
     np.testing.assert_array_equal(
-        dataset.y,
+        y,
         dataset.metadata["lifetime_true"].to_numpy(),
     )
 
@@ -104,7 +141,7 @@ def test_metadata_matches_lifetime_targets(
 def test_expected_photon_count_matches_target(
     time_axis: np.ndarray,
 ) -> None:
-    dataset = generate_dataset(
+    dataset = generate_monoexponential_dataset(
         n_curves=20,
         time=time_axis,
         lifetime_range=(1.0, 4.0),
@@ -125,7 +162,7 @@ def test_expected_photon_count_matches_target(
 def test_long_dataframe_has_one_row_per_time_bin(
     time_axis: np.ndarray,
 ) -> None:
-    dataset = generate_dataset(
+    dataset = generate_monoexponential_dataset(
         n_curves=10,
         time=time_axis,
         lifetime_range=(1.0, 4.0),
@@ -157,7 +194,7 @@ def test_invalid_number_of_curves_is_rejected(
         ValueError,
         match="n_curves must be positive",
     ):
-        generate_dataset(
+        generate_monoexponential_dataset(
             n_curves=0,
             time=time_axis,
             lifetime_range=(1.0, 4.0),
@@ -175,7 +212,7 @@ def test_negative_lifetime_range_is_rejected(
         ValueError,
         match="lifetime range",
     ):
-        generate_dataset(
+        generate_monoexponential_dataset(
             n_curves=5,
             time=time_axis,
             lifetime_range=(-1.0, 4.0),

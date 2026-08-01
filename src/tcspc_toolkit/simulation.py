@@ -15,14 +15,14 @@ def sample_photon_counts(
     return rng.poisson(expected_counts)
 
 
-def simulate_ideal_decay(
+def simulate_monoexponential_decay(
     time: NDArray[np.float64],
     amplitude: float,
     lifetime: float,
     background: float,
     random_seed: int | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
-    """Generate expected and Poisson-sampled decay curves."""
+    """Generate expected and Poisson-sampled mono-exponential decay curves."""
     rng = np.random.default_rng(random_seed)
 
     expected_counts = monoexponential_decay(

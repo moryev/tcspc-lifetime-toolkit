@@ -130,7 +130,7 @@ The following example generates an idealized TCSPC decay with Poisson photon-cou
 ```python
 import numpy as np
 
-from tcspc_toolkit.simulation import simulate_ideal_decay
+from tcspc_toolkit.simulation import simulate_monoexponential_decay
 
 time_ns = np.linspace(
     start=0.0,
@@ -138,7 +138,7 @@ time_ns = np.linspace(
     num=512,
 )
 
-expected_counts, measured_counts = simulate_ideal_decay(
+expected_counts, measured_counts = simulate_monoexponential_decay(
     time=time_ns,
     amplitude=10_000.0,
     lifetime=2.5,
@@ -410,7 +410,7 @@ Synthetic photon-count data are generated using NumPy random-number generators. 
 For example:
 
 ```python
-expected_1, measured_1 = simulate_ideal_decay(
+expected_1, measured_1 = simulate_monoexponential_decay(
     time=time_ns,
     amplitude=10_000.0,
     lifetime=2.5,
@@ -418,7 +418,7 @@ expected_1, measured_1 = simulate_ideal_decay(
     random_seed=42,
 )
 
-expected_2, measured_2 = simulate_ideal_decay(
+expected_2, measured_2 = simulate_monoexponential_decay(
     time=time_ns,
     amplitude=10_000.0,
     lifetime=2.5,

@@ -31,8 +31,15 @@ class SyntheticDataset:
 
     time: FloatArray
     X: IntArray
-    y: FloatArray
     metadata: pd.DataFrame
+
+    def get_targets(
+            self,
+            columns: str | list[str],
+    ) -> FloatArray:
+        selected = self.metadata[[columns] if isinstance(columns, str) else columns]
+        return selected.to_numpy(dtype=np.float64)
+
 
     def to_long_dataframe(self) -> pd.DataFrame:
         """
@@ -116,7 +123,7 @@ def _sample_uniform(
     return rng.uniform(lower, upper, size=size)
 
 
-def generate_dataset(
+def generate_monoexponential_dataset(
     *,
     n_curves: int,
     time: FloatArray,
@@ -295,6 +302,5 @@ def generate_dataset(
     return SyntheticDataset(
         time=time,
         X=X,
-        y=lifetimes.copy(),
         metadata=metadata,
     )

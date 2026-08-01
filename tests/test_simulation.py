@@ -3,7 +3,7 @@ import pytest
 
 from tcspc_toolkit.simulation import (
     sample_photon_counts,
-    simulate_ideal_decay,
+    simulate_monoexponential_decay,
 )
 
 
@@ -15,7 +15,7 @@ def test_simulate_ideal_decay_returns_correct_shapes() -> None:
         dtype=np.float64,
     )
 
-    expected_counts, measured_counts = simulate_ideal_decay(
+    expected_counts, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
@@ -35,7 +35,7 @@ def test_simulate_ideal_decay_returns_expected_dtypes() -> None:
         dtype=np.float64,
     )
 
-    expected_counts, measured_counts = simulate_ideal_decay(
+    expected_counts, measured_counts = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
@@ -62,7 +62,7 @@ def test_simulation_is_reproducible_with_fixed_seed() -> None:
         dtype=np.float64,
     )
 
-    expected_1, measured_1 = simulate_ideal_decay(
+    expected_1, measured_1 = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
@@ -70,7 +70,7 @@ def test_simulation_is_reproducible_with_fixed_seed() -> None:
         random_seed=42,
     )
 
-    expected_2, measured_2 = simulate_ideal_decay(
+    expected_2, measured_2 = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
@@ -97,7 +97,7 @@ def test_different_random_seeds_produce_different_measurements() -> None:
         dtype=np.float64,
     )
 
-    expected_1, measured_1 = simulate_ideal_decay(
+    expected_1, measured_1 = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
@@ -105,7 +105,7 @@ def test_different_random_seeds_produce_different_measurements() -> None:
         random_seed=42,
     )
 
-    expected_2, measured_2 = simulate_ideal_decay(
+    expected_2, measured_2 = simulate_monoexponential_decay(
         time=time,
         amplitude=10_000.0,
         lifetime=2.5,
