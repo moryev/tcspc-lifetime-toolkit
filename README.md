@@ -25,7 +25,7 @@ The current implementation provides a transparent classical baseline that will l
 
 The current version supports:
 
-* mono-exponential decay modelling;
+* mono-, bi-, and multi-exponential decay modelling;
 * constant background counts;
 * Poisson sampling of photon-count histograms;
 * reproducible simulations using a random seed;
