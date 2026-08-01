@@ -345,7 +345,8 @@ tcspc-lifetime-toolkit/
 │   ├── 02_classical_lifetime_fitting.ipynb
 │   ├── 03_synthetic_dataset_analysis.ipynb
 │   ├── 04_first_ml_baseline.ipynb
-│   └── 05_data_leakage_and_grouped_evaluation.ipynb
+│   ├── 05_data_leakage_and_grouped_evaluation.ipynb
+│   └── 06_grouped_dataset_api_workflow.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
