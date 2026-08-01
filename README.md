@@ -396,7 +396,6 @@ It does not yet include:
 * temporal alignment between the IRF and decay;
 * Poisson maximum-likelihood fitting;
 * weighted least-squares fitting;
-* bi-exponential or multi-exponential decays;
 * pile-up effects;
 * detector dead time;
 * afterpulsing;
@@ -410,20 +409,18 @@ The covariance-based standard errors returned by the current least-squares fit s
 
 Planned development stages include:
 
-1. improved mathematical models, including multi-exponential decays;
-2. synthetic, Gaussian, automatic, and measured IRF support;
-3. IRF convolution and reconvolution fitting;
-4. Poisson-likelihood lifetime estimation;
-5. automated preprocessing and initial guesses;
-6. generation of large synthetic TCSPC datasets;
-7. physically interpretable feature extraction;
-8. machine-learning lifetime estimation;
-9. benchmarking classical and data-driven methods;
-10. robustness studies under model mismatch; 
-11. a Purcell-enhanced lifetime-sensing demonstration.
-12. support for fitting user-provided experimental TCSPC data;
-13. tools for preparing experimental and synthetic datasets for machine-learning applications;
-14. a graphical user interface.
+1. synthetic, Gaussian, automatic, and measured IRF support;
+2. IRF convolution and reconvolution fitting;
+3. Poisson-likelihood lifetime estimation;
+4. automated preprocessing and initial guesses;
+5. physically interpretable feature extraction;
+6. machine-learning lifetime estimation;
+7. benchmarking classical and data-driven methods;
+8. robustness studies under model mismatch; 
+9. a Purcell-enhanced lifetime-sensing demonstration.
+10. support for fitting user-provided experimental TCSPC data;
+11. tools for preparing experimental and synthetic datasets for machine-learning applications;
+12. a graphical user interface.
 
 ## Reproducibility
 
