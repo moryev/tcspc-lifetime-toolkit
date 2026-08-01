@@ -305,6 +305,27 @@ Demonstrates:
 * discussion of interpolation performance, simulation-group leakage, and scientifically defensible test-set construction;
 * documentation of current limitations and future evaluation scenarios involving new noise regimes, model mismatch, and unfamiliar instrument response functions.
 
+### `06_grouped_dataset_api_workflow.ipynb`
+
+Demonstrates:
+
+* generation of grouped mono-exponential TCSPC datasets through the reusable generate_grouped_monoexponential_dataset() API;
+* inspection of the returned SyntheticDataset, including the time axis, measured histogram matrix, and metadata table;
+* verification of dataset dimensions, parameter-group counts, realization counts, and within-group parameter consistency;
+* visualization of independent Poisson realizations generated from one shared physical parameter set;
+* normalization of measured histograms by their total photon counts;
+* explicit selection of the lifetime target through dataset.get_targets();
+* extraction of parameter-group identifiers from dataset metadata;
+* construction of an ordinary row-level random train–test split;
+* construction of a parameter-group-aware train–test split using GroupShuffleSplit;
+* quantification of parameter-group overlap under both splitting protocols;
+* training of a mean-prediction baseline and a Random Forest regressor;
+* comparison of model performance using mean absolute error, median absolute error, mean relative error, and $R^2$;
+* visualization of mean absolute error under random and group-aware evaluation;
+* comparison of true and predicted lifetimes for the Random Forest model;
+* demonstration of how the package-level grouped dataset API supports reproducible and leakage-aware ML evaluation;
+* discussion of why group-aware splitting is preferable when several noisy realizations share the same underlying simulation parameters.
+
 ## Repository structure
 
 ```text
