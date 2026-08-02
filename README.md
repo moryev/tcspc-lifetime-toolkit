@@ -18,8 +18,13 @@ This project separates the analysis into reusable stages:
 4. estimate model parameters by nonlinear fitting;
 5. reconstruct the fitted signal;
 6. evaluate lifetime errors and fit residuals.
+7. generate synthetic datasets for machine-learning experiments;
+8. train and evaluate baseline data-driven lifetime estimators;
+9. compare ordinary and group-aware evaluation strategies to identify potential data leakage.
 
-The current implementation provides a transparent classical baseline that will later be compared with data-driven lifetime estimators.
+The current implementation provides both a transparent classical fitting baseline and preliminary machine-learning workflows 
+based on normalized TCSPC histograms. These workflows include simple regression models, grouped synthetic datasets, 
+and leakage-aware evaluation. Future releases will extend both approaches with instrument-response-function modelling, convolution, and reconvolution fitting.
 
 ## Current functionality
 
@@ -29,14 +34,20 @@ The current version supports:
 * constant background counts;
 * Poisson sampling of photon-count histograms;
 * reproducible simulations using a random seed;
+* generation of independent and grouped synthetic mono-exponential datasets;
+* structured storage of simulated curves and metadata;
+* metadata-based selection of machine-learning targets;
 * nonlinear least-squares lifetime fitting;
 * covariance-based parameter standard errors;
 * fitted-signal reconstruction;
 * raw residual calculation;
 * Poisson-scaled Pearson residuals;
 * absolute and relative lifetime errors;
+* baseline machine-learning lifetime estimation using normalized TCSPC histograms;
+* random and group-aware train-test evaluation;
+* data-leakage analysis for repeated noisy realizations;
 * CSV export of simulated and evaluated data;
-* Jupyter notebooks demonstrating the complete workflow.
+* Jupyter notebooks demonstrating the classical, machine-learning, and grouped-evaluation workflows.
 
 ## Current scientific assumptions
 
