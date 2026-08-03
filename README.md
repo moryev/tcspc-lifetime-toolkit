@@ -431,7 +431,7 @@ Planned development stages include:
 9. a Purcell-enhanced lifetime-sensing demonstration.
 10. support for fitting user-provided experimental TCSPC data;
 11. tools for preparing experimental and synthetic datasets for machine-learning applications;
-12. addition of neural networks (e.g., CNNs, autoencoders) trained to reconstruct lifetime maps or histograms from ultra-low photon counts (sparse data).
+12. addition of neural networks (e.g., CNNs, autoencoders) for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data).
 13. a graphical user interface.
 
 ## Reproducibility
