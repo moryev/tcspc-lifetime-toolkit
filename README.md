@@ -367,6 +367,7 @@ tcspc-lifetime-toolkit/
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── fitting.py
+│       ├── irf.py
 │       ├── ml_evaluation.py
 │       ├── models.py
 │       └── simulation.py
@@ -374,6 +375,7 @@ tcspc-lifetime-toolkit/
 └── tests/
     ├── test_datasets.py
     ├── test_fitting.py
+    ├── test_irf.py
     ├── test_ml_evaluation.py
     ├── test_models.py
     └── test_simulation.py
@@ -387,6 +389,7 @@ The modules currently have the following responsibilities:
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
+* `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
 * `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
 * `models.py`: mathematical decay models;
 * `simulation.py`: expected-curve generation and Poisson sampling;
