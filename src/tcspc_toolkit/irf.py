@@ -80,3 +80,68 @@ def generate_gaussian_irf(
     exponent = -0.5 * ((time_array - centre) / sigma) ** 2
 
     return amplitude * np.exp(exponent)
+
+
+def normalize_irf(
+    time: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Normalize an instrument response function to unit integrated area.
+
+    The IRF is normalized according to
+
+        integral IRF(t) dt = 1,
+
+    where the integral is approximated numerically using the trapezoidal
+    rule over the supplied time axis.
+
+    Parameters
+    ----------
+    time
+        One-dimensional, strictly increasing time axis.
+    irf
+        One-dimensional array containing non-negative IRF values.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        A new IRF array with unit integrated area.
+
+    Raises
+    ------
+    ValueError
+        If either input is not one-dimensional, if their lengths differ,
+        if they contain non-finite values, if the time axis is not strictly
+        increasing, if the IRF contains negative values, or if the
+        integrated IRF area is not positive.
+    """
+    time_array = np.asarray(time, dtype=np.float64)
+    irf_array = np.asarray(irf, dtype=np.float64)
+
+    if time_array.ndim != 1:
+        raise ValueError("time must be one-dimensional.")
+
+    if irf_array.ndim != 1:
+        raise ValueError("irf must be one-dimensional.")
+
+    if time_array.shape != irf_array.shape:
+        raise ValueError("time and irf must have the same shape.")
+
+    if not np.all(np.isfinite(time_array)):
+        raise ValueError("time must contain only finite values.")
+
+    if not np.all(np.isfinite(irf_array)):
+        raise ValueError("irf must contain only finite values.")
+
+    if np.any(irf_array < 0.0):
+        raise ValueError("irf values must be non-negative.")
+
+    if np.any(np.diff(time_array) <= 0.0):
+        raise ValueError("time must be strictly increasing.")
+
+    area = np.trapezoid(irf_array, x=time_array)
+
+    if not np.isfinite(area) or area <= 0.0:
+        raise ValueError("irf must have a positive integrated area.")
+
+    return irf_array / area

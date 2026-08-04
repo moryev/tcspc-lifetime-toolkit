@@ -3,10 +3,14 @@ from tcspc_toolkit.datasets import (
     generate_monoexponential_dataset,
 )
 
-from tcspc_toolkit.irf import generate_gaussian_irf
+from tcspc_toolkit.irf import (
+    generate_gaussian_irf,
+    normalize_irf,
+)
 
 __all__ = [
     "SyntheticDataset",
     "generate_monoexponential_dataset",
     "generate_gaussian_irf",
+    "normalize_irf",
 ]
