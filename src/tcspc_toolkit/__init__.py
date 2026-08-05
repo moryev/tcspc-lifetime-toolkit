@@ -6,6 +6,7 @@ from tcspc_toolkit.datasets import (
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
+    shift_irf
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "generate_monoexponential_dataset",
     "generate_gaussian_irf",
     "normalize_irf",
+    "shift_irf",
 ]

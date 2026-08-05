@@ -145,3 +145,88 @@ def normalize_irf(
         raise ValueError("irf must have a positive integrated area.")
 
     return irf_array / area
+
+
+from numpy.typing import NDArray
+import numpy as np
+
+
+def shift_irf(
+    time: NDArray[np.float64],
+    irf: NDArray[np.float64],
+    shift: float,
+) -> NDArray[np.float64]:
+    """Shift an instrument response function along its time axis.
+
+    The shifted IRF is defined as
+
+        shifted_irf(t) = irf(t - shift)
+
+    so that a positive shift moves the IRF toward later times and a
+    negative shift moves it toward earlier times.
+
+    Linear interpolation is used, which permits shifts that are not
+    integer multiples of the time-bin width. Values outside the supplied
+    time interval are replaced with zero.
+
+    The shifted IRF is not renormalized. If part of the IRF moves outside
+    the observed time window, its integrated area will therefore decrease.
+
+    Parameters
+    ----------
+    time
+        One-dimensional, strictly increasing time axis.
+    irf
+        One-dimensional instrument response function evaluated at `time`.
+    shift
+        Temporal shift in the same units as `time`.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Shifted IRF with the same shape as the input IRF.
+
+    Raises
+    ------
+    ValueError
+        If the arrays are not one-dimensional, have different lengths,
+        contain non-finite values, the time axis is not strictly increasing,
+        the IRF contains negative values, or the shift is not finite.
+    """
+    time = np.asarray(time, dtype=np.float64)
+    irf = np.asarray(irf, dtype=np.float64)
+
+    if time.ndim != 1:
+        raise ValueError("time must be one-dimensional.")
+
+    if irf.ndim != 1:
+        raise ValueError("irf must be one-dimensional.")
+
+    if time.shape != irf.shape:
+        raise ValueError("time and irf must have the same shape.")
+
+    if time.size < 2:
+        raise ValueError("time and irf must contain at least two values.")
+
+    if not np.all(np.isfinite(time)):
+        raise ValueError("time must contain only finite values.")
+
+    if not np.all(np.isfinite(irf)):
+        raise ValueError("irf must contain only finite values.")
+
+    if not np.isfinite(shift):
+        raise ValueError("shift must be finite.")
+
+    if not np.all(np.diff(time) > 0.0):
+        raise ValueError("time must be strictly increasing.")
+
+    if np.any(irf < 0.0):
+        raise ValueError("irf values must be non-negative.")
+
+    return np.interp(
+        time - shift,
+        time,
+        irf,
+        left=0.0,
+        right=0.0,
+    )

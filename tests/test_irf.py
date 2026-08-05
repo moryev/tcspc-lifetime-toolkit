@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
+    shift_irf
 )
 
 
@@ -614,4 +615,301 @@ def test_normalization_preserves_relative_irf_shape(
     )
 
 
+def test_shift_irf_zero_shift_returns_original_irf() -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=5.0,
+        fwhm=1.0,
+        amplitude=1.0,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=0.0,
+    )
+
+    np.testing.assert_allclose(
+        shifted_irf,
+        irf,
+        rtol=0.0,
+        atol=0.0,
+    )
+
+
+def test_shift_irf_positive_shift_moves_peak_later() -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=4.0,
+        fwhm=0.5,
+        amplitude=1.0,
+    )
+
+    shift = 1.0
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=shift,
+    )
+
+    original_peak_time = time[np.argmax(irf)]
+    shifted_peak_time = time[np.argmax(shifted_irf)]
+
+    assert shifted_peak_time == pytest.approx(
+        original_peak_time + shift,
+        abs=time[1] - time[0],
+    )
+
+
+def test_shift_irf_negative_shift_moves_peak_earlier() -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=6.0,
+        fwhm=0.5,
+        amplitude=1.0,
+    )
+
+    shift = -1.0
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=shift,
+    )
+
+    original_peak_time = time[np.argmax(irf)]
+    shifted_peak_time = time[np.argmax(shifted_irf)]
+
+    assert shifted_peak_time == pytest.approx(
+        original_peak_time + shift,
+        abs=time[1] - time[0],
+    )
+
+
+def test_shift_irf_preserves_output_shape() -> None:
+    time = np.linspace(0.0, 10.0, 501)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=5.0,
+        fwhm=1.0,
+        amplitude=1.0,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=0.37,
+    )
+
+    assert shifted_irf.shape == irf.shape
+    assert shifted_irf.dtype == np.float64
+
+
+def test_shift_irf_approximately_preserves_shape() -> None:
+    time = np.linspace(0.0, 10.0, 2001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=4.0,
+        fwhm=0.8,
+        amplitude=1.0,
+    )
+
+    shift = 1.0
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=shift,
+    )
+
+    expected_shifted_irf = generate_gaussian_irf(
+        time=time,
+        centre=5.0,
+        fwhm=0.8,
+        amplitude=1.0,
+    )
+
+    np.testing.assert_allclose(
+        shifted_irf,
+        expected_shifted_irf,
+        rtol=1e-3,
+        atol=1e-5,
+    )
+
+
+def test_shift_irf_supports_sub_bin_shift() -> None:
+    time = np.linspace(0.0, 10.0, 101)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=4.0,
+        fwhm=0.8,
+        amplitude=1.0,
+    )
+
+    bin_width = time[1] - time[0]
+    shift = 0.5 * bin_width
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=shift,
+    )
+
+    expected_peak_time = 4.0 + shift
+    shifted_peak_time = time[np.argmax(shifted_irf)]
+
+    assert shifted_peak_time == pytest.approx(
+        expected_peak_time,
+        abs=bin_width,
+    )
+
+    assert not np.array_equal(shifted_irf, irf)
+
+
+def test_shift_irf_large_shift_moves_irf_outside_time_window() -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=5.0,
+        fwhm=0.5,
+        amplitude=1.0,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=20.0,
+    )
+
+    np.testing.assert_array_equal(
+        shifted_irf,
+        np.zeros_like(irf),
+    )
+
+
+@pytest.mark.parametrize("shift", [-20.0, 20.0])
+def test_shift_irf_large_shift_returns_zeros(
+    shift: float,
+) -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=5.0,
+        fwhm=0.5,
+        amplitude=1.0,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=shift,
+    )
+
+    np.testing.assert_array_equal(
+        shifted_irf,
+        np.zeros_like(irf),
+    )
+
+
+def test_shift_irf_does_not_renormalize_after_boundary_loss() -> None:
+    time = np.linspace(0.0, 10.0, 1001)
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=9.5,
+        fwhm=1.0,
+        amplitude=1.0,
+    )
+    irf = normalize_irf(
+        time=time,
+        irf=irf,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=1.0,
+    )
+
+    original_area = np.trapezoid(irf, x=time)
+    shifted_area = np.trapezoid(shifted_irf, x=time)
+
+    assert original_area == pytest.approx(1.0)
+    assert shifted_area < original_area
+
+
+@pytest.mark.parametrize(
+    ("time", "irf", "shift", "expected_message"),
+    [
+        (
+            np.ones((2, 2)),
+            np.ones(4),
+            0.0,
+            "time must be one-dimensional",
+        ),
+        (
+            np.arange(4.0),
+            np.ones((2, 2)),
+            0.0,
+            "irf must be one-dimensional",
+        ),
+        (
+            np.arange(4.0),
+            np.ones(3),
+            0.0,
+            "time and irf must have the same shape",
+        ),
+        (
+            np.array([0.0]),
+            np.array([1.0]),
+            0.0,
+            "at least two values",
+        ),
+        (
+            np.array([0.0, np.nan, 2.0]),
+            np.ones(3),
+            0.0,
+            "time must contain only finite values",
+        ),
+        (
+            np.arange(3.0),
+            np.array([1.0, np.inf, 1.0]),
+            0.0,
+            "irf must contain only finite values",
+        ),
+        (
+            np.array([0.0, 2.0, 1.0]),
+            np.ones(3),
+            0.0,
+            "time must be strictly increasing",
+        ),
+        (
+            np.arange(3.0),
+            np.array([1.0, -0.1, 1.0]),
+            0.0,
+            "irf values must be non-negative",
+        ),
+        (
+            np.arange(3.0),
+            np.ones(3),
+            np.nan,
+            "shift must be finite",
+        ),
+    ],
+)
+def test_shift_irf_rejects_invalid_input(
+    time: np.ndarray,
+    irf: np.ndarray,
+    shift: float,
+    expected_message: str,
+) -> None:
+    with pytest.raises(ValueError, match=expected_message):
+        shift_irf(
+            time=time,
+            irf=irf,
+            shift=shift,
+        )
 
