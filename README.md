@@ -409,9 +409,6 @@ The current implementation is intentionally simplified.
 
 It does not yet include:
 
-* an instrument response function;
-* IRF convolution or reconvolution fitting;
-* temporal alignment between the IRF and decay;
 * Poisson maximum-likelihood fitting;
 * weighted least-squares fitting;
 * pile-up effects;
