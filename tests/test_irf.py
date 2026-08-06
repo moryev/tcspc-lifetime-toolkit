@@ -11,11 +11,6 @@ from tcspc_toolkit.irf import (
 )
 
 
-@pytest.fixture
-def time_axis() -> NDArray[np.float64]:
-    return np.linspace(0.0, 10.0, 1001, dtype=np.float64)
-
-
 def test_generate_gaussian_irf_preserves_time_shape(
     time_axis: NDArray[np.float64],
 ) -> None:

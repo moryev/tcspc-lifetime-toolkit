@@ -364,6 +364,7 @@ tcspc-lifetime-toolkit/
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── cli.py
+│       ├── convolution.py
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── fitting.py
@@ -373,6 +374,8 @@ tcspc-lifetime-toolkit/
 │       └── simulation.py
 │
 └── tests/
+    ├── conftest.py
+    ├── test_convolution.py
     ├── test_datasets.py
     ├── test_fitting.py
     ├── test_irf.py
@@ -386,6 +389,7 @@ The modules currently have the following responsibilities:
 * `__init__.py`: package initialization and definition of the public package interface;
 * `__main__.py`: package entry point for python -m tcspc_toolkit;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
+* `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation.
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
