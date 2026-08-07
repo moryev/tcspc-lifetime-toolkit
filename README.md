@@ -357,7 +357,8 @@ tcspc-lifetime-toolkit/
 │   ├── 03_synthetic_dataset_analysis.ipynb
 │   ├── 04_first_ml_baseline.ipynb
 │   ├── 05_data_leakage_and_grouped_evaluation.ipynb
-│   └── 06_grouped_dataset_api_workflow.ipynb
+│   ├── 06_grouped_dataset_api_workflow.ipynb
+│   └── 07_irf_convolution_and_realistic_simulation.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
