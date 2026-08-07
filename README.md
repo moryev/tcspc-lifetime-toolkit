@@ -425,7 +425,7 @@ The covariance-based standard errors returned by the current least-squares fit s
 
 Planned development stages include:
 
-1. synthetic, Gaussian, automatic, and measured IRF support;
+1. synthetic, automatic, and measured IRF support;
 2. IRF convolution and reconvolution fitting;
 3. Poisson-likelihood lifetime estimation;
 4. automated preprocessing and initial guesses;
