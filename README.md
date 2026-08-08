@@ -81,10 +81,8 @@ The instrument response function describes the temporal broadening introduced by
 In the current implementation, the IRF is modelled as a Gaussian function,
 
 $$
-\mathrm{IRF}(t)
-=
-C
-\exp\left[
+\mathrm{IRF}(t) =
+C \exp\left[
 -\frac{(t-t_0)^2}{2\sigma^2}
 \right].
 $$
@@ -98,8 +96,7 @@ where:
 The Gaussian width is specified through the full width at half maximum (FWHM),
 
 $$
-\mathrm{FWHM}
-=
+\mathrm{FWHM} =
 2\sqrt{2\ln 2}\,\sigma.
 $$
 
@@ -112,12 +109,9 @@ $$
 The instrument-broadened fluorescence signal is then calculated by convolution,
 
 $$
-[\mathrm{IRF} * I](t)
-=
-\int
-\mathrm{IRF}(t-t')
-I(t')
-\,dt'.
+[\mathrm{IRF} * I](t) =
+\int \mathrm{IRF}(t-t')
+I(t') \,dt'.
 $$
 
 Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution therefore includes the time-bin width $\Delta t$ so that the numerical sum approximates the continuous convolution integral.
@@ -125,8 +119,7 @@ Numerically, the convolution is evaluated on a uniform time grid. The discrete c
 A constant detector background $B$ is added after convolution, giving the expected TCSPC signal
 
 $$
-\lambda(t)
-=
+\lambda(t) =
 [\mathrm{IRF} * I](t) + B.
 $$
 
