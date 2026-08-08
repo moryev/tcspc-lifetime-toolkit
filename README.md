@@ -337,6 +337,37 @@ Demonstrates:
 * demonstration of how the package-level grouped dataset API supports reproducible and leakage-aware ML evaluation;
 * discussion of why group-aware splitting is preferable when several noisy realizations share the same underlying simulation parameters.
 
+### `07_irf_convolution_and_realistic_simulation.ipynb`
+
+Demonstrates:
+
+* construction of a uniform TCSPC time axis and inspection of the corresponding time-bin width;
+* generation of Gaussian instrument response functions through `generate_gaussian_irf()`;
+* normalization of IRFs through `normalize_irf()` so that their area is equal to one;
+* comparison of raw and normalized IRFs and verification that normalization preserves the IRF shape while removing dependence on the original Gaussian amplitude;
+* temporal shifting of normalized IRFs through `shift_irf()` using positive and negative time offsets;
+* visualization of the IRF shift convention and inspection of shifted peak positions;
+* generation of an ideal mono-exponential fluorescence decay through `monoexponential_decay()` with zero detector background before convolution;
+* numerical convolution of the ideal fluorescence signal with the IRF through `convolve_decay_with_irf()`;
+* comparison of ideal and IRF-convolved fluorescence decays on linear and logarithmic scales;
+* explicit addition of detector background after convolution according to the physical model $\lambda(t) = [\mathrm{IRF} * I](t) + B$;
+* demonstration of why detector background should not be included in the fluorescence signal before convolution;
+* Poisson sampling of the expected IRF-convolved signal through `sample_photon_counts()` using a reproducible NumPy random-number generator;
+* verification of Poisson-sampling reproducibility using independent generators initialized with the same random seed;
+* comparison of expected counts and Poisson-sampled TCSPC histograms;
+* demonstration of the complete compositional simulation workflow from fluorescence model to convolution, detector background, and photon-counting noise;
+* investigation of how increasing IRF FWHM distorts the leading edge, peak position, and temporal shape of a short-lifetime fluorescence decay;
+* comparison of IRF-convolved signals for several fluorescence lifetimes at a fixed IRF width;
+* analysis of the relationship between fluorescence lifetime and IRF FWHM, including cases where the lifetime is shorter than, comparable to, or much longer than the instrument response;
+* peak-normalized comparison of ideal and convolved decay curves using matched colors for each fluorescence lifetime;
+* logarithmic visualization of lifetime-dependent decay tails while excluding floating-point-scale numerical convolution artifacts below a relative signal threshold;
+* investigation of how temporal IRF misalignment changes the position and shape of the convolved decay;
+* analysis of boundary and truncation effects when shifted IRFs extend beyond the finite observation window;
+* inspection of IRF-area loss caused by truncation and its effect on the resulting convolved signal;
+* investigation of time-bin resolution and how insufficient temporal sampling affects narrow IRFs and numerical convolution;
+* integration checks confirming that IRF generation, normalization, convolution, background addition, and Poisson sampling work together consistently;
+* discussion of the main numerical and physical limitations of the current realistic TCSPC simulation workflow and its extension toward reconvolution fitting and more complex decay models.
+
 ## Repository structure
 
 ```text
