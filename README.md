@@ -422,7 +422,7 @@ Demonstrates:
 * generation of an ideal mono-exponential fluorescence decay through `monoexponential_decay()` with zero detector background before convolution;
 * numerical convolution of the ideal fluorescence signal with the IRF through `convolve_decay_with_irf()`;
 * comparison of ideal and IRF-convolved fluorescence decays on linear and logarithmic scales;
-* explicit addition of detector background after convolution according to the physical model $\lambda(t) = [\mathrm{IRF} * I](t) + B$;
+* explicit addition of detector background after convolution according to the physical model $`\lambda(t) = [\mathrm{IRF} * I](t) + B`$;
 * demonstration of why detector background should not be included in the fluorescence signal before convolution;
 * Poisson sampling of the expected IRF-convolved signal through `sample_photon_counts()` using a reproducible NumPy random-number generator;
 * verification of Poisson-sampling reproducibility using independent generators initialized with the same random seed;
