@@ -68,9 +68,9 @@ The current simulation workflow represents TCSPC measurements as a sequence of p
 
 For a mono-exponential fluorescence decay, the ideal signal is represented by
 
-$$
-I(t) = A \exp\left(-\frac{t}{\tau}\right),
-$$
+```math
+I(t) = A \exp\left(-\frac{t}{\tau}\right).
+```
 
 where:
 
@@ -80,12 +80,13 @@ where:
 The instrument response function describes the temporal broadening introduced by the measurement system. 
 In the current implementation, the IRF is modelled as a Gaussian function,
 
-$$
-\mathrm{IRF}(t) =
+```math
+\mathrm{IRF}(t)
+=
 C \exp\left[
 -\frac{(t-t_0)^2}{2\sigma^2}
 \right].
-$$
+```
 
 where:
 
@@ -95,47 +96,49 @@ where:
 
 The Gaussian width is specified through the full width at half maximum (FWHM),
 
-$$
-\mathrm{FWHM} =
+```math
+\mathrm{FWHM}
+=
 2\sqrt{2\ln 2}\,\sigma.
-$$
+```
 
 Before convolution, the IRF is normalized to unit temporal area,
 
-$$
+```math
 \int \mathrm{IRF}(t)\,dt = 1.
-$$
+```
 
 The instrument-broadened fluorescence signal is then calculated by convolution,
 
-$$
-[\mathrm{IRF} * I](t) =
-\int \mathrm{IRF}(t-t')
-I(t') \,dt'.
-$$
+```math
+[\mathrm{IRF} * I](t)
+=
+\int \mathrm{IRF}(t-t') I(t')\,dt'.
+```
 
 Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution therefore includes the time-bin width $\Delta t$ so that the numerical sum approximates the continuous convolution integral.
 
 A constant detector background $B$ is added after convolution, giving the expected TCSPC signal
 
-$$
-\lambda(t) =
+```math
+\lambda(t)
+=
 [\mathrm{IRF} * I](t) + B.
-$$
+```
 
 For each time bin $i$, the measured photon count is then sampled according to
 
-$$
+```math
 N_i
 \sim
-\mathrm{Poisson}(\lambda_i),
-$$
+\mathrm{Poisson}(\lambda_i).
+```
 
 where $\lambda_i$ is the expected photon count in that time bin.
 
 The resulting forward model can therefore be summarized as
 
-$$
+```math
 I(t)
 \longrightarrow
 \mathrm{IRF}(t)
@@ -145,7 +148,7 @@ I(t)
 \lambda(t)
 \longrightarrow
 N_i.
-$$
+```
 
 **Version 0.2 introduces Gaussian instrument-response modelling and IRF-convolved TCSPC simulation. 
 The current implementation assumes a uniform time grid and a time-invariant Gaussian IRF. The current IRF-convolved workflow 
