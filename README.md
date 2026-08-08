@@ -24,7 +24,9 @@ This project separates the analysis into reusable stages:
 
 The current implementation provides both a transparent classical fitting baseline and preliminary machine-learning workflows 
 based on normalized TCSPC histograms. These workflows include simple regression models, grouped synthetic datasets, 
-and leakage-aware evaluation. Future releases will extend both approaches with instrument-response-function modelling, convolution, and reconvolution fitting.
+and leakage-aware evaluation. The current implementation also supports Gaussian instrument-response-function modelling and 
+numerical convolution. Future releases will extend these capabilities with reconvolution fitting, experimental IRF support, 
+and more advanced detector models.
 
 ## Current functionality
 
@@ -32,6 +34,11 @@ The current version supports:
 
 * mono-, bi-, and multi-exponential decay modelling;
 * constant background counts;
+* Gaussian instrument response function generation;
+* IRF normalization to unit temporal area;
+* non-integer temporal IRF shifting;
+* numerical convolution of fluorescence decays with IRFs;
+* IRF-convolved TCSPC simulation with Poisson photon-count sampling;
 * Poisson sampling of photon-count histograms;
 * reproducible simulations using a random seed;
 * generation of independent and grouped synthetic mono-exponential datasets;
@@ -51,37 +58,106 @@ The current version supports:
 
 ## Current scientific assumptions
 
-The expected decay is represented by
+The current simulation workflow represents TCSPC measurements as a sequence of physical and numerical stages:
+
+1. generate an ideal fluorescence decay;
+2. generate and normalize an instrument response function (IRF);
+3. convolve the ideal decay with the IRF;
+4. add the detector background;
+5. sample the resulting expected counts using Poisson statistics.
+
+For a mono-exponential fluorescence decay, the ideal signal is represented by
 
 $$
-I(t) = A \exp\left(-\frac{t}{\tau}\right) + B,
+I(t) = A \exp\left(-\frac{t}{\tau}\right),
 $$
 
 where:
 
-* (A) is the decay amplitude;
-* ($\tau$) is the lifetime;
-* (B) is a constant background level.
+* $A$ is the decay amplitude;
+* $\tau$ is the fluorescence lifetime.
 
-For each time bin ($i$), the measured photon count is sampled according to
-
-$$
-N_i \sim \mathrm{Poisson}(\lambda_i),
-$$
-
-where ($\lambda_i$) is the expected count predicted by the decay model.
-
-The initial fitting baseline uses unweighted nonlinear least squares. Poisson-scaled residuals are calculated as
+The instrument response function describes the temporal broadening introduced by the measurement system. 
+In the current implementation, the IRF is modelled as a Gaussian function,
 
 $$
-r_i =
-\frac{N_i-\widehat{N}_i}
-{\sqrt{\widehat{N}_i}},
+\mathrm{IRF}(t)
+=
+C
+\exp\left[
+-\frac{(t-t_0)^2}{2\sigma^2}
+\right].
 $$
 
-where ($N_i$) is the measured count and ($\widehat{N}_i$) is the fitted count.
+where:
 
-**Version 0.1 initially treats TCSPC curves as Poisson-sampled mono-exponential decays without IRF convolution. Instrument-response modelling is added in the next development stage.**
+* $t_0$ is the IRF centre;
+* $\sigma$ determines the IRF width;
+* $C$ is the Gaussian amplitude.
+
+The Gaussian width is specified through the full width at half maximum (FWHM),
+
+$$
+\mathrm{FWHM}
+=
+2\sqrt{2\ln 2}\,\sigma.
+$$
+
+Before convolution, the IRF is normalized to unit temporal area,
+
+$$
+\int \mathrm{IRF}(t)\,dt = 1.
+$$
+
+The instrument-broadened fluorescence signal is then calculated by convolution,
+
+$$
+[\mathrm{IRF} * I](t)
+=
+\int
+\mathrm{IRF}(t-t')
+I(t')
+\,dt'.
+$$
+
+Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution therefore includes the time-bin width $\Delta t$ so that the numerical sum approximates the continuous convolution integral.
+
+A constant detector background $B$ is added after convolution, giving the expected TCSPC signal
+
+$$
+\lambda(t)
+=
+[\mathrm{IRF} * I](t) + B.
+$$
+
+For each time bin $i$, the measured photon count is then sampled according to
+
+$$
+N_i
+\sim
+\mathrm{Poisson}(\lambda_i),
+$$
+
+where $\lambda_i$ is the expected photon count in that time bin.
+
+The resulting forward model can therefore be summarized as
+
+$$
+I(t)
+\longrightarrow
+\mathrm{IRF}(t)
+\longrightarrow
+[\mathrm{IRF} * I](t)
+\longrightarrow
+\lambda(t)
+\longrightarrow
+N_i.
+$$
+
+**Version 0.2 introduces Gaussian instrument-response modelling and IRF-convolved TCSPC simulation. 
+The current implementation assumes a uniform time grid and a time-invariant Gaussian IRF. The current IRF-convolved workflow 
+is demonstrated for mono-exponential fluorescence decay. Experimental IRF loading, more advanced detector effects such as 
+pile-up and afterpulsing, and full reconvolution fitting are not yet included.**
 
 ## Installation
 
@@ -421,7 +497,7 @@ The modules currently have the following responsibilities:
 * `__init__.py`: package initialization and definition of the public package interface;
 * `__main__.py`: package entry point for python -m tcspc_toolkit;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
-* `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation.
+* `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
@@ -432,7 +508,7 @@ The modules currently have the following responsibilities:
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
 * `notebooks/`: documented analysis workflows;
-* `tests/`: automated verification of physical, numerical, and package behaviour.
+* `tests/`: automated verification of physical, numerical, and package behaviour;
 * `pyproject.toml`: package metadata, dependencies, build configuration, and command-line entry points.
 
 ## Current limitations
@@ -456,18 +532,18 @@ The covariance-based standard errors returned by the current least-squares fit s
 
 Planned development stages include:
 
-1. synthetic, automatic, and measured IRF support;
-2. IRF convolution and reconvolution fitting;
+1. additional synthetic IRF models, automatic and experimental/measured IRF support;
+2. reconvolution fitting;
 3. Poisson-likelihood lifetime estimation;
 4. automated preprocessing and initial guesses;
 5. physically interpretable feature extraction;
 6. machine-learning lifetime estimation;
 7. benchmarking classical and data-driven methods;
 8. robustness studies under model mismatch; 
-9. a Purcell-enhanced lifetime-sensing demonstration.
+9. a Purcell-enhanced lifetime-sensing demonstration;
 10. support for fitting user-provided experimental TCSPC data;
 11. tools for preparing experimental and synthetic datasets for machine-learning applications;
-12. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data).
+12. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
 13. a graphical user interface.
 
 ## Reproducibility
@@ -506,7 +582,7 @@ The present codebase is an educational and scientific-software prototype. It is 
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.1.0,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.2.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
