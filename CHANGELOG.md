@@ -104,3 +104,15 @@ All notable changes to this project will be documented in this file.
 * grouped dataset generation currently supports mono-exponential decays;
 * detector effects such as pile-up and afterpulsing are not modelled;
 * machine-learning evaluation remains preliminary and is based on synthetic data.
+
+
+## [0.2.1] - 2026-08-08
+
+### Fixed
+
+- corrected GitHub rendering of mathematical expressions in the README;
+- replaced problematic display-math formatting with GitHub-compatible fenced math blocks.
+
+### Notes
+
+- no scientific or API behaviour changed in this patch release.
