@@ -4,6 +4,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
+from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit.irf import shift_irf
 from tcspc_toolkit.models import monoexponential_decay
 
 
@@ -84,3 +86,45 @@ def fit_monoexponential_decay(
         lifetime_std=float(lifetime_std),
         background_std=float(background_std),
     )
+
+
+# Reconvolution fitting block
+def _reconvolution_model(
+    time: NDArray[np.float64],
+    irf: NDArray[np.float64],
+    amplitude: float,
+    lifetime: float,
+    background: float,
+    temporal_shift: float,
+) -> NDArray[np.float64]:
+    if amplitude < 0:
+        raise ValueError("amplitude must be non-negative")
+
+    if lifetime <= 0:
+        raise ValueError("lifetime must be positive")
+
+    if background < 0:
+        raise ValueError("background must be non-negative")
+
+    decay = monoexponential_decay(
+        time=time,
+        amplitude=1.0,
+        lifetime=lifetime,
+        background=0.0,
+    )
+
+    shifted_irf = shift_irf(
+        time=time,
+        irf=irf,
+        shift=temporal_shift,
+    )
+
+    convolved = convolve_decay_with_irf(
+        time=time,
+        decay=decay,
+        irf=shifted_irf,
+    )
+
+    expected_counts = amplitude * convolved + background
+
+    return expected_counts
