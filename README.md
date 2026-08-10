@@ -440,6 +440,41 @@ Demonstrates:
 * integration checks confirming that IRF generation, normalization, convolution, background addition, and Poisson sampling work together consistently;
 * discussion of the main numerical and physical limitations of the current realistic TCSPC simulation workflow and its extension toward reconvolution fitting and more complex decay models.
 
+08_naive_vs_reconvolution_fitting.ipynb
+
+Demonstrates:
+
+* construction of a uniform TCSPC time axis for lifetime-fitting experiments and inspection of the corresponding time-bin width;
+* generation and normalization of a fixed Gaussian instrument response function through `generate_gaussian_irf()` and `normalize_irf()`;
+* verification that the normalized IRF has unit integrated area before it is used in convolution and reconvolution fitting;
+* definition of representative fluorescence lifetimes spanning regimes where the lifetime is much longer than, comparable to, and shorter than the IRF FWHM;
+* generation of ideal mono-exponential fluorescence decays through `monoexponential_decay()`;
+* numerical convolution of the ideal fluorescence signal with the fixed IRF through `convolve_decay_with_irf()`;
+* adjustment of the decay amplitude so that different lifetime conditions contain approximately the same total number of expected signal photons;
+* explicit addition of detector background after convolution according to the physical measurement model $\mu(t) = A[\mathrm{IRF} * I_\tau](t) + B$;
+* generation of Poisson-sampled TCSPC histograms through `sample_photon_counts()` using reproducible NumPy random-number generators;
+* comparison of the same simulated TCSPC histogram with two competing lifetime-fitting approaches: a naive mono-exponential fit and an IRF-aware reconvolution fit;
+* restriction of the naive exponential fit to the measured decay region beginning at the histogram peak so that the simple model is not trivially penalized by the IRF-generated leading edge;
+* construction of data-driven initial guesses for amplitude, lifetime, and background without using the known true lifetime;
+* use of the naive-fit result as a practical initialization for the reconvolution fit while keeping the known IRF shape and width fixed;
+* reconvolution fitting through `fit_monoexponential_reconvolution()` with simultaneous estimation of amplitude, fluorescence lifetime, detector background, and temporal IRF shift;
+* visual comparison of measured photon counts, the true expected reconvolved signal, the naive fitted decay, and the reconvolution fitted curve;
+* calculation of signed relative lifetime errors through $(\tau_{\mathrm{fit}}-\tau_{\mathrm{true}})/\tau_{\mathrm{true}}$ to distinguish lifetime overestimation from underestimation;
+* comparison of recovered lifetimes for representative cases including $\tau \gg \mathrm{FWHM}_{\mathrm{IRF}}$, $\tau \approx 3\,\mathrm{FWHM}_{\mathrm{IRF}}$, $\tau \approx \mathrm{FWHM}_{\mathrm{IRF}}$, and $\tau < \mathrm{FWHM}_{\mathrm{IRF}}$;
+* systematic lifetime sweep over a broad range of $\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}$ values to quantify when neglecting the IRF becomes scientifically significant;
+* visualization of relative lifetime bias as a function of $\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}$ on a logarithmic horizontal axis;
+* explicit marking of the physically important transition $\tau_{\mathrm{true}} = \mathrm{FWHM}_{\mathrm{IRF}}$ in the lifetime-bias figure;
+* demonstration that naive exponential fitting increasingly overestimates short lifetimes as the fluorescence lifetime approaches and falls below the IRF width;
+* demonstration that reconvolution fitting substantially suppresses the systematic lifetime bias introduced by ignoring the instrument response;
+* repeated Poisson simulation of each lifetime condition across multiple independent realizations to separate systematic model bias from statistical photon-counting variability;
+* calculation of median relative lifetime error and 16th–84th percentile intervals for both fitting approaches;
+* comparison of statistical spread between naive and reconvolution lifetime estimates across the full lifetime-to-IRF-width range;
+* verification of numerical fit success rates for both fitting methods across all simulated lifetime regimes and Poisson realizations;
+* demonstration that successful optimizer convergence alone is not sufficient for physical correctness, since the naive model can converge reliably while remaining systematically biased;
+* analysis of the distinction between model-induced bias and increasing parameter uncertainty when fluorescence lifetimes become shorter than the instrument response;
+* presentation of a controlled scientific benchmark showing why reconvolution becomes necessary when $\tau_{\mathrm{true}}$ approaches $\mathrm{FWHM}_{\mathrm{IRF}}$;
+* discussion of the remaining limitation that both fitting approaches still use least-squares objectives despite the underlying Poisson photon-counting statistics, motivating the next development step toward Poisson-aware fitting.
+
 ## Repository structure
 
 ```text
@@ -461,7 +496,8 @@ tcspc-lifetime-toolkit/
 │   ├── 04_first_ml_baseline.ipynb
 │   ├── 05_data_leakage_and_grouped_evaluation.ipynb
 │   ├── 06_grouped_dataset_api_workflow.ipynb
-│   └── 07_irf_convolution_and_realistic_simulation.ipynb
+│   ├── 07_irf_convolution_and_realistic_simulation.ipynb
+│   └── 08_naive_vs_reconvolution_fitting.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
