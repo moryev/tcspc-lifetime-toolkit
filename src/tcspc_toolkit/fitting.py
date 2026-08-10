@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, least_squares
 
-from tcspc_toolkit.convolution import convolve_decay_with_irf
-from tcspc_toolkit.irf import shift_irf
 from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.irf import shift_irf
+from tcspc_toolkit.convolution import convolve_decay_with_irf
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,19 @@ class LifetimeFitResult:
     amplitude_std: float
     lifetime_std: float
     background_std: float
+
+
+@dataclass(frozen=True)
+class ReconvolutionFitResult:
+    """Results of a mono-exponential reconvolution fit."""
+
+    amplitude: float
+    lifetime: float
+    background: float
+    temporal_shift: float
+
+    fitted_curve: NDArray[np.float64]
+    success: bool
 
 
 def fit_monoexponential_decay(
@@ -97,6 +110,13 @@ def _reconvolution_model(
     background: float,
     temporal_shift: float,
 ) -> NDArray[np.float64]:
+    """
+     time:
+        One-dimensional array containing time-bin positions.
+    irf:
+        Instrument response function evaluated on the same time grid.
+        The IRF should already be normalized.
+    """
     if amplitude < 0:
         raise ValueError("amplitude must be non-negative")
 
@@ -128,3 +148,249 @@ def _reconvolution_model(
     expected_counts = amplitude * convolved + background
 
     return expected_counts
+
+
+def fit_monoexponential_reconvolution(
+    time: NDArray[np.float64],
+    counts: NDArray[np.float64] | NDArray[np.int64],
+    irf: NDArray[np.float64],
+    initial_guess: tuple[float, float, float, float],
+    temporal_shift_bounds: tuple[float, float] | None = None,
+) -> ReconvolutionFitResult:
+    """Fit a mono-exponential decay using IRF reconvolution.
+
+    Parameters
+    ----------
+    time:
+        One-dimensional array containing time-bin positions.
+    counts:
+        One-dimensional array containing measured photon counts.
+    irf:
+        Instrument response function evaluated on the same time grid.
+        The IRF should already be normalized.
+    initial_guess:
+        Initial guesses for amplitude, lifetime, background,
+        and temporal shift.
+    temporal_shift_bounds:
+        Lower and upper bounds for the temporal shift. If omitted,
+        the shift is limited to 10% of the measurement time span
+        in either direction.
+
+    Returns
+    -------
+    ReconvolutionFitResult
+        Fitted physical parameters, fitted curve, and optimizer
+        success status.
+    """
+    if time.ndim != 1:
+        raise ValueError("time must be a one-dimensional array")
+
+    if counts.ndim != 1:
+        raise ValueError("counts must be a one-dimensional array")
+
+    if irf.ndim != 1:
+        raise ValueError("irf must be a one-dimensional array")
+
+    if not (
+        time.shape == counts.shape == irf.shape
+    ):
+        raise ValueError(
+            "time, counts, and irf must have the same shape"
+        )
+
+    if time.size < 5:
+        raise ValueError(
+            "at least five data points are required"
+        )
+
+    if not np.all(np.isfinite(time)):
+        raise ValueError(
+            "time must contain only finite values"
+        )
+
+    if not np.all(np.isfinite(counts)):
+        raise ValueError(
+            "counts must contain only finite values"
+        )
+
+    if np.any(counts < 0.0):
+        raise ValueError(
+            "counts must contain only non-negative values"
+        )
+
+    time_differences = np.diff(time)
+
+    if np.any(time_differences <= 0.0):
+        raise ValueError(
+            "time must be strictly increasing"
+        )
+
+    if not np.allclose(
+        time_differences,
+        time_differences[0],
+    ):
+        raise ValueError(
+            "time must be uniformly spaced"
+        )
+
+    if not np.all(np.isfinite(irf)):
+        raise ValueError(
+            "irf must contain only finite values"
+        )
+
+    if np.any(irf < 0.0):
+        raise ValueError(
+            "irf must contain only non-negative values"
+        )
+
+    initial_parameters = np.asarray(
+        initial_guess,
+        dtype=np.float64,
+    )
+
+    if initial_parameters.shape != (4,):
+        raise ValueError(
+            "initial_guess must contain four values"
+        )
+
+    if not np.all(np.isfinite(initial_parameters)):
+        raise ValueError(
+            "initial_guess must contain only finite values"
+        )
+
+    (
+        initial_amplitude,
+        initial_lifetime,
+        initial_background,
+        initial_temporal_shift,
+    ) = initial_parameters
+
+    if initial_amplitude < 0.0:
+        raise ValueError(
+            "initial amplitude must be non-negative"
+        )
+
+    if initial_lifetime <= 0.0:
+        raise ValueError(
+            "initial lifetime must be positive"
+        )
+
+    if initial_background < 0.0:
+        raise ValueError(
+            "initial background must be non-negative"
+        )
+
+    if temporal_shift_bounds is None:
+        time_span = time[-1] - time[0]
+        shift_limit = 0.1 * time_span
+
+        temporal_shift_bounds = (
+            -shift_limit,
+            shift_limit,
+        )
+
+    shift_lower, shift_upper = temporal_shift_bounds
+
+    if not (
+        np.isfinite(shift_lower)
+        and np.isfinite(shift_upper)
+    ):
+        raise ValueError(
+            "temporal shift bounds must be finite"
+        )
+
+    if shift_lower >= shift_upper:
+        raise ValueError(
+            "lower temporal shift bound must be smaller "
+            "than upper temporal shift bound"
+        )
+
+    if not (
+        shift_lower
+        <= initial_temporal_shift
+        <= shift_upper
+    ):
+        raise ValueError(
+            "initial temporal shift must lie within "
+            "temporal shift bounds"
+        )
+
+    lower_bounds = np.array(
+        [
+            0.0,
+            1e-12,
+            0.0,
+            shift_lower,
+        ],
+        dtype=np.float64,
+    )
+
+    upper_bounds = np.array(
+        [
+            np.inf,
+            np.inf,
+            np.inf,
+            shift_upper,
+        ],
+        dtype=np.float64,
+    )
+
+    counts_float = counts.astype(
+        np.float64,
+        copy=False,
+    )
+
+    def residual_function(
+        parameters: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        (
+            amplitude,
+            lifetime,
+            background,
+            temporal_shift,
+        ) = parameters
+
+        fitted = _reconvolution_model(
+            time=time,
+            irf=irf,
+            amplitude=amplitude,
+            lifetime=lifetime,
+            background=background,
+            temporal_shift=temporal_shift,
+        )
+
+        return counts_float - fitted
+
+    optimization_result = least_squares(
+        fun=residual_function,
+        x0=initial_parameters,
+        bounds=(
+            lower_bounds,
+            upper_bounds,
+        ),
+    )
+
+    (
+        amplitude,
+        lifetime,
+        background,
+        temporal_shift,
+    ) = optimization_result.x
+
+    fitted_curve = _reconvolution_model(
+        time=time,
+        irf=irf,
+        amplitude=amplitude,
+        lifetime=lifetime,
+        background=background,
+        temporal_shift=temporal_shift,
+    )
+
+    return ReconvolutionFitResult(
+        amplitude=float(amplitude),
+        lifetime=float(lifetime),
+        background=float(background),
+        temporal_shift=float(temporal_shift),
+        fitted_curve=fitted_curve,
+        success=bool(optimization_result.success),
+    )

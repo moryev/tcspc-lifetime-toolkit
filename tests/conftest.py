@@ -12,6 +12,7 @@ from tcspc_toolkit.irf import (
 def time_axis() -> NDArray[np.float64]:
     return np.linspace(0.0, 10.0, 1001, dtype=np.float64)
 
+
 @pytest.fixture
 def irf(
     time_axis: NDArray[np.float64],

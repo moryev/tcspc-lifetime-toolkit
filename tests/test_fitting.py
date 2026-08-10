@@ -4,12 +4,17 @@ from numpy.typing import NDArray
 
 from tcspc_toolkit.fitting import (
     LifetimeFitResult,
+    ReconvolutionFitResult,
     fit_monoexponential_decay,
+    _reconvolution_model,
+    fit_monoexponential_reconvolution,
 )
 from tcspc_toolkit.models import monoexponential_decay
-from tcspc_toolkit.simulation import simulate_monoexponential_decay
+from tcspc_toolkit.simulation import (
+    sample_photon_counts,
+    simulate_monoexponential_decay,
+)
 from tcspc_toolkit.convolution import convolve_decay_with_irf
-from tcspc_toolkit.fitting import _reconvolution_model
 
 
 def test_fit_returns_lifetime_fit_result() -> None:
@@ -392,3 +397,180 @@ def test_reconvolution_model_accepts_negative_temporal_shift(
     )
 
     assert result.shape == time_axis.shape
+
+
+def test_reconvolution_fit_recovers_lifetime_and_shift_for_high_counts(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    true_amplitude = 1_000_000.0
+    true_lifetime = 0.3
+    true_background = 20.0
+    true_temporal_shift = 0.18
+
+    expected_counts = _reconvolution_model(
+        time=time_axis,
+        irf=irf,
+        amplitude=true_amplitude,
+        lifetime=true_lifetime,
+        background=true_background,
+        temporal_shift=true_temporal_shift,
+    )
+
+    rng = np.random.default_rng(42)
+
+    measured_counts = sample_photon_counts(
+        expected_counts=expected_counts,
+        rng=rng,
+    )
+
+    result = fit_monoexponential_reconvolution(
+        time=time_axis,
+        counts=measured_counts,
+        irf=irf,
+        initial_guess=(
+            900_000.0,
+            0.5,
+            10.0,
+            0.0,
+        ),
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+    )
+
+    assert result.success
+
+    assert abs(
+        result.lifetime - true_lifetime
+    ) < 0.05
+
+    assert abs(
+        result.temporal_shift - true_temporal_shift
+    ) < 0.05
+
+
+def test_reconvolution_fit_returns_result_with_fitted_curve(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    expected_counts = _reconvolution_model(
+        time=time_axis,
+        irf=irf,
+        amplitude=100_000.0,
+        lifetime=0.5,
+        background=5.0,
+        temporal_shift=0.1,
+    )
+
+    rng = np.random.default_rng(42)
+
+    measured_counts = sample_photon_counts(
+        expected_counts=expected_counts,
+        rng=rng,
+    )
+
+    result = fit_monoexponential_reconvolution(
+        time=time_axis,
+        counts=measured_counts,
+        irf=irf,
+        initial_guess=(
+            90_000.0,
+            0.7,
+            5.0,
+            0.0,
+        ),
+    )
+
+    assert isinstance(
+        result,
+        ReconvolutionFitResult,
+    )
+
+    assert result.fitted_curve.shape == time_axis.shape
+
+    assert np.all(
+        np.isfinite(result.fitted_curve)
+    )
+
+    assert result.success
+
+
+def test_reconvolution_fit_returns_physical_parameters(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    expected_counts = _reconvolution_model(
+        time=time_axis,
+        irf=irf,
+        amplitude=100_000.0,
+        lifetime=0.5,
+        background=5.0,
+        temporal_shift=0.1,
+    )
+
+    rng = np.random.default_rng(42)
+
+    measured_counts = sample_photon_counts(
+        expected_counts=expected_counts,
+        rng=rng,
+    )
+
+    result = fit_monoexponential_reconvolution(
+        time=time_axis,
+        counts=measured_counts,
+        irf=irf,
+        initial_guess=(
+            90_000.0,
+            0.7,
+            4.0,
+            0.0,
+        ),
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+    )
+
+    assert result.amplitude >= 0.0
+    assert result.lifetime > 0.0
+    assert result.background >= 0.0
+
+    assert (
+        -0.5
+        <= result.temporal_shift
+        <= 0.5
+    )
+
+
+def test_reconvolution_fit_rejects_invalid_temporal_shift_bounds(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    counts = np.ones_like(
+        time_axis,
+        dtype=np.float64,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="lower temporal shift bound",
+    ):
+        fit_monoexponential_reconvolution(
+            time=time_axis,
+            counts=counts,
+            irf=irf,
+            initial_guess=(
+                1000.0,
+                1.0,
+                5.0,
+                0.0,
+            ),
+            temporal_shift_bounds=(
+                0.5,
+                -0.5,
+            ),
+        )
+
+

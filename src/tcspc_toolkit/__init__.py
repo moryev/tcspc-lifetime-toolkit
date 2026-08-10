@@ -20,6 +20,13 @@ from tcspc_toolkit.convolution import (
     convolve_decay_with_irf,
 )
 
+from tcspc_toolkit.fitting import (
+    LifetimeFitResult,
+    ReconvolutionFitResult,
+    fit_monoexponential_decay,
+    fit_monoexponential_reconvolution,
+)
+
 __all__ = [
     "monoexponential_decay",
     "sample_photon_counts",
@@ -29,4 +36,8 @@ __all__ = [
     "normalize_irf",
     "shift_irf",
     "convolve_decay_with_irf",
+    "LifetimeFitResult",
+    "ReconvolutionFitResult",
+    "fit_monoexponential_decay",
+    "fit_monoexponential_reconvolution",
 ]
