@@ -394,3 +394,43 @@ def fit_monoexponential_reconvolution(
         fitted_curve=fitted_curve,
         success=bool(optimization_result.success),
     )
+
+# Poisson (reduced) NLL
+def poisson_negative_log_likelihood(
+    observed: np.ndarray,
+    expected: np.ndarray,
+) -> float:
+    observed = np.asarray(observed, dtype=float)
+    expected = np.asarray(expected, dtype=float)
+
+    if observed.shape != expected.shape:
+        raise ValueError("observed and expected must have the same shape.")
+
+    if not np.all(np.isfinite(observed)):
+        raise ValueError("observed must contain only finite values.")
+
+    if not np.all(np.isfinite(expected)):
+        raise ValueError("expected must contain only finite values.")
+
+    if np.any(observed < 0):
+        raise ValueError("observed counts must be non-negative.")
+
+    if np.any(expected < 0):
+        raise ValueError("expected counts must be non-negative.")
+
+    zero_expected_with_counts = (expected == 0.0) & (observed > 0.0)
+
+    if np.any(zero_expected_with_counts):
+        return float("inf")
+
+    positive_expected = expected > 0.0
+
+    terms = np.zeros_like(expected, dtype=float)
+
+    terms[positive_expected] = (
+        expected[positive_expected]
+        - observed[positive_expected]
+        * np.log(expected[positive_expected])
+    )
+
+    return float(np.sum(terms))

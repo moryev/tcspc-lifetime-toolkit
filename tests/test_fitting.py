@@ -8,6 +8,7 @@ from tcspc_toolkit.fitting import (
     fit_monoexponential_decay,
     _reconvolution_model,
     fit_monoexponential_reconvolution,
+    poisson_negative_log_likelihood
 )
 from tcspc_toolkit.models import monoexponential_decay
 from tcspc_toolkit.simulation import (
@@ -571,6 +572,101 @@ def test_reconvolution_fit_rejects_invalid_temporal_shift_bounds(
                 0.5,
                 -0.5,
             ),
+        )
+
+
+def test_poisson_negative_log_likelihood_is_finite_for_valid_counts() -> None:
+    observed = np.array([10, 20, 15, 5])
+    expected = np.array([9.0, 21.0, 14.0, 6.0])
+
+    nll = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected,
+    )
+
+    assert np.isfinite(nll)
+
+
+def test_poisson_negative_log_likelihood_handles_zero_observed_counts() -> None:
+    observed = np.array([0, 0, 5, 10])
+    expected = np.array([0.5, 1.0, 4.0, 11.0])
+
+    nll = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected,
+    )
+
+    assert np.isfinite(nll)
+
+
+def test_poisson_negative_log_likelihood_rejects_negative_expected_counts() -> None:
+    observed = np.array([5, 10, 15])
+    expected = np.array([5.0, -1.0, 15.0])
+
+    with pytest.raises(
+        ValueError,
+        match="expected counts must be non-negative",
+    ):
+        poisson_negative_log_likelihood(
+            observed=observed,
+            expected=expected,
+        )
+
+
+def test_poisson_negative_log_likelihood_allows_zero_expected_for_zero_observed() -> None:
+    observed = np.array([0, 5, 10])
+    expected = np.array([0.0, 5.0, 10.0])
+
+    nll = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected,
+    )
+
+    assert np.isfinite(nll)
+
+
+def test_poisson_negative_log_likelihood_is_infinite_for_positive_observed_and_zero_expected() -> None:
+    observed = np.array([1, 5, 10])
+    expected = np.array([0.0, 5.0, 10.0])
+
+    nll = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected,
+    )
+
+    assert np.isinf(nll)
+
+
+def test_poisson_negative_log_likelihood_is_lower_for_better_model() -> None:
+    observed = np.array([10, 20, 30, 20, 10])
+
+    expected_close = np.array([11.0, 19.0, 29.0, 21.0, 9.0])
+    expected_far = np.array([3.0, 8.0, 12.0, 8.0, 3.0])
+
+    nll_close = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected_close,
+    )
+
+    nll_far = poisson_negative_log_likelihood(
+        observed=observed,
+        expected=expected_far,
+    )
+
+    assert nll_close < nll_far
+
+
+def test_poisson_negative_log_likelihood_rejects_shape_mismatch() -> None:
+    observed = np.array([5, 10, 15])
+    expected = np.array([5.0, 10.0])
+
+    with pytest.raises(
+        ValueError,
+        match="observed and expected must have the same shape",
+    ):
+        poisson_negative_log_likelihood(
+            observed=observed,
+            expected=expected,
         )
 
 
