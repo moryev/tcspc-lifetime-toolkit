@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import curve_fit, least_squares
+from scipy.optimize import curve_fit, least_squares, minimize
 
 from tcspc_toolkit.models import monoexponential_decay
 from tcspc_toolkit.irf import shift_irf
@@ -150,12 +150,54 @@ def _reconvolution_model(
     return expected_counts
 
 
+# Poisson (reduced) NLL
+def poisson_negative_log_likelihood(
+    observed: np.ndarray,
+    expected: np.ndarray,
+) -> float:
+    observed = np.asarray(observed, dtype=float)
+    expected = np.asarray(expected, dtype=float)
+
+    if observed.shape != expected.shape:
+        raise ValueError("observed and expected must have the same shape.")
+
+    if not np.all(np.isfinite(observed)):
+        raise ValueError("observed must contain only finite values.")
+
+    if not np.all(np.isfinite(expected)):
+        raise ValueError("expected must contain only finite values.")
+
+    if np.any(observed < 0):
+        raise ValueError("observed counts must be non-negative.")
+
+    if np.any(expected < 0):
+        raise ValueError("expected counts must be non-negative.")
+
+    zero_expected_with_counts = (expected == 0.0) & (observed > 0.0)
+
+    if np.any(zero_expected_with_counts):
+        return float("inf")
+
+    positive_expected = expected > 0.0
+
+    terms = np.zeros_like(expected, dtype=float)
+
+    terms[positive_expected] = (
+        expected[positive_expected]
+        - observed[positive_expected]
+        * np.log(expected[positive_expected])
+    )
+
+    return float(np.sum(terms))
+
+
 def fit_monoexponential_reconvolution(
     time: NDArray[np.float64],
     counts: NDArray[np.float64] | NDArray[np.int64],
     irf: NDArray[np.float64],
     initial_guess: tuple[float, float, float, float],
     temporal_shift_bounds: tuple[float, float] | None = None,
+    objective: str = "least_squares",
 ) -> ReconvolutionFitResult:
     """Fit a mono-exponential decay using IRF reconvolution.
 
@@ -315,6 +357,15 @@ def fit_monoexponential_reconvolution(
             "temporal shift bounds"
         )
 
+    if objective not in {
+        "least_squares",
+        "poisson",
+    }:
+        raise ValueError(
+            "objective must be either "
+            "'least_squares' or 'poisson'"
+        )
+
     lower_bounds = np.array(
         [
             0.0,
@@ -361,15 +412,57 @@ def fit_monoexponential_reconvolution(
 
         return counts_float - fitted
 
-    optimization_result = least_squares(
-        fun=residual_function,
-        x0=initial_parameters,
-        bounds=(
-            lower_bounds,
-            upper_bounds,
-        ),
-    )
+    def poisson_objective(
+            parameters: NDArray[np.float64],
+    ) -> float:
+        (
+            amplitude,
+            lifetime,
+            background,
+            temporal_shift,
+        ) = parameters
 
+        expected_counts = _reconvolution_model(
+            time=time,
+            irf=irf,
+            amplitude=amplitude,
+            lifetime=lifetime,
+            background=background,
+            temporal_shift=temporal_shift,
+        )
+
+        return poisson_negative_log_likelihood(
+            observed=counts_float,
+            expected=expected_counts,
+        )
+
+    if objective == "least_squares":
+        optimization_result = least_squares(
+            fun=residual_function,
+            x0=initial_parameters,
+            bounds=(
+                lower_bounds,
+                upper_bounds,
+            ),
+        )
+
+    elif objective == "poisson":
+        bounds = list(
+            zip(
+                lower_bounds,
+                upper_bounds,
+            )
+        )
+
+        optimization_result = minimize(
+            fun=poisson_objective,
+            x0=initial_parameters,
+            method="L-BFGS-B",
+            bounds=bounds,
+        )
+        # TODO: L-BFGS-B supports parameter bounds directly.
+        #       We do not introduce log-parameter transformations or custom gradients yet.
+        #       Those may become worthwhile later if optimization conditioning becomes a problem.
     (
         amplitude,
         lifetime,
@@ -394,43 +487,3 @@ def fit_monoexponential_reconvolution(
         fitted_curve=fitted_curve,
         success=bool(optimization_result.success),
     )
-
-# Poisson (reduced) NLL
-def poisson_negative_log_likelihood(
-    observed: np.ndarray,
-    expected: np.ndarray,
-) -> float:
-    observed = np.asarray(observed, dtype=float)
-    expected = np.asarray(expected, dtype=float)
-
-    if observed.shape != expected.shape:
-        raise ValueError("observed and expected must have the same shape.")
-
-    if not np.all(np.isfinite(observed)):
-        raise ValueError("observed must contain only finite values.")
-
-    if not np.all(np.isfinite(expected)):
-        raise ValueError("expected must contain only finite values.")
-
-    if np.any(observed < 0):
-        raise ValueError("observed counts must be non-negative.")
-
-    if np.any(expected < 0):
-        raise ValueError("expected counts must be non-negative.")
-
-    zero_expected_with_counts = (expected == 0.0) & (observed > 0.0)
-
-    if np.any(zero_expected_with_counts):
-        return float("inf")
-
-    positive_expected = expected > 0.0
-
-    terms = np.zeros_like(expected, dtype=float)
-
-    terms[positive_expected] = (
-        expected[positive_expected]
-        - observed[positive_expected]
-        * np.log(expected[positive_expected])
-    )
-
-    return float(np.sum(terms))
