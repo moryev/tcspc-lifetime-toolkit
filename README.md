@@ -517,6 +517,7 @@ tcspc-lifetime-toolkit/
     ├── conftest.py
     ├── test_convolution.py
     ├── test_datasets.py
+    ├── test_evaluation.py
     ├── test_fitting.py
     ├── test_irf.py
     ├── test_ml_evaluation.py
