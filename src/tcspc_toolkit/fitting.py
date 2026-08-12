@@ -217,6 +217,8 @@ def fit_monoexponential_reconvolution(
         Lower and upper bounds for the temporal shift. If omitted,
         the shift is limited to 10% of the measurement time span
         in either direction.
+    objective:
+        objective function for the fitter - 'least_squares' or 'poisson'
 
     Returns
     -------

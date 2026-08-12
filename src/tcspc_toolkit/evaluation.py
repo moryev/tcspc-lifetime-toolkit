@@ -9,7 +9,7 @@ def generate_fitted_signal(
     time: NDArray[np.float64],
     fit_result: LifetimeFitResult,
 ) -> NDArray[np.float64]:
-    """Generate a mono-exponential signal from fitted parameters.
+    """Generate an unconvolved mono-exponential signal from fitted parameters.
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def calculate_reduced_residuals(
     observed: NDArray[np.float64] | NDArray[np.int64],
     fitted: NDArray[np.float64],
     minimum_expected_count: float = 1.0,
-    # TODO: Later, when a proper Poisson-likelihood analysis is implemented, use more rigorous residual definitions.
+    # TODO: rename it to calculate_pearson_residuals() during next APIs refactoring?
 ) -> NDArray[np.float64]:
     """Calculate Poisson-scaled Pearson residuals.
 
@@ -135,3 +135,74 @@ def calculate_relative_lifetime_error(
     )
 
     return absolute_error / true_lifetime
+
+
+def calculate_poisson_deviance_residuals(
+    observed: NDArray[np.float64] | NDArray[np.int64],
+    expected: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Calculate signed Poisson deviance residuals.
+
+    Parameters
+    ----------
+    observed:
+        Measured photon counts.
+    expected:
+        Expected photon counts predicted by the fitted model.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Signed Poisson deviance residual for every time bin.
+
+    Raises
+    ------
+    ValueError
+        If the inputs are not one-dimensional, have different shapes,
+        contain negative observed counts, or contain non-positive expected
+        counts.
+    """
+    if observed.ndim != 1:
+        raise ValueError("observed must be a one-dimensional array")
+
+    if expected.ndim != 1:
+        raise ValueError("expected must be a one-dimensional array")
+
+    if observed.shape != expected.shape:
+        raise ValueError("observed and expected must have the same shape")
+
+    if np.any(observed < 0):
+        raise ValueError("observed counts must be non-negative")
+
+    if np.any(expected <= 0):
+        raise ValueError("expected counts must be positive")
+
+    observed_float = observed.astype(np.float64)
+
+    deviance = np.empty_like(expected, dtype=np.float64)
+
+    positive_counts = observed_float > 0
+
+    deviance[positive_counts] = 2.0 * (
+        observed_float[positive_counts]
+        * np.log(
+            observed_float[positive_counts]
+            / expected[positive_counts]
+        )
+        - (
+            observed_float[positive_counts]
+            - expected[positive_counts]
+        )
+    )
+
+    deviance[~positive_counts] = (
+        2.0 * expected[~positive_counts]
+    )
+
+    deviance = np.maximum(deviance, 0.0)
+
+    residual_sign = np.sign(
+        observed_float - expected
+    )
+
+    return residual_sign * np.sqrt(deviance)
