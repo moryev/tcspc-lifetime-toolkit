@@ -599,10 +599,12 @@ tcspc-lifetime-toolkit/
 │       ├── convolution.py
 │       ├── datasets.py
 │       ├── evaluation.py
+│       ├── exceptions.py
 │       ├── fitting.py
 │       ├── irf.py
 │       ├── ml_evaluation.py
 │       ├── models.py
+│       ├── preprocessing.py
 │       └── simulation.py
 │
 └── tests/
@@ -614,6 +616,7 @@ tcspc-lifetime-toolkit/
     ├── test_irf.py
     ├── test_ml_evaluation.py
     ├── test_models.py
+    ├── test_preprocessing.py
     └── test_simulation.py
 ```
 
@@ -625,10 +628,12 @@ The modules currently have the following responsibilities:
 * `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
+* `exceptions.py`: package-specific exception hierarchy for representing domain-level TCSPC validation and processing errors;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
 * `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
 * `models.py`: mathematical decay models;
+* `preprocessing.py`: validation and preprocessing utilities for raw TCSPC histograms, including checks for array shape, finite and non-negative photon counts, integer-like measured counts, and strictly increasing, approximately uniform time bins;
 * `simulation.py`: expected-curve generation and Poisson sampling;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;

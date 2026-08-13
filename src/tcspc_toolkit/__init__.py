@@ -27,6 +27,15 @@ from tcspc_toolkit.fitting import (
     fit_monoexponential_reconvolution,
 )
 
+from tcspc_toolkit.exceptions import (
+    InvalidHistogramError,
+    TCSPCError,
+)
+
+from tcspc_toolkit.preprocessing import (
+    validate_histogram,
+)
+
 __all__ = [
     "monoexponential_decay",
     "sample_photon_counts",
@@ -40,4 +49,7 @@ __all__ = [
     "ReconvolutionFitResult",
     "fit_monoexponential_decay",
     "fit_monoexponential_reconvolution",
+    "TCSPCError",
+    "InvalidHistogramError",
+    "validate_histogram",
 ]
