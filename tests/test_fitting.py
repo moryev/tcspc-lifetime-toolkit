@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 from numpy.typing import NDArray
@@ -746,15 +748,39 @@ def test_poisson_reconvolution_fit_recovers_lifetime_and_shift_for_high_counts(
         rng=rng,
     )
 
+    least_squares_result = (
+        fit_monoexponential_reconvolution(
+            time=time_axis,
+            counts=measured_counts,
+            irf=irf,
+            initial_guess=(
+                900_000.0,
+                0.5,
+                10.0,
+                0.0,
+            ),
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            objective="least_squares",
+        )
+    )
+
+    poisson_background_guess = max(
+        least_squares_result.background,
+        1e-6,
+    )
+
     result = fit_monoexponential_reconvolution(
         time=time_axis,
         counts=measured_counts,
         irf=irf,
         initial_guess=(
-            900_000.0,
-            0.5,
-            10.0,
-            0.0,
+            least_squares_result.amplitude,
+            least_squares_result.lifetime,
+            poisson_background_guess,
+            least_squares_result.temporal_shift,
         ),
         temporal_shift_bounds=(
             -0.5,
@@ -763,15 +789,20 @@ def test_poisson_reconvolution_fit_recovers_lifetime_and_shift_for_high_counts(
         objective="poisson",
     )
 
+    assert least_squares_result.success
     assert result.success
 
-    assert abs(
-        result.lifetime - true_lifetime
-    ) < 0.05
+    relative_lifetime_error = abs(
+        result.lifetime
+        - true_lifetime
+    ) / true_lifetime
+
+    assert relative_lifetime_error < 0.05
 
     assert abs(
-        result.temporal_shift - true_temporal_shift
-    ) < 0.05
+        result.temporal_shift
+        - true_temporal_shift
+    ) < 0.02
 
 
 def test_poisson_reconvolution_fit_returns_physical_parameters(
@@ -822,6 +853,80 @@ def test_poisson_reconvolution_fit_returns_physical_parameters(
     )
 
 
+def test_poisson_reconvolution_fit_handles_low_count_background_boundary(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    true_lifetime = 0.1
+    target_signal_photons = 100
+    true_background = 0.002
+
+    unit_decay = monoexponential_decay(
+        time=time_axis,
+        amplitude=1.0,
+        lifetime=true_lifetime,
+        background=0.0,
+    )
+
+    unit_convolved = convolve_decay_with_irf(
+        time=time_axis,
+        decay=unit_decay,
+        irf=irf,
+    )
+
+    true_amplitude = (
+        target_signal_photons
+        / unit_convolved.sum()
+    )
+
+    expected_counts = (
+        true_amplitude * unit_convolved
+        + true_background
+    )
+
+    rng = np.random.default_rng(42)
+
+    measured_counts = sample_photon_counts(
+        expected_counts=expected_counts,
+        rng=rng,
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter(
+            "error",
+            RuntimeWarning,
+        )
+
+        result = fit_monoexponential_reconvolution(
+            time=time_axis,
+            counts=measured_counts,
+            irf=irf,
+            initial_guess=(
+                true_amplitude,
+                0.2,
+                1e-6,
+                0.0,
+            ),
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            objective="poisson",
+        )
+
+    assert result.success
+
+    assert result.background > 0.0
+
+    assert np.all(
+        np.isfinite(result.fitted_curve)
+    )
+
+    assert np.all(
+        result.fitted_curve > 0.0
+    )
+
+
 def test_reconvolution_fit_rejects_unknown_objective(
     time_axis: NDArray[np.float64],
     irf: NDArray[np.float64],
@@ -847,9 +952,3 @@ def test_reconvolution_fit_rejects_unknown_objective(
             ),
             objective="invalid",
         )
-
-
-
-# TODO:
-# Revisit deterministic parameter-recovery accuracy after improving
-# parameter scaling / optimizer configuration for Poisson reconvolution.

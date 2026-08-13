@@ -116,3 +116,57 @@ All notable changes to this project will be documented in this file.
 ### Notes
 
 - no scientific or API behaviour changed in this patch release.
+
+
+## [0.3.0] - 2026-08-13
+
+### Added
+
+* mono-exponential IRF reconvolution fitting with simultaneous estimation of amplitude, fluorescence lifetime, detector background, and temporal IRF shift;
+* least-squares reconvolution fitting through `fit_monoexponential_reconvolution()`;
+* Poisson negative log-likelihood through `poisson_negative_log_likelihood()` for photon-counting model evaluation and optimization;
+* Poisson maximum-likelihood reconvolution fitting using the same physical forward model as least-squares reconvolution;
+* selectable reconvolution fitting objectives through `objective="least_squares"` and `objective="poisson"`;
+* structured `ReconvolutionFitResult` output containing fitted physical parameters, fitted TCSPC curve, and optimizer success status;
+* Poisson deviance residuals through `calculate_poisson_deviance_residuals()` for statistically scaled residual diagnostics;
+* automated tests for reconvolution-model behaviour, temporal shifting, parameter recovery, Poisson likelihood evaluation, Poisson reconvolution fitting, low-background numerical stability, and Poisson deviance residuals;
+* Notebook 08 comparing naive unconvolved lifetime fitting with least-squares reconvolution across different lifetime-to-IRF-width regimes;
+* Notebook 09 integrating naive least squares, least-squares reconvolution, Poisson-MLE reconvolution, raw and deviance residual diagnostics, likelihood comparison, lifetime/IRF-width sweeps, and Monte Carlo photon-count validation.
+
+### Changed
+
+* extended the fitting workflow from ideal mono-exponential least-squares fitting to direct IRF-aware reconvolution fitting;
+* extended `fit_monoexponential_reconvolution()` with selectable least-squares and Poisson optimization objectives;
+* extended the TCSPC analysis workflow to treat photon-counting statistics explicitly during parameter estimation and residual evaluation;
+* kept IRF generation and manipulation in `irf.py`, numerical convolution in `convolution.py`, and parameter estimation in `fitting.py` to preserve separation of physical and numerical responsibilities;
+* retained the IRF shape and width as fixed known quantities during reconvolution fitting while allowing temporal alignment to be fitted;
+* updated scientific validation from single-curve parameter recovery toward systematic lifetime/IRF-width and photon-count benchmarking;
+* strengthened Poisson parameter-recovery tests using scientifically meaningful relative lifetime and temporal-shift tolerances;
+* updated the README and notebook documentation to reflect the implemented reconvolution and Poisson-likelihood workflows.
+
+### Fixed
+
+* improved numerical robustness of Poisson reconvolution fitting near zero detector background by using a strictly positive lower background bound for the Poisson optimizer;
+* prevented finite-difference gradient evaluation from encountering invalid infinite-objective differences when low-count fits approach zero expected photon counts.
+
+### Notes
+
+* the largest improvement over naive fitting comes from using the correct IRF-aware forward model when the fluorescence lifetime becomes comparable to the IRF width;
+* least-squares and Poisson-MLE reconvolution can produce nearly identical estimates in high-count measurements;
+* Monte Carlo validation demonstrates an increasing statistical advantage for Poisson maximum likelihood as photon counts decrease;
+* Poisson-MLE fitting is initialized effectively from a least-squares reconvolution solution in the validation workflow;
+* successful optimizer convergence should not be interpreted as guaranteed parameter precision in extremely photon-limited measurements;
+* Notebook 09 demonstrates stable reconvolution fitting down to very low synthetic photon counts while also showing the increasing statistical uncertainty in that regime.
+
+### Limitations
+
+* reconvolution fitting currently supports mono-exponential fluorescence decay only;
+* the IRF shape and width are treated as known and fixed during fitting;
+* experimental or measured IRF import and calibration are not yet implemented;
+* IRF FWHM is not fitted because of potential identifiability with short fluorescence lifetimes;
+* bi-exponential and multi-exponential reconvolution fitting are not yet implemented;
+* weighted least-squares fitting is not yet implemented;
+* Poisson optimization currently uses bounded numerical optimization without custom analytical gradients or parameter transformations;
+* detector effects such as pile-up, dead time, and afterpulsing are not modelled;
+* confidence intervals for reconvolution and Poisson-MLE parameters are not yet calibrated;
+* machine-learning evaluation remains based primarily on synthetic data.

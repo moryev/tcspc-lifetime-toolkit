@@ -368,11 +368,16 @@ def fit_monoexponential_reconvolution(
             "'least_squares' or 'poisson'"
         )
 
+    if objective == "poisson":
+        background_lower_bound = 1e-12
+    else:
+        background_lower_bound = 0.0
+
     lower_bounds = np.array(
         [
             0.0,
             1e-12,
-            0.0,
+            background_lower_bound,
             shift_lower,
         ],
         dtype=np.float64,

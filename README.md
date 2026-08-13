@@ -2,90 +2,97 @@
 
 A scientific Python toolkit for simulating, fitting, and evaluating time-correlated single-photon counting decay curves.
 
-The project is being developed as an end-to-end framework for classical and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC data processing, benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
+The project is being developed as an end-to-end framework for classical and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC simulation and data processing, reproducible benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
 
 ## Scientific motivation
 
 Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
 
-Even for a simple mono-exponential decay, the measured histogram differs from the underlying expected decay because photon detection is a stochastic process. For ideal photon-counting measurements, the observed count in each time bin can be modelled as a Poisson-distributed random variable.
+The measured histogram is generally not identical to the underlying fluorescence decay. The finite temporal response of the measurement system broadens the signal through the instrument response function (IRF), while photon detection introduces stochastic counting fluctuations. For an ideal photon-counting measurement, the observed count in each time bin can be modelled as a Poisson-distributed random variable.
 
-This project separates the analysis into reusable stages:
+Accurate lifetime estimation therefore requires separating the underlying fluorescence dynamics from both instrumental broadening and photon-counting statistics. This becomes particularly important when the fluorescence lifetime is comparable to or shorter than the IRF width, or when only a limited number of photons are available.
 
-1. define a physical decay model;
-2. calculate the expected photon counts;
-3. generate a Poisson-sampled measurement;
-4. estimate model parameters by nonlinear fitting;
-5. reconstruct the fitted signal;
-6. evaluate lifetime errors and fit residuals.
-7. generate synthetic datasets for machine-learning experiments;
+This project separates TCSPC analysis into reusable physical, statistical, and data-analysis stages:
+
+1. define a physical fluorescence-decay model;
+2. define and normalize the instrument response function;
+3. construct the expected TCSPC histogram through numerical convolution and detector-background addition;
+4. generate Poisson-sampled photon-count measurements;
+5. estimate physical parameters using ordinary or IRF-aware reconvolution fitting;
+6. evaluate fitted models using lifetime errors, raw residuals, and Poisson-aware residual diagnostics;
+7. generate controlled synthetic datasets for machine-learning experiments;
 8. train and evaluate baseline data-driven lifetime estimators;
 9. compare ordinary and group-aware evaluation strategies to identify potential data leakage.
 
-The current implementation provides both a transparent classical fitting baseline and preliminary machine-learning workflows 
-based on normalized TCSPC histograms. These workflows include simple regression models, grouped synthetic datasets, 
-and leakage-aware evaluation. The current implementation also supports Gaussian instrument-response-function modelling and 
-numerical convolution. Future releases will extend these capabilities with reconvolution fitting, experimental IRF support, 
-and more advanced detector models.
+The current implementation provides a transparent classical fitting workflow together with preliminary machine-learning pipelines based on synthetic TCSPC histograms. Classical inference includes ordinary mono-exponential least-squares fitting, IRF-aware least-squares reconvolution, and Poisson maximum-likelihood reconvolution. The toolkit also provides Gaussian IRF modelling, numerical convolution, Poisson photon-count simulation, Poisson-aware residual diagnostics, grouped synthetic datasets, baseline regression models, and leakage-aware evaluation.
+
+The longer-term goal is to provide a reproducible framework in which classical and data-driven lifetime estimators can be compared under controlled variations of fluorescence lifetime, photon budget, instrument response, noise conditions, and eventually experimental model mismatch.
 
 ## Current functionality
 
 The current version supports:
 
 * mono-, bi-, and multi-exponential decay modelling;
-* constant background counts;
+* constant detector background counts;
 * Gaussian instrument response function generation;
 * IRF normalization to unit temporal area;
 * non-integer temporal IRF shifting;
 * numerical convolution of fluorescence decays with IRFs;
 * IRF-convolved TCSPC simulation with Poisson photon-count sampling;
-* Poisson sampling of photon-count histograms;
-* reproducible simulations using a random seed;
+* reproducible simulations using NumPy random-number generators;
 * generation of independent and grouped synthetic mono-exponential datasets;
 * structured storage of simulated curves and metadata;
 * metadata-based selection of machine-learning targets;
-* nonlinear least-squares lifetime fitting;
-* covariance-based parameter standard errors;
+* nonlinear least-squares mono-exponential lifetime fitting;
+* IRF-aware mono-exponential reconvolution fitting;
+* simultaneous reconvolution estimation of amplitude, lifetime, detector background, and temporal IRF shift;
+* selectable least-squares and Poisson maximum-likelihood reconvolution objectives;
+* Poisson negative log-likelihood evaluation;
+* covariance-based parameter standard errors for ordinary least-squares mono-exponential fitting;
 * fitted-signal reconstruction;
 * raw residual calculation;
 * Poisson-scaled Pearson residuals;
+* Poisson deviance residuals;
 * absolute and relative lifetime errors;
 * baseline machine-learning lifetime estimation using normalized TCSPC histograms;
 * random and group-aware train-test evaluation;
 * data-leakage analysis for repeated noisy realizations;
 * CSV export of simulated and evaluated data;
-* Jupyter notebooks demonstrating the classical, machine-learning, and grouped-evaluation workflows.
+* Jupyter notebooks demonstrating classical fitting, realistic TCSPC simulation, reconvolution fitting, Poisson-aware validation, machine-learning baselines, and grouped evaluation workflows.
 
 ## Current scientific assumptions
 
-The current simulation workflow represents TCSPC measurements as a sequence of physical and numerical stages:
+The current realistic TCSPC workflow represents a measurement as a sequence of physical, instrumental, and statistical stages:
 
 1. generate an ideal fluorescence decay;
 2. generate and normalize an instrument response function (IRF);
-3. convolve the ideal decay with the IRF;
-4. add the detector background;
-5. sample the resulting expected counts using Poisson statistics.
+3. optionally shift the IRF in time;
+4. convolve the ideal fluorescence decay with the IRF;
+5. scale the fluorescence contribution by its amplitude;
+6. add the detector background;
+7. sample the resulting expected counts using Poisson statistics.
 
-For a mono-exponential fluorescence decay, the ideal signal is represented by
+For a mono-exponential fluorescence decay, the unit-amplitude decay shape is represented by
 
 ```math
-I(t) = A \exp\left(-\frac{t}{\tau}\right).
+I_\tau(t)
+=
+\exp\left(
+-\frac{t}{\tau}
+\right),
 ```
 
-where:
+where $\tau$ is the fluorescence lifetime.
 
-* $A$ is the decay amplitude;
-* $\tau$ is the fluorescence lifetime.
-
-The instrument response function describes the temporal broadening introduced by the measurement system. 
-In the current implementation, the IRF is modelled as a Gaussian function,
+The instrument response function describes the temporal broadening introduced by the measurement system. In the current implementation, the IRF is modelled as a Gaussian function,
 
 ```math
 \mathrm{IRF}(t)
 =
-C \exp\left[
+C
+\exp\left[
 -\frac{(t-t_0)^2}{2\sigma^2}
-\right].
+\right],
 ```
 
 where:
@@ -105,55 +112,108 @@ The Gaussian width is specified through the full width at half maximum (FWHM),
 Before convolution, the IRF is normalized to unit temporal area,
 
 ```math
-\int \mathrm{IRF}(t)\,dt = 1.
+\int
+\mathrm{IRF}(t)\,dt
+=
+1.
 ```
 
-The instrument-broadened fluorescence signal is then calculated by convolution,
+A temporal shift $\Delta t$ can be applied to describe the relative alignment between the fluorescence decay and the instrument response,
 
 ```math
-[\mathrm{IRF} * I](t)
+\mathrm{IRF}_{\Delta t}(t)
 =
-\int \mathrm{IRF}(t-t') I(t')\,dt'.
+\mathrm{IRF}(t-\Delta t).
 ```
 
-Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution therefore includes the time-bin width $\Delta t$ so that the numerical sum approximates the continuous convolution integral.
-
-A constant detector background $B$ is added after convolution, giving the expected TCSPC signal
+The instrument-broadened fluorescence signal is then calculated through convolution,
 
 ```math
-\lambda(t)
+[\mathrm{IRF}_{\Delta t} * I_\tau](t)
 =
-[\mathrm{IRF} * I](t) + B.
+\int
+\mathrm{IRF}_{\Delta t}(t-t')
+I_\tau(t')
+\,dt'.
 ```
 
-For each time bin $i$, the measured photon count is then sampled according to
+Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution includes the time-bin width $\Delta t_{\mathrm{bin}}$ so that the numerical sum approximates the continuous convolution integral.
+
+The expected TCSPC photon-count curve is
+
+```math
+\mu(t)
+=
+A
+[\mathrm{IRF}_{\Delta t} * I_\tau](t)
++
+B,
+```
+
+where:
+
+* $A$ is the fluorescence-signal amplitude;
+* $\tau$ is the fluorescence lifetime;
+* $B$ is the constant detector background;
+* $\Delta t$ is the relative temporal shift of the IRF.
+
+For each time bin $i$, the measured photon count is sampled according to
 
 ```math
 N_i
 \sim
-\mathrm{Poisson}(\lambda_i).
+\mathrm{Poisson}(\mu_i),
 ```
 
-where $\lambda_i$ is the expected photon count in that time bin.
+where $\mu_i$ is the expected photon count in that time bin.
 
 The resulting forward model can therefore be summarized as
 
 ```math
-I(t)
+I_\tau(t)
 \longrightarrow
-\mathrm{IRF}(t)
+\mathrm{IRF}_{\Delta t}(t)
 \longrightarrow
-[\mathrm{IRF} * I](t)
+[\mathrm{IRF}_{\Delta t} * I_\tau](t)
 \longrightarrow
-\lambda(t)
+\mu(t)
 \longrightarrow
 N_i.
 ```
 
-**Version 0.2 introduces Gaussian instrument-response modelling and IRF-convolved TCSPC simulation. 
-The current implementation assumes a uniform time grid and a time-invariant Gaussian IRF. The current IRF-convolved workflow 
-is demonstrated for mono-exponential fluorescence decay. Experimental IRF loading, more advanced detector effects such as 
-pile-up and afterpulsing, and full reconvolution fitting are not yet included.**
+Reconvolution fitting evaluates this forward model repeatedly while varying the fitted physical parameters. In the current mono-exponential implementation, the fitted parameter vector is
+
+```math
+\theta
+=
+(A,\tau,B,\Delta t).
+```
+
+Least-squares reconvolution estimates these parameters by minimizing ordinary residual errors between the measured histogram and the reconvolved model.
+
+For Poisson maximum-likelihood reconvolution, the fitted parameters are estimated by minimizing the reduced Poisson negative log-likelihood,
+
+```math
+-\log L
+=
+\sum_i
+\left[
+\mu_i
+-
+N_i\log(\mu_i)
+\right],
+```
+
+up to an additive term that does not depend on the fitted parameters.
+
+Poisson deviance residuals are additionally available for statistically scaled model diagnostics across histogram regions with strongly different photon-count levels.
+
+**Version 0.3 extends the realistic TCSPC workflow from IRF-convolved simulation to direct IRF-aware parameter estimation. 
+The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with 
+simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift. 
+The IRF shape and width are treated as known and fixed during fitting. The numerical workflow currently assumes 
+a uniform time grid and uses a Gaussian IRF model. Experimental IRF loading and calibration, fitted IRF width, 
+multi-exponential reconvolution, and advanced detector effects such as pile-up, dead time, and afterpulsing are not yet included.**
 
 ## Installation
 
@@ -440,7 +500,7 @@ Demonstrates:
 * integration checks confirming that IRF generation, normalization, convolution, background addition, and Poisson sampling work together consistently;
 * discussion of the main numerical and physical limitations of the current realistic TCSPC simulation workflow and its extension toward reconvolution fitting and more complex decay models.
 
-08_naive_vs_reconvolution_fitting.ipynb
+### `08_naive_vs_reconvolution_fitting.ipynb`
 
 Demonstrates:
 
@@ -475,6 +535,37 @@ Demonstrates:
 * presentation of a controlled scientific benchmark showing why reconvolution becomes necessary when $\tau_{\mathrm{true}}$ approaches $\mathrm{FWHM}_{\mathrm{IRF}}$;
 * discussion of the remaining limitation that both fitting approaches still use least-squares objectives despite the underlying Poisson photon-counting statistics, motivating the next development step toward Poisson-aware fitting.
 
+### `09_poisson_reconvolution_fitting_and_validation.ipynb`
+
+Demonstrates:
+
+* construction of a reproducible synthetic TCSPC measurement using a normalized Gaussian instrument response function, mono-exponential fluorescence decay, temporal IRF shift, detector background, and Poisson photon-count sampling;
+* explicit construction of the physical forward model $\mu(t) = A[\mathrm{IRF}_{\Delta t} * I_\tau](t) + B$ with detector background added after convolution;
+* validation of the imposed temporal IRF shift through comparison of reference and shifted IRF peak positions;
+* generation of a challenging short-lifetime TCSPC histogram in a regime where the fluorescence lifetime is comparable to the IRF width;
+* comparison of three lifetime-estimation approaches applied to the same measured histogram: naive unconvolved least squares, least-squares reconvolution, and Poisson maximum-likelihood reconvolution;
+* restriction of the naive exponential fit to the post-peak decay region while reconvolution methods fit the complete TCSPC histogram;
+* simultaneous reconvolution estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift while keeping the IRF shape and width fixed;
+* use of the least-squares reconvolution solution as a practical initialization for Poisson maximum-likelihood refinement;
+* tabulated comparison of true and recovered physical parameters and signed relative lifetime errors;
+* visualization of measured photon counts, the true expected TCSPC curve, naive exponential fit, least-squares reconvolution fit, and Poisson-MLE reconvolution fit on linear and logarithmic scales;
+* calculation and visualization of raw residuals for all fitting approaches;
+* calculation of Poisson deviance residuals through `calculate_poisson_deviance_residuals()` to account for the count-dependent statistical scale of photon-counting data;
+* demonstration that the naive exponential model leaves strong systematic residual structure while reconvolution produces approximately unstructured residual fluctuations around zero;
+* direct comparison of Poisson negative log-likelihood values for least-squares and Poisson-MLE reconvolution solutions using `poisson_negative_log_likelihood()`;
+* demonstration that least-squares and Poisson-MLE reconvolution give nearly identical parameter estimates in a high-count regime while the Poisson solution achieves the lower Poisson negative log-likelihood;
+* systematic comparison of naive least squares, least-squares reconvolution, and Poisson-MLE reconvolution across a broad range of $\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}$ values;
+* demonstration that ignoring the IRF produces rapidly increasing lifetime bias when the fluorescence lifetime approaches or falls below the IRF width;
+* demonstration that both reconvolution approaches substantially suppress the systematic model bias across the lifetime-to-IRF-width sweep;
+* Monte Carlo investigation of lifetime recovery at the challenging condition $\tau/\mathrm{FWHM}_{\mathrm{IRF}} = 0.5$ over expected fluorescence signal levels from 100 to 100,000 photons;
+* scaling of detector background with signal photon count so that the approximate signal-to-background ratio remains fixed during the Monte Carlo photon-count sweep;
+* repeated Poisson simulation and reconvolution fitting to separate estimator bias from statistical lifetime uncertainty;
+* comparison of least-squares and Poisson-MLE reconvolution using lifetime-error bias, median absolute error, RMSE, standard deviation, and error-distribution boxplots;
+* demonstration that Poisson maximum likelihood provides lower lifetime-error RMSE in low- and intermediate-count regimes while least-squares and Poisson fitting converge toward similar performance at high photon counts;
+* demonstration that successful numerical optimization does not guarantee precise parameter recovery when photon statistics contain insufficient information;
+* analysis of the distinction between systematic forward-model error, statistical estimator efficiency, and the fundamental information loss associated with finite IRF width and limited photon counts;
+* validation of a complete TCSPC inference workflow from physical decay modelling and IRF reconvolution to Poisson sampling, parameter estimation, and Poisson-aware residual diagnostics.
+
 ## Repository structure
 
 ```text
@@ -497,7 +588,8 @@ tcspc-lifetime-toolkit/
 │   ├── 05_data_leakage_and_grouped_evaluation.ipynb
 │   ├── 06_grouped_dataset_api_workflow.ipynb
 │   ├── 07_irf_convolution_and_realistic_simulation.ipynb
-│   └── 08_naive_vs_reconvolution_fitting.ipynb
+│   ├── 08_naive_vs_reconvolution_fitting.ipynb
+│   └── 09_poisson_reconvolution_fitting_and_validation.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -550,7 +642,6 @@ The current implementation is intentionally simplified.
 
 It does not yet include:
 
-* Poisson maximum-likelihood fitting;
 * weighted least-squares fitting;
 * pile-up effects;
 * detector dead time;
@@ -566,18 +657,16 @@ The covariance-based standard errors returned by the current least-squares fit s
 Planned development stages include:
 
 1. additional synthetic IRF models, automatic and experimental/measured IRF support;
-2. reconvolution fitting;
-3. Poisson-likelihood lifetime estimation;
-4. automated preprocessing and initial guesses;
-5. physically interpretable feature extraction;
-6. machine-learning lifetime estimation;
-7. benchmarking classical and data-driven methods;
-8. robustness studies under model mismatch; 
-9. a Purcell-enhanced lifetime-sensing demonstration;
-10. support for fitting user-provided experimental TCSPC data;
-11. tools for preparing experimental and synthetic datasets for machine-learning applications;
-12. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
-13. a graphical user interface.
+2. automated preprocessing and initial guesses;
+3. physically interpretable feature extraction;
+4. machine-learning lifetime estimation;
+5. benchmarking classical and data-driven methods;
+6. robustness studies under model mismatch; 
+7. a Purcell-enhanced lifetime-sensing demonstration;
+8. support for fitting user-provided experimental TCSPC data;
+9. tools for preparing experimental and synthetic datasets for machine-learning applications;
+10. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
+11. a graphical user interface.
 
 ## Reproducibility
 
@@ -615,7 +704,7 @@ The present codebase is an educational and scientific-software prototype. It is 
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.2.1,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.3.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
