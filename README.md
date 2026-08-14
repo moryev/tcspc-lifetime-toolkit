@@ -672,6 +672,7 @@ Planned development stages include:
 9. tools for preparing experimental and synthetic datasets for machine-learning applications;
 10. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
 11. a graphical user interface.
+12. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to interpret user analysis goals, select and orchestrate appropriate preprocessing, fitting, evaluation, and reporting functions, inspect intermediate results, and provide scientifically grounded explanations while keeping numerical calculations within the deterministic Python core.
 
 ## Reproducibility
 
