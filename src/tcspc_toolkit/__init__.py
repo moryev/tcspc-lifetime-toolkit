@@ -34,6 +34,9 @@ from tcspc_toolkit.exceptions import (
 
 from tcspc_toolkit.preprocessing import (
     validate_histogram,
+    estimate_background,
+    subtract_background,
+    validate_histogram,
 )
 
 __all__ = [
@@ -52,4 +55,6 @@ __all__ = [
     "TCSPCError",
     "InvalidHistogramError",
     "validate_histogram",
+    "estimate_background",
+    "subtract_background",
 ]

@@ -5,7 +5,11 @@ import pytest
 from numpy.typing import NDArray
 
 from tcspc_toolkit.exceptions import InvalidHistogramError, TCSPCError
-from tcspc_toolkit.preprocessing import validate_histogram
+from tcspc_toolkit.preprocessing import (
+    estimate_background,
+    subtract_background,
+    validate_histogram,
+)
 
 
 @pytest.fixture
@@ -227,3 +231,144 @@ def test_invalid_histogram_error_is_a_value_error() -> None:
 
 def test_invalid_histogram_error_is_a_tcspc_error() -> None:
     assert issubclass(InvalidHistogramError, TCSPCError)
+
+
+def test_estimate_background_recovers_constant_background() -> None:
+    counts = np.array(
+        [5.0, 5.0, 5.0, 5.0, 20.0, 10.0],
+        dtype=np.float64,
+    )
+
+    background = estimate_background(
+        counts,
+        start_bin=0,
+        stop_bin=4,
+    )
+
+    assert background == 5.0
+
+
+def test_estimate_background_recovers_zero_background() -> None:
+    counts = np.array(
+        [0.0, 0.0, 0.0, 10.0, 5.0],
+        dtype=np.float64,
+    )
+
+    background = estimate_background(
+        counts,
+        start_bin=0,
+        stop_bin=3,
+    )
+
+    assert background == 0.0
+
+
+def test_estimate_background_respects_selected_region() -> None:
+    counts = np.array(
+        [100.0, 100.0, 10.0, 20.0, 30.0, 100.0],
+        dtype=np.float64,
+    )
+
+    background = estimate_background(
+        counts,
+        start_bin=2,
+        stop_bin=5,
+    )
+
+    assert background == 20.0
+
+
+@pytest.mark.parametrize(
+    ("start_bin", "stop_bin"),
+    [
+        (-1, 3),
+        (3, 3),
+        (4, 2),
+        (0, 7),
+    ],
+)
+def test_estimate_background_rejects_invalid_bin_interval(
+    start_bin: int,
+    stop_bin: int,
+) -> None:
+    counts = np.ones(6, dtype=np.float64)
+
+    with pytest.raises(ValueError):
+        estimate_background(
+            counts,
+            start_bin=start_bin,
+            stop_bin=stop_bin,
+        )
+
+
+def test_subtract_background_returns_expected_values() -> None:
+    counts = np.array(
+        [2.0, 4.0, 8.0],
+        dtype=np.float64,
+    )
+
+    corrected = subtract_background(
+        counts,
+        background=3.0,
+    )
+
+    expected = np.array(
+        [-1.0, 1.0, 5.0],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_array_equal(corrected, expected)
+
+
+def test_subtract_background_does_not_modify_input() -> None:
+    counts = np.array(
+        [2.0, 4.0, 8.0],
+        dtype=np.float64,
+    )
+    original = counts.copy()
+
+    subtract_background(
+        counts,
+        background=3.0,
+    )
+
+    np.testing.assert_array_equal(counts, original)
+
+
+def test_subtract_background_allows_negative_values() -> None:
+    counts = np.array(
+        [1.0, 2.0, 5.0],
+        dtype=np.float64,
+    )
+
+    corrected = subtract_background(
+        counts,
+        background=3.0,
+    )
+
+    expected = np.array(
+        [-2.0, -1.0, 2.0],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_array_equal(corrected, expected)
+
+
+def test_subtract_background_rejects_negative_background() -> None:
+    counts = np.ones(5, dtype=np.float64)
+
+    with pytest.raises(ValueError):
+        subtract_background(
+            counts,
+            background=-1.0,
+        )
+
+
+def test_subtract_background_rejects_nonfinite_background() -> None:
+    counts = np.ones(5, dtype=np.float64)
+
+    with pytest.raises(ValueError):
+        subtract_background(
+            counts,
+            background=np.nan,
+        )
