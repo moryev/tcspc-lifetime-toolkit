@@ -37,6 +37,8 @@ from tcspc_toolkit.preprocessing import (
     estimate_background,
     subtract_background,
     validate_histogram,
+    detect_peak,
+    align_to_irf,
 )
 
 __all__ = [
@@ -57,4 +59,6 @@ __all__ = [
     "validate_histogram",
     "estimate_background",
     "subtract_background",
+    "detect_peak",
+    "align_to_irf",
 ]

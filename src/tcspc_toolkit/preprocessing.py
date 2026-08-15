@@ -237,3 +237,145 @@ def subtract_background(
     corrected -= background
 
     return corrected
+
+
+def detect_peak(
+    counts: ArrayLike,
+) -> int:
+    """Return the index of the maximum histogram count.
+
+    Parameters
+    ----------
+    counts:
+        One-dimensional array containing non-negative raw photon counts.
+
+    Returns
+    -------
+    int
+        Index of the first bin containing the maximum count.
+
+    Raises
+    ------
+    InvalidHistogramError
+        If ``counts`` does not represent valid raw histogram counts or is
+        empty.
+
+    Notes
+    -----
+    Peak detection is currently based on a simple discrete maximum. No
+    smoothing, interpolation, or noise-aware peak estimation is applied.
+
+    If multiple bins share the same maximum count, the first maximum is
+    returned, following ``numpy.argmax`` behaviour.
+    """
+    counts_array = _validate_raw_counts(counts)
+
+    if counts_array.size == 0:
+        raise InvalidHistogramError(
+            "counts must not be empty."
+        )
+
+    return int(np.argmax(counts_array))
+
+
+def align_to_irf(
+    time: ArrayLike,
+    irf: ArrayLike,
+) -> NDArray[np.float64]:
+    """Align the time coordinate to the discrete IRF peak.
+
+    The time axis is translated so that the bin containing the maximum IRF
+    value occurs at time zero. The IRF itself is not shifted or
+    interpolated.
+
+    Parameters
+    ----------
+    time:
+        One-dimensional, finite, strictly increasing time coordinates.
+    irf:
+        One-dimensional, finite, non-negative instrument response function
+        evaluated at the supplied time coordinates.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        New time coordinates with the IRF peak located at zero.
+
+    Raises
+    ------
+    ValueError
+        If the input arrays are invalid, have different shapes, or if the
+        IRF has no positive values.
+
+    Notes
+    -----
+    This operation changes only the time-coordinate origin. It does not
+    modify or interpolate measured photon counts or the IRF.
+
+    This nominal alignment is distinct from the ``temporal_shift`` parameter
+    used in reconvolution fitting. The latter may still estimate a residual
+    offset between the measured IRF and fluorescence histogram.
+    """
+    try:
+        time_array = np.asarray(time, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "time must contain numeric values."
+        ) from exc
+
+    try:
+        irf_array = np.asarray(irf, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "irf must contain numeric values."
+        ) from exc
+
+    if time_array.ndim != 1:
+        raise ValueError(
+            "time must be a one-dimensional array."
+        )
+
+    if irf_array.ndim != 1:
+        raise ValueError(
+            "irf must be a one-dimensional array."
+        )
+
+    if time_array.shape != irf_array.shape:
+        raise ValueError(
+            "time and irf must have the same shape."
+        )
+
+    if time_array.size < 2:
+        raise ValueError(
+            "time and irf must contain at least two values."
+        )
+
+    if not np.all(np.isfinite(time_array)):
+        raise ValueError(
+            "time must contain only finite values."
+        )
+
+    if not np.all(np.isfinite(irf_array)):
+        raise ValueError(
+            "irf must contain only finite values."
+        )
+
+    if np.any(np.diff(time_array) <= 0.0):
+        raise ValueError(
+            "time must be strictly increasing."
+        )
+
+    if np.any(irf_array < 0.0):
+        raise ValueError(
+            "irf values must be non-negative."
+        )
+
+    if not np.any(irf_array > 0.0):
+        raise ValueError(
+            "irf must contain at least one positive value."
+        )
+
+    peak_index = int(np.argmax(irf_array))
+    peak_time = time_array[peak_index]
+
+    return time_array - peak_time

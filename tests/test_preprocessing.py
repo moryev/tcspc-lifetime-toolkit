@@ -9,6 +9,8 @@ from tcspc_toolkit.preprocessing import (
     estimate_background,
     subtract_background,
     validate_histogram,
+    detect_peak,
+    align_to_irf,
 )
 
 
@@ -372,3 +374,139 @@ def test_subtract_background_rejects_nonfinite_background() -> None:
             counts,
             background=np.nan,
         )
+
+
+def test_detect_peak_identifies_peak_location() -> None:
+    counts = np.array(
+        [1.0, 4.0, 12.0, 7.0, 2.0],
+        dtype=np.float64,
+    )
+
+    peak_index = detect_peak(counts)
+
+    assert peak_index == 2
+
+
+def test_detect_peak_returns_first_maximum() -> None:
+    counts = np.array(
+        [1.0, 10.0, 10.0, 4.0],
+        dtype=np.float64,
+    )
+
+    peak_index = detect_peak(counts)
+
+    assert peak_index == 1
+
+
+def test_detect_peak_rejects_empty_counts() -> None:
+    counts = np.array([], dtype=np.float64)
+
+    with pytest.raises(
+        InvalidHistogramError,
+        match="counts must not be empty",
+    ):
+        detect_peak(counts)
+
+
+def test_align_to_irf_places_peak_at_zero() -> None:
+    time = np.array(
+        [-1.0, -0.5, 0.0, 0.5, 1.0],
+        dtype=np.float64,
+    )
+    irf = np.array(
+        [0.1, 0.5, 1.0, 4.0, 0.8],
+        dtype=np.float64,
+    )
+
+    aligned_time = align_to_irf(
+        time=time,
+        irf=irf,
+    )
+
+    peak_index = int(np.argmax(irf))
+
+    assert aligned_time[peak_index] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    "peak_index",
+    [1, 3],
+)
+def test_align_to_irf_handles_negative_and_positive_peak_times(
+    peak_index: int,
+) -> None:
+    time = np.array(
+        [-2.0, -1.0, 0.0, 1.0, 2.0],
+        dtype=np.float64,
+    )
+    irf = np.zeros(5, dtype=np.float64)
+    irf[peak_index] = 1.0
+
+    aligned_time = align_to_irf(
+        time=time,
+        irf=irf,
+    )
+
+    assert aligned_time[peak_index] == pytest.approx(0.0)
+
+
+def test_align_to_irf_preserves_time_spacing() -> None:
+    time = np.array(
+        [-1.0, -0.5, 0.0, 0.5, 1.0],
+        dtype=np.float64,
+    )
+    irf = np.array(
+        [0.1, 0.5, 1.0, 4.0, 0.8],
+        dtype=np.float64,
+    )
+
+    aligned_time = align_to_irf(
+        time=time,
+        irf=irf,
+    )
+
+    np.testing.assert_allclose(
+        np.diff(aligned_time),
+        np.diff(time),
+    )
+
+
+def test_align_to_irf_does_not_modify_inputs() -> None:
+    time = np.array(
+        [-1.0, -0.5, 0.0, 0.5, 1.0],
+        dtype=np.float64,
+    )
+    irf = np.array(
+        [0.1, 0.5, 1.0, 4.0, 0.8],
+        dtype=np.float64,
+    )
+
+    original_time = time.copy()
+    original_irf = irf.copy()
+
+    align_to_irf(
+        time=time,
+        irf=irf,
+    )
+
+    np.testing.assert_array_equal(time, original_time)
+    np.testing.assert_array_equal(irf, original_irf)
+
+
+def test_align_to_irf_rejects_zero_irf() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2],
+        dtype=np.float64,
+    )
+    irf = np.zeros(3, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="irf must contain at least one positive value",
+    ):
+        align_to_irf(
+            time=time,
+            irf=irf,
+        )
+
+
