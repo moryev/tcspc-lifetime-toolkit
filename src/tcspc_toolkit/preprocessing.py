@@ -379,3 +379,201 @@ def align_to_irf(
     peak_time = time_array[peak_index]
 
     return time_array - peak_time
+
+
+def crop_time_window(
+    time: ArrayLike,
+    counts: ArrayLike,
+    start_time: float,
+    stop_time: float,
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """Crop a raw TCSPC histogram to a selected time window.
+
+    The selected interval follows half-open semantics:
+    ``[start_time, stop_time)``. A bin is retained when its time
+    coordinate is greater than or equal to ``start_time`` and strictly
+    smaller than ``stop_time``.
+
+    Parameters
+    ----------
+    time:
+        One-dimensional array of histogram time-bin coordinates.
+    counts:
+        One-dimensional array of raw photon counts.
+    start_time:
+        Lower boundary of the selected time window. This boundary is
+        included.
+    stop_time:
+        Upper boundary of the selected time window. This boundary is
+        excluded.
+
+    Returns
+    -------
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+        Cropped time coordinates and corresponding photon counts.
+
+    Raises
+    ------
+    InvalidHistogramError
+        If ``time`` and ``counts`` do not represent a valid raw TCSPC
+        histogram.
+    ValueError
+        If either boundary is non-finite, if ``start_time`` is not smaller
+        than ``stop_time``, or if the selected interval contains no bins.
+
+    Notes
+    -----
+    The input arrays are not modified.
+
+    Cropping a measured histogram is useful for visualization, exporting
+    subsets, exploratory analysis, and preparation of machine-learning
+    inputs.
+
+    For reconvolution fitting, the convolution model should generally be
+    constructed on the full time axis and the fitting window applied only
+    when comparing observed and expected counts. Cropping before
+    convolution can introduce edge effects.
+    """
+    validate_histogram(
+        time=time,
+        counts=counts,
+    )
+
+    if not np.isfinite(start_time):
+        raise ValueError("start_time must be finite")
+
+    if not np.isfinite(stop_time):
+        raise ValueError("stop_time must be finite")
+
+    if start_time >= stop_time:
+        raise ValueError(
+            "start_time must be smaller than stop_time"
+        )
+
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+    counts_array = np.asarray(
+        counts,
+        dtype=np.float64,
+    )
+
+    mask = (
+        (time_array >= start_time)
+        & (time_array < stop_time)
+    )
+
+    if not np.any(mask):
+        raise ValueError(
+            "selected time window contains no histogram bins"
+        )
+
+    return (
+        time_array[mask].copy(),
+        counts_array[mask].copy(),
+    )
+
+
+def rebin_histogram(
+    time: ArrayLike,
+    counts: ArrayLike,
+    factor: int,
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """Rebin a raw TCSPC histogram by summing neighboring bins.
+
+    Parameters
+    ----------
+    time:
+        One-dimensional array of uniformly spaced histogram time-bin
+        coordinates.
+    counts:
+        One-dimensional array of raw photon counts.
+    factor:
+        Number of consecutive original bins combined into each new bin.
+        Must be a positive integer and must divide the original number of
+        bins exactly.
+
+    Returns
+    -------
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+        Rebinned time coordinates and photon counts. Each new time
+        coordinate is the centre of the corresponding group of original
+        bins.
+
+    Raises
+    ------
+    InvalidHistogramError
+        If ``time`` and ``counts`` do not represent a valid raw TCSPC
+        histogram.
+    ValueError
+        If ``factor`` is not a positive integer or if the number of
+        histogram bins is not divisible by ``factor``.
+
+    Notes
+    -----
+    Photon counts are rebinned by summation, so the total photon count is
+    preserved.
+
+    If the original histogram contains independent Poisson-distributed
+    counts, summing neighboring bins preserves the Poisson count-statistics
+    interpretation.
+
+    This function is intended for photon-count histograms. Rebinning a
+    normalized continuous IRF for reconvolution fitting requires additional
+    consideration of bin integration, time-bin width, and convolution
+    normalization and is not handled here.
+    """
+    validate_histogram(
+        time=time,
+        counts=counts,
+    )
+
+    if (
+        isinstance(factor, (bool, np.bool_))
+        or not isinstance(factor, (int, np.integer))
+    ):
+        raise ValueError(
+            "factor must be a positive integer"
+        )
+
+    if factor < 1:
+        raise ValueError(
+            "factor must be a positive integer"
+        )
+
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+    counts_array = np.asarray(
+        counts,
+        dtype=np.float64,
+    )
+
+    if time_array.size % factor != 0:
+        raise ValueError(
+            "number of histogram bins must be divisible by factor"
+        )
+
+    n_rebinned_bins = time_array.size // factor
+
+    rebinned_time = (
+        time_array
+        .reshape(n_rebinned_bins, factor)
+        .mean(axis=1)
+    )
+
+    rebinned_counts = (
+        counts_array
+        .reshape(n_rebinned_bins, factor)
+        .sum(axis=1)
+    )
+
+    return rebinned_time, rebinned_counts

@@ -39,6 +39,8 @@ from tcspc_toolkit.preprocessing import (
     validate_histogram,
     detect_peak,
     align_to_irf,
+    crop_time_window,
+    rebin_histogram,
 )
 
 __all__ = [
@@ -61,4 +63,6 @@ __all__ = [
     "subtract_background",
     "detect_peak",
     "align_to_irf",
+    "crop_time_window",
+    "rebin_histogram",
 ]

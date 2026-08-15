@@ -11,6 +11,8 @@ from tcspc_toolkit.preprocessing import (
     validate_histogram,
     detect_peak,
     align_to_irf,
+    crop_time_window,
+    rebin_histogram,
 )
 
 
@@ -510,3 +512,304 @@ def test_align_to_irf_rejects_zero_irf() -> None:
         )
 
 
+def test_crop_time_window_selects_expected_bins() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        dtype=np.float64,
+    )
+
+    cropped_time, cropped_counts = crop_time_window(
+        time=time,
+        counts=counts,
+        start_time=0.1,
+        stop_time=0.4,
+    )
+
+    expected_time = np.array(
+        [0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    expected_counts = np.array(
+        [2.0, 3.0, 4.0],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_allclose(
+        cropped_time,
+        expected_time,
+    )
+    np.testing.assert_array_equal(
+        cropped_counts,
+        expected_counts,
+    )
+
+
+def test_crop_time_window_uses_half_open_interval() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3, 0.4],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 2.0, 3.0, 4.0, 5.0],
+        dtype=np.float64,
+    )
+
+    cropped_time, _ = crop_time_window(
+        time=time,
+        counts=counts,
+        start_time=0.1,
+        stop_time=0.3,
+    )
+
+    expected_time = np.array(
+        [0.1, 0.2],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_allclose(
+        cropped_time,
+        expected_time,
+    )
+
+
+def test_crop_time_window_does_not_modify_inputs() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 2.0, 3.0, 4.0],
+        dtype=np.float64,
+    )
+
+    original_time = time.copy()
+    original_counts = counts.copy()
+
+    crop_time_window(
+        time=time,
+        counts=counts,
+        start_time=0.1,
+        stop_time=0.3,
+    )
+
+    np.testing.assert_array_equal(
+        time,
+        original_time,
+    )
+    np.testing.assert_array_equal(
+        counts,
+        original_counts,
+    )
+
+
+def test_crop_time_window_rejects_reversed_window() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.ones(4, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="start_time must be smaller than stop_time",
+    ):
+        crop_time_window(
+            time=time,
+            counts=counts,
+            start_time=0.3,
+            stop_time=0.1,
+        )
+
+
+def test_crop_time_window_rejects_empty_window() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.ones(4, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="selected time window contains no histogram bins",
+    ):
+        crop_time_window(
+            time=time,
+            counts=counts,
+            start_time=1.0,
+            stop_time=2.0,
+        )
+
+
+def test_rebin_histogram_factor_one_changes_nothing() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 4.0, 7.0, 2.0],
+        dtype=np.float64,
+    )
+
+    rebinned_time, rebinned_counts = rebin_histogram(
+        time=time,
+        counts=counts,
+        factor=1,
+    )
+
+    np.testing.assert_allclose(
+        rebinned_time,
+        time,
+    )
+    np.testing.assert_array_equal(
+        rebinned_counts,
+        counts,
+    )
+
+
+def test_rebin_histogram_factor_two_halves_number_of_bins() -> None:
+    time = np.arange(
+        0.0,
+        0.8,
+        0.1,
+        dtype=np.float64,
+    )
+    counts = np.arange(
+        1.0,
+        9.0,
+        dtype=np.float64,
+    )
+
+    rebinned_time, rebinned_counts = rebin_histogram(
+        time=time,
+        counts=counts,
+        factor=2,
+    )
+
+    assert rebinned_time.size == 4
+    assert rebinned_counts.size == 4
+
+
+def test_rebin_histogram_sums_neighboring_bins() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 2.0, 10.0, 20.0],
+        dtype=np.float64,
+    )
+
+    _, rebinned_counts = rebin_histogram(
+        time=time,
+        counts=counts,
+        factor=2,
+    )
+
+    expected = np.array(
+        [3.0, 30.0],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_array_equal(
+        rebinned_counts,
+        expected,
+    )
+
+
+def test_rebin_histogram_preserves_total_photon_count() -> None:
+    time = np.arange(
+        0.0,
+        0.8,
+        0.1,
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [2.0, 5.0, 3.0, 8.0, 1.0, 4.0, 7.0, 6.0],
+        dtype=np.float64,
+    )
+
+    _, rebinned_counts = rebin_histogram(
+        time=time,
+        counts=counts,
+        factor=4,
+    )
+
+    assert np.sum(rebinned_counts) == np.sum(counts)
+
+
+def test_rebin_histogram_places_new_times_at_bin_centres() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.array(
+        [1.0, 2.0, 3.0, 4.0],
+        dtype=np.float64,
+    )
+
+    rebinned_time, _ = rebin_histogram(
+        time=time,
+        counts=counts,
+        factor=2,
+    )
+
+    expected_time = np.array(
+        [0.05, 0.25],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_allclose(
+        rebinned_time,
+        expected_time,
+    )
+
+
+@pytest.mark.parametrize(
+    "factor",
+    [
+        0,
+        -1,
+        1.5,
+        True,
+    ],
+)
+def test_rebin_histogram_rejects_invalid_factor(
+    factor: object,
+) -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3],
+        dtype=np.float64,
+    )
+    counts = np.ones(4, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="factor must be a positive integer",
+    ):
+        rebin_histogram(
+            time=time,
+            counts=counts,
+            factor=factor,  # type: ignore[arg-type]
+        )
+
+
+def test_rebin_histogram_rejects_nondivisible_number_of_bins() -> None:
+    time = np.array(
+        [0.0, 0.1, 0.2, 0.3, 0.4],
+        dtype=np.float64,
+    )
+    counts = np.ones(5, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="number of histogram bins must be divisible by factor",
+    ):
+        rebin_histogram(
+            time=time,
+            counts=counts,
+            factor=2,
+        )
