@@ -41,6 +41,8 @@ from tcspc_toolkit.preprocessing import (
     align_to_irf,
     crop_time_window,
     rebin_histogram,
+    CountNormalization,
+    normalize_counts,
 )
 
 __all__ = [
@@ -65,4 +67,6 @@ __all__ = [
     "align_to_irf",
     "crop_time_window",
     "rebin_histogram",
+    "CountNormalization",
+    "normalize_counts",
 ]

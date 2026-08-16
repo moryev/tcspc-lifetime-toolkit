@@ -1,6 +1,7 @@
 """Validation and preprocessing utilities for TCSPC histograms."""
 
 from __future__ import annotations
+from enum import Enum
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -577,3 +578,77 @@ def rebin_histogram(
     )
 
     return rebinned_time, rebinned_counts
+
+
+# Defining Enum class for count normalization
+class CountNormalization(Enum):
+    TOTAL = "total"
+    PEAK = "peak"
+
+
+def normalize_counts(
+    counts: np.ndarray,
+    mode: CountNormalization = CountNormalization.TOTAL,
+) -> np.ndarray:
+    """Normalize histogram counts using the selected normalization mode.
+
+    Parameters
+    ----------
+    counts
+        One-dimensional array containing histogram counts or processed
+        count values.
+    mode
+        Normalization strategy to apply.
+
+    Returns
+    -------
+    np.ndarray
+        Normalized count values as a new float64 array.
+
+    Raises
+    ------
+    ValueError
+        If counts cannot be converted to a one-dimensional finite numeric
+        array, if counts are empty, or if the normalization factor is not
+        positive.
+    TypeError
+        If mode is not a CountNormalization value.
+    """
+    try:
+        counts_array = np.asarray(counts, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "counts must contain numeric values."
+        ) from exc
+
+    if counts_array.ndim != 1:
+        raise ValueError("counts must be one-dimensional.")
+
+    if counts_array.size == 0:
+        raise ValueError("counts must not be empty.")
+
+    if not np.all(np.isfinite(counts_array)):
+        raise ValueError("counts must contain only finite values.")
+
+    if not isinstance(mode, CountNormalization):
+        raise TypeError(
+            "mode must be a CountNormalization value."
+        )
+
+    if mode is CountNormalization.TOTAL:
+        normalization_factor = np.sum(counts_array)
+
+    elif mode is CountNormalization.PEAK:
+        normalization_factor = np.max(counts_array)
+
+    else:
+        raise ValueError(
+            f"Unsupported normalization mode: {mode!r}."
+        )
+
+    if normalization_factor <= 0.0:
+        raise ValueError(
+            "normalization factor must be positive."
+        )
+
+    return counts_array / normalization_factor

@@ -13,6 +13,8 @@ from tcspc_toolkit.preprocessing import (
     align_to_irf,
     crop_time_window,
     rebin_histogram,
+    CountNormalization,
+    normalize_counts,
 )
 
 
@@ -813,3 +815,106 @@ def test_rebin_histogram_rejects_nondivisible_number_of_bins() -> None:
             counts=counts,
             factor=2,
         )
+
+
+def test_normalize_counts_total_sums_to_one() -> None:
+    counts = np.array(
+        [1.0, 2.0, 3.0, 4.0],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_counts(
+        counts,
+        mode=CountNormalization.TOTAL,
+    )
+
+    assert np.isclose(np.sum(normalized), 1.0)
+
+
+def test_normalize_counts_peak_has_unit_maximum() -> None:
+    counts = np.array(
+        [1.0, 5.0, 10.0, 2.0],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_counts(
+        counts,
+        mode=CountNormalization.PEAK,
+    )
+
+    assert np.isclose(np.max(normalized), 1.0)
+
+
+def test_normalize_counts_total_returns_expected_values() -> None:
+    counts = np.array(
+        [1.0, 2.0, 1.0],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_counts(
+        counts,
+        mode=CountNormalization.TOTAL,
+    )
+
+    expected = np.array(
+        [0.25, 0.50, 0.25],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_allclose(normalized, expected)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        CountNormalization.TOTAL,
+        CountNormalization.PEAK,
+    ],
+)
+def test_normalize_counts_rejects_zero_counts(
+    mode: CountNormalization,
+) -> None:
+    counts = np.zeros(5, dtype=np.float64)
+
+    with pytest.raises(
+        ValueError,
+        match="normalization factor must be positive",
+    ):
+        normalize_counts(counts, mode=mode)
+
+
+def test_normalize_counts_does_not_modify_input() -> None:
+    counts = np.array(
+        [1.0, 2.0, 3.0],
+        dtype=np.float64,
+    )
+
+    original = counts.copy()
+
+    normalize_counts(
+        counts,
+        mode=CountNormalization.TOTAL,
+    )
+
+    np.testing.assert_array_equal(counts, original)
+
+
+def test_normalize_counts_accepts_background_corrected_values() -> None:
+    counts = np.array(
+        [-1.0, 2.0, 5.0],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_counts(
+        counts,
+        mode=CountNormalization.PEAK,
+    )
+
+    expected = np.array(
+        [-0.2, 0.4, 1.0],
+        dtype=np.float64,
+    )
+
+    np.testing.assert_allclose(normalized, expected)
+
+
