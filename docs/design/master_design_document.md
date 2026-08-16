@@ -11,3 +11,4 @@ Design Principles
    simulate_monoexponential_decay()
    fit_monoexponential_decay()
 8. Convenience wrappers may compose lower-level functions.
+9. Preprocessing is analysis-dependent. The toolkit should provide reusable transformations, not impose one universal pipeline.
