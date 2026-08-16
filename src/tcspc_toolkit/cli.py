@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -140,6 +141,11 @@ def run_fit(args: Namespace) -> None:
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+    )
+
     parser = ArgumentParser(
         prog="tcspc",
         description="TCSPC Lifetime Toolkit",

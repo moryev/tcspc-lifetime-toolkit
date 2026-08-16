@@ -13,7 +13,7 @@ from tcspc_toolkit.datasets import (
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
-    shift_irf
+    shift_irf,
 )
 
 from tcspc_toolkit.convolution import (
@@ -36,13 +36,19 @@ from tcspc_toolkit.preprocessing import (
     validate_histogram,
     estimate_background,
     subtract_background,
-    validate_histogram,
     detect_peak,
     align_to_irf,
     crop_time_window,
     rebin_histogram,
-    CountNormalization,
     normalize_counts,
+)
+
+from tcspc_toolkit.config import (
+    CountNormalization,
+    PreprocessingConfig,
+    SimulationConfig,
+    load_config,
+    save_config,
 )
 
 __all__ = [
@@ -67,6 +73,10 @@ __all__ = [
     "align_to_irf",
     "crop_time_window",
     "rebin_histogram",
-    "CountNormalization",
     "normalize_counts",
+    "CountNormalization",
+    "PreprocessingConfig",
+    "SimulationConfig",
+    "load_config",
+    "save_config",
 ]

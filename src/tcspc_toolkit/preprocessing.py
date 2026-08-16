@@ -1,13 +1,18 @@
 """Validation and preprocessing utilities for TCSPC histograms."""
 
 from __future__ import annotations
-from enum import Enum
+
+import logging
 
 import numpy as np
 from numpy.typing import ArrayLike
 from numpy.typing import NDArray
 
+from tcspc_toolkit.config import CountNormalization
 from tcspc_toolkit.exceptions import InvalidHistogramError
+
+
+logger = logging.getLogger(__name__)
 
 
 _TIME_BIN_RTOL = 1e-7
@@ -185,9 +190,22 @@ def estimate_background(
     if start_bin >= stop_bin:
         raise ValueError("start_bin must be smaller than stop_bin")
 
-    return float(
+    background = float(
         np.mean(counts_array[start_bin:stop_bin])
     )
+
+    logger.info(
+        "Estimated background from bins %d-%d",
+        start_bin,
+        stop_bin - 1,
+    )
+
+    logger.debug(
+        "Estimated background level: %.6g counts/bin",
+        background,
+    )
+
+    return background
 
 
 def subtract_background(
@@ -276,7 +294,14 @@ def detect_peak(
             "counts must not be empty."
         )
 
-    return int(np.argmax(counts_array))
+    peak_index = int(np.argmax(counts_array))
+
+    logger.info(
+        "Peak detected at bin %d",
+        peak_index,
+    )
+
+    return peak_index
 
 
 def align_to_irf(
@@ -578,12 +603,6 @@ def rebin_histogram(
     )
 
     return rebinned_time, rebinned_counts
-
-
-# Defining Enum class for count normalization
-class CountNormalization(Enum):
-    TOTAL = "total"
-    PEAK = "peak"
 
 
 def normalize_counts(

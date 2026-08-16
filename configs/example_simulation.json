@@ -1,0 +1,9 @@
+{
+    "lifetime_ns": 2.5,
+    "amplitude": 10000.0,
+    "background": 5.0,
+    "n_bins": 512,
+    "bin_width_ns": 0.02,
+    "irf_fwhm_ns": 0.3,
+    "irf_shift_ns": 0.1
+}
