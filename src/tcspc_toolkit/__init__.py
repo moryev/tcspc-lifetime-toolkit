@@ -1,3 +1,5 @@
+"""Public package interface for the TCSPC Lifetime Toolkit."""
+
 from tcspc_toolkit.models import (
     monoexponential_decay,
 )
@@ -33,14 +35,14 @@ from tcspc_toolkit.exceptions import (
 )
 
 from tcspc_toolkit.preprocessing import (
-    validate_histogram,
-    estimate_background,
-    subtract_background,
-    detect_peak,
     align_to_irf,
     crop_time_window,
-    rebin_histogram,
+    detect_peak,
+    estimate_background,
     normalize_counts,
+    rebin_histogram,
+    subtract_background,
+    validate_histogram,
 )
 
 from tcspc_toolkit.config import (
@@ -66,14 +68,14 @@ __all__ = [
     "fit_monoexponential_reconvolution",
     "TCSPCError",
     "InvalidHistogramError",
-    "validate_histogram",
-    "estimate_background",
-    "subtract_background",
-    "detect_peak",
     "align_to_irf",
     "crop_time_window",
-    "rebin_histogram",
+    "detect_peak",
+    "estimate_background",
     "normalize_counts",
+    "rebin_histogram",
+    "subtract_background",
+    "validate_histogram",
     "CountNormalization",
     "PreprocessingConfig",
     "SimulationConfig",

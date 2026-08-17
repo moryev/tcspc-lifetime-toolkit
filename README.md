@@ -18,11 +18,12 @@ This project separates TCSPC analysis into reusable physical, statistical, and d
 2. define and normalize the instrument response function;
 3. construct the expected TCSPC histogram through numerical convolution and detector-background addition;
 4. generate Poisson-sampled photon-count measurements;
-5. estimate physical parameters using ordinary or IRF-aware reconvolution fitting;
-6. evaluate fitted models using lifetime errors, raw residuals, and Poisson-aware residual diagnostics;
-7. generate controlled synthetic datasets for machine-learning experiments;
-8. train and evaluate baseline data-driven lifetime estimators;
-9. compare ordinary and group-aware evaluation strategies to identify potential data leakage.
+5. validate measured histograms and construct analysis-dependent derived representations where appropriate;
+6. estimate physical parameters using ordinary or IRF-aware reconvolution fitting;
+7. evaluate fitted models using lifetime errors, raw residuals, and Poisson-aware residual diagnostics;
+8. generate controlled synthetic datasets for machine-learning experiments;
+9. train and evaluate baseline data-driven lifetime estimators;
+10. compare ordinary and group-aware evaluation strategies to identify potential data leakage.
 
 The current implementation provides a transparent classical fitting workflow together with preliminary machine-learning pipelines based on synthetic TCSPC histograms. Classical inference includes ordinary mono-exponential least-squares fitting, IRF-aware least-squares reconvolution, and Poisson maximum-likelihood reconvolution. The toolkit also provides Gaussian IRF modelling, numerical convolution, Poisson photon-count simulation, Poisson-aware residual diagnostics, grouped synthetic datasets, baseline regression models, and leakage-aware evaluation.
 
@@ -42,6 +43,16 @@ The current version supports:
 * reproducible simulations using NumPy random-number generators;
 * generation of independent and grouped synthetic mono-exponential datasets;
 * structured storage of simulated curves and metadata;
+* validation of raw TCSPC histograms, including dimensionality, finite values, non-negative integer-like photon counts, and approximately uniform time bins;
+* explicit background estimation from user-selected histogram regions;
+* background subtraction for derived visualization and analysis representations while preserving negative statistical fluctuations;
+* discrete peak detection for raw photon-count histograms;
+* temporal-coordinate alignment to the IRF peak without modifying or interpolating measured photon counts;
+* time-window cropping using physical time coordinates;
+* photon-count-preserving temporal rebinning by integer factors;
+* total-count and peak-count normalization for visualization and machine-learning representations;
+* immutable simulation and preprocessing configuration dataclasses;
+* JSON serialization and loading of configuration objects using `pathlib`;
 * metadata-based selection of machine-learning targets;
 * nonlinear least-squares mono-exponential lifetime fitting;
 * IRF-aware mono-exponential reconvolution fitting;
@@ -207,6 +218,99 @@ N_i\log(\mu_i)
 up to an additive term that does not depend on the fitted parameters.
 
 Poisson deviance residuals are additionally available for statistically scaled model diagnostics across histogram regions with strongly different photon-count levels.
+
+## Preprocessing philosophy
+
+TCSPC preprocessing is analysis-dependent. The toolkit therefore provides small, composable preprocessing functions rather than enforcing a single universal preprocessing pipeline.
+
+The current preprocessing utilities include:
+
+- `validate_histogram()` for validating raw measured TCSPC histograms;
+- `estimate_background()` for estimating a stationary background level from an explicitly selected bin interval;
+- `subtract_background()` for constructing background-corrected derived representations;
+- `detect_peak()` for locating the discrete maximum of a raw photon-count histogram;
+- `align_to_irf()` for redefining the temporal origin relative to the IRF peak without modifying the measured counts;
+- `crop_time_window()` for selecting a physical time interval;
+- `rebin_histogram()` for combining neighboring bins while preserving the total photon count;
+- `normalize_counts()` for total-count or peak-count normalization.
+
+These operations are deliberately not combined into a single hard-coded `preprocess()` routine because different downstream analyses require different statistical treatment.
+
+### Poisson reconvolution fitting
+
+For Poisson maximum-likelihood fitting, the measured photon counts are retained as raw counts:
+
+```text
+raw photon counts
+        ↓
+validate histogram
+        ↓
+background estimate ──→ initial background guess
+        ↓
+IRF information ──────→ temporal-reference / shift information
+        ↓
+numerical initialization
+        ↓
+Poisson reconvolution fit
+```
+
+The detector background is included directly in the expected-count model,
+
+```math
+\mu(t)
+=
+A
+[\mathrm{IRF}_{\Delta t} * I_\tau](t)
++
+B,
+```
+
+rather than being subtracted from the observed counts before fitting.
+
+Similarly, normalization is not applied to the raw observations before Poisson-likelihood fitting because normalization removes the absolute photon-count scale on which the count likelihood is defined.
+
+The current numerical implementation can use a least-squares reconvolution result as an initialization for subsequent Poisson maximum-likelihood refinement. Least squares in this workflow acts as a numerical initialization step; the final statistical objective remains the Poisson likelihood.
+
+### Visualization and machine-learning representations
+
+For visualization, exploratory analysis, or machine-learning input preparation, a different sequence may be appropriate:
+
+```text
+raw photon counts
+        ↓
+validate histogram
+        ↓
+temporal alignment
+        ↓
+crop
+        ↓
+rebin
+        ↓
+normalize
+        ↓
+analysis- or ML-ready representation
+```
+
+Cropping changes the observation window, rebinning trades temporal resolution for increased counts per bin, and normalization removes absolute count-scale information. These transformations can therefore be useful for representation-oriented analyses without being statistically neutral.
+
+Rebinning preserves the total number of photons within the rebinned region,
+
+```math
+\sum_i N_i^{(\mathrm{rebinned})}
+=
+\sum_i N_i^{(\mathrm{original})},
+```
+
+provided the selected number of bins is exactly divisible by the rebinning factor.
+
+Cropping before reconvolution should be distinguished from selecting a fitting window after constructing the forward model. Premature truncation of the IRF or fluorescence signal can introduce convolution edge effects.
+
+The guiding design principle is therefore:
+
+```text
+Preprocessing choices should follow the scientific question and statistical model
+rather than being imposed by the software architecture.
+```
 
 **Version 0.3 extends the realistic TCSPC workflow from IRF-convolved simulation to direct IRF-aware parameter estimation. 
 The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with 
@@ -566,6 +670,28 @@ Demonstrates:
 * analysis of the distinction between systematic forward-model error, statistical estimator efficiency, and the fundamental information loss associated with finite IRF width and limited photon counts;
 * validation of a complete TCSPC inference workflow from physical decay modelling and IRF reconvolution to Poisson sampling, parameter estimation, and Poisson-aware residual diagnostics.
 
+### `10_preprocessing_tcspc_histograms.ipynb`
+
+Demonstrates:
+
+* generation of a realistic IRF-convolved, Poisson-sampled TCSPC measurement;
+* validation of raw photon-count histograms and inspection of bin width and total photon count;
+* explicit background estimation from a known background-dominated time region;
+* comparison of the estimated and true detector-background levels;
+* background subtraction and interpretation of negative background-corrected bins as statistical fluctuations;
+* preservation of the original raw histogram for Poisson-likelihood fitting;
+* peak detection using a simulated measured IRF photon-count histogram;
+* alignment of the temporal coordinate to the continuous IRF peak without modifying measured counts;
+* selection of scientifically meaningful time windows using physical time coordinates;
+* comparison of temporal rebinning factors and numerical verification of photon-count conservation;
+* analysis of the trade-off between temporal resolution and relative Poisson fluctuations;
+* comparison of total-count and peak-count normalization;
+* demonstration that normalization is useful for shape-based representations but removes the absolute count scale required by the present Poisson likelihood;
+* construction of a raw-count statistical fitting workflow using background information for initialization;
+* least-squares initialization followed by Poisson maximum-likelihood reconvolution refinement;
+* construction of a separate crop–rebin–normalize workflow for machine-learning representations;
+* demonstration that scientifically appropriate preprocessing depends on the downstream analysis rather than on a single universal pipeline.
+
 ## Repository structure
 
 ```text
@@ -589,13 +715,15 @@ tcspc-lifetime-toolkit/
 │   ├── 06_grouped_dataset_api_workflow.ipynb
 │   ├── 07_irf_convolution_and_realistic_simulation.ipynb
 │   ├── 08_naive_vs_reconvolution_fitting.ipynb
-│   └── 09_poisson_reconvolution_fitting_and_validation.ipynb
+│   ├── 09_poisson_reconvolution_fitting_and_validation.ipynb
+│   └── 10_preprocessing_tcspc_histograms.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── cli.py
+│       ├── config.py
 │       ├── convolution.py
 │       ├── datasets.py
 │       ├── evaluation.py
@@ -609,6 +737,7 @@ tcspc-lifetime-toolkit/
 │
 └── tests/
     ├── conftest.py
+    ├── test_config.py
     ├── test_convolution.py
     ├── test_datasets.py
     ├── test_evaluation.py
@@ -617,6 +746,7 @@ tcspc-lifetime-toolkit/
     ├── test_ml_evaluation.py
     ├── test_models.py
     ├── test_preprocessing.py
+    ├── test_preprocessing_integration.py
     └── test_simulation.py
 ```
 
@@ -625,6 +755,7 @@ The modules currently have the following responsibilities:
 * `__init__.py`: package initialization and definition of the public package interface;
 * `__main__.py`: package entry point for python -m tcspc_toolkit;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
+* `config.py`: immutable configuration dataclasses, normalization-mode definitions, and JSON serialization/loading utilities for reproducible simulation and preprocessing workflows;
 * `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
@@ -633,7 +764,7 @@ The modules currently have the following responsibilities:
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
 * `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
 * `models.py`: mathematical decay models;
-* `preprocessing.py`: validation and preprocessing utilities for raw TCSPC histograms, including checks for array shape, finite and non-negative photon counts, integer-like measured counts, and strictly increasing, approximately uniform time bins;
+* `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent count normalization;
 * `simulation.py`: expected-curve generation and Poisson sampling;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
