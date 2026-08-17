@@ -312,6 +312,7 @@ Preprocessing choices should follow the scientific question and statistical mode
 rather than being imposed by the software architecture.
 ```
 
+### Current implementation status
 **Version 0.4 extends the realistic TCSPC workflow with reusable, analysis-dependent preprocessing and more robust workflow architecture. 
 The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift, together with histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and total- or peak-count normalization. 
 Raw photon counts are retained for Poisson-likelihood fitting, while cropping, rebinning, and normalization are intended primarily for visualization, exploratory analysis, and machine-learning representations. 
