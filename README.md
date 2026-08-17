@@ -312,12 +312,10 @@ Preprocessing choices should follow the scientific question and statistical mode
 rather than being imposed by the software architecture.
 ```
 
-**Version 0.3 extends the realistic TCSPC workflow from IRF-convolved simulation to direct IRF-aware parameter estimation. 
-The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with 
-simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift. 
-The IRF shape and width are treated as known and fixed during fitting. The numerical workflow currently assumes 
-a uniform time grid and uses a Gaussian IRF model. Experimental IRF loading and calibration, fitted IRF width, 
-multi-exponential reconvolution, and advanced detector effects such as pile-up, dead time, and afterpulsing are not yet included.**
+**Version 0.4 extends the realistic TCSPC workflow with reusable, analysis-dependent preprocessing and more robust workflow architecture. 
+The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift, together with histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and total- or peak-count normalization. 
+Raw photon counts are retained for Poisson-likelihood fitting, while cropping, rebinning, and normalization are intended primarily for visualization, exploratory analysis, and machine-learning representations. 
+The IRF shape and width are treated as known and fixed during fitting. The numerical workflow currently assumes a uniform time grid and uses a Gaussian IRF model. Automatic background-region detection, noise-aware peak estimation, experimental IRF loading and calibration, fitted IRF width, multi-exponential reconvolution, advanced detector effects such as pile-up, dead time, and afterpulsing, and calibrated confidence intervals are not yet included.**
 
 ## Installation
 
