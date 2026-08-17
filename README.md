@@ -841,7 +841,7 @@ The present codebase is an educational and scientific-software prototype. It is 
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.3.0,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.4.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
