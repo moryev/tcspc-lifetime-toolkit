@@ -170,3 +170,62 @@ All notable changes to this project will be documented in this file.
 * detector effects such as pile-up, dead time, and afterpulsing are not modelled;
 * confidence intervals for reconvolution and Poisson-MLE parameters are not yet calibrated;
 * machine-learning evaluation remains based primarily on synthetic data.
+
+
+## [0.4.0] - 2026-08-17
+
+### Added
+
+* raw TCSPC histogram validation through `validate_histogram()`, including checks for one-dimensional arrays, matching lengths, finite values, non-negative integer-like photon counts, strictly increasing time coordinates, and approximately uniform time bins;
+* stationary background estimation from explicitly selected histogram regions through `estimate_background()`;
+* background subtraction through `subtract_background()` while preserving negative statistical fluctuations and leaving the input histogram unchanged;
+* discrete peak detection for raw photon-count histograms through `detect_peak()`;
+* IRF-relative temporal-coordinate alignment through `align_to_irf()` without modifying or interpolating measured photon counts;
+* physical time-window selection through `crop_time_window()` using half-open interval semantics;
+* photon-count-preserving histogram rebinning through `rebin_histogram()` for integer rebinning factors;
+* total-count and peak-count normalization through `normalize_counts()` and the `CountNormalization` enum;
+* package-specific histogram-validation errors through `InvalidHistogramError`;
+* immutable `SimulationConfig` and `PreprocessingConfig` dataclasses for reproducible workflow configuration;
+* JSON configuration serialization and loading through `save_config()` and `load_config()` using `pathlib`;
+* logging for selected preprocessing operations such as background estimation and peak detection;
+* integration tests covering IRF-relative cropping, composed machine-learning preprocessing, and use of preprocessing-derived background estimates to initialize raw-count Poisson fitting;
+* Notebook 10 demonstrating validation, background estimation and subtraction, peak detection, temporal alignment, cropping, rebinning, normalization, and analysis-dependent preprocessing workflows.
+
+### Changed
+
+* extended the package architecture with dedicated `preprocessing.py`, `config.py`, and `exceptions.py` responsibilities;
+* changed the preprocessing design from a potential single fixed pipeline toward a toolbox of small, composable scientific transformations;
+* established separate preprocessing strategies for statistical inference and representation-oriented workflows;
+* retained raw photon-count histograms for Poisson maximum-likelihood reconvolution instead of applying obligatory background subtraction or normalization;
+* established background estimates as useful fitting-initialization information rather than replacements for the background parameter in the Poisson forward model;
+* established temporal IRF alignment as a coordinate transformation rather than a shift or interpolation of measured photon counts;
+* established cropping as distinct from selecting a fitting region after construction of the full reconvolution model, avoiding unnecessary convolution-edge effects;
+* established photon-count conservation as a physical invariant of histogram rebinning;
+* documented total and peak normalization as representation-oriented operations suitable for visualization, shape comparison, and machine-learning preparation rather than raw-count Poisson likelihood fitting;
+* used least-squares reconvolution as a practical numerical initialization step before Poisson maximum-likelihood refinement in the reference preprocessing notebook workflow;
+* expanded the package-level public API to expose the intended preprocessing and configuration functionality while keeping internal validation helpers private;
+* updated the README with the preprocessing philosophy, separate statistical and machine-learning workflows, configuration utilities, package structure, and Notebook 10 documentation.
+
+### Notes
+
+* TCSPC preprocessing is intentionally analysis-dependent; the toolkit does not define a universal `preprocess()` routine or a monolithic preprocessing-pipeline class;
+* raw photon counts remain the statistically appropriate observations for the current Poisson reconvolution fitter;
+* background-subtracted values may legitimately become negative because individual Poisson observations fluctuate around the estimated mean background;
+* rebinning preserves the total photon count within the rebinned region while trading temporal resolution for increased counts per bin and lower relative Poisson fluctuations;
+* cropping may change the total photon count because it changes the selected observation window;
+* normalization removes absolute photon-count information and therefore changes the statistical interpretation of the data;
+* least-squares initialization improves numerical robustness of the current Poisson reconvolution workflow without changing the final Poisson likelihood objective;
+* Notebook 10 provides the reference demonstration of two distinct workflows: raw-count statistical fitting and crop–rebin–normalize machine-learning representation.
+
+### Limitations
+
+* background-only regions must currently be selected explicitly; automatic background-region detection is not implemented;
+* peak detection currently uses a simple discrete maximum without smoothing, interpolation, or noise-aware estimation;
+* measured photon-count histograms are not fractionally shifted or interpolated during temporal alignment;
+* rebinning currently requires an integer factor that exactly divides the number of selected histogram bins;
+* automatic IRF rebinning for reconvolution is not implemented;
+* cropping before convolution is not intended as a substitute for applying a fitting window to a model constructed on the full time grid;
+* filtering, smoothing, denoising, baseline-polynomial fitting, and general interpolation are not yet implemented;
+* preprocessing configuration currently uses lightweight dataclasses and JSON rather than higher-level configuration frameworks;
+* Poisson reconvolution optimization remains sensitive to numerical initialization and currently benefits from least-squares warm-starting;
+* experimental TCSPC and measured-IRF import workflows remain planned for later development stages.
