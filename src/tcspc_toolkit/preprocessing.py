@@ -606,9 +606,9 @@ def rebin_histogram(
 
 
 def normalize_counts(
-    counts: np.ndarray,
+    counts: ArrayLike,
     mode: CountNormalization = CountNormalization.TOTAL,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Normalize histogram counts using the selected normalization mode.
 
     Parameters
