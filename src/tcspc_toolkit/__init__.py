@@ -53,6 +53,10 @@ from tcspc_toolkit.config import (
     save_config,
 )
 
+from tcspc_toolkit.features import (
+    extract_features,
+)
+
 __all__ = [
     "monoexponential_decay",
     "sample_photon_counts",
@@ -81,4 +85,5 @@ __all__ = [
     "SimulationConfig",
     "load_config",
     "save_config",
+    "extract_features",
 ]
