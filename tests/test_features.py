@@ -9,7 +9,11 @@ from tcspc_toolkit.exceptions import (
     FeatureExtractionError,
     InvalidHistogramError,
 )
-from tcspc_toolkit.features import extract_features
+from tcspc_toolkit.features import (
+    extract_features,
+    quantile_arrival_time,
+    half_decay_time,
+)
 
 
 @pytest.fixture
@@ -43,7 +47,7 @@ def test_extract_features_returns_dataframe(
     )
 
     assert isinstance(result, pd.DataFrame)
-    assert result.shape == (1, 6)
+    assert result.shape == (1, 12)
 
 
 def test_extract_features_has_stable_columns(
@@ -66,6 +70,12 @@ def test_extract_features_has_stable_columns(
         "mean_arrival_time_ns",
         "arrival_time_variance_ns2",
         "arrival_time_skewness",
+        "t10_ns",
+        "t25_ns",
+        "t50_ns",
+        "t75_ns",
+        "t90_ns",
+        "half_decay_time_ns",
     ]
 
 
@@ -331,3 +341,133 @@ def test_extract_features_rejects_non_finite_counts() -> None:
             time=time,
             counts=counts,
         )
+
+
+def test_quantile_arrival_time_exact_cumulative_position() -> None:
+    time = np.array([0.0, 1.0, 2.0, 3.0])
+    counts = np.array([1.0, 1.0, 2.0, 0.0])
+
+    result = quantile_arrival_time(
+        time,
+        counts,
+        quantile=0.5,
+    )
+
+    assert result == pytest.approx(1.0)
+
+
+def test_quantile_arrival_time_interpolates() -> None:
+    time = np.array([0.0, 1.0, 2.0])
+    counts = np.array([0.0, 1.0, 1.0])
+
+    result = quantile_arrival_time(
+        time,
+        counts,
+        quantile=0.25,
+    )
+
+    assert result == pytest.approx(0.5)
+
+
+def test_quantile_arrival_times_are_ordered() -> None:
+    time = np.arange(6, dtype=float)
+
+    counts = np.array([
+        1.0,
+        2.0,
+        5.0,
+        4.0,
+        2.0,
+        1.0,
+    ])
+
+    t10 = quantile_arrival_time(time, counts, 0.10)
+    t25 = quantile_arrival_time(time, counts, 0.25)
+    t50 = quantile_arrival_time(time, counts, 0.50)
+    t75 = quantile_arrival_time(time, counts, 0.75)
+    t90 = quantile_arrival_time(time, counts, 0.90)
+
+    assert t10 <= t25 <= t50 <= t75 <= t90
+
+
+def test_half_decay_time_for_ideal_exponential() -> None:
+    lifetime = 2.0
+    amplitude = 100_000
+
+    time = np.linspace(
+        0.0,
+        10.0,
+        1001,
+    )
+
+    counts = np.rint(
+        amplitude * np.exp(-time / lifetime)
+    ).astype(int)
+
+    result = half_decay_time(
+        time,
+        counts,
+    )
+
+    expected = lifetime * np.log(2.0)
+
+    assert result == pytest.approx(
+        expected,
+        abs=0.01,
+    )
+
+
+def test_half_decay_time_uses_post_peak_crossing() -> None:
+    time = np.arange(7, dtype=float)
+
+    counts = np.array([
+        1.0,
+        2.0,
+        4.0,
+        10.0,
+        8.0,
+        4.0,
+        3.0,
+    ])
+
+    result = half_decay_time(
+        time,
+        counts,
+    )
+
+    assert result == pytest.approx(1.75)
+
+
+def test_half_decay_time_raises_when_no_crossing_occurs() -> None:
+    time = np.arange(4, dtype=float)
+
+    counts = np.array([
+        10.0,
+        9.0,
+        8.0,
+        7.0,
+    ])
+
+    with pytest.raises(
+        FeatureExtractionError,
+        match="No post-peak half-height crossing",
+    ):
+        half_decay_time(time, counts)
+
+
+def test_half_decay_time_raises_when_peak_is_last_bin() -> None:
+    time = np.arange(3, dtype=float)
+
+    counts = np.array([
+        1.0,
+        2.0,
+        3.0,
+    ])
+
+    with pytest.raises(
+        FeatureExtractionError,
+        match="final bin",
+    ):
+        half_decay_time(time, counts)
+
+
