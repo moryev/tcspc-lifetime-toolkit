@@ -331,5 +331,3 @@ def test_extract_features_rejects_non_finite_counts() -> None:
             time=time,
             counts=counts,
         )
-
-
