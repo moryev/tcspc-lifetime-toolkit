@@ -30,6 +30,7 @@ from tcspc_toolkit.fitting import (
 )
 
 from tcspc_toolkit.exceptions import (
+    FeatureExtractionError,
     InvalidHistogramError,
     TCSPCError,
 )
@@ -72,6 +73,7 @@ __all__ = [
     "fit_monoexponential_reconvolution",
     "TCSPCError",
     "InvalidHistogramError",
+    "FeatureExtractionError",
     "align_to_irf",
     "crop_time_window",
     "detect_peak",
