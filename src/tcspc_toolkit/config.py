@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from enum import Enum
 import json
+import math
 from pathlib import Path
 
 
@@ -34,7 +35,50 @@ class PreprocessingConfig:
     normalization: CountNormalization | None = None
 
 
-Config = SimulationConfig | PreprocessingConfig
+@dataclass(frozen=True)
+class FeatureConfig:
+    tail_start_ns: float
+    early_stop_ns: float
+    late_start_ns: float
+    min_tail_points: int = 3
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.tail_start_ns):
+            raise ValueError(
+                "tail_start_ns must be finite."
+            )
+
+        if not math.isfinite(self.early_stop_ns):
+            raise ValueError(
+                "early_stop_ns must be finite."
+            )
+
+        if not math.isfinite(self.late_start_ns):
+            raise ValueError(
+                "late_start_ns must be finite."
+            )
+
+        if self.early_stop_ns >= self.late_start_ns:
+            raise ValueError(
+                "early_stop_ns must be smaller than late_start_ns."
+            )
+
+        if type(self.min_tail_points) is not int:
+            raise ValueError(
+                "min_tail_points must be an integer."
+            )
+
+        if self.min_tail_points < 3:
+            raise ValueError(
+                "min_tail_points must be at least 3."
+            )
+
+
+Config = (
+    SimulationConfig
+    | PreprocessingConfig
+    | FeatureConfig
+)
 
 
 def _config_to_dict(
@@ -77,7 +121,11 @@ def save_config(
 
 def load_config(
     path: str | Path,
-    config_type: type[SimulationConfig] | type[PreprocessingConfig],
+    config_type: (
+        type[SimulationConfig]
+        | type[PreprocessingConfig]
+        | type[FeatureConfig]
+    ),
 ) -> Config:
     """Load a configuration object from JSON."""
     input_path = Path(path)

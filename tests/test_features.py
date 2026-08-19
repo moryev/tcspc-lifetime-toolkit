@@ -5,14 +5,18 @@ import pandas as pd
 import pytest
 from numpy.typing import NDArray
 
+from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.exceptions import (
     FeatureExtractionError,
     InvalidHistogramError,
 )
 from tcspc_toolkit.features import (
+    early_late_count_ratio,
     extract_features,
-    quantile_arrival_time,
     half_decay_time,
+    integrated_tail_fraction,
+    quantile_arrival_time,
+    tail_log_slope,
 )
 
 
@@ -33,21 +37,32 @@ def simple_histogram() -> tuple[
     return time, counts
 
 
+@pytest.fixture
+def feature_config() -> FeatureConfig:
+    return FeatureConfig(
+        tail_start_ns=0.2,
+        early_stop_ns=0.1,
+        late_start_ns=0.2,
+    )
+
+
 def test_extract_features_returns_dataframe(
     simple_histogram: tuple[
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     assert isinstance(result, pd.DataFrame)
-    assert result.shape == (1, 12)
+    assert result.shape == (1, 15)
 
 
 def test_extract_features_has_stable_columns(
@@ -55,12 +70,14 @@ def test_extract_features_has_stable_columns(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     assert list(result.columns) == [
@@ -76,6 +93,9 @@ def test_extract_features_has_stable_columns(
         "t75_ns",
         "t90_ns",
         "half_decay_time_ns",
+        "tail_log_slope_per_ns",
+        "integrated_tail_fraction",
+        "early_late_count_ratio",
     ]
 
 
@@ -84,12 +104,14 @@ def test_extract_features_calculates_total_counts(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     assert result.loc[0, "total_counts"] == 18.0
@@ -100,12 +122,14 @@ def test_extract_features_calculates_peak_height(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     assert result.loc[0, "peak_height"] == 9.0
@@ -116,12 +140,14 @@ def test_extract_features_calculates_peak_time(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     assert result.loc[0, "peak_time_ns"] == 0.2
@@ -132,6 +158,7 @@ def test_extract_features_does_not_modify_inputs(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    feature_config: FeatureConfig,
 ) -> None:
     time, counts = simple_histogram
 
@@ -141,6 +168,7 @@ def test_extract_features_does_not_modify_inputs(
     extract_features(
         time=time,
         counts=counts,
+        config=feature_config,
     )
 
     np.testing.assert_array_equal(
@@ -153,7 +181,9 @@ def test_extract_features_does_not_modify_inputs(
     )
 
 
-def test_extract_features_rejects_invalid_histogram() -> None:
+def test_extract_features_rejects_invalid_histogram(
+    feature_config: FeatureConfig,
+) -> None:
     time = np.array(
         [0.0, 0.1, 0.2],
         dtype=np.float64,
@@ -170,6 +200,7 @@ def test_extract_features_rejects_invalid_histogram() -> None:
         extract_features(
             time=time,
             counts=counts,
+            config=feature_config,
         )
 
 
@@ -183,11 +214,20 @@ def moment_histogram() -> tuple[
         dtype=np.float64,
     )
     counts = np.array(
-        [3.0, 1.0, 0.0],
+        [3.0, 1.0, 1.0],
         dtype=np.float64,
     )
 
     return time, counts
+
+
+@pytest.fixture
+def moment_feature_config() -> FeatureConfig:
+    return FeatureConfig(
+        tail_start_ns=0.0,
+        early_stop_ns=0.0,
+        late_start_ns=1.0,
+    )
 
 
 def test_extract_features_calculates_mean_arrival_time(
@@ -195,18 +235,20 @@ def test_extract_features_calculates_mean_arrival_time(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    moment_feature_config: FeatureConfig,
 ) -> None:
     time, counts = moment_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=moment_feature_config,
     )
 
     assert result.loc[
         0,
         "mean_arrival_time_ns",
-    ] == pytest.approx(0.25)
+    ] == pytest.approx(0.6)
 
 
 def test_extract_features_calculates_arrival_time_variance(
@@ -214,18 +256,20 @@ def test_extract_features_calculates_arrival_time_variance(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    moment_feature_config: FeatureConfig,
 ) -> None:
     time, counts = moment_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=moment_feature_config,
     )
 
     assert result.loc[
         0,
         "arrival_time_variance_ns2",
-    ] == pytest.approx(0.1875)
+    ] == pytest.approx(0.64)
 
 
 def test_extract_features_calculates_arrival_time_skewness(
@@ -233,15 +277,17 @@ def test_extract_features_calculates_arrival_time_skewness(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    moment_feature_config: FeatureConfig,
 ) -> None:
     time, counts = moment_histogram
 
     result = extract_features(
         time=time,
         counts=counts,
+        config=moment_feature_config,
     )
 
-    expected_skewness = 2.0 / np.sqrt(3.0)
+    expected_skewness = 0.84375
 
     assert result.loc[
         0,
@@ -254,17 +300,20 @@ def test_arrival_moments_are_invariant_to_count_scaling(
         NDArray[np.float64],
         NDArray[np.float64],
     ],
+    moment_feature_config: FeatureConfig,
 ) -> None:
     time, counts = moment_histogram
 
     original = extract_features(
         time=time,
         counts=counts,
+        config=moment_feature_config,
     )
 
     scaled = extract_features(
         time=time,
         counts=10.0 * counts,
+        config=moment_feature_config,
     )
 
     moment_columns = [
@@ -283,7 +332,9 @@ def test_arrival_moments_are_invariant_to_count_scaling(
     )
 
 
-def test_extract_features_rejects_all_zero_histogram() -> None:
+def test_extract_features_rejects_all_zero_histogram(
+    feature_config: FeatureConfig,
+) -> None:
     time = np.array(
         [0.0, 0.1, 0.2],
         dtype=np.float64,
@@ -300,10 +351,13 @@ def test_extract_features_rejects_all_zero_histogram() -> None:
         extract_features(
             time=time,
             counts=counts,
+            config=feature_config,
         )
 
 
-def test_extract_features_rejects_zero_arrival_time_variance() -> None:
+def test_extract_features_rejects_zero_arrival_time_variance(
+    feature_config: FeatureConfig,
+) -> None:
     time = np.array(
         [0.0, 0.1, 0.2],
         dtype=np.float64,
@@ -320,10 +374,13 @@ def test_extract_features_rejects_zero_arrival_time_variance() -> None:
         extract_features(
             time=time,
             counts=counts,
+            config=feature_config,
         )
 
 
-def test_extract_features_rejects_non_finite_counts() -> None:
+def test_extract_features_rejects_non_finite_counts(
+    feature_config: FeatureConfig,
+) -> None:
     time = np.array(
         [0.0, 0.1, 0.2],
         dtype=np.float64,
@@ -340,6 +397,7 @@ def test_extract_features_rejects_non_finite_counts() -> None:
         extract_features(
             time=time,
             counts=counts,
+            config=feature_config,
         )
 
 
@@ -469,5 +527,303 @@ def test_half_decay_time_raises_when_peak_is_last_bin() -> None:
         match="final bin",
     ):
         half_decay_time(time, counts)
+
+
+def test_tail_log_slope_for_ideal_exponential() -> None:
+    lifetime = 2.0
+    amplitude = 1_000_000
+
+    time = np.linspace(
+        0.0,
+        10.0,
+        1001,
+    )
+
+    counts = np.rint(
+        amplitude * np.exp(-time / lifetime)
+    ).astype(int)
+
+    result = tail_log_slope(
+        time=time,
+        counts=counts,
+        tail_start_ns=2.0,
+    )
+
+    expected = -1.0 / lifetime
+
+    assert result == pytest.approx(
+        expected,
+        abs=0.01,
+    )
+
+
+def test_tail_log_slope_ignores_zero_count_bins() -> None:
+    time = np.array(
+        [0.0, 1.0, 2.0, 3.0, 4.0]
+    )
+
+    counts = np.array(
+        [16.0, 8.0, 0.0, 2.0, 0.0]
+    )
+
+    result = tail_log_slope(
+        time=time,
+        counts=counts,
+        tail_start_ns=0.0,
+    )
+
+    assert result == pytest.approx(
+        -np.log(2.0)
+    )
+
+
+def test_tail_log_slope_rejects_insufficient_positive_bins() -> None:
+    time = np.arange(
+        5,
+        dtype=float,
+    )
+
+    counts = np.array([
+        8.0,
+        4.0,
+        0.0,
+        0.0,
+        0.0,
+    ])
+
+    with pytest.raises(
+        FeatureExtractionError,
+        match="Insufficient positive-count bins",
+    ):
+        tail_log_slope(
+            time=time,
+            counts=counts,
+            tail_start_ns=0.0,
+        )
+
+
+def test_tail_log_slope_rejects_missing_tail_region() -> None:
+    time = np.arange(
+        4,
+        dtype=float,
+    )
+
+    counts = np.array([
+        8.0,
+        4.0,
+        2.0,
+        1.0,
+    ])
+
+    with pytest.raises(
+        FeatureExtractionError,
+        match="Tail region contains no histogram bins",
+    ):
+        tail_log_slope(
+            time=time,
+            counts=counts,
+            tail_start_ns=10.0,
+        )
+
+
+def test_integrated_tail_fraction_matches_expected_value() -> None:
+    time = np.array([
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+    ])
+
+    counts = np.array([
+        10.0,
+        10.0,
+        5.0,
+        5.0,
+    ])
+
+    result = integrated_tail_fraction(
+        time=time,
+        counts=counts,
+        tail_start_ns=2.0,
+    )
+
+    assert result == pytest.approx(
+        1.0 / 3.0
+    )
+
+
+def test_integrated_tail_fraction_is_bounded() -> None:
+    time = np.arange(
+        5,
+        dtype=float,
+    )
+
+    counts = np.array([
+        10.0,
+        7.0,
+        3.0,
+        1.0,
+        0.0,
+    ])
+
+    result = integrated_tail_fraction(
+        time=time,
+        counts=counts,
+        tail_start_ns=2.0,
+    )
+
+    assert 0.0 <= result <= 1.0
+
+
+def test_integrated_tail_fraction_allows_zero_count_tail() -> None:
+    time = np.arange(
+        5,
+        dtype=float,
+    )
+
+    counts = np.array([
+        5.0,
+        2.0,
+        1.0,
+        0.0,
+        0.0,
+    ])
+
+    result = integrated_tail_fraction(
+        time=time,
+        counts=counts,
+        tail_start_ns=3.0,
+    )
+
+    assert result == 0.0
+
+
+def test_early_late_count_ratio_matches_expected_value() -> None:
+    time = np.arange(
+        7,
+        dtype=float,
+    )
+
+    counts = np.array([
+        20.0,
+        15.0,
+        10.0,
+        5.0,
+        3.0,
+        2.0,
+        1.0,
+    ])
+
+    result = early_late_count_ratio(
+        time=time,
+        counts=counts,
+        early_stop_ns=2.0,
+        late_start_ns=4.0,
+    )
+
+    assert result == pytest.approx(
+        7.5
+    )
+
+
+def test_early_late_count_ratio_allows_zero_early_counts() -> None:
+    time = np.arange(
+        5,
+        dtype=float,
+    )
+
+    counts = np.array([
+        0.0,
+        0.0,
+        4.0,
+        2.0,
+        1.0,
+    ])
+
+    result = early_late_count_ratio(
+        time=time,
+        counts=counts,
+        early_stop_ns=1.0,
+        late_start_ns=2.0,
+    )
+
+    assert result == 0.0
+
+
+def test_early_late_count_ratio_rejects_zero_late_counts() -> None:
+    time = np.arange(
+        5,
+        dtype=float,
+    )
+
+    counts = np.array([
+        10.0,
+        5.0,
+        2.0,
+        0.0,
+        0.0,
+    ])
+
+    with pytest.raises(
+        FeatureExtractionError,
+        match="late region contains zero counts",
+    ):
+        early_late_count_ratio(
+            time=time,
+            counts=counts,
+            early_stop_ns=1.0,
+            late_start_ns=3.0,
+        )
+
+
+def test_extract_features_includes_tail_features(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    result = extract_features(
+        time=time,
+        counts=counts,
+        config=feature_config,
+    )
+
+    expected_slope = tail_log_slope(
+        time=time,
+        counts=counts,
+        tail_start_ns=feature_config.tail_start_ns,
+        min_points=feature_config.min_tail_points,
+    )
+
+    expected_fraction = integrated_tail_fraction(
+        time=time,
+        counts=counts,
+        tail_start_ns=feature_config.tail_start_ns,
+    )
+
+    expected_ratio = early_late_count_ratio(
+        time=time,
+        counts=counts,
+        early_stop_ns=feature_config.early_stop_ns,
+        late_start_ns=feature_config.late_start_ns,
+    )
+
+    assert result.loc[
+        0,
+        "tail_log_slope_per_ns",
+    ] == pytest.approx(expected_slope)
+
+    assert result.loc[
+        0,
+        "integrated_tail_fraction",
+    ] == pytest.approx(expected_fraction)
+
+    assert result.loc[
+        0,
+        "early_late_count_ratio",
+    ] == pytest.approx(expected_ratio)
 
 

@@ -7,6 +7,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 from numpy.typing import NDArray
 
+from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.exceptions import FeatureExtractionError
 from tcspc_toolkit.preprocessing import (
     detect_peak,
@@ -27,6 +28,9 @@ _FEATURE_COLUMNS = (
     "t75_ns",
     "t90_ns",
     "half_decay_time_ns",
+    "tail_log_slope_per_ns",
+    "integrated_tail_fraction",
+    "early_late_count_ratio",
 )
 
 
@@ -124,6 +128,7 @@ def _photon_arrival_moments(
 def extract_features(
     time: ArrayLike,
     counts: ArrayLike,
+    config: FeatureConfig,
 ) -> pd.DataFrame:
     """Extract physically interpretable features from a TCSPC histogram.
 
@@ -133,6 +138,9 @@ def extract_features(
         One-dimensional array of uniformly spaced time-bin coordinates.
     counts:
         One-dimensional array of raw non-negative photon counts.
+    config:
+        Configuration defining the temporal regions and minimum
+        number of valid tail points used by configurable features.
 
     Returns
     -------
@@ -164,6 +172,10 @@ def extract_features(
     Instrument-response broadening and temporal shift, background counts,
     finite acquisition windows, and multi-component decays can all alter
     the photon-arrival moments.
+
+    Tail and early/late features are defined using the temporal
+    boundaries supplied through FeatureConfig. These boundaries are
+    not inferred automatically from the histogram.
     """
     validate_histogram(
         time=time,
@@ -194,6 +206,26 @@ def extract_features(
     )
 
     peak_index = detect_peak(counts_array)
+
+    tail_slope = tail_log_slope(
+        time=time_array,
+        counts=counts_array,
+        tail_start_ns=config.tail_start_ns,
+        min_points=config.min_tail_points,
+    )
+
+    tail_fraction = integrated_tail_fraction(
+        time=time_array,
+        counts=counts_array,
+        tail_start_ns=config.tail_start_ns,
+    )
+
+    early_late_ratio = early_late_count_ratio(
+        time=time_array,
+        counts=counts_array,
+        early_stop_ns=config.early_stop_ns,
+        late_start_ns=config.late_start_ns,
+    )
 
     features = {
         "total_counts": total_counts,
@@ -231,6 +263,9 @@ def extract_features(
             time_array,
             counts_array,
         ),
+        "tail_log_slope_per_ns": tail_slope,
+        "integrated_tail_fraction": tail_fraction,
+        "early_late_count_ratio": early_late_ratio,
     }
 
     return pd.DataFrame(
@@ -415,3 +450,218 @@ def half_decay_time(
     return float(
         crossing_time - peak_time
     )
+
+
+def tail_log_slope(
+    time: ArrayLike,
+    counts: ArrayLike,
+    tail_start_ns: float,
+    min_points: int = 3,
+) -> float:
+    """Return the linear slope of log-counts in the decay tail."""
+
+    if not np.isfinite(tail_start_ns):
+        raise ValueError(
+            "tail_start_ns must be finite."
+        )
+
+    if type(min_points) is not int:
+        raise ValueError(
+            "min_points must be an integer."
+        )
+
+    if min_points < 3:
+        raise ValueError(
+            "min_points must be at least 3."
+        )
+
+    validate_histogram(
+        time=time,
+        counts=counts,
+    )
+
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    counts_array = np.asarray(
+        counts,
+        dtype=np.float64,
+    )
+
+    tail_mask = (
+        time_array >= tail_start_ns
+    )
+
+    if not np.any(tail_mask):
+        raise FeatureExtractionError(
+            "Tail region contains no histogram bins."
+        )
+
+    fit_mask = (
+        tail_mask
+        & (counts_array > 0.0)
+    )
+
+    tail_time = time_array[
+        fit_mask
+    ]
+
+    tail_counts = counts_array[
+        fit_mask
+    ]
+
+    if tail_time.size < min_points:
+        raise FeatureExtractionError(
+            "Insufficient positive-count bins "
+            "for tail-slope regression."
+        )
+
+    log_tail_counts = np.log(
+        tail_counts
+    )
+
+    slope, _ = np.polyfit(
+        tail_time,
+        log_tail_counts,
+        deg=1,
+    )
+
+    if not np.isfinite(slope):
+        raise FeatureExtractionError(
+            "Tail log slope is not finite."
+        )
+
+    return float(slope)
+
+
+def integrated_tail_fraction(
+    time: ArrayLike,
+    counts: ArrayLike,
+    tail_start_ns: float,
+) -> float:
+    """Return the fraction of total counts in the configured decay tail."""
+
+    if not np.isfinite(tail_start_ns):
+        raise ValueError(
+            "tail_start_ns must be finite."
+        )
+
+    validate_histogram(
+        time=time,
+        counts=counts,
+    )
+
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    counts_array = np.asarray(
+        counts,
+        dtype=np.float64,
+    )
+
+    tail_mask = (
+        time_array >= tail_start_ns
+    )
+
+    if not np.any(tail_mask):
+        raise FeatureExtractionError(
+            "Tail region contains no histogram bins."
+        )
+
+    total_counts = float(
+        np.sum(counts_array)
+    )
+
+    if total_counts <= 0.0:
+        raise FeatureExtractionError(
+            "Tail fraction requires at least one detected photon."
+        )
+
+    tail_counts = float(
+        np.sum(
+            counts_array[tail_mask]
+        )
+    )
+
+    return tail_counts / total_counts
+
+
+def early_late_count_ratio(
+    time: ArrayLike,
+    counts: ArrayLike,
+    early_stop_ns: float,
+    late_start_ns: float,
+) -> float:
+    """Return the ratio of early-region counts to late-region counts."""
+
+    if not np.isfinite(early_stop_ns):
+        raise ValueError(
+            "early_stop_ns must be finite."
+        )
+
+    if not np.isfinite(late_start_ns):
+        raise ValueError(
+            "late_start_ns must be finite."
+        )
+
+    if early_stop_ns >= late_start_ns:
+        raise ValueError(
+            "early_stop_ns must be smaller than late_start_ns."
+        )
+
+    validate_histogram(
+        time=time,
+        counts=counts,
+    )
+
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    counts_array = np.asarray(
+        counts,
+        dtype=np.float64,
+    )
+
+    early_mask = (
+        time_array <= early_stop_ns
+    )
+
+    late_mask = (
+        time_array >= late_start_ns
+    )
+
+    if not np.any(early_mask):
+        raise FeatureExtractionError(
+            "Early region contains no histogram bins."
+        )
+
+    if not np.any(late_mask):
+        raise FeatureExtractionError(
+            "Late region contains no histogram bins."
+        )
+
+    early_counts = float(
+        np.sum(
+            counts_array[early_mask]
+        )
+    )
+
+    late_counts = float(
+        np.sum(
+            counts_array[late_mask]
+        )
+    )
+
+    if late_counts <= 0.0:
+        raise FeatureExtractionError(
+            "Early/late count ratio is undefined because "
+            "the late region contains zero counts."
+        )
+
+    return early_counts / late_counts

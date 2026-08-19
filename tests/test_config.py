@@ -2,8 +2,11 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+import numpy as np
+
 from tcspc_toolkit.config import (
     CountNormalization,
+    FeatureConfig,
     PreprocessingConfig,
     SimulationConfig,
     load_config,
@@ -99,5 +102,94 @@ def test_preprocessing_config_json_round_trip(
     )
 
     assert loaded == config
+
+
+def test_feature_config_json_round_trip(
+    tmp_path,
+) -> None:
+    config = FeatureConfig(
+        tail_start_ns=4.0,
+        early_stop_ns=2.0,
+        late_start_ns=4.0,
+        min_tail_points=5,
+    )
+
+    path = tmp_path / "features.json"
+
+    save_config(
+        config=config,
+        path=path,
+    )
+
+    loaded = load_config(
+        path=path,
+        config_type=FeatureConfig,
+    )
+
+    assert loaded == config
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    [
+        "tail_start_ns",
+        "early_stop_ns",
+        "late_start_ns",
+    ],
+)
+def test_feature_config_rejects_non_finite_boundaries(
+    field_name: str,
+) -> None:
+    values = {
+        "tail_start_ns": 4.0,
+        "early_stop_ns": 2.0,
+        "late_start_ns": 4.0,
+    }
+
+    values[field_name] = np.nan
+
+    with pytest.raises(
+        ValueError,
+        match="must be finite",
+    ):
+        FeatureConfig(**values)
+
+
+def test_feature_config_rejects_overlapping_regions() -> None:
+    with pytest.raises(
+        ValueError,
+        match="early_stop_ns must be smaller",
+    ):
+        FeatureConfig(
+            tail_start_ns=4.0,
+            early_stop_ns=5.0,
+            late_start_ns=4.0,
+        )
+
+
+def test_feature_config_rejects_too_few_tail_points() -> None:
+    with pytest.raises(
+        ValueError,
+        match="at least 3",
+    ):
+        FeatureConfig(
+            tail_start_ns=4.0,
+            early_stop_ns=2.0,
+            late_start_ns=4.0,
+            min_tail_points=2,
+        )
+
+
+def test_feature_config_rejects_non_integer_tail_points() -> None:
+    with pytest.raises(
+        ValueError,
+        match="must be an integer",
+    ):
+        FeatureConfig(
+            tail_start_ns=4.0,
+            early_stop_ns=2.0,
+            late_start_ns=4.0,
+            min_tail_points=3.5,
+        )
 
 
