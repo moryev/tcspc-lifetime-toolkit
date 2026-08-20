@@ -11,7 +11,9 @@ from tcspc_toolkit.exceptions import (
     InvalidHistogramError,
 )
 from tcspc_toolkit.features import (
+    FEATURE_NAMES,
     early_late_count_ratio,
+    extract_feature_table,
     extract_features,
     half_decay_time,
     integrated_tail_fraction,
@@ -62,7 +64,10 @@ def test_extract_features_returns_dataframe(
     )
 
     assert isinstance(result, pd.DataFrame)
-    assert result.shape == (1, 15)
+    assert result.shape == (
+        1,
+        len(FEATURE_NAMES),
+    )
 
 
 def test_extract_features_has_stable_columns(
@@ -80,23 +85,7 @@ def test_extract_features_has_stable_columns(
         config=feature_config,
     )
 
-    assert list(result.columns) == [
-        "total_counts",
-        "peak_height",
-        "peak_time_ns",
-        "mean_arrival_time_ns",
-        "arrival_time_variance_ns2",
-        "arrival_time_skewness",
-        "t10_ns",
-        "t25_ns",
-        "t50_ns",
-        "t75_ns",
-        "t90_ns",
-        "half_decay_time_ns",
-        "tail_log_slope_per_ns",
-        "integrated_tail_fraction",
-        "early_late_count_ratio",
-    ]
+    assert list(result.columns) == list(FEATURE_NAMES)
 
 
 def test_extract_features_calculates_total_counts(
@@ -827,3 +816,266 @@ def test_extract_features_includes_tail_features(
     ] == pytest.approx(expected_ratio)
 
 
+def test_feature_names_define_public_schema() -> None:
+    assert FEATURE_NAMES == (
+        "total_counts",
+        "peak_height",
+        "peak_time_ns",
+        "mean_arrival_time_ns",
+        "arrival_time_variance_ns2",
+        "arrival_time_skewness",
+        "t10_ns",
+        "t25_ns",
+        "t50_ns",
+        "t75_ns",
+        "t90_ns",
+        "half_decay_time_ns",
+        "tail_log_slope_per_ns",
+        "integrated_tail_fraction",
+        "early_late_count_ratio",
+    )
+
+
+def test_extract_feature_table_returns_expected_shape(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.vstack([
+        counts,
+        counts,
+        counts,
+    ])
+
+    result = extract_feature_table(
+        histograms=histograms,
+        time=time,
+        config=feature_config,
+    )
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.shape == (
+        3,
+        len(FEATURE_NAMES),
+    )
+
+
+def test_extract_feature_table_has_stable_columns(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.vstack([
+        counts,
+        counts,
+    ])
+
+    result = extract_feature_table(
+        histograms=histograms,
+        time=time,
+        config=feature_config,
+    )
+
+    assert list(result.columns) == list(FEATURE_NAMES)
+
+
+def test_single_and_batch_feature_extraction_are_identical(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    single_result = extract_features(
+        time=time,
+        counts=counts,
+        config=feature_config,
+    )
+
+    batch_result = extract_feature_table(
+        histograms=counts[np.newaxis, :],
+        time=time,
+        config=feature_config,
+    )
+
+    pd.testing.assert_frame_equal(
+        single_result,
+        batch_result,
+    )
+
+
+def test_extract_feature_table_does_not_modify_inputs(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.vstack([
+        counts,
+        2.0 * counts,
+    ])
+
+    original_time = time.copy()
+    original_histograms = histograms.copy()
+
+    extract_feature_table(
+        histograms=histograms,
+        time=time,
+        config=feature_config,
+    )
+
+    np.testing.assert_array_equal(
+        time,
+        original_time,
+    )
+
+    np.testing.assert_array_equal(
+        histograms,
+        original_histograms,
+    )
+
+
+def test_extract_feature_table_handles_heterogeneous_count_levels(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.vstack([
+        counts,
+        10.0 * counts,
+        100.0 * counts,
+    ])
+
+    result = extract_feature_table(
+        histograms=histograms,
+        time=time,
+        config=feature_config,
+    )
+
+    np.testing.assert_allclose(
+        result["total_counts"].to_numpy(),
+        np.array([
+            18.0,
+            180.0,
+            1800.0,
+        ]),
+    )
+
+    np.testing.assert_allclose(
+        result["peak_height"].to_numpy(),
+        np.array([
+            9.0,
+            90.0,
+            900.0,
+        ]),
+    )
+
+    scale_invariant_columns = [
+        name
+        for name in FEATURE_NAMES
+        if name not in {
+            "total_counts",
+            "peak_height",
+        }
+    ]
+
+    reference = result.loc[
+        0,
+        scale_invariant_columns,
+    ].to_numpy(dtype=np.float64)
+
+    for row_index in range(1, len(result)):
+        np.testing.assert_allclose(
+            result.loc[
+                row_index,
+                scale_invariant_columns,
+            ].to_numpy(dtype=np.float64),
+            reference,
+        )
+
+
+def test_extract_feature_table_rejects_one_dimensional_histograms(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    with pytest.raises(
+        ValueError,
+        match="histograms must be a two-dimensional array",
+    ):
+        extract_feature_table(
+            histograms=counts,
+            time=time,
+            config=feature_config,
+        )
+
+
+def test_extract_feature_table_rejects_bin_count_mismatch(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.vstack([
+        counts[:-1],
+        counts[:-1],
+    ])
+
+    with pytest.raises(
+        ValueError,
+        match="same number of bins as time",
+    ):
+        extract_feature_table(
+            histograms=histograms,
+            time=time,
+            config=feature_config,
+        )
+
+
+def test_extract_feature_table_rejects_empty_batch(
+    simple_histogram: tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+    feature_config: FeatureConfig,
+) -> None:
+    time, counts = simple_histogram
+
+    histograms = np.empty(
+        (0, counts.size),
+        dtype=np.float64,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="at least one histogram",
+    ):
+        extract_feature_table(
+            histograms=histograms,
+            time=time,
+            config=feature_config,
+        )

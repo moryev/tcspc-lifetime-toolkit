@@ -15,7 +15,7 @@ from tcspc_toolkit.preprocessing import (
 )
 
 
-_FEATURE_COLUMNS = (
+FEATURE_NAMES = (
     "total_counts",
     "peak_height",
     "peak_time_ns",
@@ -270,7 +270,115 @@ def extract_features(
 
     return pd.DataFrame(
         [features],
-        columns=list(_FEATURE_COLUMNS),
+        columns=list(FEATURE_NAMES),
+    )
+
+
+def extract_feature_table(
+    histograms: ArrayLike,
+    time: ArrayLike,
+    config: FeatureConfig,
+) -> pd.DataFrame:
+    """Extract engineered features from multiple TCSPC histograms.
+
+    Parameters
+    ----------
+    histograms:
+        Two-dimensional array of raw non-negative photon counts.
+        Each row represents one TCSPC histogram and each column
+        corresponds to one time bin.
+    time:
+        One-dimensional array of time-bin coordinates shared by
+        all histograms.
+    config:
+        Configuration defining the temporal regions and minimum
+        number of valid tail points used by configurable features.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Feature table with one row per histogram and columns ordered
+        according to FEATURE_NAMES.
+
+    Raises
+    ------
+    ValueError
+        If ``histograms`` is not two-dimensional, contains no
+        histograms, or its number of bins does not match ``time``.
+    InvalidHistogramError
+        If an individual histogram is not a valid raw TCSPC
+        histogram.
+    FeatureExtractionError
+        If one or more requested features are mathematically
+        undefined for an individual histogram.
+
+    Notes
+    -----
+    All histograms must share the same time axis.
+
+    This function delegates feature calculation to ``extract_features``
+    so that single-histogram and batch extraction use exactly the same
+    feature definitions.
+
+    The returned table contains engineered histogram features only.
+    Target variables and dataset metadata should be stored separately.
+
+    For example, a simulated ground-truth lifetime must not be included
+    in the feature table because doing so would introduce direct target
+    leakage.
+
+    Other simulation parameters, such as the true background level,
+    instrument-response width, or configured photon-count level, should
+    also not be treated automatically as model features. Such quantities
+    may be useful for evaluation, stratification, and error analysis, but
+    they may not be available for experimental measurements.
+
+    Only quantities that are legitimately available at inference time
+    should be considered candidate model inputs.
+    """
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    histograms_array = np.asarray(
+        histograms,
+        dtype=np.float64,
+    )
+
+    if time_array.ndim != 1:
+        raise ValueError(
+            "time must be a one-dimensional array."
+        )
+
+    if histograms_array.ndim != 2:
+        raise ValueError(
+            "histograms must be a two-dimensional array."
+        )
+
+    if histograms_array.shape[0] == 0:
+        raise ValueError(
+            "histograms must contain at least one histogram."
+        )
+
+    if histograms_array.shape[1] != time_array.size:
+        raise ValueError(
+            "each histogram must contain the same number "
+            "of bins as time."
+        )
+
+    feature_rows = [
+        extract_features(
+            time=time_array,
+            counts=counts,
+            config=config,
+        )
+        for counts in histograms_array
+    ]
+
+    return pd.concat(
+        feature_rows,
+        ignore_index=True,
     )
 
 
