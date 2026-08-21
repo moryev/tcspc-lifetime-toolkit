@@ -24,6 +24,11 @@ def normalize_histograms(
     X: NDArray[np.float64],
 ) -> NDArray[np.float64]:
     """Normalize every TCSPC histogram by its total count."""
+    # TODO: Once Day 41's new representation API is complete, one can decide whether to:
+    #       delegate old normalize_histograms()
+    #         ↓
+    #       normalize_histogram_batch()
+    #       or deprecate/remove the older helper
     if X.ndim != 2:
         raise ValueError("X must be a two-dimensional array.")
 

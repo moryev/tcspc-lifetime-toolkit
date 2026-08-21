@@ -58,6 +58,13 @@ from tcspc_toolkit.features import (
     extract_features,
 )
 
+from tcspc_toolkit.representations import (
+    cumulative_explained_variance,
+    fit_pca_representation,
+    normalize_histogram_batch,
+    transform_pca_representation,
+)
+
 __all__ = [
     "monoexponential_decay",
     "sample_photon_counts",
@@ -88,4 +95,8 @@ __all__ = [
     "load_config",
     "save_config",
     "extract_features",
+    "cumulative_explained_variance",
+    "fit_pca_representation",
+    "normalize_histogram_batch",
+    "transform_pca_representation",
 ]
