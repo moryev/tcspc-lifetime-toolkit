@@ -20,34 +20,6 @@ class RegressionMetrics:
     r2: float
 
 
-def normalize_histograms(
-    X: NDArray[np.float64],
-) -> NDArray[np.float64]:
-    """Normalize every TCSPC histogram by its total count."""
-    # TODO: Once Day 41's new representation API is complete, one can decide whether to:
-    #       delegate old normalize_histograms()
-    #         ↓
-    #       normalize_histogram_batch()
-    #       or deprecate/remove the older helper
-    if X.ndim != 2:
-        raise ValueError("X must be a two-dimensional array.")
-
-    if np.any(X < 0):
-        raise ValueError("Photon counts cannot be negative.")
-
-    totals = X.sum(
-        axis=1,
-        keepdims=True,
-    )
-
-    if np.any(totals == 0):
-        raise ValueError(
-            "Cannot normalize a histogram with zero total counts."
-        )
-
-    return X / totals
-
-
 def evaluate_regression(
     y_true: NDArray[np.float64],
     y_pred: NDArray[np.float64],
