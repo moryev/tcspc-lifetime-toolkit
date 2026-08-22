@@ -51,7 +51,13 @@ The current version supports:
 * time-window cropping using physical time coordinates;
 * photon-count-preserving temporal rebinning by integer factors;
 * total-count and peak-count normalization for visualization and machine-learning representations;
-* immutable simulation and preprocessing configuration dataclasses;
+* physically interpretable feature extraction from raw TCSPC histograms, including intensity, photon-arrival moments, quantile timing, half-decay timing, tail, and early/late descriptors;
+* stable engineered-feature schemas and batch construction of pandas feature tables;
+* batch construction of total- or peak-normalized histogram representations;
+* PCA compression of normalized TCSPC histograms;
+* leakage-safe PCA workflows with fitting restricted to training data and separate transformation of training and test samples;
+* explained-variance analysis for PCA representations;
+* immutable simulation, preprocessing, and feature configuration dataclasses;
 * JSON serialization and loading of configuration objects using `pathlib`;
 * metadata-based selection of machine-learning targets;
 * nonlinear least-squares mono-exponential lifetime fitting;
@@ -312,11 +318,62 @@ Preprocessing choices should follow the scientific question and statistical mode
 rather than being imposed by the software architecture.
 ```
 
-### Current implementation status
-**Version 0.4 extends the realistic TCSPC workflow with reusable, analysis-dependent preprocessing and more robust workflow architecture. 
-The current implementation supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift, together with histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and total- or peak-count normalization. 
-Raw photon counts are retained for Poisson-likelihood fitting, while cropping, rebinning, and normalization are intended primarily for visualization, exploratory analysis, and machine-learning representations. 
-The IRF shape and width are treated as known and fixed during fitting. The numerical workflow currently assumes a uniform time grid and uses a Gaussian IRF model. Automatic background-region detection, noise-aware peak estimation, experimental IRF loading and calibration, fitted IRF width, multi-exponential reconvolution, advanced detector effects such as pile-up, dead time, and afterpulsing, and calibrated confidence intervals are not yet included.**
+## Machine-learning representations
+
+The toolkit supports three complementary representations of TCSPC
+measurements for machine-learning analysis.
+
+### Engineered physical features
+
+`extract_features()` and `extract_feature_table()` convert raw measured
+histograms into a stable set of physically interpretable descriptors,
+including photon-count, temporal-moment, quantile, half-decay, tail, and
+early/late features.
+
+Feature extraction does not silently subtract background, normalize, crop,
+align, or rebin the histogram. Any required preprocessing must be performed
+explicitly so that the scientific meaning of each feature remains traceable.
+
+### Normalized TCSPC histograms
+
+`normalize_histogram_batch()` preserves the complete binned temporal shape
+while normalizing each histogram independently.
+
+Total-count normalization removes absolute photon-count information:
+
+```math
+x_i
+=
+\frac{N_i}{\sum_j N_j}.
+```
+
+Absolute photon counts and normalized decay shape therefore represent
+different physical information.
+
+### PCA-compressed histograms
+
+`fit_pca_representation()` and `transform_pca_representation()` provide a
+lower-dimensional representation of normalized histogram bins.
+
+PCA captures directions of large histogram variance but does not use lifetime
+labels and is not itself a lifetime estimator. Components explaining large
+variance are therefore not necessarily those carrying the most lifetime
+information.
+
+PCA and any other learned preprocessing transformation must be fitted using
+training data only. Test data must not contribute to fitted PCA components,
+scalers, feature-selection rules, or other learned transformations.
+
+The appropriate preprocessing depends on the intended analysis. Feature
+engineering and machine-learning representations may use normalization or
+derived temporal descriptors, whereas Poisson reconvolution fitting should
+generally retain the original photon counts and background statistics.
+
+## Current implementation status
+**Version 0.5 extends the realistic TCSPC workflow with physically interpretable feature engineering and reproducible machine-learning representations.  
+The toolkit currently supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift, together with reusable, analysis-dependent preprocessing including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and total- or peak-count normalization.  
+For machine-learning workflows, raw TCSPC histograms can now be represented as engineered physical features, normalized histogram bins, or PCA-compressed histograms. The engineered-feature layer includes photon-count descriptors, photon-arrival moments, cumulative-arrival quantiles, half-decay timing, tail characteristics, and early/late count relationships, with a stable schema and batch feature-table construction. PCA fitting is explicitly restricted to training data to prevent information leakage, and the same sample split can be reused consistently across all three representations.  
+Raw photon counts and background statistics remain the preferred inputs for Poisson-likelihood reconvolution, whereas normalization, engineered features, and PCA are intended primarily for exploratory analysis and machine-learning representations. The IRF shape and width are currently treated as known and fixed during fitting. The numerical workflow assumes a uniform time grid and currently uses a Gaussian IRF model. Automatic background-region detection, noise-aware peak estimation, experimental IRF loading and calibration, fitted IRF width, multi-exponential reconvolution, advanced detector effects such as pile-up, dead time, and afterpulsing, calibrated confidence intervals, and full machine-learning benchmarking under controlled nuisance variation and model mismatch are not yet included.**
 
 ## Installation
 
@@ -691,6 +748,25 @@ Demonstrates:
 * construction of a separate crop–rebin–normalize workflow for machine-learning representations;
 * demonstration that scientifically appropriate preprocessing depends on the downstream analysis rather than on a single universal pipeline.
 
+### `11_feature_engineering.ipynb`
+
+Demonstrates:
+
+* generation of a structured IRF-convolved TCSPC dataset with controlled variation of fluorescence lifetime, signal-photon count, detector background, IRF width, and IRF temporal shift;
+* extraction of the complete stable engineered-feature schema from raw photon-count histograms;
+* physical interpretation of intensity, photon-arrival moment, quantile, half-decay, tail, and early/late features;
+* exploratory analysis of feature–lifetime relationships across varying nuisance conditions;
+* controlled investigation of feature sensitivity to photon count, background, IRF width, and IRF temporal shift;
+* construction of total-normalized histogram representations;
+* explicit demonstration that total normalization removes pure absolute count scaling;
+* construction of a common stratified train–test split shared by all representations;
+* leakage-safe PCA fitting using training histograms only;
+* analysis of per-component and cumulative explained variance;
+* visualization of the first PCA component vectors;
+* visualization of normalized histograms in PC1–PC2 space colored by true lifetime;
+* construction of aligned engineered-feature, normalized-histogram, and PCA-compressed input matrices;
+* comparison of the scientific advantages and limitations of all three machine-learning representations.
+
 ## Repository structure
 
 ```text
@@ -715,7 +791,8 @@ tcspc-lifetime-toolkit/
 │   ├── 07_irf_convolution_and_realistic_simulation.ipynb
 │   ├── 08_naive_vs_reconvolution_fitting.ipynb
 │   ├── 09_poisson_reconvolution_fitting_and_validation.ipynb
-│   └── 10_preprocessing_tcspc_histograms.ipynb
+│   ├── 10_preprocessing_tcspc_histograms.ipynb
+│   └── 11_feature_engineering.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -727,11 +804,13 @@ tcspc-lifetime-toolkit/
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── exceptions.py
+│       ├── features.py
 │       ├── fitting.py
 │       ├── irf.py
 │       ├── ml_evaluation.py
 │       ├── models.py
 │       ├── preprocessing.py
+│       ├── representations.py
 │       └── simulation.py
 │
 └── tests/
@@ -740,12 +819,15 @@ tcspc-lifetime-toolkit/
     ├── test_convolution.py
     ├── test_datasets.py
     ├── test_evaluation.py
+    ├── test_feature_integration.py
+    ├── test_features.py
     ├── test_fitting.py
     ├── test_irf.py
     ├── test_ml_evaluation.py
     ├── test_models.py
     ├── test_preprocessing.py
     ├── test_preprocessing_integration.py
+    ├── test_representations.py
     └── test_simulation.py
 ```
 
@@ -759,11 +841,13 @@ The modules currently have the following responsibilities:
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `exceptions.py`: package-specific exception hierarchy for representing domain-level TCSPC validation and processing errors;
+* `features.py`: extraction of physically interpretable TCSPC histogram features, including photon-count descriptors, photon-arrival moments, quantile times, half-decay timing, tail characteristics, and early/late count relationships; also defines the stable engineered-feature schema and batch feature-table construction;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
 * `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
 * `models.py`: mathematical decay models;
 * `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent count normalization;
+* `representations.py`: construction of machine-learning representations from TCSPC histograms, including batch histogram normalization, leakage-safe PCA fitting and transformation, and cumulative explained-variance analysis;
 * `simulation.py`: expected-curve generation and Poisson sampling;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
@@ -793,16 +877,15 @@ Planned development stages include:
 
 1. additional synthetic IRF models, automatic and experimental/measured IRF support;
 2. automated preprocessing and initial guesses;
-3. physically interpretable feature extraction;
-4. machine-learning lifetime estimation;
-5. benchmarking classical and data-driven methods;
-6. robustness studies under model mismatch; 
-7. a Purcell-enhanced lifetime-sensing demonstration;
-8. support for fitting user-provided experimental TCSPC data;
-9. tools for preparing experimental and synthetic datasets for machine-learning applications;
-10. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
-11. a graphical user interface.
-12. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to interpret user analysis goals, select and orchestrate appropriate preprocessing, fitting, evaluation, and reporting functions, inspect intermediate results, and provide scientifically grounded explanations while keeping numerical calculations within the deterministic Python core.
+3. machine-learning lifetime estimation;
+4. benchmarking classical and data-driven methods;
+5. robustness studies under model mismatch; 
+6. a Purcell-enhanced lifetime-sensing demonstration;
+7. support for fitting user-provided experimental TCSPC data;
+8. tools for preparing experimental and synthetic datasets for machine-learning applications;
+9. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
+10. a graphical user interface.
+11. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to interpret user analysis goals, select and orchestrate appropriate preprocessing, fitting, evaluation, and reporting functions, inspect intermediate results, and provide scientifically grounded explanations while keeping numerical calculations within the deterministic Python core.
 
 ## Reproducibility
 
@@ -840,7 +923,7 @@ The present codebase is an educational and scientific-software prototype. It is 
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.4.0,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.5.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).

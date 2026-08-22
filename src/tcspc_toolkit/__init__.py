@@ -48,6 +48,7 @@ from tcspc_toolkit.preprocessing import (
 
 from tcspc_toolkit.config import (
     CountNormalization,
+    FeatureConfig,
     PreprocessingConfig,
     SimulationConfig,
     load_config,
@@ -55,6 +56,8 @@ from tcspc_toolkit.config import (
 )
 
 from tcspc_toolkit.features import (
+    FEATURE_NAMES,
+    extract_feature_table,
     extract_features,
 )
 
@@ -90,10 +93,13 @@ __all__ = [
     "subtract_background",
     "validate_histogram",
     "CountNormalization",
+    "FeatureConfig",
     "PreprocessingConfig",
     "SimulationConfig",
     "load_config",
     "save_config",
+    "FEATURE_NAMES",
+    "extract_feature_table",
     "extract_features",
     "cumulative_explained_variance",
     "fit_pca_representation",

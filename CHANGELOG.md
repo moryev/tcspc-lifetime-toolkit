@@ -229,3 +229,46 @@ All notable changes to this project will be documented in this file.
 * preprocessing configuration currently uses lightweight dataclasses and JSON rather than higher-level configuration frameworks;
 * Poisson reconvolution optimization remains sensitive to numerical initialization and currently benefits from least-squares warm-starting;
 * experimental TCSPC and measured-IRF import workflows remain planned for later development stages.
+
+
+## [0.5.0] - 2026-08-22
+
+### Added
+
+* engineered TCSPC feature extraction through `extract_features()`;
+* photon-arrival mean, variance, and skewness features;
+* cumulative photon-arrival quantiles at 10, 25, 50, 75, and 90 percent;
+* post-peak half-decay timing;
+* configurable log-tail slope, integrated tail fraction, and early/late count-ratio features;
+* stable engineered-feature schema through `FEATURE_NAMES`;
+* batch feature extraction through `extract_feature_table()`;
+* batch histogram normalization through `normalize_histogram_batch()`;
+* PCA fitting and transformation utilities for compressed histogram representations;
+* cumulative PCA explained-variance analysis;
+* tests covering feature calculations, schema stability, normalization invariance,
+  PCA determinism, dimensionality, and train/test separation.
+
+### Changed
+
+* established a clear separation between measurement-derived ML features,
+  prediction targets, and synthetic-data metadata;
+* established three ML-ready TCSPC representations: engineered features,
+  normalized histogram bins, and PCA-compressed histograms;
+* established total-count normalization as the principal normalized-histogram
+  representation while retaining peak normalization as an alternative;
+* made PCA fitting explicitly train-only to prevent information leakage;
+* moved batch histogram representation construction into `representations.py`;
+* removed the legacy `ml_evaluation.normalize_histograms()` helper in favor of
+  `representations.normalize_histogram_batch()`;
+* restricted `ml_evaluation.py` to machine-learning evaluation responsibilities.
+
+### Notes
+
+* engineered features are calculated from histogram measurements rather than
+  from simulation-generation metadata;
+* simulation metadata remains suitable for labels, stratification, diagnostics,
+  and controlled experiments but is not implicitly used as an ML input;
+* total-count normalization intentionally removes absolute photon-count
+  information;
+* PCA components are data-dependent features and must therefore be fitted only
+  on training data before transforming validation or test histograms.
