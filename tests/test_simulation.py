@@ -4,6 +4,7 @@ import pytest
 from tcspc_toolkit.simulation import (
     sample_photon_counts,
     simulate_biexponential_decay,
+    simulate_irf_convolved_histogram,
     simulate_monoexponential_decay,
     simulate_multiexponential_decay,
 )
@@ -315,3 +316,118 @@ def test_simulate_multiexponential_decay_rejects_mismatched_shapes() -> None:
             background=5.0,
             random_seed=42,
         )
+
+
+def test_irf_convolved_simulation_preserves_expected_count_budget() -> None:
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    signal_photon_count = 5_000
+    background_per_bin = 0.5
+
+    rng = np.random.default_rng(42)
+
+    measured_counts, metadata = (
+        simulate_irf_convolved_histogram(
+            time=time,
+            lifetime_ns=2.5,
+            signal_photon_count=signal_photon_count,
+            background_per_bin=background_per_bin,
+            irf_centre_ns=1.0,
+            irf_fwhm_ns=0.3,
+            irf_shift_ns=0.1,
+            rng=rng,
+        )
+    )
+
+    expected_background_counts = (
+        background_per_bin
+        * time.size
+    )
+
+    expected_total_counts = (
+        signal_photon_count
+        + expected_background_counts
+    )
+
+    assert measured_counts.shape == time.shape
+
+    assert np.issubdtype(
+        measured_counts.dtype,
+        np.integer,
+    )
+
+    assert metadata[
+        "expected_signal_counts"
+    ] == pytest.approx(
+        signal_photon_count
+    )
+
+    assert metadata[
+        "expected_background_counts"
+    ] == pytest.approx(
+        expected_background_counts
+    )
+
+    assert metadata[
+        "expected_total_counts"
+    ] == pytest.approx(
+        expected_total_counts
+    )
+
+    assert metadata[
+        "measured_total_counts"
+    ] == pytest.approx(
+        measured_counts.sum()
+    )
+
+
+def test_irf_convolved_simulation_is_reproducible() -> None:
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    rng_a = np.random.default_rng(42)
+    rng_b = np.random.default_rng(42)
+
+    measured_a, metadata_a = (
+        simulate_irf_convolved_histogram(
+            time=time,
+            lifetime_ns=2.5,
+            signal_photon_count=5_000,
+            background_per_bin=0.5,
+            irf_centre_ns=1.0,
+            irf_fwhm_ns=0.3,
+            irf_shift_ns=0.1,
+            rng=rng_a,
+        )
+    )
+
+    measured_b, metadata_b = (
+        simulate_irf_convolved_histogram(
+            time=time,
+            lifetime_ns=2.5,
+            signal_photon_count=5_000,
+            background_per_bin=0.5,
+            irf_centre_ns=1.0,
+            irf_fwhm_ns=0.3,
+            irf_shift_ns=0.1,
+            rng=rng_b,
+        )
+    )
+
+    np.testing.assert_array_equal(
+        measured_a,
+        measured_b,
+    )
+
+    assert metadata_a == metadata_b
+
+

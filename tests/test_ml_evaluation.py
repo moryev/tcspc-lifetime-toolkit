@@ -1,9 +1,114 @@
 import numpy as np
+import pandas as pd
 import pytest
 
+from tcspc_toolkit.config import FeatureConfig
+from tcspc_toolkit.features import FEATURE_NAMES
 from tcspc_toolkit.ml_evaluation import (
+    BenchmarkDataset,
+    BenchmarkSplit,
+    build_benchmark_dataset,
     evaluate_regression,
+    generate_benchmark_measurements,
+    split_benchmark_dataset,
+    summarize_split_coverage,
+    summarize_split_level_balance,
 )
+
+
+def _make_benchmark_dataset() -> BenchmarkDataset:
+    n_samples = 10
+
+    X_features = pd.DataFrame(
+        {
+            "feature_a": np.arange(
+                n_samples,
+                dtype=np.float64,
+            ),
+            "feature_b": np.arange(
+                100,
+                100 + n_samples,
+                dtype=np.float64,
+            ),
+        }
+    )
+
+    X_histograms = np.column_stack(
+        (
+            np.arange(n_samples),
+            np.arange(n_samples) + 10,
+            np.arange(n_samples) + 20,
+        )
+    ).astype(np.int64)
+
+    y = np.arange(
+        1,
+        n_samples + 1,
+        dtype=np.float64,
+    )
+
+    metadata = pd.DataFrame(
+        {
+            "sample_id": np.arange(
+                n_samples,
+                dtype=np.int64,
+            ),
+            "background_per_bin": np.arange(
+                n_samples,
+                dtype=np.float64,
+            ),
+        }
+    )
+
+    return BenchmarkDataset(
+        X_features=X_features,
+        X_histograms=X_histograms,
+        y=y,
+        metadata=metadata,
+    )
+
+
+def _make_benchmark_measurements():
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    return generate_benchmark_measurements(
+        time=time,
+        lifetimes_ns=np.array(
+            [1.0, 2.0],
+            dtype=np.float64,
+        ),
+        signal_photon_counts=np.array(
+            [100_000],
+            dtype=np.int64,
+        ),
+        background_levels=np.array(
+            [1.0],
+            dtype=np.float64,
+        ),
+        irf_centre_ns=1.0,
+        irf_fwhm_values_ns=np.array(
+            [0.3],
+            dtype=np.float64,
+        ),
+        irf_shift_values_ns=np.array(
+            [0.0],
+            dtype=np.float64,
+        ),
+        random_seed=42,
+    )
+
+
+def _make_benchmark_feature_config() -> FeatureConfig:
+    return FeatureConfig(
+        tail_start_ns=5.0,
+        early_stop_ns=3.0,
+        late_start_ns=7.0,
+    )
 
 
 def test_perfect_predictions_have_zero_error() -> None:
@@ -21,3 +126,654 @@ def test_perfect_predictions_have_zero_error() -> None:
     assert metrics.median_absolute_error_ns == pytest.approx(0.0)
     assert metrics.mean_relative_error == pytest.approx(0.0)
     assert metrics.r2 == pytest.approx(1.0)
+
+
+def test_benchmark_split_is_reproducible() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split_a = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    split_b = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    np.testing.assert_array_equal(
+        split_a.train_indices,
+        split_b.train_indices,
+    )
+
+    np.testing.assert_array_equal(
+        split_a.test_indices,
+        split_b.test_indices,
+    )
+
+
+def test_benchmark_split_has_no_sample_overlap() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    overlap = np.intersect1d(
+        split.train_indices,
+        split.test_indices,
+    )
+
+    assert overlap.size == 0
+
+
+def test_benchmark_split_preserves_target_alignment() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    np.testing.assert_array_equal(
+        split.y_train,
+        dataset.y[split.train_indices],
+    )
+
+    np.testing.assert_array_equal(
+        split.y_test,
+        dataset.y[split.test_indices],
+    )
+
+
+def test_benchmark_split_preserves_metadata_alignment() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    expected_train_sample_ids = (
+        dataset.metadata.iloc[
+            split.train_indices
+        ]["sample_id"]
+        .to_numpy()
+    )
+
+    expected_test_sample_ids = (
+        dataset.metadata.iloc[
+            split.test_indices
+        ]["sample_id"]
+        .to_numpy()
+    )
+
+    np.testing.assert_array_equal(
+        split.metadata_train["sample_id"].to_numpy(),
+        expected_train_sample_ids,
+    )
+
+    np.testing.assert_array_equal(
+        split.metadata_test["sample_id"].to_numpy(),
+        expected_test_sample_ids,
+    )
+
+
+def test_benchmark_split_uses_identical_sample_membership_across_representations() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    train_sample_ids_from_features = (
+        split.X_features_train["feature_a"]
+        .to_numpy(dtype=np.int64)
+    )
+
+    train_sample_ids_from_histograms = (
+        split.X_histograms_train[:, 0]
+    )
+
+    train_sample_ids_from_metadata = (
+        split.metadata_train["sample_id"]
+        .to_numpy()
+    )
+
+    np.testing.assert_array_equal(
+        train_sample_ids_from_features,
+        train_sample_ids_from_histograms,
+    )
+
+    np.testing.assert_array_equal(
+        train_sample_ids_from_features,
+        train_sample_ids_from_metadata,
+    )
+
+
+def test_benchmark_split_rejects_misaligned_dataset() -> None:
+    dataset = _make_benchmark_dataset()
+
+    misaligned_dataset = BenchmarkDataset(
+        X_features=dataset.X_features.iloc[:-1],
+        X_histograms=dataset.X_histograms,
+        y=dataset.y,
+        metadata=dataset.metadata,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="X_features and y",
+    ):
+        split_benchmark_dataset(
+            misaligned_dataset,
+        )
+
+
+def test_generate_benchmark_measurements_has_expected_shape() -> None:
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    measurements = generate_benchmark_measurements(
+        time=time,
+        lifetimes_ns=np.array(
+            [1.0, 2.0],
+            dtype=np.float64,
+        ),
+        signal_photon_counts=np.array(
+            [1_000, 5_000],
+            dtype=np.int64,
+        ),
+        background_levels=np.array(
+            [0.0, 0.5],
+            dtype=np.float64,
+        ),
+        irf_centre_ns=1.0,
+        irf_fwhm_values_ns=np.array(
+            [0.2],
+            dtype=np.float64,
+        ),
+        irf_shift_values_ns=np.array(
+            [-0.1, 0.1],
+            dtype=np.float64,
+        ),
+        random_seed=42,
+    )
+
+    expected_n_samples = (
+        2
+        * 2
+        * 2
+        * 1
+        * 2
+    )
+
+    assert measurements.X_histograms.shape == (
+        expected_n_samples,
+        time.size,
+    )
+
+    assert measurements.y.shape == (
+        expected_n_samples,
+    )
+
+    assert measurements.metadata.shape[0] == (
+        expected_n_samples
+    )
+
+    np.testing.assert_array_equal(
+        measurements.metadata[
+            "sample_id"
+        ].to_numpy(),
+        np.arange(
+            expected_n_samples,
+            dtype=np.int64,
+        ),
+    )
+
+
+def test_generate_benchmark_measurements_is_reproducible() -> None:
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    common_arguments = {
+        "time": time,
+        "lifetimes_ns": np.array(
+            [1.0, 2.0],
+            dtype=np.float64,
+        ),
+        "signal_photon_counts": np.array(
+            [1_000],
+            dtype=np.int64,
+        ),
+        "background_levels": np.array(
+            [0.0, 0.5],
+            dtype=np.float64,
+        ),
+        "irf_centre_ns": 1.0,
+        "irf_fwhm_values_ns": np.array(
+            [0.2],
+            dtype=np.float64,
+        ),
+        "irf_shift_values_ns": np.array(
+            [0.0],
+            dtype=np.float64,
+        ),
+        "random_seed": 42,
+    }
+
+    measurements_a = generate_benchmark_measurements(
+        **common_arguments
+    )
+
+    measurements_b = generate_benchmark_measurements(
+        **common_arguments
+    )
+
+    np.testing.assert_array_equal(
+        measurements_a.X_histograms,
+        measurements_b.X_histograms,
+    )
+
+    np.testing.assert_array_equal(
+        measurements_a.y,
+        measurements_b.y,
+    )
+
+    pd.testing.assert_frame_equal(
+        measurements_a.metadata,
+        measurements_b.metadata,
+    )
+
+
+def test_benchmark_metadata_does_not_contain_lifetime_target() -> None:
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    measurements = generate_benchmark_measurements(
+        time=time,
+        lifetimes_ns=np.array(
+            [1.0, 2.0],
+            dtype=np.float64,
+        ),
+        signal_photon_counts=np.array(
+            [1_000],
+            dtype=np.int64,
+        ),
+        background_levels=np.array(
+            [0.0],
+            dtype=np.float64,
+        ),
+        irf_centre_ns=1.0,
+        irf_fwhm_values_ns=np.array(
+            [0.2],
+            dtype=np.float64,
+        ),
+        irf_shift_values_ns=np.array(
+            [0.0],
+            dtype=np.float64,
+        ),
+        random_seed=42,
+    )
+
+    assert "lifetime_true_ns" not in (
+        measurements.metadata.columns
+    )
+
+
+def test_build_benchmark_dataset_has_aligned_shapes() -> None:
+    measurements = _make_benchmark_measurements()
+
+    dataset = build_benchmark_dataset(
+        measurements,
+        feature_config=_make_benchmark_feature_config(),
+    )
+
+    n_samples = measurements.X_histograms.shape[0]
+
+    assert dataset.X_features.shape == (
+        n_samples,
+        len(FEATURE_NAMES),
+    )
+
+    assert dataset.X_histograms.shape == (
+        n_samples,
+        measurements.time.size,
+    )
+
+    assert dataset.y.shape == (
+        n_samples,
+    )
+
+    assert dataset.metadata.shape[0] == (
+        n_samples
+    )
+
+
+def test_build_benchmark_dataset_uses_stable_feature_schema() -> None:
+    measurements = _make_benchmark_measurements()
+
+    dataset = build_benchmark_dataset(
+        measurements,
+        feature_config=_make_benchmark_feature_config(),
+    )
+
+    assert list(
+        dataset.X_features.columns
+    ) == list(
+        FEATURE_NAMES
+    )
+
+
+def test_build_benchmark_dataset_preserves_histograms() -> None:
+    measurements = _make_benchmark_measurements()
+
+    dataset = build_benchmark_dataset(
+        measurements,
+        feature_config=_make_benchmark_feature_config(),
+    )
+
+    np.testing.assert_array_equal(
+        dataset.X_histograms,
+        measurements.X_histograms,
+    )
+
+
+def test_build_benchmark_dataset_preserves_targets_and_metadata() -> None:
+    measurements = _make_benchmark_measurements()
+
+    dataset = build_benchmark_dataset(
+        measurements,
+        feature_config=_make_benchmark_feature_config(),
+    )
+
+    np.testing.assert_array_equal(
+        dataset.y,
+        measurements.y,
+    )
+
+    pd.testing.assert_frame_equal(
+        dataset.metadata,
+        measurements.metadata,
+    )
+
+
+def test_engineered_total_counts_match_corresponding_histograms() -> None:
+    measurements = _make_benchmark_measurements()
+
+    dataset = build_benchmark_dataset(
+        measurements,
+        feature_config=_make_benchmark_feature_config(),
+    )
+
+    histogram_total_counts = (
+        dataset.X_histograms.sum(
+            axis=1
+        )
+    )
+
+    feature_total_counts = (
+        dataset.X_features[
+            "total_counts"
+        ].to_numpy()
+    )
+
+    np.testing.assert_allclose(
+        feature_total_counts,
+        histogram_total_counts,
+    )
+
+
+def _make_coverage_split() -> BenchmarkSplit:
+    X_features_train = pd.DataFrame(
+        {
+            "feature": [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+            ],
+        }
+    )
+
+    X_features_test = pd.DataFrame(
+        {
+            "feature": [
+                4.0,
+                5.0,
+            ],
+        }
+    )
+
+    X_histograms_train = np.zeros(
+        (4, 3),
+        dtype=np.int64,
+    )
+
+    X_histograms_test = np.zeros(
+        (2, 3),
+        dtype=np.int64,
+    )
+
+    y_train = np.array(
+        [
+            1.0,
+            2.0,
+            1.0,
+            2.0,
+        ],
+        dtype=np.float64,
+    )
+
+    y_test = np.array(
+        [
+            1.0,
+            2.0,
+        ],
+        dtype=np.float64,
+    )
+
+    metadata_train = pd.DataFrame(
+        {
+            "sample_id": [
+                0,
+                1,
+                2,
+                3,
+            ],
+            "signal_photon_count_target": [
+                1_000,
+                5_000,
+                1_000,
+                5_000,
+            ],
+            "background_per_bin": [
+                0.0,
+                0.5,
+                0.0,
+                0.5,
+            ],
+            "irf_fwhm_ns": [
+                0.2,
+                0.4,
+                0.2,
+                0.4,
+            ],
+            "irf_shift_ns": [
+                -0.1,
+                0.1,
+                -0.1,
+                0.1,
+            ],
+        }
+    )
+
+    metadata_test = pd.DataFrame(
+        {
+            "sample_id": [
+                4,
+                5,
+            ],
+            "signal_photon_count_target": [
+                1_000,
+                5_000,
+            ],
+            "background_per_bin": [
+                0.0,
+                0.5,
+            ],
+            "irf_fwhm_ns": [
+                0.2,
+                0.4,
+            ],
+            "irf_shift_ns": [
+                -0.1,
+                0.1,
+            ],
+        }
+    )
+
+    return BenchmarkSplit(
+        train_indices=np.array(
+            [0, 1, 2, 3],
+            dtype=np.int64,
+        ),
+        test_indices=np.array(
+            [4, 5],
+            dtype=np.int64,
+        ),
+        X_features_train=X_features_train,
+        X_features_test=X_features_test,
+        X_histograms_train=X_histograms_train,
+        X_histograms_test=X_histograms_test,
+        y_train=y_train,
+        y_test=y_test,
+        metadata_train=metadata_train,
+        metadata_test=metadata_test,
+    )
+
+
+def test_split_coverage_summarizes_target_and_nuisance_variables() -> None:
+    split = _make_coverage_split()
+
+    summary = summarize_split_coverage(
+        split
+    )
+
+    assert list(
+        summary["parameter"]
+    ) == [
+        "lifetime_ns",
+        "signal_photon_count_target",
+        "background_per_bin",
+        "irf_fwhm_ns",
+        "irf_shift_ns",
+    ]
+
+
+def test_split_coverage_detects_matching_parameter_support() -> None:
+    split = _make_coverage_split()
+
+    summary = summarize_split_coverage(
+        split
+    )
+
+    assert summary[
+        "same_support"
+    ].all()
+
+
+def test_split_coverage_reports_correct_lifetime_range() -> None:
+    split = _make_coverage_split()
+
+    summary = summarize_split_coverage(
+        split
+    )
+
+    lifetime_row = (
+        summary
+        .set_index("parameter")
+        .loc["lifetime_ns"]
+    )
+
+    assert lifetime_row[
+        "train_min"
+    ] == pytest.approx(1.0)
+
+    assert lifetime_row[
+        "train_max"
+    ] == pytest.approx(2.0)
+
+    assert lifetime_row[
+        "test_min"
+    ] == pytest.approx(1.0)
+
+    assert lifetime_row[
+        "test_max"
+    ] == pytest.approx(2.0)
+
+    assert lifetime_row[
+        "train_n_unique"
+    ] == 2
+
+    assert lifetime_row[
+        "test_n_unique"
+    ] == 2
+
+
+def test_split_level_balance_reports_counts_and_fractions() -> None:
+    split = _make_coverage_split()
+
+    balance = summarize_split_level_balance(
+        split
+    )
+
+    lifetime_rows = (
+        balance[
+            balance["parameter"]
+            == "lifetime_ns"
+        ]
+        .set_index("value")
+    )
+
+    assert lifetime_rows.loc[
+        1.0,
+        "train_count",
+    ] == 2
+
+    assert lifetime_rows.loc[
+        1.0,
+        "test_count",
+    ] == 1
+
+    assert lifetime_rows.loc[
+        1.0,
+        "train_fraction",
+    ] == pytest.approx(0.5)
+
+    assert lifetime_rows.loc[
+        1.0,
+        "test_fraction",
+    ] == pytest.approx(0.5)
+
+
