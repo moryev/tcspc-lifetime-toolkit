@@ -11,6 +11,10 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
+from tcspc_toolkit.baselines import (
+    estimate_lifetime_from_mean_arrival,
+    predict_constant_mean_baseline,
+)
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.features import extract_feature_table
 from tcspc_toolkit.simulation import (
@@ -101,6 +105,25 @@ class RegressionMetrics:
     mean_relative_error: float
     median_relative_error: float
     r2: float
+
+
+@dataclass(frozen=True)
+class RegressionBenchmarkResult:
+    """Predictions and metrics for one lifetime estimator.
+
+    Attributes
+    ----------
+    estimator_name:
+        Stable identifier for the evaluated estimator.
+    y_pred:
+        Lifetime predictions for the benchmark test samples.
+    metrics:
+        Regression metrics evaluated against the true test lifetimes.
+    """
+
+    estimator_name: str
+    y_pred: FloatArray
+    metrics: RegressionMetrics
 
 
 def generate_benchmark_measurements(
@@ -751,3 +774,132 @@ def evaluate_regression(
             r2_score(y_true, y_pred)
         ),
     )
+
+
+def _build_regression_benchmark_result(
+    *,
+    estimator_name: str,
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
+) -> RegressionBenchmarkResult:
+    """Validate predictions and construct one benchmark result."""
+    y_true_array = np.asarray(
+        y_true,
+        dtype=np.float64,
+    )
+
+    y_pred_array = np.asarray(
+        y_pred,
+        dtype=np.float64,
+    )
+
+    if y_pred_array.shape != y_true_array.shape:
+        raise RuntimeError(
+            "Benchmark estimator must produce exactly "
+            "one prediction per test sample."
+        )
+
+    if not np.all(
+        np.isfinite(y_pred_array)
+    ):
+        raise RuntimeError(
+            "Benchmark predictions must be finite."
+        )
+
+    metrics = evaluate_regression(
+        y_true=y_true_array,
+        y_pred=y_pred_array,
+    )
+
+    return RegressionBenchmarkResult(
+        estimator_name=estimator_name,
+        y_pred=y_pred_array,
+        metrics=metrics,
+    )
+
+
+def evaluate_baselines(
+    split: BenchmarkSplit,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Evaluate the Day 44 lifetime-estimation baselines.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Results for the constant-mean and mean-arrival-time
+        baselines.
+
+    Notes
+    -----
+    The constant baseline uses only training-set lifetime targets.
+
+    The mean-arrival-time estimator uses only histogram-derived
+    test-set features and does not use simulation metadata or
+    training-set lifetime targets.
+    """
+    required_feature_columns = (
+        "mean_arrival_time_ns",
+        "peak_time_ns",
+    )
+
+    missing_columns = [
+        column
+        for column in required_feature_columns
+        if column
+        not in split.X_features_test.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            "X_features_test is missing required baseline "
+            "features: "
+            + ", ".join(missing_columns)
+        )
+
+    constant_predictions = (
+        predict_constant_mean_baseline(
+            y_train=split.y_train,
+            n_predictions=split.y_test.size,
+        )
+    )
+
+    mean_arrival_predictions = (
+        estimate_lifetime_from_mean_arrival(
+            mean_arrival_time_ns=(
+                split.X_features_test[
+                    "mean_arrival_time_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            ),
+            peak_time_ns=(
+                split.X_features_test[
+                    "peak_time_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            ),
+        )
+    )
+
+    return {
+        "constant_mean": (
+            _build_regression_benchmark_result(
+                estimator_name="constant_mean",
+                y_true=split.y_test,
+                y_pred=constant_predictions,
+            )
+        ),
+        "mean_arrival_time": (
+            _build_regression_benchmark_result(
+                estimator_name="mean_arrival_time",
+                y_true=split.y_test,
+                y_pred=mean_arrival_predictions,
+            )
+        ),
+    }
