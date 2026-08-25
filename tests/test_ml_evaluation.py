@@ -10,12 +10,17 @@ from tcspc_toolkit.ml_evaluation import (
     build_benchmark_dataset,
     evaluate_baselines,
     evaluate_regression,
+    evaluate_regressor,
     generate_benchmark_measurements,
     split_benchmark_dataset,
     summarize_split_coverage,
     summarize_split_level_balance,
 )
-
+from tcspc_toolkit.ml_models import (
+    make_hist_gradient_boosting_pipeline,
+    make_random_forest_pipeline,
+    make_ridge_pipeline,
+)
 
 def _make_benchmark_dataset() -> BenchmarkDataset:
     n_samples = 10
@@ -125,6 +130,7 @@ def test_perfect_predictions_have_zero_error() -> None:
 
     assert metrics.mae_ns == pytest.approx(0.0)
     assert metrics.median_absolute_error_ns == pytest.approx(0.0)
+    assert metrics.rmse_ns == pytest.approx(0.0)
     assert metrics.mean_relative_error == pytest.approx(0.0)
     assert metrics.r2 == pytest.approx(1.0)
 
@@ -988,6 +994,311 @@ def test_evaluate_baselines_attaches_regression_metrics() -> None:
             == pytest.approx(
                 expected_metrics.r2
             )
+        )
+
+
+def test_regression_metrics_are_computed_correctly() -> None:
+    y_true = np.array(
+        [1.0, 2.0, 4.0],
+        dtype=np.float64,
+    )
+
+    y_pred = np.array(
+        [1.5, 1.0, 5.0],
+        dtype=np.float64,
+    )
+
+    metrics = evaluate_regression(
+        y_true=y_true,
+        y_pred=y_pred,
+    )
+
+    expected_absolute_errors = np.array(
+        [0.5, 1.0, 1.0],
+        dtype=np.float64,
+    )
+
+    expected_rmse = np.sqrt(
+        np.mean(
+            expected_absolute_errors ** 2
+        )
+    )
+
+    assert metrics.mae_ns == pytest.approx(
+        np.mean(expected_absolute_errors)
+    )
+
+    assert metrics.median_absolute_error_ns == pytest.approx(
+        np.median(expected_absolute_errors)
+    )
+
+    assert metrics.rmse_ns == pytest.approx(
+        expected_rmse
+    )
+
+
+def _make_regression_test_data():
+    rng = np.random.default_rng(42)
+
+    X = rng.normal(
+        size=(80, 4)
+    )
+
+    y = (
+        3.0
+        + 0.5 * X[:, 0]
+        - 0.2 * X[:, 1]
+        + 0.1 * X[:, 2]
+    )
+
+    X_train = X[:60]
+    X_test = X[60:]
+
+    y_train = y[:60]
+    y_test = y[60:]
+
+    return (
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+    )
+
+
+@pytest.mark.parametrize(
+    "estimator_name, estimator_factory",
+    [
+        (
+            "ridge",
+            make_ridge_pipeline,
+        ),
+        (
+            "random_forest",
+            make_random_forest_pipeline,
+        ),
+        (
+            "hist_gradient_boosting",
+            make_hist_gradient_boosting_pipeline,
+        ),
+    ],
+)
+def test_evaluate_regressor_trains_and_predicts(
+    estimator_name,
+    estimator_factory,
+) -> None:
+    (
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+    ) = _make_regression_test_data()
+
+    estimator = estimator_factory()
+
+    result = evaluate_regressor(
+        estimator_name=estimator_name,
+        estimator=estimator,
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
+    assert result.estimator_name == estimator_name
+
+    assert result.y_pred.shape == (
+        y_test.shape
+    )
+
+    assert np.all(
+        np.isfinite(result.y_pred)
+    )
+
+    assert result.relative_errors.shape == (
+        y_test.shape
+    )
+
+    assert np.all(
+        np.isfinite(result.relative_errors)
+    )
+
+
+def test_random_forest_is_deterministic_with_fixed_random_state() -> None:
+    (
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+    ) = _make_regression_test_data()
+
+    estimator_a = make_random_forest_pipeline(
+        random_state=42,
+    )
+
+    estimator_b = make_random_forest_pipeline(
+        random_state=42,
+    )
+
+    result_a = evaluate_regressor(
+        estimator_name="random_forest",
+        estimator=estimator_a,
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
+    result_b = evaluate_regressor(
+        estimator_name="random_forest",
+        estimator=estimator_b,
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
+    np.testing.assert_allclose(
+        result_a.y_pred,
+        result_b.y_pred,
+    )
+
+
+class _FixedPredictionRegressor:
+    def __init__(
+        self,
+        predictions: np.ndarray,
+    ) -> None:
+        self.predictions = predictions
+
+    def fit(
+        self,
+        X,
+        y,
+    ):
+        return self
+
+    def predict(
+        self,
+        X,
+    ) -> np.ndarray:
+        return self.predictions
+
+
+def test_evaluate_regressor_computes_metrics_from_predictions() -> None:
+    X_train = np.zeros(
+        (3, 2),
+        dtype=np.float64,
+    )
+
+    y_train = np.array(
+        [1.0, 2.0, 3.0],
+        dtype=np.float64,
+    )
+
+    X_test = np.zeros(
+        (3, 2),
+        dtype=np.float64,
+    )
+
+    y_test = np.array(
+        [1.0, 2.0, 4.0],
+        dtype=np.float64,
+    )
+
+    predictions = np.array(
+        [1.5, 1.0, 5.0],
+        dtype=np.float64,
+    )
+
+    estimator = _FixedPredictionRegressor(
+        predictions
+    )
+
+    result = evaluate_regressor(
+        estimator_name="fixed",
+        estimator=estimator,
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
+    expected_metrics = evaluate_regression(
+        y_true=y_test,
+        y_pred=predictions,
+    )
+
+    assert result.metrics == expected_metrics
+
+
+def test_test_targets_do_not_affect_predictions() -> None:
+    (
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+    ) = _make_regression_test_data()
+
+    alternative_y_test = (
+        y_test + 10.0
+    )
+
+    result_a = evaluate_regressor(
+        estimator_name="ridge",
+        estimator=make_ridge_pipeline(),
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
+    result_b = evaluate_regressor(
+        estimator_name="ridge",
+        estimator=make_ridge_pipeline(),
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=alternative_y_test,
+    )
+
+    np.testing.assert_allclose(
+        result_a.y_pred,
+        result_b.y_pred,
+    )
+
+
+def test_evaluate_regressor_rejects_misaligned_training_samples() -> None:
+    X_train = np.zeros(
+        (4, 2),
+        dtype=np.float64,
+    )
+
+    y_train = np.array(
+        [1.0, 2.0, 3.0],
+        dtype=np.float64,
+    )
+
+    X_test = np.zeros(
+        (2, 2),
+        dtype=np.float64,
+    )
+
+    y_test = np.array(
+        [1.0, 2.0],
+        dtype=np.float64,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="X_train and y_train",
+    ):
+        evaluate_regressor(
+            estimator_name="ridge",
+            estimator=make_ridge_pipeline(),
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
         )
 
 

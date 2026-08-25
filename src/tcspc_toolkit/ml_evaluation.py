@@ -4,6 +4,7 @@ from itertools import product
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike, NDArray
+from typing import Any
 from sklearn.metrics import (
     mean_absolute_error,
     median_absolute_error,
@@ -102,6 +103,7 @@ class RegressionMetrics:
 
     mae_ns: float
     median_absolute_error_ns: float
+    rmse_ns: float
     mean_relative_error: float
     median_relative_error: float
     r2: float
@@ -117,12 +119,16 @@ class RegressionBenchmarkResult:
         Stable identifier for the evaluated estimator.
     y_pred:
         Lifetime predictions for the benchmark test samples.
+    relative_errors:
+        Absolute relative error for every benchmark test sample.
     metrics:
-        Regression metrics evaluated against the true test lifetimes.
+        Aggregate regression metrics evaluated against the true
+        test lifetimes.
     """
 
     estimator_name: str
     y_pred: FloatArray
+    relative_errors: FloatArray
     metrics: RegressionMetrics
 
 
@@ -757,12 +763,21 @@ def evaluate_regression(
         np.abs(y_pred - y_true) / y_true
     )
 
+    rmse_ns = np.sqrt(
+        np.mean(
+            (y_pred - y_true) ** 2
+        )
+    )
+
     return RegressionMetrics(
         mae_ns=float(
             mean_absolute_error(y_true, y_pred)
         ),
         median_absolute_error_ns=float(
             median_absolute_error(y_true, y_pred)
+        ),
+        rmse_ns=float(
+            rmse_ns
         ),
         mean_relative_error=float(
             np.mean(relative_errors)
@@ -811,10 +826,140 @@ def _build_regression_benchmark_result(
         y_pred=y_pred_array,
     )
 
+    relative_errors = (
+        np.abs(
+            y_pred_array - y_true_array
+        )
+        / y_true_array
+    )
+
     return RegressionBenchmarkResult(
         estimator_name=estimator_name,
         y_pred=y_pred_array,
+        relative_errors=relative_errors,
         metrics=metrics,
+    )
+
+
+def evaluate_regressor(
+    *,
+    estimator_name: str,
+    estimator: Any,
+    X_train: Any,
+    y_train: ArrayLike,
+    X_test: Any,
+    y_test: ArrayLike,
+) -> RegressionBenchmarkResult:
+    """Fit and evaluate a regression estimator.
+
+    Parameters
+    ----------
+    estimator_name:
+        Stable identifier for the estimator in benchmark results.
+    estimator:
+        Scikit-learn-compatible regression estimator implementing
+        ``fit`` and ``predict``.
+    X_train:
+        Training input representation.
+    y_train:
+        Training-set fluorescence lifetimes.
+    X_test:
+        Test input representation.
+    y_test:
+        True test-set fluorescence lifetimes used only for
+        evaluation after prediction.
+
+    Returns
+    -------
+    RegressionBenchmarkResult
+        Predictions, per-sample relative errors, and aggregate
+        regression metrics.
+
+    Notes
+    -----
+    The estimator is fitted only on ``X_train`` and ``y_train``.
+    Test targets are not supplied to the estimator and are used
+    only after prediction for metric computation.
+    """
+    y_train_array = np.asarray(
+        y_train,
+        dtype=np.float64,
+    )
+
+    y_test_array = np.asarray(
+        y_test,
+        dtype=np.float64,
+    )
+
+    if y_train_array.ndim != 1:
+        raise ValueError(
+            "y_train must be one-dimensional."
+        )
+
+    if y_test_array.ndim != 1:
+        raise ValueError(
+            "y_test must be one-dimensional."
+        )
+
+    if y_train_array.size == 0:
+        raise ValueError(
+            "y_train must contain at least one lifetime."
+        )
+
+    if y_test_array.size == 0:
+        raise ValueError(
+            "y_test must contain at least one lifetime."
+        )
+
+    if not np.all(
+        np.isfinite(y_train_array)
+    ):
+        raise ValueError(
+            "y_train must contain only finite values."
+        )
+
+    if not np.all(
+        np.isfinite(y_test_array)
+    ):
+        raise ValueError(
+            "y_test must contain only finite values."
+        )
+
+    if np.any(y_train_array <= 0.0):
+        raise ValueError(
+            "Training lifetimes must be strictly positive."
+        )
+
+    if np.any(y_test_array <= 0.0):
+        raise ValueError(
+            "Test lifetimes must be strictly positive."
+        )
+
+    if X_train.shape[0] != y_train_array.size:
+        raise ValueError(
+            "X_train and y_train must contain "
+            "the same number of samples."
+        )
+
+    if X_test.shape[0] != y_test_array.size:
+        raise ValueError(
+            "X_test and y_test must contain "
+            "the same number of samples."
+        )
+
+    estimator.fit(
+        X_train,
+        y_train_array,
+    )
+
+    predictions = estimator.predict(
+        X_test
+    )
+
+    return _build_regression_benchmark_result(
+        estimator_name=estimator_name,
+        y_true=y_test_array,
+        y_pred=predictions,
     )
 
 

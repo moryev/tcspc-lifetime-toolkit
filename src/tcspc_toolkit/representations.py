@@ -332,3 +332,7 @@ def cumulative_explained_variance(
         )
 
     return np.cumsum(explained_variance_ratio)
+
+
+# TODO: After the main functions are implemented, try performing "PCA-compressed engineered features"
+#       (kind of Principal Component Regression, PCR, analysis)
