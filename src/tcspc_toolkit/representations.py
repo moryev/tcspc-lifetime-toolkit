@@ -336,3 +336,103 @@ def cumulative_explained_variance(
 
 # TODO: After the main functions are implemented, try performing "PCA-compressed engineered features"
 #       (kind of Principal Component Regression, PCR, analysis)
+
+
+def augment_with_total_counts(
+    X_representation: ArrayLike,
+    histograms: ArrayLike,
+) -> NDArray[np.float64]:
+    """Append measured total photon count to an ML representation.
+
+    Parameters
+    ----------
+    X_representation:
+        Two-dimensional representation matrix with one sample per row.
+    histograms:
+        Raw histogram matrix corresponding to the same samples.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Representation matrix with one additional column containing
+        the measured total photon count of each raw histogram.
+
+    Raises
+    ------
+    ValueError
+        If either input is not a finite two-dimensional numeric array,
+        if their sample counts differ, or if histograms contain
+        negative values.
+
+    Notes
+    -----
+    The appended count is calculated directly from the measured raw
+    histogram and therefore does not use simulation metadata.
+
+    When ``X_representation`` contains TOTAL-normalized histogram bins,
+    adding the total count restores the absolute count scale removed
+    by normalization.
+    """
+    try:
+        X_array = np.asarray(
+            X_representation,
+            dtype=np.float64,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "X_representation must contain numeric values."
+        ) from exc
+
+    try:
+        histograms_array = np.asarray(
+            histograms,
+            dtype=np.float64,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "histograms must contain numeric values."
+        ) from exc
+
+    if X_array.ndim != 2:
+        raise ValueError(
+            "X_representation must be a two-dimensional array."
+        )
+
+    if histograms_array.ndim != 2:
+        raise ValueError(
+            "histograms must be a two-dimensional array."
+        )
+
+    if X_array.shape[0] != histograms_array.shape[0]:
+        raise ValueError(
+            "X_representation and histograms must contain "
+            "the same number of samples."
+        )
+
+    if not np.all(np.isfinite(X_array)):
+        raise ValueError(
+            "X_representation must contain only finite values."
+        )
+
+    if not np.all(np.isfinite(histograms_array)):
+        raise ValueError(
+            "histograms must contain only finite values."
+        )
+
+    if np.any(histograms_array < 0.0):
+        raise ValueError(
+            "histograms must contain non-negative values."
+        )
+
+    total_counts = np.sum(
+        histograms_array,
+        axis=1,
+        dtype=np.float64,
+    )
+
+    return np.column_stack(
+        (
+            X_array,
+            total_counts,
+        )
+    )

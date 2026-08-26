@@ -4,6 +4,7 @@ from sklearn.decomposition import PCA
 
 from tcspc_toolkit.config import CountNormalization
 from tcspc_toolkit.representations import (
+    augment_with_total_counts,
     cumulative_explained_variance,
     fit_pca_representation,
     normalize_histogram_batch,
@@ -850,3 +851,64 @@ def test_total_normalized_histograms_have_redundant_pca_direction() -> None:
     )
 
 
+def test_augment_with_total_counts_appends_measured_counts() -> None:
+    histograms = np.array(
+        [
+            [1.0, 2.0, 3.0, 4.0],
+            [10.0, 20.0, 30.0, 40.0],
+        ],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_histogram_batch(
+        histograms=histograms,
+        mode=CountNormalization.TOTAL,
+    )
+
+    augmented = augment_with_total_counts(
+        X_representation=normalized,
+        histograms=histograms,
+    )
+
+    assert augmented.shape == (
+        histograms.shape[0],
+        histograms.shape[1] + 1,
+    )
+
+    np.testing.assert_allclose(
+        augmented[:, -1],
+        histograms.sum(axis=1),
+    )
+
+
+def test_normalized_histogram_and_total_count_reconstruct_raw_histogram() -> None:
+    histograms = np.array(
+        [
+            [1.0, 2.0, 3.0, 4.0],
+            [10.0, 20.0, 30.0, 40.0],
+        ],
+        dtype=np.float64,
+    )
+
+    normalized = normalize_histogram_batch(
+        histograms=histograms,
+        mode=CountNormalization.TOTAL,
+    )
+
+    augmented = augment_with_total_counts(
+        X_representation=normalized,
+        histograms=histograms,
+    )
+
+    normalized_part = augmented[:, :-1]
+    total_counts = augmented[:, -1]
+
+    reconstructed = (
+        normalized_part
+        * total_counts[:, np.newaxis]
+    )
+
+    np.testing.assert_allclose(
+        reconstructed,
+        histograms,
+    )

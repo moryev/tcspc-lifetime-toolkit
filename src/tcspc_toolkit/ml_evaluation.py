@@ -10,14 +10,29 @@ from sklearn.metrics import (
     median_absolute_error,
     r2_score,
 )
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 
 from tcspc_toolkit.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )
-from tcspc_toolkit.config import FeatureConfig
+from tcspc_toolkit.config import (
+    FeatureConfig,
+    CountNormalization,
+)
 from tcspc_toolkit.features import extract_feature_table
+from tcspc_toolkit.ml_models import (
+    make_hist_gradient_boosting_pipeline,
+    make_random_forest_pipeline,
+    make_ridge_pipeline,
+)
+from tcspc_toolkit.representations import (
+    augment_with_total_counts,
+    fit_pca_representation,
+    normalize_histogram_batch,
+    transform_pca_representation,
+)
 from tcspc_toolkit.simulation import (
     simulate_irf_convolved_histogram,
 )
@@ -130,6 +145,35 @@ class RegressionBenchmarkResult:
     y_pred: FloatArray
     relative_errors: FloatArray
     metrics: RegressionMetrics
+
+
+@dataclass(frozen=True)
+class HistogramRepresentations:
+    """Derived train/test histogram representations for ML benchmarking.
+
+    Attributes
+    ----------
+    X_normalized_train:
+        TOTAL-normalized training histograms with one histogram per row.
+    X_normalized_test:
+        TOTAL-normalized test histograms with one histogram per row.
+    X_pca_train:
+        PCA-compressed training histograms.
+    X_pca_test:
+        PCA-compressed test histograms transformed using the PCA model
+        fitted only on the training data.
+    pca:
+        PCA transformer fitted exclusively on the normalized training
+        histograms.
+    """
+
+    X_normalized_train: FloatArray
+    X_normalized_test: FloatArray
+
+    X_pca_train: FloatArray
+    X_pca_test: FloatArray
+
+    pca: PCA
 
 
 def generate_benchmark_measurements(
@@ -525,6 +569,68 @@ def split_benchmark_dataset(
         metadata_test=dataset.metadata.iloc[
             test_indices
         ].reset_index(drop=True),
+    )
+
+
+def build_histogram_representations(
+    split: BenchmarkSplit,
+    *,
+    n_pca_components: int = 10,
+) -> HistogramRepresentations:
+    """Build normalized and PCA-compressed histogram representations.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing raw TCSPC
+        histograms.
+    n_pca_components:
+        Number of principal components retained from the normalized
+        training histograms.
+
+    Returns
+    -------
+    HistogramRepresentations
+        TOTAL-normalized train/test histograms, PCA-compressed
+        train/test representations, and the fitted PCA transformer.
+
+    Notes
+    -----
+    PCA is fitted exclusively on the normalized training histograms.
+    The test histograms are transformed using the already fitted PCA
+    model and therefore do not contribute to PCA fitting.
+    """
+    X_normalized_train = normalize_histogram_batch(
+        histograms=split.X_histograms_train,
+        mode=CountNormalization.TOTAL,
+    )
+
+    X_normalized_test = normalize_histogram_batch(
+        histograms=split.X_histograms_test,
+        mode=CountNormalization.TOTAL,
+    )
+
+    pca = fit_pca_representation(
+        X_train=X_normalized_train,
+        n_components=n_pca_components,
+    )
+
+    X_pca_train = transform_pca_representation(
+        pca=pca,
+        X=X_normalized_train,
+    )
+
+    X_pca_test = transform_pca_representation(
+        pca=pca,
+        X=X_normalized_test,
+    )
+
+    return HistogramRepresentations(
+        X_normalized_train=X_normalized_train,
+        X_normalized_test=X_normalized_test,
+        X_pca_train=X_pca_train,
+        X_pca_test=X_pca_test,
+        pca=pca,
     )
 
 
@@ -961,6 +1067,251 @@ def evaluate_regressor(
         y_true=y_test_array,
         y_pred=predictions,
     )
+
+
+def evaluate_ridge_representation_benchmark(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Compare TCSPC input representations using Ridge regression.
+
+    The benchmark keeps the train/test samples, lifetime targets,
+    estimator family, and evaluation metrics fixed while changing only
+    the input representation.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing engineered
+        features and lifetime targets.
+    representations:
+        TOTAL-normalized and PCA-compressed histogram representations
+        derived from the same benchmark split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Ridge-regression results for engineered features,
+        TOTAL-normalized histogram bins, and PCA-compressed
+        normalized histograms.
+
+    Notes
+    -----
+    A fresh Ridge pipeline is created for each representation so that
+    every estimator is fitted independently from scratch.
+    """
+    results = {
+        "engineered_features": evaluate_regressor(
+            estimator_name="ridge_engineered_features",
+            estimator=make_ridge_pipeline(),
+            X_train=split.X_features_train,
+            y_train=split.y_train,
+            X_test=split.X_features_test,
+            y_test=split.y_test,
+        ),
+        "normalized_histogram": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_normalized_train,
+            y_train=split.y_train,
+            X_test=representations.X_normalized_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram": evaluate_regressor(
+            estimator_name="ridge_pca_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_pca_train,
+            y_train=split.y_train,
+            X_test=representations.X_pca_test,
+            y_test=split.y_test,
+        ),
+    }
+
+    return results
+
+
+def evaluate_photon_count_ablation(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Test the effect of restoring total photon-count information.
+
+    The benchmark compares TOTAL-normalized and PCA-compressed
+    histogram representations both with and without the measured
+    total photon count appended as an additional feature.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split.
+    representations:
+        Normalized and PCA-compressed histogram representations
+        derived from the same split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Ridge-regression results for normalized and PCA histogram
+        representations with and without total-count information.
+
+    Notes
+    -----
+    The appended total count is calculated from each measured raw
+    histogram. Simulation photon-count targets and other metadata are
+    not provided to the regressors.
+
+    Fresh Ridge pipelines are fitted independently for all four
+    comparisons.
+    """
+    X_normalized_with_counts_train = augment_with_total_counts(
+        X_representation=representations.X_normalized_train,
+        histograms=split.X_histograms_train,
+    )
+
+    X_normalized_with_counts_test = augment_with_total_counts(
+        X_representation=representations.X_normalized_test,
+        histograms=split.X_histograms_test,
+    )
+
+    X_pca_with_counts_train = augment_with_total_counts(
+        X_representation=representations.X_pca_train,
+        histograms=split.X_histograms_train,
+    )
+
+    X_pca_with_counts_test = augment_with_total_counts(
+        X_representation=representations.X_pca_test,
+        histograms=split.X_histograms_test,
+    )
+
+    return {
+        "normalized_histogram": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_normalized_train,
+            y_train=split.y_train,
+            X_test=representations.X_normalized_test,
+            y_test=split.y_test,
+        ),
+        "normalized_histogram_with_total_counts": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram_with_total_counts",
+            estimator=make_ridge_pipeline(),
+            X_train=X_normalized_with_counts_train,
+            y_train=split.y_train,
+            X_test=X_normalized_with_counts_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram": evaluate_regressor(
+            estimator_name="ridge_pca_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_pca_train,
+            y_train=split.y_train,
+            X_test=representations.X_pca_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram_with_total_counts": evaluate_regressor(
+            estimator_name="ridge_pca_histogram_with_total_counts",
+            estimator=make_ridge_pipeline(),
+            X_train=X_pca_with_counts_train,
+            y_train=split.y_train,
+            X_test=X_pca_with_counts_test,
+            y_test=split.y_test,
+        ),
+    }
+
+
+def evaluate_nonlinear_representation_benchmark(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[
+    str,
+    dict[str, RegressionBenchmarkResult],
+]:
+    """Compare TCSPC representations using nonlinear regressors.
+
+    The benchmark evaluates Random Forest and histogram gradient
+    boosting on the same engineered-feature, TOTAL-normalized
+    histogram, and PCA-compressed histogram representations.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing engineered
+        features and lifetime targets.
+    representations:
+        TOTAL-normalized and PCA-compressed histogram representations
+        derived from the same benchmark split.
+
+    Returns
+    -------
+    dict[str, dict[str, RegressionBenchmarkResult]]
+        Nested benchmark results grouped first by model family and
+        then by input representation.
+
+    Notes
+    -----
+    All model families use exactly the same training samples, test
+    samples, and lifetime targets.
+
+    Fresh estimators are created for every representation so that
+    each model is fitted independently from scratch.
+
+    The models use their predefined benchmark hyperparameters.
+    Hyperparameter tuning is deliberately excluded from this
+    representation comparison.
+    """
+    representation_data = {
+        "engineered_features": (
+            split.X_features_train,
+            split.X_features_test,
+        ),
+        "normalized_histogram": (
+            representations.X_normalized_train,
+            representations.X_normalized_test,
+        ),
+        "pca_histogram": (
+            representations.X_pca_train,
+            representations.X_pca_test,
+        ),
+    }
+
+    model_factories = {
+        "random_forest": make_random_forest_pipeline,
+        "hist_gradient_boosting": (
+            make_hist_gradient_boosting_pipeline
+        ),
+    }
+
+    results: dict[
+        str,
+        dict[str, RegressionBenchmarkResult],
+    ] = {}
+
+    for model_name, make_estimator in model_factories.items():
+        model_results: dict[
+            str,
+            RegressionBenchmarkResult,
+        ] = {}
+
+        for (
+            representation_name,
+            (X_train, X_test),
+        ) in representation_data.items():
+            model_results[
+                representation_name
+            ] = evaluate_regressor(
+                estimator_name=(
+                    f"{model_name}_{representation_name}"
+                ),
+                estimator=make_estimator(),
+                X_train=X_train,
+                y_train=split.y_train,
+                X_test=X_test,
+                y_test=split.y_test,
+            )
+
+        results[model_name] = model_results
+
+    return results
 
 
 def evaluate_baselines(

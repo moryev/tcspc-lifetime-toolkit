@@ -8,9 +8,13 @@ from tcspc_toolkit.ml_evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,
     build_benchmark_dataset,
+    build_histogram_representations,
     evaluate_baselines,
+    evaluate_nonlinear_representation_benchmark,
     evaluate_regression,
     evaluate_regressor,
+    evaluate_ridge_representation_benchmark,
+    evaluate_photon_count_ablation,
     generate_benchmark_measurements,
     split_benchmark_dataset,
     summarize_split_coverage,
@@ -1300,5 +1304,252 @@ def test_evaluate_regressor_rejects_misaligned_training_samples() -> None:
             X_test=X_test,
             y_test=y_test,
         )
+
+
+def test_build_histogram_representations_has_expected_shapes() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    assert representations.X_normalized_train.shape == (
+        split.X_histograms_train.shape
+    )
+
+    assert representations.X_normalized_test.shape == (
+        split.X_histograms_test.shape
+    )
+
+    assert representations.X_pca_train.shape == (
+        split.y_train.size,
+        2,
+    )
+
+    assert representations.X_pca_test.shape == (
+        split.y_test.size,
+        2,
+    )
+
+    np.testing.assert_allclose(
+        representations.X_normalized_train.sum(axis=1),
+        1.0,
+    )
+
+    np.testing.assert_allclose(
+        representations.X_normalized_test.sum(axis=1),
+        1.0,
+    )
+
+
+def test_build_histogram_representations_fits_pca_on_training_data_only() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    expected_training_mean = (
+        representations.X_normalized_train.mean(axis=0)
+    )
+
+    np.testing.assert_allclose(
+        representations.pca.mean_,
+        expected_training_mean,
+    )
+
+
+def test_ridge_representation_benchmark_evaluates_all_representations() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    results = evaluate_ridge_representation_benchmark(
+        split,
+        representations,
+    )
+
+    assert set(results) == {
+        "engineered_features",
+        "normalized_histogram",
+        "pca_histogram",
+    }
+
+    for result in results.values():
+        assert result.y_pred.shape == split.y_test.shape
+        assert np.all(np.isfinite(result.y_pred))
+
+
+def test_ridge_representation_benchmark_uses_stable_names() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    results = evaluate_ridge_representation_benchmark(
+        split,
+        representations,
+    )
+
+    assert (
+        results["engineered_features"].estimator_name
+        == "ridge_engineered_features"
+    )
+
+    assert (
+        results["normalized_histogram"].estimator_name
+        == "ridge_normalized_histogram"
+    )
+
+    assert (
+        results["pca_histogram"].estimator_name
+        == "ridge_pca_histogram"
+    )
+
+
+def test_photon_count_ablation_evaluates_all_representations() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    results = evaluate_photon_count_ablation(
+        split,
+        representations,
+    )
+
+    assert set(results) == {
+        "normalized_histogram",
+        "normalized_histogram_with_total_counts",
+        "pca_histogram",
+        "pca_histogram_with_total_counts",
+    }
+
+    for result in results.values():
+        assert result.y_pred.shape == split.y_test.shape
+        assert np.all(np.isfinite(result.y_pred))
+
+
+def test_nonlinear_representation_benchmark_evaluates_all_combinations() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    results = evaluate_nonlinear_representation_benchmark(
+        split,
+        representations,
+    )
+
+    assert set(results) == {
+        "random_forest",
+        "hist_gradient_boosting",
+    }
+
+    expected_representations = {
+        "engineered_features",
+        "normalized_histogram",
+        "pca_histogram",
+    }
+
+    for model_results in results.values():
+        assert set(model_results) == (
+            expected_representations
+        )
+
+        for result in model_results.values():
+            assert result.y_pred.shape == (
+                split.y_test.shape
+            )
+
+            assert np.all(
+                np.isfinite(result.y_pred)
+            )
+
+
+
+def test_nonlinear_representation_benchmark_uses_stable_names() -> None:
+    dataset = _make_benchmark_dataset()
+
+    split = split_benchmark_dataset(
+        dataset,
+        test_size=0.3,
+        random_state=42,
+    )
+
+    representations = build_histogram_representations(
+        split,
+        n_pca_components=2,
+    )
+
+    results = evaluate_nonlinear_representation_benchmark(
+        split,
+        representations,
+    )
+
+    assert (
+        results[
+            "random_forest"
+        ][
+            "engineered_features"
+        ].estimator_name
+        == "random_forest_engineered_features"
+    )
+
+    assert (
+        results[
+            "hist_gradient_boosting"
+        ][
+            "pca_histogram"
+        ].estimator_name
+        == "hist_gradient_boosting_pca_histogram"
+    )
 
 
