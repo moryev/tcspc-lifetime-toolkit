@@ -1,3 +1,5 @@
+"""ML benchmarking for TCSPC lifetime estimation."""
+
 from dataclasses import dataclass
 from itertools import product
 
