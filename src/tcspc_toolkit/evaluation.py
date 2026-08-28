@@ -206,3 +206,64 @@ def calculate_poisson_deviance_residuals(
     )
 
     return residual_sign * np.sqrt(deviance)
+
+
+def calculate_lifetime_errors(
+    true_lifetimes: NDArray[np.float64],
+    estimated_lifetimes: NDArray[np.float64],
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """Calculate signed, absolute, and relative lifetime errors."""
+
+    if true_lifetimes.ndim != 1:
+        raise ValueError(
+            "true_lifetimes must be one-dimensional"
+        )
+
+    if estimated_lifetimes.ndim != 1:
+        raise ValueError(
+            "estimated_lifetimes must be one-dimensional"
+        )
+
+    if true_lifetimes.shape != estimated_lifetimes.shape:
+        raise ValueError(
+            "true_lifetimes and estimated_lifetimes "
+            "must have the same shape"
+        )
+
+    if not np.all(
+        np.isfinite(true_lifetimes)
+    ):
+        raise ValueError(
+            "true_lifetimes must contain only finite values"
+        )
+
+    if np.any(
+        true_lifetimes <= 0.0
+    ):
+        raise ValueError(
+            "true_lifetimes must be positive"
+        )
+
+    signed_error = (
+        estimated_lifetimes
+        - true_lifetimes
+    )
+
+    absolute_error = np.abs(
+        signed_error
+    )
+
+    relative_error = (
+        absolute_error
+        / true_lifetimes
+    )
+
+    return (
+        signed_error,
+        absolute_error,
+        relative_error,
+    )
