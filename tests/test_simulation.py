@@ -4,6 +4,7 @@ import pytest
 from tcspc_toolkit.simulation import (
     sample_photon_counts,
     simulate_biexponential_decay,
+    simulate_irf_convolved_biexponential_histogram,
     simulate_irf_convolved_histogram,
     simulate_monoexponential_decay,
     simulate_multiexponential_decay,
@@ -429,5 +430,123 @@ def test_irf_convolved_simulation_is_reproducible() -> None:
     )
 
     assert metadata_a == metadata_b
+
+
+def test_irf_convolved_biexponential_histogram_returns_expected_outputs() -> None:
+    time = np.linspace(
+        0.0,
+        20.0,
+        512,
+        dtype=np.float64,
+    )
+
+    counts, metadata = (
+        simulate_irf_convolved_biexponential_histogram(
+            time=time,
+            primary_lifetime_ns=2.0,
+            secondary_lifetime_ns=4.0,
+            secondary_fraction=0.10,
+            signal_photon_count=10_000,
+            background_per_bin=1.0,
+            irf_centre_ns=2.0,
+            irf_fwhm_ns=0.3,
+            irf_shift_ns=0.05,
+            rng=np.random.default_rng(42),
+        )
+    )
+
+    assert counts.shape == time.shape
+    assert np.issubdtype(
+        counts.dtype,
+        np.integer,
+    )
+
+    assert metadata[
+        "primary_lifetime_ns"
+    ] == pytest.approx(2.0)
+
+    assert metadata[
+        "secondary_lifetime_ns"
+    ] == pytest.approx(4.0)
+
+    assert metadata[
+        "secondary_fraction"
+    ] == pytest.approx(0.10)
+
+    assert metadata[
+        "expected_signal_counts"
+    ] == pytest.approx(10_000.0)
+
+
+def test_irf_convolved_biexponential_histogram_is_reproducible() -> None:
+    time = np.linspace(
+        0.0,
+        20.0,
+        512,
+        dtype=np.float64,
+    )
+
+    kwargs = {
+        "time": time,
+        "primary_lifetime_ns": 2.0,
+        "secondary_lifetime_ns": 4.0,
+        "secondary_fraction": 0.10,
+        "signal_photon_count": 10_000,
+        "background_per_bin": 1.0,
+        "irf_centre_ns": 2.0,
+        "irf_fwhm_ns": 0.3,
+        "irf_shift_ns": 0.05,
+    }
+
+    counts_1, _ = (
+        simulate_irf_convolved_biexponential_histogram(
+            **kwargs,
+            rng=np.random.default_rng(42),
+        )
+    )
+
+    counts_2, _ = (
+        simulate_irf_convolved_biexponential_histogram(
+            **kwargs,
+            rng=np.random.default_rng(42),
+        )
+    )
+
+    np.testing.assert_array_equal(
+        counts_1,
+        counts_2,
+    )
+
+
+@pytest.mark.parametrize(
+    "secondary_fraction",
+    [-0.1, 1.0, 1.1],
+)
+def test_irf_convolved_biexponential_histogram_rejects_invalid_fraction(
+    secondary_fraction: float,
+) -> None:
+    time = np.linspace(
+        0.0,
+        20.0,
+        128,
+        dtype=np.float64,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="secondary_fraction",
+    ):
+        simulate_irf_convolved_biexponential_histogram(
+            time=time,
+            primary_lifetime_ns=2.0,
+            secondary_lifetime_ns=4.0,
+            secondary_fraction=secondary_fraction,
+            signal_photon_count=1_000,
+            background_per_bin=0.0,
+            irf_centre_ns=2.0,
+            irf_fwhm_ns=0.3,
+            irf_shift_ns=0.0,
+            rng=np.random.default_rng(42),
+        )
 
 

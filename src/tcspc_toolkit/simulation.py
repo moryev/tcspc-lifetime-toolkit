@@ -216,6 +216,242 @@ def simulate_irf_convolved_histogram(
     )
 
 
+def simulate_irf_convolved_biexponential_histogram(
+    *,
+    time: NDArray[np.float64],
+    primary_lifetime_ns: float,
+    secondary_lifetime_ns: float,
+    secondary_fraction: float,
+    signal_photon_count: int,
+    background_per_bin: float,
+    irf_centre_ns: float,
+    irf_fwhm_ns: float,
+    irf_shift_ns: float,
+    rng: np.random.Generator,
+) -> tuple[
+    NDArray[np.int64],
+    dict[str, float],
+]:
+    """Simulate a weakly bi-exponential IRF-convolved TCSPC histogram.
+
+    ``secondary_fraction`` specifies the fraction of expected detected
+    signal photons contributed by the secondary lifetime component
+    within the simulated measurement window.
+    """
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    if not np.isfinite(primary_lifetime_ns):
+        raise ValueError(
+            "primary_lifetime_ns must be finite."
+        )
+
+    if primary_lifetime_ns <= 0.0:
+        raise ValueError(
+            "primary_lifetime_ns must be positive."
+        )
+
+    if not np.isfinite(secondary_lifetime_ns):
+        raise ValueError(
+            "secondary_lifetime_ns must be finite."
+        )
+
+    if secondary_lifetime_ns <= 0.0:
+        raise ValueError(
+            "secondary_lifetime_ns must be positive."
+        )
+
+    if not np.isfinite(secondary_fraction):
+        raise ValueError(
+            "secondary_fraction must be finite."
+        )
+
+    if not (
+        0.0
+        <= secondary_fraction
+        < 1.0
+    ):
+        raise ValueError(
+            "secondary_fraction must lie in [0, 1)."
+        )
+
+    if (
+        isinstance(signal_photon_count, (bool, np.bool_))
+        or not isinstance(
+            signal_photon_count,
+            (int, np.integer),
+        )
+    ):
+        raise ValueError(
+            "signal_photon_count must be an integer."
+        )
+
+    if signal_photon_count <= 0:
+        raise ValueError(
+            "signal_photon_count must be positive."
+        )
+
+    if not np.isfinite(background_per_bin):
+        raise ValueError(
+            "background_per_bin must be finite."
+        )
+
+    if background_per_bin < 0.0:
+        raise ValueError(
+            "background_per_bin must be non-negative."
+        )
+
+    primary_decay = monoexponential_decay(
+        time=time_array,
+        amplitude=1.0,
+        lifetime=primary_lifetime_ns,
+        background=0.0,
+    )
+
+    secondary_decay = monoexponential_decay(
+        time=time_array,
+        amplitude=1.0,
+        lifetime=secondary_lifetime_ns,
+        background=0.0,
+    )
+
+    irf = generate_gaussian_irf(
+        time=time_array,
+        centre=irf_centre_ns,
+        fwhm=irf_fwhm_ns,
+    )
+
+    irf = normalize_irf(
+        time=time_array,
+        irf=irf,
+    )
+
+    irf = shift_irf(
+        time=time_array,
+        irf=irf,
+        shift=irf_shift_ns,
+    )
+
+    irf = normalize_irf(
+        time=time_array,
+        irf=irf,
+    )
+
+    primary_convolved = convolve_decay_with_irf(
+        time=time_array,
+        decay=primary_decay,
+        irf=irf,
+    )
+
+    secondary_convolved = convolve_decay_with_irf(
+        time=time_array,
+        decay=secondary_decay,
+        irf=irf,
+    )
+
+    primary_sum = float(
+        np.sum(primary_convolved)
+    )
+
+    secondary_sum = float(
+        np.sum(secondary_convolved)
+    )
+
+    if (
+        not np.isfinite(primary_sum)
+        or primary_sum <= 0.0
+    ):
+        raise ValueError(
+            "Primary convolved signal must have "
+            "a positive finite sum."
+        )
+
+    if (
+        not np.isfinite(secondary_sum)
+        or secondary_sum <= 0.0
+    ):
+        raise ValueError(
+            "Secondary convolved signal must have "
+            "a positive finite sum."
+        )
+
+    primary_shape = (
+        primary_convolved
+        / primary_sum
+    )
+
+    secondary_shape = (
+        secondary_convolved
+        / secondary_sum
+    )
+
+    expected_signal = float(
+        signal_photon_count
+    ) * (
+        (1.0 - secondary_fraction)
+        * primary_shape
+        + secondary_fraction
+        * secondary_shape
+    )
+
+    expected_counts = (
+        expected_signal
+        + background_per_bin
+    )
+
+    measured_counts = sample_photon_counts(
+        expected_counts=expected_counts,
+        rng=rng,
+    )
+
+    simulation_metadata = {
+        "lifetime_true_ns": float(
+            primary_lifetime_ns
+        ),
+        "primary_lifetime_ns": float(
+            primary_lifetime_ns
+        ),
+        "secondary_lifetime_ns": float(
+            secondary_lifetime_ns
+        ),
+        "secondary_fraction": float(
+            secondary_fraction
+        ),
+        "signal_photon_count_target": float(
+            signal_photon_count
+        ),
+        "background_per_bin": float(
+            background_per_bin
+        ),
+        "irf_fwhm_ns": float(
+            irf_fwhm_ns
+        ),
+        "irf_shift_ns": float(
+            irf_shift_ns
+        ),
+        "expected_signal_counts": float(
+            expected_signal.sum()
+        ),
+        "expected_background_counts": float(
+            background_per_bin
+            * time_array.size
+        ),
+        "expected_total_counts": float(
+            expected_counts.sum()
+        ),
+        "measured_total_counts": float(
+            measured_counts.sum()
+        ),
+    }
+
+    return (
+        measured_counts,
+        simulation_metadata,
+    )
+
+
 def simulate_monoexponential_decay(
     time: NDArray[np.float64],
     amplitude: float,
