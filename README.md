@@ -22,12 +22,35 @@ This project separates TCSPC analysis into reusable physical, statistical, and d
 6. estimate physical parameters using ordinary or IRF-aware reconvolution fitting;
 7. evaluate fitted models using lifetime errors, raw residuals, and Poisson-aware residual diagnostics;
 8. generate controlled synthetic datasets for machine-learning experiments;
-9. train and evaluate baseline data-driven lifetime estimators;
-10. compare ordinary and group-aware evaluation strategies to identify potential data leakage.
+9. construct reproducible train/test splits shared across estimator and representation benchmarks;
+10. evaluate statistical, physics-inspired, linear, and nonlinear lifetime estimators;
+11. compare engineered features, normalized histograms, and PCA-compressed representations;
+12. benchmark classical reconvolution and ML under controlled lifetime, photon-count, background, IRF-width, and IRF-shift regimes;
+13. introduce controlled model mismatch and quantify estimator degradation;
+14. benchmark inference runtime and throughput alongside predictive accuracy.
 
-The current implementation provides a transparent classical fitting workflow together with preliminary machine-learning pipelines based on synthetic TCSPC histograms. Classical inference includes ordinary mono-exponential least-squares fitting, IRF-aware least-squares reconvolution, and Poisson maximum-likelihood reconvolution. The toolkit also provides Gaussian IRF modelling, numerical convolution, Poisson photon-count simulation, Poisson-aware residual diagnostics, grouped synthetic datasets, baseline regression models, and leakage-aware evaluation.
+The current implementation provides a reproducible framework for both
+classical and data-driven TCSPC lifetime estimation.
 
-The longer-term goal is to provide a reproducible framework in which classical and data-driven lifetime estimators can be compared under controlled variations of fluorescence lifetime, photon budget, instrument response, noise conditions, and eventually experimental model mismatch.
+Classical inference includes ordinary mono-exponential least-squares fitting,
+IRF-aware least-squares reconvolution, and Poisson maximum-likelihood
+reconvolution with simultaneous estimation of amplitude, lifetime, detector
+background, and temporal IRF shift.
+
+The machine-learning workflow now includes physically inspired baselines,
+scikit-learn regression pipelines, controlled representation benchmarks,
+conditional evaluation across physical operating regimes, comparison with
+classical reconvolution, controlled model-mismatch experiments, and inference
+timing.
+
+Synthetic benchmark datasets can vary fluorescence lifetime, signal photon
+count, detector background, IRF width, and IRF temporal shift while retaining
+explicit ground-truth metadata and reproducible train/test splits.
+
+The central scientific objective is not simply to demonstrate that machine
+learning can predict fluorescence lifetime, but to determine under which
+photon-count, background, IRF, and model-mismatch conditions data-driven
+estimation outperforms, matches, or complements physically explicit fitting.
 
 ## Current functionality
 
@@ -58,6 +81,28 @@ The current version supports:
 * leakage-safe PCA workflows with fitting restricted to training data and separate transformation of training and test samples;
 * explained-variance analysis for PCA representations;
 * immutable simulation, preprocessing, and feature configuration dataclasses;
+* reproducible factorial benchmark generation with controlled variation of fluorescence lifetime, signal photon count, detector background, IRF width, and IRF temporal shift;
+* shared train-test splits preserving aligned engineered-feature, raw-histogram, target, and metadata representations;
+* train/test support and level-balance diagnostics for controlled benchmark variables;
+* constant-mean regression baselines;
+* physics-inspired mean-arrival-time lifetime estimation;
+* reusable scikit-learn pipelines for Ridge regression, Random Forest regression, and Histogram Gradient Boosting regression;
+* unified regression evaluation using MAE, median absolute error, RMSE, relative error, and $R^2$;
+* controlled representation benchmarking using the same samples, targets, and estimator family across engineered features, TOTAL-normalized histograms, and PCA-compressed histograms;
+* photon-count ablation experiments that restore measured total counts to normalized histogram representations;
+* batch classical reconvolution benchmarking with histogram-derived initial guesses;
+* per-curve reconvolution diagnostics including fitted lifetime, optimizer success, fit validity, parameter-boundary hits, Poisson negative log-likelihood, Poisson deviance, and optimizer runtime;
+* aggregate classical-fit summaries including fit success/failure rate, MAE, median absolute error, RMSE, and runtime statistics;
+* standardized per-sample diagnostics shared by ML and classical estimators;
+* reusable benchmark plots for true-versus-predicted lifetime, signed and absolute error distributions, error versus physical conditions, and paired estimator comparison;
+* conditional performance analysis across lifetime, photon-count, background, IRF-width, and IRF-misalignment regimes;
+* regime-level summaries including MAE, median absolute error, bias, 90th- and 95th-percentile absolute errors, and failure rate;
+* matched weakly bi-exponential model-mismatch simulation while preserving primary lifetime and nuisance conditions sample-by-sample;
+* direct comparison of ML distribution shift and classical forward-model mismatch;
+* mismatch summaries reporting in-distribution and mismatch MAE, MAE degradation, bias changes, and failure rates;
+* repeated batch inference timing for mean-arrival and machine-learning estimators;
+* reuse of recorded per-curve reconvolution optimization runtimes for computational-cost comparison;
+* estimator-throughput and accuracy-versus-runtime benchmarking.
 * JSON serialization and loading of configuration objects using `pathlib`;
 * metadata-based selection of machine-learning targets;
 * nonlinear least-squares mono-exponential lifetime fitting;
@@ -75,7 +120,11 @@ The current version supports:
 * random and group-aware train-test evaluation;
 * data-leakage analysis for repeated noisy realizations;
 * CSV export of simulated and evaluated data;
-* Jupyter notebooks demonstrating classical fitting, realistic TCSPC simulation, reconvolution fitting, Poisson-aware validation, machine-learning baselines, and grouped evaluation workflows.
+* Jupyter notebooks demonstrating classical fitting, realistic TCSPC simulation,
+  reconvolution fitting, Poisson-aware validation, preprocessing, feature
+  engineering, leakage-safe representations, classical-versus-ML benchmarking,
+  conditional performance analysis, controlled model mismatch, and inference
+  timing.
 
 ## Current scientific assumptions
 
@@ -313,10 +362,10 @@ Cropping before reconvolution should be distinguished from selecting a fitting w
 
 The guiding design principle is therefore:
 
-```text
-Preprocessing choices should follow the scientific question and statistical model
-rather than being imposed by the software architecture.
-```
+
+> **Preprocessing choices should follow the scientific question and statistical model
+> rather than being imposed by the software architecture.**
+
 
 ## Machine-learning representations
 
@@ -370,10 +419,43 @@ derived temporal descriptors, whereas Poisson reconvolution fitting should
 generally retain the original photon counts and background statistics.
 
 ## Current implementation status
-**Version 0.5 extends the realistic TCSPC workflow with physically interpretable feature engineering and reproducible machine-learning representations.  
-The toolkit currently supports mono-exponential least-squares and Poisson maximum-likelihood reconvolution with simultaneous estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift, together with reusable, analysis-dependent preprocessing including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and total- or peak-count normalization.  
-For machine-learning workflows, raw TCSPC histograms can now be represented as engineered physical features, normalized histogram bins, or PCA-compressed histograms. The engineered-feature layer includes photon-count descriptors, photon-arrival moments, cumulative-arrival quantiles, half-decay timing, tail characteristics, and early/late count relationships, with a stable schema and batch feature-table construction. PCA fitting is explicitly restricted to training data to prevent information leakage, and the same sample split can be reused consistently across all three representations.  
-Raw photon counts and background statistics remain the preferred inputs for Poisson-likelihood reconvolution, whereas normalization, engineered features, and PCA are intended primarily for exploratory analysis and machine-learning representations. The IRF shape and width are currently treated as known and fixed during fitting. The numerical workflow assumes a uniform time grid and currently uses a Gaussian IRF model. Automatic background-region detection, noise-aware peak estimation, experimental IRF loading and calibration, fitted IRF width, multi-exponential reconvolution, advanced detector effects such as pile-up, dead time, and afterpulsing, calibrated confidence intervals, and full machine-learning benchmarking under controlled nuisance variation and model mismatch are not yet included.**
+**Version 0.6 extends the toolkit from machine-learning representation
+construction to a reproducible classical-versus-data-driven TCSPC lifetime
+benchmarking framework.
+The toolkit now supports controlled factorial benchmark datasets spanning
+fluorescence lifetime, signal photon count, detector background, Gaussian IRF
+width, and temporal IRF shift. A common reproducible train/test split can be
+reused across statistical baselines, the physics-inspired mean-arrival-time
+estimator, Ridge regression, Random Forest regression, Histogram Gradient
+Boosting regression, representation benchmarks, and classical
+mono-exponential reconvolution fitting.
+Machine-learning inputs can be represented as physically engineered features,
+TOTAL-normalized histogram bins, or leakage-safe PCA-compressed histograms.
+Controlled representation benchmarks isolate the effect of representation
+while keeping samples, targets, and estimator families fixed, and photon-count
+ablation experiments test the information removed by TOTAL normalization.
+Classical reconvolution benchmarking now records fitted lifetime, optimizer
+success and validity, parameter-boundary hits, Poisson likelihood/deviance
+diagnostics, and per-curve optimization runtime. ML and classical results are
+converted into a common diagnostic representation so that performance can be
+analysed conditionally across lifetime, photon-count, background, IRF-width,
+and IRF-misalignment regimes using MAE, median absolute error, bias,
+upper-tail error quantiles, and failure rate.
+Version 0.6 also introduces controlled model-mismatch evaluation through
+matched weakly bi-exponential test curves. ML estimators remain trained on
+mono-exponential data while classical reconvolution continues to use a
+mono-exponential forward model, allowing distribution shift and physical
+model misspecification to be compared directly.
+Estimator-only computational benchmarking reports repeated batch inference
+time and throughput for the physics-inspired and ML estimators together with
+the recorded optimization cost of classical reconvolution.
+The present implementation still assumes a uniform time grid and Gaussian IRF
+model. Classical reconvolution currently treats the IRF shape and width as
+fixed during an individual fit, although benchmark datasets can contain
+controlled IRF-width variation. Experimental IRF loading, fitted IRF width,
+multi-exponential reconvolution fitting, detector effects such as pile-up,
+dead time and afterpulsing, calibrated uncertainty intervals, experimental
+file-format import, and deep-learning estimators remain future extensions.**
 
 ## Installation
 
@@ -767,6 +849,32 @@ Demonstrates:
 * construction of aligned engineered-feature, normalized-histogram, and PCA-compressed input matrices;
 * comparison of the scientific advantages and limitations of all three machine-learning representations.
 
+### `12_ml_benchmarking.ipynb`
+
+Demonstrates:
+
+* construction of a reproducible 810-curve factorial TCSPC benchmark spanning fluorescence lifetime, signal photon count, detector background, IRF width, and IRF temporal shift;
+* construction of a fixed 80/20 train-test split with explicit support and parameter-balance checks;
+* adaptation of engineered-feature windows to remain valid across a broad 0.5–6 ns lifetime range;
+* evaluation of constant-mean and physics-inspired mean-arrival-time baselines;
+* training and evaluation of Ridge, Random Forest, and Histogram Gradient Boosting regressors using the same engineered-feature representation;
+* comparison of engineered features, TOTAL-normalized 400-bin histograms, and 10-component PCA representations under controlled Ridge and nonlinear-model benchmarks;
+* analysis of PCA explained variance and the distinction between total histogram variance and lifetime-predictive information;
+* photon-count ablation by restoring measured total counts to normalized and PCA representations;
+* Poisson reconvolution benchmarking using a nominal Gaussian IRF with fitted amplitude, lifetime, background, and temporal shift;
+* direct aggregate and paired comparison of classical reconvolution with engineered-feature ML;
+* conditional analysis across short/medium/long lifetime, low/medium/high photon count, low/medium/high background, narrow/medium/broad IRF width, and small/medium/large IRF-misalignment regimes;
+* reporting of MAE, median absolute error, bias, 90th- and 95th-percentile absolute errors, failure rates, and classical parameter-boundary diagnostics;
+* demonstration that the preferred estimator changes across physical operating regimes rather than following a universal global ordering;
+* generation of matched weakly bi-exponential test curves with a 10% slow secondary component while preserving the original primary lifetime and nuisance conditions;
+* comparison of ML distribution shift with classical mono-exponential forward-model mismatch;
+* analysis of mismatch-induced MAE degradation, lifetime bias, fit validity, and per-curve error changes;
+* repeated batch inference timing for mean-arrival, Ridge, Random Forest, and Histogram Gradient Boosting estimators;
+* comparison with recorded per-curve classical reconvolution optimization runtimes;
+* analysis of estimator throughput and the accuracy-versus-computational-cost trade-off;
+* final synthesis of when data-driven TCSPC lifetime estimation outperforms, matches, or complements classical reconvolution;
+* explicit discussion of benchmark scope, interpolation limits, model mismatch, and future experimental validation requirements.
+
 ## Repository structure
 
 ```text
@@ -792,13 +900,18 @@ tcspc-lifetime-toolkit/
 │   ├── 08_naive_vs_reconvolution_fitting.ipynb
 │   ├── 09_poisson_reconvolution_fitting_and_validation.ipynb
 │   ├── 10_preprocessing_tcspc_histograms.ipynb
-│   └── 11_feature_engineering.ipynb
+│   ├── 11_feature_engineering.ipynb
+│   └── 12_ml_benchmarking.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
 │       ├── __init__.py
 │       ├── __main__.py
+│       ├── baselines.py
+│       ├── benchmark_plots.py
+│       ├── classical_evaluation.py
 │       ├── cli.py
+│       ├── conditional_evaluation.py
 │       ├── config.py
 │       ├── convolution.py
 │       ├── datasets.py
@@ -807,14 +920,21 @@ tcspc-lifetime-toolkit/
 │       ├── features.py
 │       ├── fitting.py
 │       ├── irf.py
+│       ├── mismatch_evaluation.py
 │       ├── ml_evaluation.py
+│       ├── ml_models.py
 │       ├── models.py
 │       ├── preprocessing.py
 │       ├── representations.py
-│       └── simulation.py
+│       ├── simulation.py
+│       └── timing_evaluation.py
 │
 └── tests/
     ├── conftest.py
+    ├── test_baselines.py
+    ├── test_benchmark_plots.py
+    ├── test_classical_evaluation.py
+    ├── test_conditional_evaluation.py
     ├── test_config.py
     ├── test_convolution.py
     ├── test_datasets.py
@@ -823,19 +943,26 @@ tcspc-lifetime-toolkit/
     ├── test_features.py
     ├── test_fitting.py
     ├── test_irf.py
+    ├── test_mismatch_evaluation.py
     ├── test_ml_evaluation.py
+    ├── test_ml_models.py
     ├── test_models.py
     ├── test_preprocessing.py
     ├── test_preprocessing_integration.py
     ├── test_representations.py
-    └── test_simulation.py
+    ├── test_simulation.py
+    └── test_timing_evaluation.py
 ```
 
 The modules currently have the following responsibilities:
 
 * `__init__.py`: package initialization and definition of the public package interface;
 * `__main__.py`: package entry point for python -m tcspc_toolkit;
+* `baselines.py`: statistical and physics-inspired lifetime-estimation baselines, including constant-mean and mean-arrival-time estimators;
+* `benchmark_plots.py`: reusable visualization utilities for prediction accuracy, error distributions, physical-condition dependence, and paired estimator comparisons;
+* `classical_evaluation.py`: batch mono-exponential reconvolution benchmarking, histogram-derived initialization, fit-validity and boundary diagnostics, Poisson fit statistics, error metrics, and runtime summaries;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
+* `conditional_evaluation.py`: standardized ML/classical prediction diagnostics, numeric regime assignment, and conditional performance summaries across benchmark operating conditions;
 * `config.py`: immutable configuration dataclasses, normalization-mode definitions, and JSON serialization/loading utilities for reproducible simulation and preprocessing workflows;
 * `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
@@ -844,11 +971,14 @@ The modules currently have the following responsibilities:
 * `features.py`: extraction of physically interpretable TCSPC histogram features, including photon-count descriptors, photon-arrival moments, quantile times, half-decay timing, tail characteristics, and early/late count relationships; also defines the stable engineered-feature schema and batch feature-table construction;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
-* `ml_evaluation.py`: regression metrics and diagnostic analyses for machine-learning lifetime predictions;
+* `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
+* `ml_evaluation.py`: reproducible benchmark-dataset construction and splitting, regression metrics, baseline and estimator evaluation, histogram/PCA representation construction, representation benchmarks, photon-count ablation, and split-coverage diagnostics;
+* `ml_models.py`: reusable scikit-learn pipelines for Ridge, Random Forest, and Histogram Gradient Boosting lifetime regression;
 * `models.py`: mathematical decay models;
 * `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent count normalization;
 * `representations.py`: construction of machine-learning representations from TCSPC histograms, including batch histogram normalization, leakage-safe PCA fitting and transformation, and cumulative explained-variance analysis;
 * `simulation.py`: expected-curve generation and Poisson sampling;
+* `timing_evaluation.py`: repeated batch inference timing, reconvolution-runtime summaries, throughput calculation, and computational-cost comparison;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
 * `notebooks/`: documented analysis workflows;
@@ -875,17 +1005,20 @@ The covariance-based standard errors returned by the current least-squares fit s
 
 Planned development stages include:
 
-1. additional synthetic IRF models, automatic and experimental/measured IRF support;
-2. automated preprocessing and initial guesses;
-3. machine-learning lifetime estimation;
-4. benchmarking classical and data-driven methods;
-5. robustness studies under model mismatch; 
-6. a Purcell-enhanced lifetime-sensing demonstration;
-7. support for fitting user-provided experimental TCSPC data;
-8. tools for preparing experimental and synthetic datasets for machine-learning applications;
-9. addition of deep learning models (e.g., CNNs, autoencoders) trained for photon-efficient neural inference and reconstruction from ultra-low photon counts (sparse data);
-10. a graphical user interface.
-11. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to interpret user analysis goals, select and orchestrate appropriate preprocessing, fitting, evaluation, and reporting functions, inspect intermediate results, and provide scientifically grounded explanations while keeping numerical calculations within the deterministic Python core.
+1. additional synthetic IRF models and experimental/measured IRF loading and calibration;
+2. automated and noise-aware preprocessing and initial-guess strategies;
+3. expanded out-of-distribution benchmarks, including unseen lifetime ranges, leave-one-IRF-out evaluation, and cross-instrument tests;
+4. additional model-mismatch scenarios including asymmetric IRFs, structured background, pile-up, dead time, and afterpulsing;
+5. bi- and multi-exponential reconvolution fitting and corresponding classical benchmarks;
+6. calibrated uncertainty estimation and prediction intervals for classical and machine-learning estimators;
+7. a Purcell-enhanced lifetime-sensing demonstration;
+8. support for fitting user-provided experimental TCSPC data and standard experimental file formats;
+9. synthetic-to-real validation using experimental reference measurements;
+10. deep-learning models such as MLPs, 1D CNNs, autoencoders, and photon-efficient neural estimators;
+11. interoperability with established TCSPC/FLIM analysis libraries where scientifically useful;
+12. profiling-driven CPU/GPU acceleration for large-scale inference;
+13. a graphical or interactive benchmark interface;
+14. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to orchestrate deterministic preprocessing, fitting, benchmarking, and reporting functions.
 
 ## Reproducibility
 
@@ -923,7 +1056,7 @@ The present codebase is an educational and scientific-software prototype. It is 
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.5.0,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.6.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).

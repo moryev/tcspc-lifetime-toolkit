@@ -272,3 +272,83 @@ All notable changes to this project will be documented in this file.
   information;
 * PCA components are data-dependent features and must therefore be fitted only
   on training data before transforming validation or test histograms.
+
+
+## [0.6.0] - 2026-08-30
+
+### Added
+
+* reproducible factorial TCSPC benchmark generation with controlled variation of fluorescence lifetime, signal photon count, detector background, IRF width, and IRF temporal shift;
+* shared benchmark train-test splits preserving aligned engineered-feature matrices, raw histograms, lifetime targets, and simulation metadata;
+* train/test support and parameter-level balance diagnostics for controlled benchmark variables;
+* constant-mean regression baseline;
+* physics-inspired mean-arrival-time lifetime estimator;
+* reusable scikit-learn pipelines for Ridge regression, Random Forest regression, and Histogram Gradient Boosting regression;
+* unified regression benchmarking with MAE, median absolute error, RMSE, mean and median relative error, and $R^2$;
+* controlled representation benchmarking across engineered physical features, TOTAL-normalized histogram bins, and PCA-compressed histograms using common samples, targets, and estimator families;
+* photon-count ablation experiments that restore measured total photon counts to normalized and PCA histogram representations;
+* classical reconvolution benchmarking through `classical_evaluation.py`;
+* histogram-derived initial guesses for batch reconvolution fitting;
+* per-curve classical-fit diagnostics including fitted lifetime, optimizer success, fit validity, parameter-boundary hits, Poisson negative log-likelihood, Poisson deviance, runtime, and failure information;
+* aggregate reconvolution summaries including success/failure rates, MAE, median absolute error, RMSE, and runtime statistics;
+* standardized per-sample prediction diagnostics shared by machine-learning and classical estimators;
+* reusable benchmarking plots for true-versus-predicted lifetime, signed and absolute lifetime-error distributions, error versus physical conditions, and paired estimator comparison;
+* conditional performance analysis across lifetime, photon-count, background, IRF-width, and IRF-misalignment regimes;
+* regime-level summaries including sample counts, failure rates, MAE, median absolute error, signed bias, and 90th- and 95th-percentile absolute errors;
+* controlled weakly bi-exponential TCSPC simulation for model-mismatch experiments;
+* matched bi-exponential mismatch datasets preserving primary lifetime, photon-count target, background, IRF width, and IRF shift sample-by-sample;
+* direct comparison of machine-learning distribution shift with classical mono-exponential forward-model mismatch;
+* mismatch summaries reporting in-distribution and mismatch MAE, absolute and relative MAE degradation, bias changes, and failure rates;
+* repeated batch inference timing for mean-arrival, Ridge, Random Forest, and Histogram Gradient Boosting estimators;
+* reuse of recorded per-curve reconvolution optimization runtimes for computational-cost benchmarking;
+* estimator throughput and accuracy-versus-runtime comparison;
+* `baselines.py` for statistical and physics-inspired lifetime-estimation baselines;
+* `ml_models.py` for reusable scikit-learn lifetime-regression pipelines;
+* `classical_evaluation.py` for batch reconvolution benchmarking;
+* `conditional_evaluation.py` for standardized diagnostics and physical-regime analysis;
+* `benchmark_plots.py` for reusable benchmark visualization;
+* `mismatch_evaluation.py` for controlled model-mismatch benchmarking;
+* `timing_evaluation.py` for inference-runtime and throughput evaluation;
+* Notebook 12 (`12_ml_benchmarking.ipynb`) integrating the complete Week 7 classical-versus-machine-learning benchmarking workflow.
+
+### Changed
+
+* extended `ml_evaluation.py` from basic regression evaluation to reproducible benchmark-dataset construction, shared train-test splitting, estimator benchmarking, representation comparison, photon-count ablation, and split diagnostics;
+* extended the synthetic TCSPC workflow from feature and representation construction to full estimator benchmarking under controlled physical nuisance variation;
+* established a common evaluation framework in which statistical baselines, physics-inspired estimators, machine-learning regressors, and classical reconvolution can be compared on the same test samples;
+* established engineered physical features as the primary representation for the Week 7 classical-versus-ML benchmark while retaining normalized histograms and PCA representations for controlled comparison;
+* extended benchmark evaluation beyond aggregate metrics to condition-dependent accuracy, bias, upper-tail error, fitting reliability, and computational cost;
+* established explicit short/medium/long, low/medium/high, narrow/medium/broad, and IRF-misalignment regimes for scientifically interpretable conditional evaluation;
+* extended classical reconvolution evaluation from individual fitting workflows to batch benchmarking with retained fit failures and parameter-boundary diagnostics;
+* established controlled model mismatch as a first-class benchmark dimension rather than treating optimizer convergence as sufficient evidence of physical correctness;
+* established estimator-only inference timing as a separate benchmark from model training and feature construction;
+* updated the README to describe the Version 0.6 benchmarking architecture, Week 7 functionality, Notebook 12, revised package structure, updated limitations, and future development roadmap.
+
+### Notes
+
+* Notebook 12 uses a reproducible 810-curve factorial benchmark spanning six fluorescence lifetimes, three photon-count levels, three background levels, three IRF widths, and five signed IRF shifts;
+* the final benchmark uses a fixed 80/20 train-test split shared across estimator and representation comparisons;
+* the nonlinear engineered-feature models provide the strongest aggregate in-distribution accuracy in the current synthetic benchmark, but estimator ranking changes across physical operating regimes;
+* classical reconvolution remains competitive or superior in selected conditions, including photon-limited measurements and large temporal IRF misalignment;
+* the conditional benchmark demonstrates that classical and data-driven estimators should be treated as complementary rather than universally ordered;
+* PCA preserves a large fraction of normalized-histogram variance but does not necessarily preserve the most lifetime-predictive information;
+* TOTAL normalization intentionally removes absolute photon-count scale, and the photon-count ablation benchmark quantifies the effect of restoring measured total counts;
+* the controlled mismatch benchmark introduces a 10% slow secondary component with `tau_secondary = 2 * tau_primary` while retaining the primary lifetime as the prediction target;
+* machine-learning estimators are not retrained for the mismatch dataset, and classical reconvolution continues to use a mono-exponential forward model;
+* successful numerical reconvolution fitting under model mismatch is explicitly distinguished from recovery of an unbiased physical lifetime;
+* inference timing reports core estimator cost rather than complete raw-histogram-to-lifetime latency;
+* machine-learning timing excludes model training and engineered-feature extraction, while reconvolution timing reuses the recorded numerical-optimization runtime for each curve.
+
+### Limitations
+
+* the final Week 7 benchmark remains based on synthetic TCSPC measurements;
+* train and test subsets share the same discrete lifetime and nuisance-parameter support, so the present ML results primarily characterize interpolation and robustness across familiar physical levels rather than extrapolation to unseen lifetime ranges;
+* the current synthetic IRF remains Gaussian;
+* experimental or measured IRF import and calibration are not yet implemented;
+* classical reconvolution uses a fixed IRF shape and width during an individual fit while temporal IRF shift is fitted;
+* bi-exponential and multi-exponential reconvolution fitting are not yet implemented;
+* the current model-mismatch benchmark covers one controlled weakly bi-exponential perturbation and does not yet include asymmetric IRFs, structured backgrounds, detector pile-up, dead time, or afterpulsing;
+* experimental TCSPC file-format import and synthetic-to-real validation remain future work;
+* calibrated uncertainty estimates and prediction intervals for the benchmarked estimators are not yet implemented;
+* deep-learning lifetime estimators are not yet included;
+* the reported inference benchmark measures estimator-only computational cost rather than complete preprocessing and feature-construction latency.
