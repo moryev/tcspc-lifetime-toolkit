@@ -352,3 +352,33 @@ All notable changes to this project will be documented in this file.
 * calibrated uncertainty estimates and prediction intervals for the benchmarked estimators are not yet implemented;
 * deep-learning lifetime estimators are not yet included;
 * the reported inference benchmark measures estimator-only computational cost rather than complete preprocessing and feature-construction latency.
+
+
+## Unreleased — Week 8 robust evaluation
+
+### Added
+
+* reproducible repeated K-fold cross-validation infrastructure for development-set performance-stability analysis;
+* canonical repeated-CV configuration using five folds, five repeats, and an explicit CV random seed;
+* long-form fold-level CV results containing repeat, fold, training-set size, validation-set size, MAE, median absolute error, RMSE, signed bias, and $R^2$;
+* aggregate repeated-CV summaries reporting mean and sample standard deviation across repeated train-validation partitions;
+* estimator cloning within every CV fold to prevent fitted-state reuse between folds;
+* leakage-safe TOTAL-normalized histogram Ridge pipeline accepting raw TCSPC histograms directly;
+* leakage-safe TOTAL-normalized histogram → PCA → StandardScaler → Ridge pipeline with PCA fitted independently inside every CV training fold;
+* multi-estimator repeated-CV benchmarking using identical deterministic train-validation partitions across models;
+* automated tests for CV reproducibility, fold/repeat accounting, metric aggregation, estimator cloning, PCA leakage prevention, pipeline structure, and canonical Ridge/Random-Forest/Histogram-Gradient-Boosting integration.
+
+### Changed
+
+* extended `ml_models.py` with self-contained raw-histogram regression pipelines suitable for repeated cross-validation;
+* established repeated cross-validation as a development-only operation, separate from the final untouched Week 8 Tests A-F;
+* established raw development histograms, rather than globally precomputed PCA representations, as the required input when evaluating PCA-based models under cross-validation;
+* established mean ± sample-standard-deviation reporting across repeated development-set partitions as the primary CV stability summary.
+
+### Notes
+
+* the canonical Week 8 repeated-CV protocol performs 25 evaluations per model using 5 folds × 5 repeats;
+* cross-validation measures sensitivity to development-set sample allocation and does not replace the final A-F robustness suite;
+* preprocessing steps that estimate dataset-level parameters, including `StandardScaler` and PCA, are fitted independently inside every training fold;
+* TOTAL histogram normalization is stateless because every histogram is normalized by its own total count;
+* Tests A-F remain untouched and are not used for cross-validation, preprocessing fitting, feature selection, hyperparameter selection, or model selection.
