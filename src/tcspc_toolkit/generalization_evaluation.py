@@ -36,6 +36,10 @@ from tcspc_toolkit.generalization_datasets import (
     GeneralizationTestMeasurements,
     build_generalization_time_axis,
 )
+from tcspc_toolkit.irf import (
+    generate_gaussian_irf,
+    normalize_irf,
+)
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkDataset,
     BenchmarkMeasurements,
@@ -306,6 +310,46 @@ class GeneralizationABPreparedData:
     pca: PCA
 
 
+@dataclass(frozen=True)
+class GeneralizationPreparedData:
+    """Development data and final robustness-test representations.
+
+    All fitted representation parameters are estimated exclusively
+    from development data.
+
+    Final robustness Tests A-F are transformed only after all
+    development fitting is complete.
+    """
+
+    development: BenchmarkDataset
+
+    tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ]
+
+    X_features: dict[
+        str,
+        pd.DataFrame,
+    ]
+
+    X_normalized_development: np.ndarray
+
+    X_normalized: dict[
+        str,
+        np.ndarray,
+    ]
+
+    X_pca_development: np.ndarray
+
+    X_pca: dict[
+        str,
+        np.ndarray,
+    ]
+
+    pca: PCA
+
+
 def prepare_generalization_ab_data(
     *,
     development_measurements: BenchmarkMeasurements,
@@ -468,8 +512,165 @@ def prepare_generalization_ab_data(
     )
 
 
+def prepare_generalization_data(
+    *,
+    development_measurements: BenchmarkMeasurements,
+    tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ],
+    feature_config: FeatureConfig,
+    n_pca_components: int = DEFAULT_PCA_COMPONENTS,
+) -> GeneralizationPreparedData:
+    """Prepare representations for final robustness tests.
+
+    PCA is fitted exclusively on normalized development
+    histograms. Final test sets are never used for fitting.
+    """
+
+    if not tests:
+        raise ValueError(
+            "tests must contain at least one "
+            "generalization test."
+        )
+
+    normalized_test_ids = {
+        test_id.strip().upper()
+        for test_id in tests
+    }
+
+    if len(normalized_test_ids) != len(tests):
+        raise ValueError(
+            "Generalization test IDs must be unique."
+        )
+
+    development = build_benchmark_dataset(
+        development_measurements,
+        feature_config=feature_config,
+    )
+
+    X_features: dict[
+        str,
+        pd.DataFrame,
+    ] = {}
+
+    X_normalized: dict[
+        str,
+        np.ndarray,
+    ] = {}
+
+    normalized_tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ] = {}
+
+    for test_id, test in tests.items():
+        normalized_id = (
+            test_id.strip().upper()
+        )
+
+        if test.test_id != normalized_id:
+            raise ValueError(
+                "Dictionary key and test.test_id "
+                "must match."
+            )
+
+        if not np.array_equal(
+            development_measurements.time,
+            test.time,
+        ):
+            raise ValueError(
+                "Development data and all final "
+                "tests must share the same time axis."
+            )
+
+        features = extract_feature_table(
+            histograms=test.X_histograms,
+            time=test.time,
+            config=feature_config,
+        )
+
+        if tuple(
+            development.X_features.columns
+        ) != tuple(
+            features.columns
+        ):
+            raise RuntimeError(
+                "Development and final-test "
+                "feature schemas do not match."
+            )
+
+        X_features[normalized_id] = (
+            features
+        )
+
+        X_normalized[normalized_id] = (
+            normalize_histogram_batch(
+                histograms=(
+                    test.X_histograms
+                ),
+                mode=(
+                    CountNormalization.TOTAL
+                ),
+            )
+        )
+
+        normalized_tests[
+            normalized_id
+        ] = test
+
+    X_normalized_development = (
+        normalize_histogram_batch(
+            histograms=(
+                development.X_histograms
+            ),
+            mode=CountNormalization.TOTAL,
+        )
+    )
+
+    pca = fit_pca_representation(
+        X_train=(
+            X_normalized_development
+        ),
+        n_components=n_pca_components,
+    )
+
+    X_pca_development = (
+        transform_pca_representation(
+            pca=pca,
+            X=X_normalized_development,
+        )
+    )
+
+    X_pca = {
+        test_id: (
+            transform_pca_representation(
+                pca=pca,
+                X=X_test,
+            )
+        )
+        for test_id, X_test
+        in X_normalized.items()
+    }
+
+    return GeneralizationPreparedData(
+        development=development,
+        tests=normalized_tests,
+        X_features=X_features,
+        X_normalized_development=(
+            X_normalized_development
+        ),
+        X_normalized=X_normalized,
+        X_pca_development=(
+            X_pca_development
+        ),
+        X_pca=X_pca,
+        pca=pca,
+    )
+
+
 def fit_generalization_ml_estimators(
-    prepared: GeneralizationABPreparedData,
+    prepared: GeneralizationPreparedData,
 ) -> dict[str, dict[str, Any]]:
     """Fit Week-8 ML estimators exclusively on development data."""
 
@@ -776,9 +977,10 @@ def summarize_generalization_predictions(
             p90_absolute_error_ns = np.nan
             p95_absolute_error_ns = np.nan
 
-        if (
-            estimator_name
-            == "classical_reconvolution"
+        if str(
+                estimator_name
+        ).startswith(
+            "classical_reconvolution"
         ):
             classical_failure_rate = (
                 1.0
@@ -928,6 +1130,392 @@ def build_mae_degradation_table(
     return pd.DataFrame(
         rows
     )
+
+
+def build_reference_mae_degradation_table(
+    summary: pd.DataFrame,
+    *,
+    reference_test_id: str = "A",
+) -> pd.DataFrame:
+    """Compare every OOD test against one reference test.
+
+    One degradation row is produced for every
+    estimator/representation/OOD-test combination.
+    """
+
+    required_columns = {
+        "estimator",
+        "representation",
+        "test_id",
+        "mae_ns",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(summary.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Summary table is missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    reference_test_id = (
+        reference_test_id
+        .strip()
+        .upper()
+    )
+
+    if not reference_test_id:
+        raise ValueError(
+            "reference_test_id must not be empty."
+        )
+
+    rows: list[
+        dict[str, str | float]
+    ] = []
+
+    grouped = summary.groupby(
+        [
+            "estimator",
+            "representation",
+        ],
+        sort=False,
+        dropna=False,
+    )
+
+    for (
+        estimator_name,
+        representation_name,
+    ), group in grouped:
+
+        reference_rows = group.loc[
+            group["test_id"]
+            == reference_test_id
+        ]
+
+        if len(reference_rows) != 1:
+            raise ValueError(
+                "Every estimator/representation "
+                "combination must contain exactly one "
+                f"reference Test {reference_test_id} row."
+            )
+
+        reference_mae_ns = float(
+            reference_rows[
+                "mae_ns"
+            ].iloc[0]
+        )
+
+        ood_rows = group.loc[
+            group["test_id"]
+            != reference_test_id
+        ]
+
+        if ood_rows.empty:
+            raise ValueError(
+                "Every estimator/representation "
+                "combination must contain at least "
+                "one OOD test."
+            )
+
+        for _, ood_row in (
+            ood_rows.iterrows()
+        ):
+            ood_test_id = str(
+                ood_row["test_id"]
+            )
+
+            ood_mae_ns = float(
+                ood_row["mae_ns"]
+            )
+
+            if (
+                np.isfinite(
+                    reference_mae_ns
+                )
+                and reference_mae_ns > 0.0
+                and np.isfinite(
+                    ood_mae_ns
+                )
+            ):
+                mae_degradation = (
+                    ood_mae_ns
+                    / reference_mae_ns
+                )
+
+            else:
+                mae_degradation = np.nan
+
+            rows.append(
+                {
+                    "estimator": (
+                        estimator_name
+                    ),
+                    "representation": (
+                        representation_name
+                    ),
+                    "reference_test_id": (
+                        reference_test_id
+                    ),
+                    "ood_test_id": (
+                        ood_test_id
+                    ),
+                    "reference_mae_ns": (
+                        reference_mae_ns
+                    ),
+                    "ood_mae_ns": (
+                        ood_mae_ns
+                    ),
+                    "mae_degradation": float(
+                        mae_degradation
+                    ),
+                }
+            )
+
+    return pd.DataFrame(
+        rows
+    )
+
+
+def _get_generalization_test_representations(
+    *,
+    prepared: GeneralizationPreparedData,
+    test_id: str,
+) -> dict[str, Any]:
+    """Return the three canonical representations for one test."""
+
+    normalized_id = (
+        test_id
+        .strip()
+        .upper()
+    )
+
+    if normalized_id not in prepared.tests:
+        raise KeyError(
+            f"Prepared data do not contain "
+            f"Test {normalized_id!r}."
+        )
+
+    return {
+        "engineered_features": (
+            prepared.X_features[
+                normalized_id
+            ]
+        ),
+        "normalized_histogram": (
+            prepared.X_normalized[
+                normalized_id
+            ]
+        ),
+        "pca_histogram": (
+            prepared.X_pca[
+                normalized_id
+            ]
+        ),
+    }
+
+
+def _evaluate_nonclassical_generalization_tests(
+    *,
+    prepared: GeneralizationPreparedData,
+    fitted_estimators: dict[
+        str,
+        dict[str, Any],
+    ],
+    test_ids: tuple[str, ...],
+) -> list[pd.DataFrame]:
+    """Evaluate baselines and ML estimators on selected final tests."""
+
+    if not test_ids:
+        raise ValueError(
+            "test_ids must not be empty."
+        )
+
+    normalized_test_ids = tuple(
+        test_id.strip().upper()
+        for test_id in test_ids
+    )
+
+    if len(
+        set(normalized_test_ids)
+    ) != len(normalized_test_ids):
+        raise ValueError(
+            "test_ids must not contain duplicates."
+        )
+
+    expected_models = {
+        "ridge",
+        "random_forest",
+        "hist_gradient_boosting",
+    }
+
+    expected_representations = {
+        "engineered_features",
+        "normalized_histogram",
+        "pca_histogram",
+    }
+
+    if set(
+        fitted_estimators
+    ) != expected_models:
+        raise ValueError(
+            "fitted_estimators must contain exactly "
+            "Ridge, Random Forest, and "
+            "HistGradientBoosting."
+        )
+
+    for model_name in expected_models:
+        if (
+            set(
+                fitted_estimators[
+                    model_name
+                ]
+            )
+            != expected_representations
+        ):
+            raise ValueError(
+                f"{model_name!r} must contain exactly "
+                "the three canonical representations."
+            )
+
+    prediction_tables: list[
+        pd.DataFrame
+    ] = []
+
+    for test_id in normalized_test_ids:
+        if test_id not in prepared.tests:
+            raise KeyError(
+                f"Prepared data do not contain "
+                f"Test {test_id!r}."
+            )
+
+        test = prepared.tests[
+            test_id
+        ]
+
+        representations = (
+            _get_generalization_test_representations(
+                prepared=prepared,
+                test_id=test_id,
+            )
+        )
+
+        #
+        # Constant development-mean baseline.
+        #
+        constant_predictions = (
+            predict_constant_mean_baseline(
+                y_train=(
+                    prepared.development.y
+                ),
+                n_predictions=(
+                    test.y.size
+                ),
+            )
+        )
+
+        prediction_tables.append(
+            _build_generalization_prediction_table(
+                estimator_name=(
+                    "constant_mean"
+                ),
+                representation_name="none",
+                test=test,
+                y_pred=constant_predictions,
+            )
+        )
+
+        #
+        # Mean-arrival-time baseline.
+        #
+        X_features = representations[
+            "engineered_features"
+        ]
+
+        mean_arrival_predictions = (
+            estimate_lifetime_from_mean_arrival(
+                mean_arrival_time_ns=(
+                    X_features[
+                        "mean_arrival_time_ns"
+                    ].to_numpy(
+                        dtype=np.float64
+                    )
+                ),
+                peak_time_ns=(
+                    X_features[
+                        "peak_time_ns"
+                    ].to_numpy(
+                        dtype=np.float64
+                    )
+                ),
+            )
+        )
+
+        prediction_tables.append(
+            _build_generalization_prediction_table(
+                estimator_name=(
+                    "mean_arrival_time"
+                ),
+                representation_name=(
+                    "engineered_features"
+                ),
+                test=test,
+                y_pred=(
+                    mean_arrival_predictions
+                ),
+            )
+        )
+
+        #
+        # Three ML models × three representations.
+        #
+        for model_name in (
+            "ridge",
+            "random_forest",
+            "hist_gradient_boosting",
+        ):
+            for representation_name in (
+                "engineered_features",
+                "normalized_histogram",
+                "pca_histogram",
+            ):
+                estimator = (
+                    fitted_estimators[
+                        model_name
+                    ][
+                        representation_name
+                    ]
+                )
+
+                X_test = representations[
+                    representation_name
+                ]
+
+                predictions = np.asarray(
+                    estimator.predict(
+                        X_test
+                    ),
+                    dtype=np.float64,
+                )
+
+                prediction_tables.append(
+                    _build_generalization_prediction_table(
+                        estimator_name=(
+                            model_name
+                        ),
+                        representation_name=(
+                            representation_name
+                        ),
+                        test=test,
+                        y_pred=predictions,
+                    )
+                )
+
+    return prediction_tables
 
 
 def _evaluate_principal_nonclassical_estimators(
@@ -1946,5 +2534,1466 @@ def build_generalization_plot_diagnostics(
     )
 
     return diagnostics
+
+
+@dataclass(frozen=True)
+class InstrumentAcquisitionBenchmarkResult:
+    """Non-classical robustness benchmark for Tests A/C/D/E."""
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+
+def evaluate_instrument_acquisition_benchmark(
+    *,
+    prepared: GeneralizationPreparedData,
+    fitted_estimators: dict[
+        str,
+        dict[str, Any],
+    ],
+) -> InstrumentAcquisitionBenchmarkResult:
+    """Evaluate non-classical estimators on Tests A, C, D, and E.
+
+    Test A provides the familiar reference.
+
+    Tests C-E probe:
+
+    - IRF-width mismatch;
+    - elevated background;
+    - temporal misalignment.
+
+    All estimators must already be fitted exclusively
+    on development data.
+    """
+
+    required_test_ids = (
+        "A",
+        "C",
+        "D",
+        "E",
+    )
+
+    missing_test_ids = (
+        set(required_test_ids)
+        - set(prepared.tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Prepared data are missing required "
+            "instrument/acquisition tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    prediction_tables = (
+        _evaluate_nonclassical_generalization_tests(
+            prepared=prepared,
+            fitted_estimators=(
+                fitted_estimators
+            ),
+            test_ids=required_test_ids,
+        )
+    )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        build_reference_mae_degradation_table(
+            summary,
+            reference_test_id="A",
+        )
+    )
+
+    return (
+        InstrumentAcquisitionBenchmarkResult(
+            predictions=predictions,
+            summary=summary,
+            degradation=degradation,
+        )
+    )
+
+
+def _evaluate_classical_generalization_test(
+    *,
+    test: GeneralizationTestMeasurements,
+    irf_centre_ns: float,
+    temporal_shift_bounds: tuple[
+        float,
+        float,
+    ],
+    objective: str = "poisson",
+    background_fraction: float = 0.10,
+    assumed_irf_fwhm_ns: float | None = None,
+    irf_mode: str,
+) -> pd.DataFrame:
+    """Evaluate one robustness test with a specified IRF policy.
+
+    If assumed_irf_fwhm_ns is None, every curve is fitted using
+    an IRF whose width matches that curve's simulation metadata.
+
+    Otherwise all curves are fitted using the same fixed assumed
+    IRF width.
+    """
+
+    required_metadata_columns = {
+        "sample_id",
+        "irf_fwhm_ns",
+        "irf_shift_ns",
+    }
+
+    missing_columns = (
+        required_metadata_columns
+        - set(test.metadata.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Test metadata are missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    if not np.isfinite(
+        irf_centre_ns
+    ):
+        raise ValueError(
+            "irf_centre_ns must be finite."
+        )
+
+    if assumed_irf_fwhm_ns is not None:
+        if (
+            not np.isfinite(
+                assumed_irf_fwhm_ns
+            )
+            or assumed_irf_fwhm_ns <= 0.0
+        ):
+            raise ValueError(
+                "assumed_irf_fwhm_ns must be "
+                "finite and positive."
+            )
+
+        assumed_widths = np.full(
+            test.y.size,
+            float(
+                assumed_irf_fwhm_ns
+            ),
+            dtype=np.float64,
+        )
+
+    else:
+        assumed_widths = (
+            test.metadata[
+                "irf_fwhm_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+        )
+
+    diagnostic_tables: list[
+        pd.DataFrame
+    ] = []
+
+    for assumed_width_ns in np.unique(
+        assumed_widths
+    ):
+        mask = np.isclose(
+            assumed_widths,
+            assumed_width_ns,
+            rtol=0.0,
+            atol=1e-12,
+        )
+
+        indices = np.flatnonzero(
+            mask
+        )
+
+        irf = generate_gaussian_irf(
+            time=test.time,
+            centre=irf_centre_ns,
+            fwhm=float(
+                assumed_width_ns
+            ),
+        )
+
+        irf = normalize_irf(
+            time=test.time,
+            irf=irf,
+        )
+
+        result = (
+            evaluate_reconvolution_benchmark(
+                time=test.time,
+                X_histograms=(
+                    test.X_histograms[
+                        indices
+                    ]
+                ),
+                y_true=(
+                    test.y[
+                        indices
+                    ]
+                ),
+                metadata=(
+                    test.metadata.iloc[
+                        indices
+                    ].reset_index(
+                        drop=True
+                    )
+                ),
+                irf=irf,
+                temporal_shift_bounds=(
+                    temporal_shift_bounds
+                ),
+                objective=objective,
+                background_fraction=(
+                    background_fraction
+                ),
+            )
+        )
+
+        diagnostics = (
+            result.per_curve.copy(
+                deep=True
+            )
+        )
+
+        diagnostics[
+            "classical_irf_mode"
+        ] = irf_mode
+
+        diagnostics[
+            "assumed_irf_fwhm_ns"
+        ] = float(
+            assumed_width_ns
+        )
+
+        diagnostics[
+            "irf_fwhm_error_ns"
+        ] = (
+            diagnostics[
+                "assumed_irf_fwhm_ns"
+            ]
+            - diagnostics[
+                "irf_fwhm_ns"
+            ]
+        )
+
+        diagnostics[
+            "temporal_shift_error_ns"
+        ] = (
+            diagnostics[
+                "fitted_temporal_shift_ns"
+            ]
+            - diagnostics[
+                "irf_shift_ns"
+            ]
+        )
+
+        diagnostic_tables.append(
+            diagnostics
+        )
+
+    combined = pd.concat(
+        diagnostic_tables,
+        ignore_index=True,
+    )
+
+    combined = (
+        combined.sort_values(
+            "sample_id"
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    return combined
+
+
+def _build_classical_generalization_prediction_table(
+    *,
+    test: GeneralizationTestMeasurements,
+    diagnostics: pd.DataFrame,
+    estimator_name: str,
+) -> pd.DataFrame:
+    """Convert classical fit diagnostics to robustness predictions."""
+
+    if len(
+        diagnostics
+    ) != test.y.size:
+        raise ValueError(
+            "Classical diagnostics must contain "
+            "one row per test sample."
+        )
+
+    diagnostic_sample_ids = (
+        diagnostics[
+            "sample_id"
+        ].to_numpy()
+    )
+
+    test_sample_ids = (
+        test.metadata[
+            "sample_id"
+        ].to_numpy()
+    )
+
+    if not np.array_equal(
+        diagnostic_sample_ids,
+        test_sample_ids,
+    ):
+        raise ValueError(
+            "Classical diagnostics are not aligned "
+            "with the robustness test."
+        )
+
+    predictions = (
+        _build_generalization_prediction_table(
+            estimator_name=(
+                estimator_name
+            ),
+            representation_name=(
+                "raw_histogram"
+            ),
+            test=test,
+            y_pred=(
+                diagnostics[
+                    "fitted_lifetime_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            ),
+            valid_mask=(
+                diagnostics[
+                    "valid_fit"
+                ].to_numpy(
+                    dtype=bool
+                )
+            ),
+        )
+    )
+
+    predictions[
+        "classical_irf_mode"
+    ] = diagnostics[
+        "classical_irf_mode"
+    ].to_numpy()
+
+    predictions[
+        "assumed_irf_fwhm_ns"
+    ] = diagnostics[
+        "assumed_irf_fwhm_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    predictions[
+        "fitted_temporal_shift_ns"
+    ] = diagnostics[
+        "fitted_temporal_shift_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    predictions[
+        "temporal_shift_error_ns"
+    ] = diagnostics[
+        "temporal_shift_error_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    return predictions
+
+
+def _build_classical_instrument_degradation_table(
+    summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compare all classical C-E experiments with correct Test A."""
+
+    reference_rows = summary.loc[
+        (
+            summary["estimator"]
+            == (
+                "classical_reconvolution_correct_irf"
+            )
+        )
+        & (
+            summary["test_id"]
+            == "A"
+        )
+    ]
+
+    if len(
+        reference_rows
+    ) != 1:
+        raise ValueError(
+            "Exactly one correct-IRF Test-A "
+            "reference row is required."
+        )
+
+    reference_mae_ns = float(
+        reference_rows[
+            "mae_ns"
+        ].iloc[0]
+    )
+
+    ood_rows = summary.loc[
+        ~(
+            (
+                summary["estimator"]
+                == (
+                    "classical_reconvolution_correct_irf"
+                )
+            )
+            & (
+                summary["test_id"]
+                == "A"
+            )
+        )
+    ]
+
+    rows: list[
+        dict[str, str | float]
+    ] = []
+
+    for _, row in (
+        ood_rows.iterrows()
+    ):
+        ood_mae_ns = float(
+            row["mae_ns"]
+        )
+
+        if (
+            np.isfinite(
+                reference_mae_ns
+            )
+            and reference_mae_ns > 0.0
+            and np.isfinite(
+                ood_mae_ns
+            )
+        ):
+            degradation = (
+                ood_mae_ns
+                / reference_mae_ns
+            )
+
+        else:
+            degradation = np.nan
+
+        rows.append(
+            {
+                "reference_estimator": (
+                    "classical_reconvolution_correct_irf"
+                ),
+                "reference_test_id": "A",
+                "ood_estimator": (
+                    row["estimator"]
+                ),
+                "ood_test_id": (
+                    row["test_id"]
+                ),
+                "reference_mae_ns": (
+                    reference_mae_ns
+                ),
+                "ood_mae_ns": (
+                    ood_mae_ns
+                ),
+                "mae_degradation": float(
+                    degradation
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        rows
+    )
+
+
+def _build_test_c_classical_irf_comparison(
+    summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compare correct and deliberately incorrect IRFs on Test C."""
+
+    correct = summary.loc[
+        (
+            summary["estimator"]
+            == (
+                "classical_reconvolution_correct_irf"
+            )
+        )
+        & (
+            summary["test_id"]
+            == "C"
+        )
+    ]
+
+    nominal = summary.loc[
+        (
+            summary["estimator"]
+            == (
+                "classical_reconvolution_nominal_irf"
+            )
+        )
+        & (
+            summary["test_id"]
+            == "C"
+        )
+    ]
+
+    if (
+        len(correct) != 1
+        or len(nominal) != 1
+    ):
+        raise ValueError(
+            "Test C requires exactly one correct-IRF "
+            "and one nominal-IRF summary row."
+        )
+
+    correct_row = correct.iloc[0]
+    nominal_row = nominal.iloc[0]
+
+    correct_mae = float(
+        correct_row["mae_ns"]
+    )
+
+    nominal_mae = float(
+        nominal_row["mae_ns"]
+    )
+
+    if (
+        np.isfinite(correct_mae)
+        and correct_mae > 0.0
+        and np.isfinite(nominal_mae)
+    ):
+        mismatch_penalty = (
+            nominal_mae
+            / correct_mae
+        )
+    else:
+        mismatch_penalty = np.nan
+
+    return pd.DataFrame(
+        [
+            {
+                "mae_correct_irf_ns": (
+                    correct_mae
+                ),
+                "mae_nominal_irf_ns": (
+                    nominal_mae
+                ),
+                "nominal_to_correct_mae_ratio": (
+                    float(
+                        mismatch_penalty
+                    )
+                ),
+                "bias_correct_irf_ns": float(
+                    correct_row[
+                        "bias_ns"
+                    ]
+                ),
+                "bias_nominal_irf_ns": float(
+                    nominal_row[
+                        "bias_ns"
+                    ]
+                ),
+                "p95_correct_irf_ns": float(
+                    correct_row[
+                        "p95_absolute_error_ns"
+                    ]
+                ),
+                "p95_nominal_irf_ns": float(
+                    nominal_row[
+                        "p95_absolute_error_ns"
+                    ]
+                ),
+                "failure_rate_correct_irf": float(
+                    correct_row[
+                        "classical_failure_rate"
+                    ]
+                ),
+                "failure_rate_nominal_irf": float(
+                    nominal_row[
+                        "classical_failure_rate"
+                    ]
+                ),
+            }
+        ]
+    )
+
+
+@dataclass(frozen=True)
+class ClassicalInstrumentAcquisitionBenchmarkResult:
+    """Classical robustness evaluation for Tests A/C/D/E."""
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+    fit_diagnostics: pd.DataFrame
+
+    test_c_irf_comparison: pd.DataFrame
+
+
+def evaluate_classical_instrument_acquisition_benchmark(
+    *,
+    tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ],
+    irf_centre_ns: float,
+    nominal_irf_fwhm_ns: float = 0.40,
+    temporal_shift_bounds: tuple[
+        float,
+        float,
+    ] = (-0.5, 0.5),
+    objective: str = "poisson",
+    background_fraction: float = 0.10,
+) -> ClassicalInstrumentAcquisitionBenchmarkResult:
+    """Evaluate classical reconvolution on Tests A, C, D, and E.
+
+    A, C, D, and E are first fitted with the correct test IRF
+    width.
+
+    Test C is additionally fitted using one deliberately incorrect
+    familiar IRF width to quantify instrument-model mismatch.
+    """
+
+    required_test_ids = {
+        "A",
+        "C",
+        "D",
+        "E",
+    }
+
+    missing_test_ids = (
+        required_test_ids
+        - set(tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Missing required classical robustness tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    prediction_tables: list[
+        pd.DataFrame
+    ] = []
+
+    diagnostic_tables: list[
+        pd.DataFrame
+    ] = []
+
+    #
+    # A/C/D/E with the physically correct IRF width.
+    #
+    for test_id in (
+        "A",
+        "C",
+        "D",
+        "E",
+    ):
+        test = tests[
+            test_id
+        ]
+
+        diagnostics = (
+            _evaluate_classical_generalization_test(
+                test=test,
+                irf_centre_ns=(
+                    irf_centre_ns
+                ),
+                temporal_shift_bounds=(
+                    temporal_shift_bounds
+                ),
+                objective=objective,
+                background_fraction=(
+                    background_fraction
+                ),
+                assumed_irf_fwhm_ns=None,
+                irf_mode=(
+                    "correct_test_irf"
+                ),
+            )
+        )
+
+        diagnostics[
+            "estimator"
+        ] = (
+            "classical_reconvolution_correct_irf"
+        )
+
+        diagnostic_tables.append(
+            diagnostics
+        )
+
+        prediction_tables.append(
+            _build_classical_generalization_prediction_table(
+                test=test,
+                diagnostics=diagnostics,
+                estimator_name=(
+                    "classical_reconvolution_correct_irf"
+                ),
+            )
+        )
+
+    #
+    # Test C again, but deliberately using the wrong
+    # familiar/nominal IRF.
+    #
+    test_c = tests[
+        "C"
+    ]
+
+    nominal_diagnostics = (
+        _evaluate_classical_generalization_test(
+            test=test_c,
+            irf_centre_ns=(
+                irf_centre_ns
+            ),
+            temporal_shift_bounds=(
+                temporal_shift_bounds
+            ),
+            objective=objective,
+            background_fraction=(
+                background_fraction
+            ),
+            assumed_irf_fwhm_ns=(
+                nominal_irf_fwhm_ns
+            ),
+            irf_mode=(
+                "nominal_familiar_irf"
+            ),
+        )
+    )
+
+    nominal_diagnostics[
+        "estimator"
+    ] = (
+        "classical_reconvolution_nominal_irf"
+    )
+
+    diagnostic_tables.append(
+        nominal_diagnostics
+    )
+
+    prediction_tables.append(
+        _build_classical_generalization_prediction_table(
+            test=test_c,
+            diagnostics=(
+                nominal_diagnostics
+            ),
+            estimator_name=(
+                "classical_reconvolution_nominal_irf"
+            ),
+        )
+    )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    fit_diagnostics = pd.concat(
+        diagnostic_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        _build_classical_instrument_degradation_table(
+            summary
+        )
+    )
+
+    test_c_irf_comparison = (
+        _build_test_c_classical_irf_comparison(
+            summary
+        )
+    )
+
+    return (
+        ClassicalInstrumentAcquisitionBenchmarkResult(
+            predictions=predictions,
+            summary=summary,
+            degradation=degradation,
+            fit_diagnostics=(
+                fit_diagnostics
+            ),
+            test_c_irf_comparison=(
+                test_c_irf_comparison
+            ),
+        )
+    )
+
+
+def build_instrument_representation_comparison(
+    degradation: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compare ML representation robustness across Tests C-E."""
+
+    required_columns = {
+        "estimator",
+        "representation",
+        "reference_test_id",
+        "ood_test_id",
+        "reference_mae_ns",
+        "ood_mae_ns",
+        "mae_degradation",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(degradation.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Degradation table is missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    ml_estimators = {
+        "ridge",
+        "random_forest",
+        "hist_gradient_boosting",
+    }
+
+    representations = {
+        "engineered_features",
+        "normalized_histogram",
+        "pca_histogram",
+    }
+
+    expected_ood_tests = {
+        "C",
+        "D",
+        "E",
+    }
+
+    data = degradation.loc[
+        degradation[
+            "estimator"
+        ].isin(
+            ml_estimators
+        )
+    ].copy()
+
+    if set(
+        data["ood_test_id"]
+    ) != expected_ood_tests:
+        raise ValueError(
+            "Representation comparison requires "
+            "Tests C, D, and E."
+        )
+
+    if set(
+        data["representation"]
+    ) != representations:
+        raise ValueError(
+            "Representation comparison requires "
+            "the three canonical ML representations."
+        )
+
+    comparison = (
+        data.pivot(
+            index=[
+                "estimator",
+                "ood_test_id",
+            ],
+            columns="representation",
+            values="mae_degradation",
+        )
+        .reset_index()
+    )
+
+    comparison.columns.name = None
+
+    comparison = comparison.rename(
+        columns={
+            "engineered_features": (
+                "degradation_engineered_features"
+            ),
+            "normalized_histogram": (
+                "degradation_normalized_histogram"
+            ),
+            "pca_histogram": (
+                "degradation_pca_histogram"
+            ),
+        }
+    )
+
+    comparison[
+        "normalized_minus_engineered"
+    ] = (
+        comparison[
+            "degradation_normalized_histogram"
+        ]
+        - comparison[
+            "degradation_engineered_features"
+        ]
+    )
+
+    comparison[
+        "pca_minus_engineered"
+    ] = (
+        comparison[
+            "degradation_pca_histogram"
+        ]
+        - comparison[
+            "degradation_engineered_features"
+        ]
+    )
+
+    return (
+        comparison.sort_values(
+            [
+                "ood_test_id",
+                "estimator",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+
+def build_test_c_paired_irf_diagnostics(
+    fit_diagnostics: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compare correct- and nominal-IRF fits curve by curve on Test C."""
+
+    required_columns = {
+        "sample_id",
+        "test_id",
+        "estimator",
+        "true_lifetime_ns",
+        "fitted_lifetime_ns",
+        "absolute_error_ns",
+        "valid_fit",
+        "fitted_temporal_shift_ns",
+        "poisson_deviance",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(fit_diagnostics.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Classical diagnostics are missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    test_c = fit_diagnostics.loc[
+        fit_diagnostics[
+            "test_id"
+        ] == "C"
+    ].copy()
+
+    correct = test_c.loc[
+        test_c[
+            "estimator"
+        ]
+        == (
+            "classical_reconvolution_correct_irf"
+        )
+    ].copy()
+
+    nominal = test_c.loc[
+        test_c[
+            "estimator"
+        ]
+        == (
+            "classical_reconvolution_nominal_irf"
+        )
+    ].copy()
+
+    if correct.empty or nominal.empty:
+        raise ValueError(
+            "Test C must contain both correct-IRF "
+            "and nominal-IRF classical fits."
+        )
+
+    correct = correct[
+        [
+            "sample_id",
+            "true_lifetime_ns",
+            "fitted_lifetime_ns",
+            "absolute_error_ns",
+            "valid_fit",
+            "fitted_temporal_shift_ns",
+            "poisson_deviance",
+        ]
+    ].rename(
+        columns={
+            "fitted_lifetime_ns": (
+                "fitted_lifetime_correct_irf_ns"
+            ),
+            "absolute_error_ns": (
+                "absolute_error_correct_irf_ns"
+            ),
+            "valid_fit": (
+                "valid_fit_correct_irf"
+            ),
+            "fitted_temporal_shift_ns": (
+                "fitted_shift_correct_irf_ns"
+            ),
+            "poisson_deviance": (
+                "poisson_deviance_correct_irf"
+            ),
+        }
+    )
+
+    nominal = nominal[
+        [
+            "sample_id",
+            "true_lifetime_ns",
+            "fitted_lifetime_ns",
+            "absolute_error_ns",
+            "valid_fit",
+            "fitted_temporal_shift_ns",
+            "poisson_deviance",
+        ]
+    ].rename(
+        columns={
+            "fitted_lifetime_ns": (
+                "fitted_lifetime_nominal_irf_ns"
+            ),
+            "absolute_error_ns": (
+                "absolute_error_nominal_irf_ns"
+            ),
+            "valid_fit": (
+                "valid_fit_nominal_irf"
+            ),
+            "fitted_temporal_shift_ns": (
+                "fitted_shift_nominal_irf_ns"
+            ),
+            "poisson_deviance": (
+                "poisson_deviance_nominal_irf"
+            ),
+        }
+    )
+
+    paired = correct.merge(
+        nominal,
+        on=[
+            "sample_id",
+            "true_lifetime_ns",
+        ],
+        how="inner",
+        validate="one_to_one",
+    )
+
+    paired[
+        "absolute_error_penalty_ns"
+    ] = (
+        paired[
+            "absolute_error_nominal_irf_ns"
+        ]
+        - paired[
+            "absolute_error_correct_irf_ns"
+        ]
+    )
+
+    paired[
+        "fitted_shift_change_ns"
+    ] = (
+        paired[
+            "fitted_shift_nominal_irf_ns"
+        ]
+        - paired[
+            "fitted_shift_correct_irf_ns"
+        ]
+    )
+
+    paired[
+        "poisson_deviance_change"
+    ] = (
+        paired[
+            "poisson_deviance_nominal_irf"
+        ]
+        - paired[
+            "poisson_deviance_correct_irf"
+        ]
+    )
+
+    return paired.sort_values(
+        "sample_id"
+    ).reset_index(
+        drop=True
+    )
+
+
+def summarize_test_c_paired_irf_diagnostics(
+    paired: pd.DataFrame,
+) -> pd.DataFrame:
+    """Summarize paired Test-C correct-vs-nominal IRF behavior."""
+
+    required_columns = {
+        "valid_fit_correct_irf",
+        "valid_fit_nominal_irf",
+        "absolute_error_penalty_ns",
+        "fitted_shift_change_ns",
+        "poisson_deviance_change",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(paired.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Paired Test-C diagnostics are missing "
+            "required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    both_valid = (
+        paired[
+            "valid_fit_correct_irf"
+        ].to_numpy(
+            dtype=bool
+        )
+        & paired[
+            "valid_fit_nominal_irf"
+        ].to_numpy(
+            dtype=bool
+        )
+    )
+
+    valid = paired.loc[
+        both_valid
+    ]
+
+    if valid.empty:
+        return pd.DataFrame(
+            [
+                {
+                    "n_pairs": len(paired),
+                    "n_both_valid": 0,
+                    "mean_absolute_error_penalty_ns": (
+                        np.nan
+                    ),
+                    "median_absolute_error_penalty_ns": (
+                        np.nan
+                    ),
+                    "mean_fitted_shift_change_ns": (
+                        np.nan
+                    ),
+                    "mean_poisson_deviance_change": (
+                        np.nan
+                    ),
+                }
+            ]
+        )
+
+    return pd.DataFrame(
+        [
+            {
+                "n_pairs": len(paired),
+                "n_both_valid": len(valid),
+                "mean_absolute_error_penalty_ns": float(
+                    valid[
+                        "absolute_error_penalty_ns"
+                    ].mean()
+                ),
+                "median_absolute_error_penalty_ns": float(
+                    valid[
+                        "absolute_error_penalty_ns"
+                    ].median()
+                ),
+                "mean_fitted_shift_change_ns": float(
+                    valid[
+                        "fitted_shift_change_ns"
+                    ].mean()
+                ),
+                "mean_poisson_deviance_change": float(
+                    valid[
+                        "poisson_deviance_change"
+                    ].mean()
+                ),
+            }
+        ]
+    )
+
+
+
+def summarize_test_e_temporal_shift_recovery(
+    fit_diagnostics: pd.DataFrame,
+) -> pd.DataFrame:
+    """Summarize fitted temporal-shift recovery on Test E."""
+
+    required_columns = {
+        "test_id",
+        "estimator",
+        "irf_shift_ns",
+        "fitted_temporal_shift_ns",
+        "temporal_shift_error_ns",
+        "valid_fit",
+        "boundary_hit",
+        "absolute_error_ns",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(fit_diagnostics.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Classical diagnostics are missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    test_e = fit_diagnostics.loc[
+        (
+            fit_diagnostics[
+                "test_id"
+            ] == "E"
+        )
+        & (
+            fit_diagnostics[
+                "estimator"
+            ]
+            == (
+                "classical_reconvolution_correct_irf"
+            )
+        )
+    ].copy()
+
+    if test_e.empty:
+        raise ValueError(
+            "Correct-IRF Test-E diagnostics "
+            "are required."
+        )
+
+    rows: list[
+        dict[str, int | float]
+    ] = []
+
+    grouped = test_e.groupby(
+        "irf_shift_ns",
+        sort=True,
+    )
+
+    for true_shift_ns, group in grouped:
+        valid_mask = group[
+            "valid_fit"
+        ].to_numpy(
+            dtype=bool
+        )
+
+        n_total = len(group)
+
+        n_valid = int(
+            np.sum(
+                valid_mask
+            )
+        )
+
+        failure_rate = (
+            1.0
+            - n_valid / n_total
+        )
+
+        boundary_hit_rate = float(
+            group[
+                "boundary_hit"
+            ].mean()
+        )
+
+        if n_valid > 0:
+            valid = group.loc[
+                valid_mask
+            ]
+
+            shift_errors = valid[
+                "temporal_shift_error_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            shift_absolute_errors = (
+                np.abs(
+                    shift_errors
+                )
+            )
+
+            lifetime_absolute_errors = (
+                valid[
+                    "absolute_error_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            )
+
+            shift_bias_ns = float(
+                np.mean(
+                    shift_errors
+                )
+            )
+
+            shift_mae_ns = float(
+                np.mean(
+                    shift_absolute_errors
+                )
+            )
+
+            shift_rmse_ns = float(
+                np.sqrt(
+                    np.mean(
+                        shift_errors**2
+                    )
+                )
+            )
+
+            lifetime_mae_ns = float(
+                np.mean(
+                    lifetime_absolute_errors
+                )
+            )
+
+            mean_fitted_shift_ns = float(
+                valid[
+                    "fitted_temporal_shift_ns"
+                ].mean()
+            )
+
+        else:
+            shift_bias_ns = np.nan
+            shift_mae_ns = np.nan
+            shift_rmse_ns = np.nan
+            lifetime_mae_ns = np.nan
+            mean_fitted_shift_ns = np.nan
+
+        rows.append(
+            {
+                "true_shift_ns": float(
+                    true_shift_ns
+                ),
+                "n_total": n_total,
+                "n_valid": n_valid,
+                "failure_rate": float(
+                    failure_rate
+                ),
+                "boundary_hit_rate": (
+                    boundary_hit_rate
+                ),
+                "mean_fitted_shift_ns": (
+                    mean_fitted_shift_ns
+                ),
+                "shift_bias_ns": (
+                    shift_bias_ns
+                ),
+                "shift_mae_ns": (
+                    shift_mae_ns
+                ),
+                "shift_rmse_ns": (
+                    shift_rmse_ns
+                ),
+                "lifetime_mae_ns": (
+                    lifetime_mae_ns
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        rows
+    )
+
+
+@dataclass(frozen=True)
+class InstrumentAcquisitionDiagnostics:
+    """Analysis-ready diagnostics for Day 54."""
+
+    representation_comparison: pd.DataFrame
+
+    test_c_paired_irf: pd.DataFrame
+    test_c_paired_irf_summary: pd.DataFrame
+
+    test_e_shift_recovery: pd.DataFrame
+
+
+def build_instrument_acquisition_diagnostics(
+    *,
+    nonclassical_result: (
+        InstrumentAcquisitionBenchmarkResult
+    ),
+    classical_result: (
+        ClassicalInstrumentAcquisitionBenchmarkResult
+    ),
+) -> InstrumentAcquisitionDiagnostics:
+    """Build the principal Day-54 diagnostic tables."""
+
+    representation_comparison = (
+        build_instrument_representation_comparison(
+            nonclassical_result.degradation
+        )
+    )
+
+    test_c_paired_irf = (
+        build_test_c_paired_irf_diagnostics(
+            classical_result.fit_diagnostics
+        )
+    )
+
+    test_c_paired_irf_summary = (
+        summarize_test_c_paired_irf_diagnostics(
+            test_c_paired_irf
+        )
+    )
+
+    test_e_shift_recovery = (
+        summarize_test_e_temporal_shift_recovery(
+            classical_result.fit_diagnostics
+        )
+    )
+
+    return InstrumentAcquisitionDiagnostics(
+        representation_comparison=(
+            representation_comparison
+        ),
+        test_c_paired_irf=(
+            test_c_paired_irf
+        ),
+        test_c_paired_irf_summary=(
+            test_c_paired_irf_summary
+        ),
+        test_e_shift_recovery=(
+            test_e_shift_recovery
+        ),
+    )
 
 
