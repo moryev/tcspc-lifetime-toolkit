@@ -16,8 +16,11 @@ from tcspc_toolkit.generalization_evaluation import (
     build_generalization_development_measurements,
     evaluate_classical_instrument_acquisition_benchmark,
     evaluate_instrument_acquisition_benchmark,
+    evaluate_model_mismatch_benchmark,
     fit_generalization_ml_estimators,
     prepare_generalization_data,
+    evaluate_classical_model_mismatch_benchmark,
+    build_day55_model_mismatch_report,
 )
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
@@ -183,5 +186,124 @@ def classical_instrument_result():
                 definition.familiar.irf_centre_ns
             ),
             nominal_irf_fwhm_ns=0.40,
+        )
+    )
+
+
+@pytest.fixture(scope="module")
+def model_mismatch_benchmark():
+    definition = (
+        default_generalization_suite()
+    )
+
+    suite = (
+        generate_generalization_test_suite(
+            definition=definition
+        )
+    )
+
+    development = (
+        build_generalization_development_measurements(
+            definition=definition
+        )
+    )
+
+    prepared = prepare_generalization_data(
+        development_measurements=(
+            development
+        ),
+        tests={
+            "A": suite.get_test("A"),
+            "F": suite.get_test("F"),
+        },
+        feature_config=FEATURE_CONFIG,
+    )
+
+    fitted_estimators = (
+        fit_generalization_ml_estimators(
+            prepared
+        )
+    )
+
+    return (
+        evaluate_model_mismatch_benchmark(
+            prepared=prepared,
+            fitted_estimators=(
+                fitted_estimators
+            ),
+        )
+    )
+
+
+@pytest.fixture(scope="module")
+def classical_model_mismatch_result():
+    definition = (
+        default_generalization_suite()
+    )
+
+    suite = (
+        generate_generalization_test_suite(
+            definition=definition
+        )
+    )
+
+    # Small but deliberately structured subset:
+    #
+    # - both weak and moderate Test-F contamination;
+    # - both familiar IRF widths;
+    # - both familiar temporal shifts;
+    # - both photon-count levels.
+    indices = np.asarray(
+        [
+            0,
+            1,
+            6,
+            7,
+            12,
+            13,
+            18,
+            19,
+        ],
+        dtype=np.int64,
+    )
+
+    tests = {
+        test_id: _subset_test(
+            suite.get_test(
+                test_id
+            ),
+            indices,
+        )
+        for test_id in (
+            "A",
+            "F",
+        )
+    }
+
+    return (
+        evaluate_classical_model_mismatch_benchmark(
+            tests=tests,
+            irf_centre_ns=(
+                definition
+                .familiar
+                .irf_centre_ns
+            ),
+        )
+    )
+
+
+@pytest.fixture(scope="module")
+def day55_model_mismatch_report(
+    model_mismatch_benchmark,
+    classical_model_mismatch_result,
+):
+    return (
+        build_day55_model_mismatch_report(
+            nonclassical_result=(
+                model_mismatch_benchmark
+            ),
+            classical_result=(
+                classical_model_mismatch_result
+            ),
         )
     )

@@ -257,13 +257,14 @@ def default_generalization_protocol(
             description=(
                 "Models trained exclusively on "
                 "mono-exponential decays are evaluated on "
-                "curves containing a modest secondary "
-                "exponential component."
+                "curves containing a controlled weak or "
+                "moderate secondary exponential component."
             ),
             scientific_question=(
-                "How robust is a mono-exponential lifetime "
-                "estimator to modest violations of its decay "
-                "model assumption?"
+                "What effective lifetime does a "
+                "mono-exponential estimator return when the "
+                "true decay contains a modest secondary "
+                "lifetime component?"
             ),
             changed_factors=(
                 "decay_model",
@@ -468,7 +469,7 @@ class FamiliarSimulationDomain:
         )
 
 DEFAULT_GENERALIZATION_SUITE_VERSION = (
-    "week8-day50-v1"
+    "week8-day55-v2"
 )
 
 DEFAULT_DEVELOPMENT_REFERENCE = (
@@ -538,7 +539,10 @@ class GeneralizationNumerics:
 
     test_e_irf_shift_values_ns: tuple[float, ...]
 
-    test_f_secondary_fraction: float
+    test_f_secondary_fractions: tuple[
+        float,
+        float,
+    ]
     test_f_secondary_lifetime_factor: float
 
     test_seeds: tuple[
@@ -699,14 +703,37 @@ class GeneralizationNumerics:
                     "integer number of histogram bins."
                 )
 
-        if not (
-            0.0
-            < self.test_f_secondary_fraction
-            <= 0.25
+        if len(
+                self.test_f_secondary_fractions
+        ) != 2:
+            raise ValueError(
+                "Test F must contain exactly two "
+                "secondary-fraction severity levels."
+            )
+
+        if any(
+                (
+                        not isfinite(value)
+                        or value <= 0.0
+                        or value > 0.25
+                )
+                for value
+                in self.test_f_secondary_fractions
         ):
             raise ValueError(
-                "Test F secondary fraction must be in "
-                "the interval (0, 0.25]."
+                "Test F secondary fractions must be "
+                "finite and lie in the interval "
+                "(0, 0.25]."
+            )
+
+        if not (
+                self.test_f_secondary_fractions[0]
+                < self.test_f_secondary_fractions[1]
+        ):
+            raise ValueError(
+                "Test F secondary fractions must be "
+                "strictly increasing from weak to "
+                "moderate contamination."
             )
 
         if (
@@ -888,7 +915,10 @@ def default_generalization_numerics(
             0.15,
         ),
 
-        test_f_secondary_fraction=0.10,
+        test_f_secondary_fractions=(
+            0.05,
+            0.15,
+        ),
         test_f_secondary_lifetime_factor=2.0,
 
         test_seeds=(

@@ -186,7 +186,13 @@ def test_default_generalization_numerics_are_frozen(
         0.15,
     )
 
-    assert numerics.test_f_secondary_fraction == 0.10
+    assert (
+            numerics.test_f_secondary_fractions
+            == (
+                0.05,
+                0.15,
+            )
+    )
     assert (
         numerics.test_f_secondary_lifetime_factor
         == 2.0
@@ -262,16 +268,33 @@ def test_test_e_uses_three_bin_offsets(
     )
 
 
-def test_test_f_is_modest_biexponential_mismatch(
+def test_test_f_has_two_modest_biexponential_severities(
 ) -> None:
     numerics = default_generalization_numerics(
         _make_familiar_domain()
     )
 
     assert (
-        numerics.test_f_secondary_fraction
-        == pytest.approx(0.10)
+        numerics.test_f_secondary_fractions
+        == pytest.approx(
+            (
+                0.05,
+                0.15,
+            )
+        )
     )
+
+    assert (
+        numerics.test_f_secondary_fractions[0]
+        < numerics.test_f_secondary_fractions[1]
+    )
+
+    assert all(
+        0.0 < fraction <= 0.25
+        for fraction
+        in numerics.test_f_secondary_fractions
+    )
+
     assert (
         numerics.test_f_secondary_lifetime_factor
         == pytest.approx(2.0)
@@ -375,7 +398,10 @@ def test_numerics_reject_strong_test_f_contamination(
     ):
         replace(
             numerics,
-            test_f_secondary_fraction=0.50,
+            test_f_secondary_fractions=(
+                0.05,
+                0.50,
+            ),
         )
 
 
@@ -583,3 +609,22 @@ def test_suite_seed_lookup_is_case_insensitive(
     suite = default_generalization_suite()
 
     assert suite.seed_for("f") == 50_006
+
+
+def test_numerics_reject_reversed_test_f_severities(
+) -> None:
+    numerics = default_generalization_numerics(
+        _make_familiar_domain()
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="strictly increasing",
+    ):
+        replace(
+            numerics,
+            test_f_secondary_fractions=(
+                0.15,
+                0.05,
+            ),
+        )

@@ -2545,6 +2545,493 @@ class InstrumentAcquisitionBenchmarkResult:
     degradation: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class ModelMismatchBenchmarkResult:
+    """Non-classical robustness benchmark for Tests A and F.
+
+    Test A provides the familiar mono-exponential reference.
+
+    Test F introduces a controlled bi-exponential decay-model
+    mismatch while preserving the paired physical conditions.
+
+    Test-F predictions are interpreted relative to both:
+
+    - the dominant-component lifetime ``tau_1`` used as the
+      primary scoring target;
+    - the descriptive signal-photon-weighted component lifetime.
+    """
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+    test_f_reference_diagnostics: pd.DataFrame
+    severity_summary: pd.DataFrame
+
+
+def build_test_f_reference_diagnostics(
+    predictions: pd.DataFrame,
+) -> pd.DataFrame:
+    """Interpret Test-F predictions against two lifetime references.
+
+    The primary reference is the dominant-component lifetime
+    ``tau_1``.
+
+    The signal-photon-weighted component lifetime is retained only
+    as a secondary descriptive reference. It must not be interpreted
+    as a unique true lifetime of the bi-exponential decay.
+    """
+
+    required_columns = {
+        "estimator",
+        "representation",
+        "test_id",
+        "predicted_lifetime_ns",
+        "valid_prediction",
+        "primary_lifetime_ns",
+        "secondary_lifetime_ns",
+        "secondary_fraction",
+        "model_mismatch_severity",
+        "signal_photon_weighted_lifetime_ns",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(predictions.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Predictions are missing required Test-F columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    diagnostics = predictions.loc[
+        predictions["test_id"] == "F"
+    ].copy(
+        deep=True
+    )
+
+    if diagnostics.empty:
+        raise ValueError(
+            "Predictions do not contain Test F."
+        )
+
+    primary_lifetime = diagnostics[
+        "primary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    secondary_lifetime = diagnostics[
+        "secondary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    weighted_lifetime = diagnostics[
+        "signal_photon_weighted_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    if not np.all(
+        np.isfinite(primary_lifetime)
+    ):
+        raise ValueError(
+            "Test-F primary lifetimes must be finite."
+        )
+
+    if not np.all(
+        np.isfinite(secondary_lifetime)
+    ):
+        raise ValueError(
+            "Test-F secondary lifetimes must be finite."
+        )
+
+    if not np.all(
+        np.isfinite(weighted_lifetime)
+    ):
+        raise ValueError(
+            "Test-F weighted lifetime references must be finite."
+        )
+
+    if np.any(
+        secondary_lifetime
+        <= primary_lifetime
+    ):
+        raise ValueError(
+            "Test-F secondary lifetimes must exceed "
+            "the primary lifetimes."
+        )
+
+    predicted = diagnostics[
+        "predicted_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    valid = diagnostics[
+        "valid_prediction"
+    ].to_numpy(
+        dtype=bool
+    )
+
+    error_to_primary = np.full(
+        len(diagnostics),
+        np.nan,
+        dtype=np.float64,
+    )
+
+    error_to_weighted = np.full(
+        len(diagnostics),
+        np.nan,
+        dtype=np.float64,
+    )
+
+    effective_position = np.full(
+        len(diagnostics),
+        np.nan,
+        dtype=np.float64,
+    )
+
+    error_to_primary[valid] = (
+        predicted[valid]
+        - primary_lifetime[valid]
+    )
+
+    error_to_weighted[valid] = (
+        predicted[valid]
+        - weighted_lifetime[valid]
+    )
+
+    effective_position[valid] = (
+        (
+            predicted[valid]
+            - primary_lifetime[valid]
+        )
+        / (
+            secondary_lifetime[valid]
+            - primary_lifetime[valid]
+        )
+    )
+
+    diagnostics[
+        "error_to_primary_ns"
+    ] = error_to_primary
+
+    diagnostics[
+        "absolute_error_to_primary_ns"
+    ] = np.abs(
+        error_to_primary
+    )
+
+    diagnostics[
+        "error_to_signal_photon_weighted_ns"
+    ] = error_to_weighted
+
+    diagnostics[
+        "absolute_error_to_signal_photon_weighted_ns"
+    ] = np.abs(
+        error_to_weighted
+    )
+
+    diagnostics[
+        "effective_mixture_position"
+    ] = effective_position
+
+    return diagnostics
+
+
+def summarize_test_f_model_mismatch(
+    predictions: pd.DataFrame,
+) -> pd.DataFrame:
+    """Summarize Test-F predictions by mismatch severity."""
+
+    diagnostics = (
+        build_test_f_reference_diagnostics(
+            predictions
+        )
+    )
+
+    rows: list[
+        dict[str, str | int | float]
+    ] = []
+
+    grouped = diagnostics.groupby(
+        [
+            "estimator",
+            "representation",
+            "model_mismatch_severity",
+        ],
+        sort=False,
+        dropna=False,
+    )
+
+    for (
+        estimator_name,
+        representation_name,
+        severity,
+    ), group in grouped:
+
+        valid_mask = group[
+            "valid_prediction"
+        ].to_numpy(
+            dtype=bool
+        )
+
+        n_total = int(
+            len(group)
+        )
+
+        n_valid = int(
+            np.sum(valid_mask)
+        )
+
+        secondary_fractions = np.unique(
+            group[
+                "secondary_fraction"
+            ].to_numpy(
+                dtype=np.float64
+            )
+        )
+
+        if secondary_fractions.size != 1:
+            raise ValueError(
+                "Each Test-F severity must correspond "
+                "to exactly one secondary fraction."
+            )
+
+        secondary_fraction = float(
+            secondary_fractions[0]
+        )
+
+        if n_valid > 0:
+            valid_group = group.loc[
+                valid_mask
+            ]
+
+            primary_metrics = (
+                calculate_robustness_metrics(
+                    y_true=valid_group[
+                        "primary_lifetime_ns"
+                    ],
+                    y_pred=valid_group[
+                        "predicted_lifetime_ns"
+                    ],
+                )
+            )
+
+            weighted_metrics = (
+                calculate_robustness_metrics(
+                    y_true=valid_group[
+                        "signal_photon_weighted_lifetime_ns"
+                    ],
+                    y_pred=valid_group[
+                        "predicted_lifetime_ns"
+                    ],
+                )
+            )
+
+            predicted = valid_group[
+                "predicted_lifetime_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            mixture_position = valid_group[
+                "effective_mixture_position"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            mean_prediction = float(
+                np.mean(predicted)
+            )
+
+            median_prediction = float(
+                np.median(predicted)
+            )
+
+            mean_mixture_position = float(
+                np.mean(mixture_position)
+            )
+
+            median_mixture_position = float(
+                np.median(mixture_position)
+            )
+
+        else:
+            primary_metrics = None
+            weighted_metrics = None
+
+            mean_prediction = np.nan
+            median_prediction = np.nan
+
+            mean_mixture_position = np.nan
+            median_mixture_position = np.nan
+
+        rows.append(
+            {
+                "estimator": (
+                    estimator_name
+                ),
+                "representation": (
+                    representation_name
+                ),
+                "model_mismatch_severity": (
+                    severity
+                ),
+                "secondary_fraction": (
+                    secondary_fraction
+                ),
+                "n_total_samples": (
+                    n_total
+                ),
+                "n_valid_predictions": (
+                    n_valid
+                ),
+                "mean_predicted_lifetime_ns": (
+                    mean_prediction
+                ),
+                "median_predicted_lifetime_ns": (
+                    median_prediction
+                ),
+                "mae_to_primary_ns": (
+                    (
+                        primary_metrics.mae_ns
+                    )
+                    if primary_metrics is not None
+                    else np.nan
+                ),
+                "bias_to_primary_ns": (
+                    (
+                        primary_metrics.bias_ns
+                    )
+                    if primary_metrics is not None
+                    else np.nan
+                ),
+                "mae_to_signal_photon_weighted_ns": (
+                    (
+                        weighted_metrics.mae_ns
+                    )
+                    if weighted_metrics is not None
+                    else np.nan
+                ),
+                "bias_to_signal_photon_weighted_ns": (
+                    (
+                        weighted_metrics.bias_ns
+                    )
+                    if weighted_metrics is not None
+                    else np.nan
+                ),
+                "mean_effective_mixture_position": (
+                    mean_mixture_position
+                ),
+                "median_effective_mixture_position": (
+                    median_mixture_position
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        rows
+    )
+
+
+def evaluate_model_mismatch_benchmark(
+    *,
+    prepared: GeneralizationPreparedData,
+    fitted_estimators: dict[
+        str,
+        dict[str, Any],
+    ],
+) -> ModelMismatchBenchmarkResult:
+    """Evaluate non-classical estimators on Tests A and F.
+
+    Test A is the familiar mono-exponential reference.
+
+    Test F changes only the decay model by introducing the
+    controlled weak/moderate bi-exponential component.
+
+    All estimators must already be fitted exclusively on
+    development data.
+    """
+
+    required_test_ids = (
+        "A",
+        "F",
+    )
+
+    missing_test_ids = (
+        set(required_test_ids)
+        - set(prepared.tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Prepared data are missing required "
+            "model-mismatch tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    prediction_tables = (
+        _evaluate_nonclassical_generalization_tests(
+            prepared=prepared,
+            fitted_estimators=(
+                fitted_estimators
+            ),
+            test_ids=required_test_ids,
+        )
+    )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        build_reference_mae_degradation_table(
+            summary,
+            reference_test_id="A",
+        )
+    )
+
+    test_f_reference_diagnostics = (
+        build_test_f_reference_diagnostics(
+            predictions
+        )
+    )
+
+    severity_summary = (
+        summarize_test_f_model_mismatch(
+            predictions
+        )
+    )
+
+    return ModelMismatchBenchmarkResult(
+        predictions=predictions,
+        summary=summary,
+        degradation=degradation,
+        test_f_reference_diagnostics=(
+            test_f_reference_diagnostics
+        ),
+        severity_summary=(
+            severity_summary
+        ),
+    )
+
+
 def evaluate_instrument_acquisition_benchmark(
     *,
     prepared: GeneralizationPreparedData,
@@ -3996,4 +4483,1424 @@ def build_instrument_acquisition_diagnostics(
         ),
     )
 
+
+@dataclass(frozen=True)
+class ClassicalModelMismatchBenchmarkResult:
+    """Classical mono-exponential evaluation for Tests A and F."""
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+    fit_diagnostics: pd.DataFrame
+    paired_diagnostics: pd.DataFrame
+    severity_summary: pd.DataFrame
+
+
+def build_classical_af_paired_diagnostics(
+    fit_diagnostics: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build paired classical diagnostics for Tests A and F."""
+
+    required_columns = {
+        "sample_id",
+        "pair_id",
+        "test_id",
+        "true_lifetime_ns",
+        "fitted_lifetime_ns",
+        "valid_fit",
+        "boundary_hit",
+        "poisson_nll",
+        "poisson_deviance",
+        "poisson_deviance_per_bin",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(fit_diagnostics.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Classical diagnostics are missing required columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    test_a = fit_diagnostics.loc[
+        fit_diagnostics["test_id"] == "A"
+    ].copy()
+
+    test_f = fit_diagnostics.loc[
+        fit_diagnostics["test_id"] == "F"
+    ].copy()
+
+    if test_a.empty:
+        raise ValueError(
+            "Classical diagnostics do not contain Test A."
+        )
+
+    if test_f.empty:
+        raise ValueError(
+            "Classical diagnostics do not contain Test F."
+        )
+
+    required_f_columns = {
+        "primary_lifetime_ns",
+        "secondary_lifetime_ns",
+        "secondary_fraction",
+        "model_mismatch_severity",
+        "signal_photon_weighted_lifetime_ns",
+    }
+
+    missing_f_columns = (
+        required_f_columns
+        - set(test_f.columns)
+    )
+
+    if missing_f_columns:
+        raise ValueError(
+            "Test-F classical diagnostics are missing columns: "
+            + ", ".join(
+                sorted(missing_f_columns)
+            )
+        )
+
+    test_a = test_a[
+        [
+            "sample_id",
+            "pair_id",
+            "true_lifetime_ns",
+            "fitted_lifetime_ns",
+            "valid_fit",
+            "boundary_hit",
+            "poisson_nll",
+            "poisson_deviance",
+            "poisson_deviance_per_bin",
+        ]
+    ].rename(
+        columns={
+            "true_lifetime_ns": (
+                "true_lifetime_a_ns"
+            ),
+            "fitted_lifetime_ns": (
+                "fitted_lifetime_a_ns"
+            ),
+            "valid_fit": (
+                "valid_fit_a"
+            ),
+            "boundary_hit": (
+                "boundary_hit_a"
+            ),
+            "poisson_nll": (
+                "poisson_nll_a"
+            ),
+            "poisson_deviance": (
+                "poisson_deviance_a"
+            ),
+            "poisson_deviance_per_bin": (
+                "poisson_deviance_per_bin_a"
+            ),
+        }
+    )
+
+    test_f = test_f[
+        [
+            "sample_id",
+            "pair_id",
+            "primary_lifetime_ns",
+            "secondary_lifetime_ns",
+            "secondary_fraction",
+            "model_mismatch_severity",
+            "signal_photon_weighted_lifetime_ns",
+            "fitted_lifetime_ns",
+            "valid_fit",
+            "boundary_hit",
+            "poisson_nll",
+            "poisson_deviance",
+            "poisson_deviance_per_bin",
+        ]
+    ].rename(
+        columns={
+            "fitted_lifetime_ns": (
+                "fitted_lifetime_f_ns"
+            ),
+            "valid_fit": (
+                "valid_fit_f"
+            ),
+            "boundary_hit": (
+                "boundary_hit_f"
+            ),
+            "poisson_nll": (
+                "poisson_nll_f"
+            ),
+            "poisson_deviance": (
+                "poisson_deviance_f"
+            ),
+            "poisson_deviance_per_bin": (
+                "poisson_deviance_per_bin_f"
+            ),
+        }
+    )
+
+    paired = test_a.merge(
+        test_f,
+        on=[
+            "sample_id",
+            "pair_id",
+        ],
+        how="inner",
+        validate="one_to_one",
+    )
+
+    if len(paired) != len(test_a):
+        raise ValueError(
+            "Tests A and F do not preserve complete "
+            "classical sample pairing."
+        )
+
+    if not np.allclose(
+        paired[
+            "true_lifetime_a_ns"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+        paired[
+            "primary_lifetime_ns"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+    ):
+        raise ValueError(
+            "Test-A lifetime and Test-F primary lifetime "
+            "must be paired."
+        )
+
+    valid_a = paired[
+        "valid_fit_a"
+    ].to_numpy(
+        dtype=bool
+    )
+
+    valid_f = paired[
+        "valid_fit_f"
+    ].to_numpy(
+        dtype=bool
+    )
+
+    paired_valid = (
+        valid_a
+        & valid_f
+    )
+
+    paired[
+        "paired_valid_fit"
+    ] = paired_valid
+
+    primary = paired[
+        "primary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    secondary = paired[
+        "secondary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    weighted = paired[
+        "signal_photon_weighted_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    fitted_a = paired[
+        "fitted_lifetime_a_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    fitted_f = paired[
+        "fitted_lifetime_f_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    paired[
+        "absolute_error_to_primary_a_ns"
+    ] = np.where(
+        valid_a,
+        np.abs(
+            fitted_a
+            - primary
+        ),
+        np.nan,
+    )
+
+    paired[
+        "absolute_error_to_primary_f_ns"
+    ] = np.where(
+        valid_f,
+        np.abs(
+            fitted_f
+            - primary
+        ),
+        np.nan,
+    )
+
+    paired[
+        "absolute_error_to_signal_photon_weighted_f_ns"
+    ] = np.where(
+        valid_f,
+        np.abs(
+            fitted_f
+            - weighted
+        ),
+        np.nan,
+    )
+
+    paired[
+        "effective_mixture_position_f"
+    ] = np.where(
+        valid_f,
+        (
+            fitted_f
+            - primary
+        )
+        / (
+            secondary
+            - primary
+        ),
+        np.nan,
+    )
+
+    paired[
+        "fitted_lifetime_change_ns"
+    ] = np.where(
+        paired_valid,
+        fitted_f
+        - fitted_a,
+        np.nan,
+    )
+
+    paired[
+        "poisson_deviance_change"
+    ] = np.where(
+        paired_valid,
+        paired[
+            "poisson_deviance_f"
+        ].to_numpy(
+            dtype=np.float64
+        )
+        - paired[
+            "poisson_deviance_a"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+        np.nan,
+    )
+
+    paired[
+        "poisson_deviance_per_bin_change"
+    ] = np.where(
+        paired_valid,
+        paired[
+            "poisson_deviance_per_bin_f"
+        ].to_numpy(
+            dtype=np.float64
+        )
+        - paired[
+            "poisson_deviance_per_bin_a"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+        np.nan,
+    )
+
+    # Retained as a descriptive optimizer diagnostic.
+    # The current implementation is a reduced Poisson NLL.
+    paired[
+        "poisson_nll_change"
+    ] = np.where(
+        paired_valid,
+        paired[
+            "poisson_nll_f"
+        ].to_numpy(
+            dtype=np.float64
+        )
+        - paired[
+            "poisson_nll_a"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+        np.nan,
+    )
+
+    return paired
+
+
+def summarize_classical_test_f_model_mismatch(
+    fit_diagnostics: pd.DataFrame,
+) -> pd.DataFrame:
+    """Summarize classical Test-F fitting by mismatch severity."""
+
+    required_columns = {
+        "test_id",
+        "model_mismatch_severity",
+        "secondary_fraction",
+        "primary_lifetime_ns",
+        "secondary_lifetime_ns",
+        "signal_photon_weighted_lifetime_ns",
+        "fitted_lifetime_ns",
+        "valid_fit",
+        "boundary_hit",
+        "poisson_nll",
+        "poisson_deviance",
+        "poisson_deviance_per_bin",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(fit_diagnostics.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Classical diagnostics are missing required "
+            "Test-F columns: "
+            + ", ".join(
+                sorted(missing_columns)
+            )
+        )
+
+    test_f = fit_diagnostics.loc[
+        fit_diagnostics["test_id"] == "F"
+    ].copy()
+
+    if test_f.empty:
+        raise ValueError(
+            "Classical diagnostics do not contain Test F."
+        )
+
+    rows: list[
+        dict[str, str | int | float]
+    ] = []
+
+    grouped = test_f.groupby(
+        "model_mismatch_severity",
+        sort=False,
+        dropna=False,
+    )
+
+    for severity, group in grouped:
+        valid_mask = group[
+            "valid_fit"
+        ].to_numpy(
+            dtype=bool
+        )
+
+        n_total = int(
+            len(group)
+        )
+
+        n_valid = int(
+            np.sum(valid_mask)
+        )
+
+        failure_rate = (
+            1.0
+            - n_valid / n_total
+        )
+
+        boundary_hit_rate = float(
+            np.mean(
+                group[
+                    "boundary_hit"
+                ].to_numpy(
+                    dtype=bool
+                )
+            )
+        )
+
+        fractions = np.unique(
+            group[
+                "secondary_fraction"
+            ].to_numpy(
+                dtype=np.float64
+            )
+        )
+
+        if fractions.size != 1:
+            raise ValueError(
+                "Each mismatch severity must correspond "
+                "to exactly one secondary fraction."
+            )
+
+        secondary_fraction = float(
+            fractions[0]
+        )
+
+        if n_valid > 0:
+            valid_group = group.loc[
+                valid_mask
+            ]
+
+            fitted = valid_group[
+                "fitted_lifetime_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            primary = valid_group[
+                "primary_lifetime_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            secondary = valid_group[
+                "secondary_lifetime_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            weighted = valid_group[
+                "signal_photon_weighted_lifetime_ns"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            error_primary = (
+                fitted
+                - primary
+            )
+
+            error_weighted = (
+                fitted
+                - weighted
+            )
+
+            mixture_position = (
+                fitted
+                - primary
+            ) / (
+                secondary
+                - primary
+            )
+
+            poisson_nll = valid_group[
+                "poisson_nll"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            poisson_deviance = valid_group[
+                "poisson_deviance"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            deviance_per_bin = valid_group[
+                "poisson_deviance_per_bin"
+            ].to_numpy(
+                dtype=np.float64
+            )
+
+            finite_nll = poisson_nll[
+                np.isfinite(
+                    poisson_nll
+                )
+            ]
+
+            finite_deviance = poisson_deviance[
+                np.isfinite(
+                    poisson_deviance
+                )
+            ]
+
+            finite_deviance_per_bin = (
+                deviance_per_bin[
+                    np.isfinite(
+                        deviance_per_bin
+                    )
+                ]
+            )
+
+            mean_nll = (
+                float(
+                    np.mean(
+                        finite_nll
+                    )
+                )
+                if finite_nll.size
+                else np.nan
+            )
+
+            median_nll = (
+                float(
+                    np.median(
+                        finite_nll
+                    )
+                )
+                if finite_nll.size
+                else np.nan
+            )
+
+            mean_deviance = (
+                float(
+                    np.mean(
+                        finite_deviance
+                    )
+                )
+                if finite_deviance.size
+                else np.nan
+            )
+
+            median_deviance = (
+                float(
+                    np.median(
+                        finite_deviance
+                    )
+                )
+                if finite_deviance.size
+                else np.nan
+            )
+
+            mean_deviance_per_bin = (
+                float(
+                    np.mean(
+                        finite_deviance_per_bin
+                    )
+                )
+                if finite_deviance_per_bin.size
+                else np.nan
+            )
+
+            median_deviance_per_bin = (
+                float(
+                    np.median(
+                        finite_deviance_per_bin
+                    )
+                )
+                if finite_deviance_per_bin.size
+                else np.nan
+            )
+
+            mae_primary = float(
+                np.mean(
+                    np.abs(
+                        error_primary
+                    )
+                )
+            )
+
+            bias_primary = float(
+                np.mean(
+                    error_primary
+                )
+            )
+
+            mae_weighted = float(
+                np.mean(
+                    np.abs(
+                        error_weighted
+                    )
+                )
+            )
+
+            bias_weighted = float(
+                np.mean(
+                    error_weighted
+                )
+            )
+
+            mean_mixture_position = float(
+                np.mean(
+                    mixture_position
+                )
+            )
+
+            median_mixture_position = float(
+                np.median(
+                    mixture_position
+                )
+            )
+
+        else:
+            mae_primary = np.nan
+            bias_primary = np.nan
+
+            mae_weighted = np.nan
+            bias_weighted = np.nan
+
+            mean_mixture_position = np.nan
+            median_mixture_position = np.nan
+
+            mean_nll = np.nan
+            median_nll = np.nan
+
+            mean_deviance = np.nan
+            median_deviance = np.nan
+
+            mean_deviance_per_bin = np.nan
+            median_deviance_per_bin = np.nan
+
+        rows.append(
+            {
+                "model_mismatch_severity": (
+                    severity
+                ),
+                "secondary_fraction": (
+                    secondary_fraction
+                ),
+                "n_total_samples": (
+                    n_total
+                ),
+                "n_valid_fits": (
+                    n_valid
+                ),
+                "failure_rate": (
+                    float(
+                        failure_rate
+                    )
+                ),
+                "boundary_hit_rate": (
+                    boundary_hit_rate
+                ),
+                "mae_to_primary_ns": (
+                    mae_primary
+                ),
+                "bias_to_primary_ns": (
+                    bias_primary
+                ),
+                "mae_to_signal_photon_weighted_ns": (
+                    mae_weighted
+                ),
+                "bias_to_signal_photon_weighted_ns": (
+                    bias_weighted
+                ),
+                "mean_effective_mixture_position": (
+                    mean_mixture_position
+                ),
+                "median_effective_mixture_position": (
+                    median_mixture_position
+                ),
+                "mean_poisson_nll": (
+                    mean_nll
+                ),
+                "median_poisson_nll": (
+                    median_nll
+                ),
+                "mean_poisson_deviance": (
+                    mean_deviance
+                ),
+                "median_poisson_deviance": (
+                    median_deviance
+                ),
+                "mean_poisson_deviance_per_bin": (
+                    mean_deviance_per_bin
+                ),
+                "median_poisson_deviance_per_bin": (
+                    median_deviance_per_bin
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        rows
+    )
+
+
+def evaluate_classical_model_mismatch_benchmark(
+    *,
+    tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ],
+    irf_centre_ns: float,
+    temporal_shift_bounds: tuple[
+        float,
+        float,
+    ] = (-0.5, 0.5),
+    objective: str = "poisson",
+    background_fraction: float = 0.10,
+) -> ClassicalModelMismatchBenchmarkResult:
+    """Evaluate mono-exponential reconvolution on Tests A and F.
+
+    Both tests are fitted using the correct per-curve IRF width.
+
+    Therefore Test F isolates decay-model mismatch rather than
+    instrument-response mismatch.
+    """
+
+    required_test_ids = {
+        "A",
+        "F",
+    }
+
+    missing_test_ids = (
+        required_test_ids
+        - set(tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Missing required classical model-mismatch tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    for test_id in (
+        "A",
+        "F",
+    ):
+        if tests[
+            test_id
+        ].test_id != test_id:
+            raise ValueError(
+                "Dictionary key and test.test_id must match."
+            )
+
+    estimator_name = (
+        "classical_reconvolution_mono_model"
+    )
+
+    prediction_tables: list[
+        pd.DataFrame
+    ] = []
+
+    diagnostic_tables: list[
+        pd.DataFrame
+    ] = []
+
+    for test_id in (
+        "A",
+        "F",
+    ):
+        test = tests[
+            test_id
+        ]
+
+        diagnostics = (
+            _evaluate_classical_generalization_test(
+                test=test,
+                irf_centre_ns=(
+                    irf_centre_ns
+                ),
+                temporal_shift_bounds=(
+                    temporal_shift_bounds
+                ),
+                objective=objective,
+                background_fraction=(
+                    background_fraction
+                ),
+
+                # Important:
+                # use each curve's true IRF width.
+                assumed_irf_fwhm_ns=None,
+
+                irf_mode=(
+                    "correct_test_irf"
+                ),
+            )
+        )
+
+        diagnostics = diagnostics.copy(
+            deep=True
+        )
+
+        diagnostics[
+            "classical_decay_model"
+        ] = (
+            "monoexponential_reconvolution"
+        )
+
+        diagnostics[
+            "poisson_deviance_per_bin"
+        ] = (
+            diagnostics[
+                "poisson_deviance"
+            ].to_numpy(
+                dtype=np.float64
+            )
+            / float(
+                test.time.size
+            )
+        )
+
+        diagnostic_tables.append(
+            diagnostics
+        )
+
+        prediction_tables.append(
+            _build_classical_generalization_prediction_table(
+                test=test,
+                diagnostics=diagnostics,
+                estimator_name=(
+                    estimator_name
+                ),
+            )
+        )
+
+    fit_diagnostics = pd.concat(
+        diagnostic_tables,
+        ignore_index=True,
+    )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        build_reference_mae_degradation_table(
+            summary,
+            reference_test_id="A",
+        )
+    )
+
+    paired_diagnostics = (
+        build_classical_af_paired_diagnostics(
+            fit_diagnostics
+        )
+    )
+
+    severity_summary = (
+        summarize_classical_test_f_model_mismatch(
+            fit_diagnostics
+        )
+    )
+
+    return (
+        ClassicalModelMismatchBenchmarkResult(
+            predictions=predictions,
+            summary=summary,
+            degradation=degradation,
+            fit_diagnostics=(
+                fit_diagnostics
+            ),
+            paired_diagnostics=(
+                paired_diagnostics
+            ),
+            severity_summary=(
+                severity_summary
+            ),
+        )
+    )
+
+
+def build_af_comparison_table(
+    *,
+    summary: pd.DataFrame,
+    degradation: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build a side-by-side Test-A versus Test-F comparison."""
+
+    required_summary_columns = {
+        "estimator",
+        "representation",
+        "test_id",
+        "mae_ns",
+        "median_absolute_error_ns",
+        "rmse_ns",
+        "bias_ns",
+        "p90_absolute_error_ns",
+        "p95_absolute_error_ns",
+        "classical_failure_rate",
+    }
+
+    missing_summary_columns = (
+        required_summary_columns
+        - set(summary.columns)
+    )
+
+    if missing_summary_columns:
+        raise ValueError(
+            "Summary table is missing required columns: "
+            + ", ".join(
+                sorted(
+                    missing_summary_columns
+                )
+            )
+        )
+
+    required_degradation_columns = {
+        "estimator",
+        "representation",
+        "reference_test_id",
+        "ood_test_id",
+        "mae_degradation",
+    }
+
+    missing_degradation_columns = (
+        required_degradation_columns
+        - set(degradation.columns)
+    )
+
+    if missing_degradation_columns:
+        raise ValueError(
+            "Degradation table is missing required columns: "
+            + ", ".join(
+                sorted(
+                    missing_degradation_columns
+                )
+            )
+        )
+
+    if set(
+        summary["test_id"]
+    ) != {
+        "A",
+        "F",
+    }:
+        raise ValueError(
+            "A/F comparison requires exactly Tests A and F."
+        )
+
+    if not (
+        degradation[
+            "reference_test_id"
+        ] == "A"
+    ).all():
+        raise ValueError(
+            "A/F degradation must use Test A as the reference."
+        )
+
+    if not (
+        degradation[
+            "ood_test_id"
+        ] == "F"
+    ).all():
+        raise ValueError(
+            "A/F degradation must use Test F as the OOD test."
+        )
+
+    test_a = summary.loc[
+        summary[
+            "test_id"
+        ] == "A"
+    ].copy()
+
+    test_f = summary.loc[
+        summary[
+            "test_id"
+        ] == "F"
+    ].copy()
+
+    join_columns = [
+        "estimator",
+        "representation",
+    ]
+
+    a_keys = set(
+        map(
+            tuple,
+            test_a[
+                join_columns
+            ].to_numpy(),
+        )
+    )
+
+    f_keys = set(
+        map(
+            tuple,
+            test_f[
+                join_columns
+            ].to_numpy(),
+        )
+    )
+
+    if a_keys != f_keys:
+        raise ValueError(
+            "Tests A and F must contain identical "
+            "estimator/representation combinations."
+        )
+
+    metric_columns = {
+        "mae_ns": "mae",
+        "median_absolute_error_ns": (
+            "median_absolute_error"
+        ),
+        "rmse_ns": "rmse",
+        "bias_ns": "bias",
+        "p90_absolute_error_ns": (
+            "p90_absolute_error"
+        ),
+        "p95_absolute_error_ns": (
+            "p95_absolute_error"
+        ),
+        "classical_failure_rate": (
+            "classical_failure_rate"
+        ),
+    }
+
+    test_a = test_a[
+        join_columns
+        + list(
+            metric_columns
+        )
+    ]
+
+    test_f = test_f[
+        join_columns
+        + list(
+            metric_columns
+        )
+    ]
+
+    test_a = test_a.rename(
+        columns={
+            column: (
+                f"{base_name}_a"
+            )
+            for (
+                column,
+                base_name,
+            ) in metric_columns.items()
+        }
+    )
+
+    test_f = test_f.rename(
+        columns={
+            column: (
+                f"{base_name}_f"
+            )
+            for (
+                column,
+                base_name,
+            ) in metric_columns.items()
+        }
+    )
+
+    comparison = test_a.merge(
+        test_f,
+        on=join_columns,
+        how="inner",
+        validate="one_to_one",
+    )
+
+    comparison = comparison.merge(
+        degradation[
+            [
+                "estimator",
+                "representation",
+                "mae_degradation",
+            ]
+        ],
+        on=join_columns,
+        how="inner",
+        validate="one_to_one",
+    )
+
+    return comparison
+
+
+def build_day55_severity_comparison(
+    *,
+    nonclassical_summary: pd.DataFrame,
+    classical_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Combine Test-F severity results across all estimators."""
+
+    required_nonclassical_columns = {
+        "estimator",
+        "representation",
+        "model_mismatch_severity",
+        "secondary_fraction",
+        "n_total_samples",
+        "n_valid_predictions",
+        "mae_to_primary_ns",
+        "bias_to_primary_ns",
+        "mae_to_signal_photon_weighted_ns",
+        "bias_to_signal_photon_weighted_ns",
+        "mean_effective_mixture_position",
+        "median_effective_mixture_position",
+    }
+
+    missing_nonclassical = (
+        required_nonclassical_columns
+        - set(nonclassical_summary.columns)
+    )
+
+    if missing_nonclassical:
+        raise ValueError(
+            "Non-classical severity summary is missing columns: "
+            + ", ".join(
+                sorted(
+                    missing_nonclassical
+                )
+            )
+        )
+
+    required_classical_columns = {
+        "model_mismatch_severity",
+        "secondary_fraction",
+        "n_total_samples",
+        "n_valid_fits",
+        "mae_to_primary_ns",
+        "bias_to_primary_ns",
+        "mae_to_signal_photon_weighted_ns",
+        "bias_to_signal_photon_weighted_ns",
+        "mean_effective_mixture_position",
+        "median_effective_mixture_position",
+    }
+
+    missing_classical = (
+        required_classical_columns
+        - set(classical_summary.columns)
+    )
+
+    if missing_classical:
+        raise ValueError(
+            "Classical severity summary is missing columns: "
+            + ", ".join(
+                sorted(
+                    missing_classical
+                )
+            )
+        )
+
+    nonclassical = (
+        nonclassical_summary.copy(
+            deep=True
+        )
+    )
+
+    nonclassical[
+        "n_valid_estimates"
+    ] = nonclassical[
+        "n_valid_predictions"
+    ].to_numpy(
+        dtype=np.int64
+    )
+
+    nonclassical[
+        "failure_rate"
+    ] = (
+        1.0
+        - nonclassical[
+            "n_valid_estimates"
+        ].to_numpy(
+            dtype=np.float64
+        )
+        / nonclassical[
+            "n_total_samples"
+        ].to_numpy(
+            dtype=np.float64
+        )
+    )
+
+    classical = (
+        classical_summary.copy(
+            deep=True
+        )
+    )
+
+    classical.insert(
+        0,
+        "representation",
+        "raw_histogram",
+    )
+
+    classical.insert(
+        0,
+        "estimator",
+        "classical_reconvolution_mono_model",
+    )
+
+    classical[
+        "n_valid_estimates"
+    ] = classical[
+        "n_valid_fits"
+    ].to_numpy(
+        dtype=np.int64
+    )
+
+    common_columns = [
+        "estimator",
+        "representation",
+        "model_mismatch_severity",
+        "secondary_fraction",
+        "n_total_samples",
+        "n_valid_estimates",
+        "failure_rate",
+        "mae_to_primary_ns",
+        "bias_to_primary_ns",
+        "mae_to_signal_photon_weighted_ns",
+        "bias_to_signal_photon_weighted_ns",
+        "mean_effective_mixture_position",
+        "median_effective_mixture_position",
+    ]
+
+    combined = pd.concat(
+        [
+            nonclassical[
+                common_columns
+            ],
+            classical[
+                common_columns
+            ],
+        ],
+        ignore_index=True,
+    )
+
+    return combined
+
+
+def build_classical_model_mismatch_gof_summary(
+    severity_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Extract classical goodness-of-fit reporting for Test F."""
+
+    required_columns = {
+        "model_mismatch_severity",
+        "secondary_fraction",
+        "n_total_samples",
+        "n_valid_fits",
+        "failure_rate",
+        "boundary_hit_rate",
+        "mean_poisson_nll",
+        "median_poisson_nll",
+        "mean_poisson_deviance",
+        "median_poisson_deviance",
+        "mean_poisson_deviance_per_bin",
+        "median_poisson_deviance_per_bin",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(severity_summary.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Classical severity summary is missing GOF columns: "
+            + ", ".join(
+                sorted(
+                    missing_columns
+                )
+            )
+        )
+
+    return (
+        severity_summary[
+            [
+                "model_mismatch_severity",
+                "secondary_fraction",
+                "n_total_samples",
+                "n_valid_fits",
+                "failure_rate",
+                "boundary_hit_rate",
+                "mean_poisson_nll",
+                "median_poisson_nll",
+                "mean_poisson_deviance",
+                "median_poisson_deviance",
+                "mean_poisson_deviance_per_bin",
+                "median_poisson_deviance_per_bin",
+            ]
+        ]
+        .copy(
+            deep=True
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+
+@dataclass(frozen=True)
+class Day55ModelMismatchReport:
+    """Reporting tables for the Day-55 Test-F experiment."""
+
+    nonclassical_comparison: pd.DataFrame
+    classical_comparison: pd.DataFrame
+
+    severity_comparison: pd.DataFrame
+
+    classical_gof_summary: pd.DataFrame
+    classical_paired_diagnostics: pd.DataFrame
+
+
+def build_day55_model_mismatch_report(
+    *,
+    nonclassical_result: ModelMismatchBenchmarkResult,
+    classical_result: ClassicalModelMismatchBenchmarkResult,
+) -> Day55ModelMismatchReport:
+    """Build the final reporting tables for Day 55."""
+
+    nonclassical_comparison = (
+        build_af_comparison_table(
+            summary=(
+                nonclassical_result.summary
+            ),
+            degradation=(
+                nonclassical_result.degradation
+            ),
+        )
+    )
+
+    classical_comparison = (
+        build_af_comparison_table(
+            summary=(
+                classical_result.summary
+            ),
+            degradation=(
+                classical_result.degradation
+            ),
+        )
+    )
+
+    severity_comparison = (
+        build_day55_severity_comparison(
+            nonclassical_summary=(
+                nonclassical_result
+                .severity_summary
+            ),
+            classical_summary=(
+                classical_result
+                .severity_summary
+            ),
+        )
+    )
+
+    classical_gof_summary = (
+        build_classical_model_mismatch_gof_summary(
+            classical_result
+            .severity_summary
+        )
+    )
+
+    classical_paired_diagnostics = (
+        classical_result
+        .paired_diagnostics
+        .copy(
+            deep=True
+        )
+    )
+
+    return Day55ModelMismatchReport(
+        nonclassical_comparison=(
+            nonclassical_comparison
+        ),
+        classical_comparison=(
+            classical_comparison
+        ),
+        severity_comparison=(
+            severity_comparison
+        ),
+        classical_gof_summary=(
+            classical_gof_summary
+        ),
+        classical_paired_diagnostics=(
+            classical_paired_diagnostics
+        ),
+    )
 

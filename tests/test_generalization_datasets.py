@@ -659,12 +659,13 @@ def test_test_f_contains_secondary_exponential_component(
         definition
     )
 
-    np.testing.assert_allclose(
+    assert set(
         test_f[
             "secondary_fraction"
-        ].to_numpy(),
+        ]
+    ) == set(
         definition.numerics
-        .test_f_secondary_fraction,
+        .test_f_secondary_fractions
     )
 
     np.testing.assert_allclose(
@@ -677,6 +678,154 @@ def test_test_f_contains_secondary_exponential_component(
             ].to_numpy()
             * definition.numerics
             .test_f_secondary_lifetime_factor
+        ),
+    )
+
+
+def test_test_f_contains_weak_and_moderate_severity(
+) -> None:
+    definition = default_generalization_suite()
+
+    test_f = build_test_f_parameter_table(
+        definition
+    )
+
+    assert set(
+        test_f[
+            "model_mismatch_severity"
+        ]
+    ) == {
+        "weak",
+        "moderate",
+    }
+
+    severity_counts = (
+        test_f[
+            "model_mismatch_severity"
+        ]
+        .value_counts()
+    )
+
+    assert severity_counts[
+        "weak"
+    ] == 96
+
+    assert severity_counts[
+        "moderate"
+    ] == 96
+
+
+def test_test_f_severity_is_balanced_across_photon_counts(
+) -> None:
+    definition = default_generalization_suite()
+
+    test_f = build_test_f_parameter_table(
+        definition
+    )
+
+    balance = pd.crosstab(
+        test_f[
+            "model_mismatch_severity"
+        ],
+        test_f[
+            "signal_photon_count_target"
+        ],
+    )
+
+    assert set(
+        balance.index
+    ) == {
+        "weak",
+        "moderate",
+    }
+
+    assert set(
+        balance.columns
+    ) == {
+        1_000,
+        10_000,
+    }
+
+    np.testing.assert_array_equal(
+        balance.to_numpy(),
+        np.full(
+            (
+                2,
+                2,
+            ),
+            48,
+            dtype=np.int64,
+        ),
+    )
+
+
+def test_test_f_signal_photon_weighted_lifetime_is_correct(
+) -> None:
+    definition = default_generalization_suite()
+
+    test_f = build_test_f_parameter_table(
+        definition
+    )
+
+    primary = test_f[
+        "primary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    secondary = test_f[
+        "secondary_lifetime_ns"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    fraction = test_f[
+        "secondary_fraction"
+    ].to_numpy(
+        dtype=np.float64
+    )
+
+    expected = (
+        (1.0 - fraction)
+        * primary
+        + fraction
+        * secondary
+    )
+
+    np.testing.assert_allclose(
+        test_f[
+            "signal_photon_weighted_lifetime_ns"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+        expected,
+    )
+
+
+def test_generated_test_f_uses_primary_lifetime_as_target(
+) -> None:
+    definition = default_generalization_suite()
+
+    test_f = generate_generalization_test(
+        definition,
+        "F",
+    )
+
+    np.testing.assert_allclose(
+        test_f.y,
+        test_f.metadata[
+            "primary_lifetime_ns"
+        ].to_numpy(
+            dtype=np.float64
+        ),
+    )
+
+    np.testing.assert_allclose(
+        test_f.y,
+        test_f.metadata[
+            "lifetime_true_ns"
+        ].to_numpy(
+            dtype=np.float64
         ),
     )
 

@@ -569,8 +569,62 @@ def build_test_f_parameter_table(
         * numerics.test_f_secondary_lifetime_factor
     )
 
-    table["secondary_fraction"] = float(
-        numerics.test_f_secondary_fraction
+    secondary_fractions = np.asarray(
+        numerics.test_f_secondary_fractions,
+        dtype=np.float64,
+    )
+
+    severity_labels = np.asarray(
+        [
+            "weak",
+            "moderate",
+        ],
+        dtype=object,
+    )
+
+    severity_block_size = len(
+        familiar.signal_photon_counts
+    )
+
+    severity_indices = (
+                               table[
+                                   "pair_id"
+                               ].to_numpy(
+                                   dtype=np.int64
+                               )
+                               // severity_block_size
+                       ) % secondary_fractions.size
+
+    table[
+        "model_mismatch_severity"
+    ] = severity_labels[
+        severity_indices
+    ]
+
+    table[
+        "secondary_fraction"
+    ] = secondary_fractions[
+        severity_indices
+    ]
+
+    table[
+        "signal_photon_weighted_lifetime_ns"
+    ] = (
+            (
+                    1.0
+                    - table[
+                        "secondary_fraction"
+                    ]
+            )
+            * table[
+                "primary_lifetime_ns"
+            ]
+            + table[
+                "secondary_fraction"
+            ]
+            * table[
+                "secondary_lifetime_ns"
+            ]
     )
 
     table["secondary_lifetime_factor"] = float(
