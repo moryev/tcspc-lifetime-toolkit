@@ -418,6 +418,17 @@ engineering and machine-learning representations may use normalization or
 derived temporal descriptors, whereas Poisson reconvolution fitting should
 generally retain the original photon counts and background statistics.
 
+## Scientific benchmark findings
+
+Controlled benchmarking now includes repeated development-set
+cross-validation and final A-F robustness evaluation covering photon-count,
+IRF, background, temporal-alignment, and decay-model shifts.
+
+Key findings and their scientific interpretation are maintained in
+[`docs/scientific_findings.md`](docs/scientific_findings.md), with the
+complete Week-8 analysis available in
+[`notebooks/13_generalization_and_robustness.ipynb`](notebooks/13_generalization_and_robustness.ipynb).
+
 ## Current implementation status
 **Version 0.6 extends the toolkit from machine-learning representation
 construction to a reproducible classical-versus-data-driven TCSPC lifetime
@@ -875,6 +886,26 @@ Demonstrates:
 * final synthesis of when data-driven TCSPC lifetime estimation outperforms, matches, or complements classical reconvolution;
 * explicit discussion of benchmark scope, interpolation limits, model mismatch, and future experimental validation requirements.
 
+### `13_generalization_and_robustness.ipynb`
+
+Demonstrates:
+
+* construction and verification of the frozen paired Week-8 robustness suite covering Tests A-F;
+* separation of development data from untouched final robustness tests;
+* repeated 5-fold × 5-repeat development-set cross-validation;
+* leakage-safe comparison of engineered-feature, normalized-histogram,
+  and PCA-histogram representations;
+* evaluation of familiar Test A against photon-count OOD Test B;
+* controlled IRF-width, elevated-background, and temporal-misalignment robustness experiments in Tests C-E;
+* deliberate comparison of correct and misspecified IRFs in Test C;
+* controlled weak and moderate bi-exponential model mismatch in Test F;
+* comparison of dominant-component and signal-photon-weighted lifetime references under bi-exponential decay;
+* unified A-F MAE and MAE-degradation scorecards for the principal estimators;
+* classical fit-failure and goodness-of-fit diagnostics across robustness regimes;
+* demonstration that strong in-distribution cross-validation does not guarantee OOD robustness;
+* demonstration that explicit physical nuisance modelling provides strong robustness while forward-model mismatch can produce biased but numerically successful fits;
+* final Week-8 scientific synthesis and transition toward uncertainty and failure-awareness in Week 9.
+
 ## Repository structure
 
 ```text
@@ -889,6 +920,11 @@ tcspc-lifetime-toolkit/
 │   └── generated/
 │       └── .gitkeep
 │
+├── docs/
+│   ├── scientific_findings.md
+│   └── design/
+│       └── master_design_document.md
+│
 ├── notebooks/
 │   ├── 01_tcspc_simulation.ipynb
 │   ├── 02_classical_lifetime_fitting.ipynb
@@ -901,7 +937,8 @@ tcspc-lifetime-toolkit/
 │   ├── 09_poisson_reconvolution_fitting_and_validation.ipynb
 │   ├── 10_preprocessing_tcspc_histograms.ipynb
 │   ├── 11_feature_engineering.ipynb
-│   └── 12_ml_benchmarking.ipynb
+│   ├── 12_ml_benchmarking.ipynb
+│   └── 13_generalization_and_robustness.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -914,11 +951,15 @@ tcspc-lifetime-toolkit/
 │       ├── conditional_evaluation.py
 │       ├── config.py
 │       ├── convolution.py
+│       ├── cross_validation.py
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── exceptions.py
 │       ├── features.py
 │       ├── fitting.py
+│       ├── generalization.py
+│       ├── generalization_datasets.py
+│       ├── generalization_evaluation.py
 │       ├── irf.py
 │       ├── mismatch_evaluation.py
 │       ├── ml_evaluation.py
@@ -965,11 +1006,15 @@ The modules currently have the following responsibilities:
 * `conditional_evaluation.py`: standardized ML/classical prediction diagnostics, numeric regime assignment, and conditional performance summaries across benchmark operating conditions;
 * `config.py`: immutable configuration dataclasses, normalization-mode definitions, and JSON serialization/loading utilities for reproducible simulation and preprocessing workflows;
 * `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
+* `cross_validation.py`: repeated development-set cross-validation, fold-level regression evaluation, aggregate stability summaries, and leakage-safe estimator benchmarking;
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `exceptions.py`: package-specific exception hierarchy for representing domain-level TCSPC validation and processing errors;
 * `features.py`: extraction of physically interpretable TCSPC histogram features, including photon-count descriptors, photon-arrival moments, quantile times, half-decay timing, tail characteristics, and early/late count relationships; also defines the stable engineered-feature schema and batch feature-table construction;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
+* `generalization.py`: frozen Week-8 robustness protocol, familiar-domain definition, A-F test definitions, numerical regimes, and reproducible test-suite configuration;
+* `generalization_datasets.py`: reproducible construction of paired final robustness Tests A-F with aligned targets, nuisance conditions, and provenance metadata;
+* `generalization_evaluation.py`: development-only fitting and final robustness evaluation across Tests A-F, including representation comparisons, classical diagnostics, model mismatch, MAE degradation, and Week-8 synthesis tables;
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
 * `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
 * `ml_evaluation.py`: reproducible benchmark-dataset construction and splitting, regression metrics, baseline and estimator evaluation, histogram/PCA representation construction, representation benchmarks, photon-count ablation, and split-coverage diagnostics;
@@ -981,6 +1026,7 @@ The modules currently have the following responsibilities:
 * `timing_evaluation.py`: repeated batch inference timing, reconvolution-runtime summaries, throughput calculation, and computational-cost comparison;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
+* `docs/scientific_findings.md`: cumulative record of durable scientific conclusions established by the benchmark notebooks;
 * `notebooks/`: documented analysis workflows;
 * `tests/`: automated verification of physical, numerical, and package behaviour;
 * `pyproject.toml`: package metadata, dependencies, build configuration, and command-line entry points.
