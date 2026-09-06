@@ -29,6 +29,7 @@ from tcspc_toolkit.features import (
     extract_feature_table,
 )
 from tcspc_toolkit.generalization import (
+    FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
     default_generalization_suite,
 )
@@ -60,6 +61,7 @@ from tcspc_toolkit.representations import (
 
 
 DEFAULT_DEVELOPMENT_RANDOM_SEED = 42
+MIN_REFERENCE_MAE_NS = 1e-12
 
 
 @dataclass(frozen=True)
@@ -200,10 +202,13 @@ def calculate_mae_degradation(
 ) -> RobustnessDegradation:
     """Calculate MAE degradation between reference and OOD tests."""
 
-    if reference_metrics.mae_ns <= 0.0:
+    if (
+            reference_metrics.mae_ns
+            <= MIN_REFERENCE_MAE_NS
+    ):
         raise ValueError(
-            "Reference MAE must be strictly positive "
-            "to calculate degradation."
+            "Reference MAE is too small to calculate "
+            "a numerically meaningful degradation ratio."
         )
 
     mae_degradation = (
@@ -1096,7 +1101,7 @@ def build_mae_degradation_table(
 
         if (
             np.isfinite(reference_mae_ns)
-            and reference_mae_ns > 0.0
+            and reference_mae_ns > MIN_REFERENCE_MAE_NS
             and np.isfinite(ood_mae_ns)
         ):
             mae_degradation = (
@@ -1237,7 +1242,7 @@ def build_reference_mae_degradation_table(
                 np.isfinite(
                     reference_mae_ns
                 )
-                and reference_mae_ns > 0.0
+                and reference_mae_ns > MIN_REFERENCE_MAE_NS
                 and np.isfinite(
                     ood_mae_ns
                 )
@@ -5904,3 +5909,470 @@ def build_day55_model_mismatch_report(
         ),
     )
 
+
+@dataclass(frozen=True)
+class GeneralizationSuiteBenchmarkResult:
+    """Non-classical benchmark across final Tests A-F.
+
+    All ML estimators must already have been fitted exclusively
+    on development data.
+
+    Test F is scored against the dominant-component lifetime
+    tau_1, which is stored as the primary lifetime target.
+    """
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+
+def evaluate_generalization_suite_benchmark(
+    *,
+    prepared: GeneralizationPreparedData,
+    fitted_estimators: dict[
+        str,
+        dict[str, Any],
+    ],
+) -> GeneralizationSuiteBenchmarkResult:
+    """Evaluate non-classical estimators on final Tests A-F."""
+
+    missing_test_ids = (
+        set(FINAL_ROBUSTNESS_TEST_IDS)
+        - set(prepared.tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Prepared data are missing final robustness tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    prediction_tables = (
+        _evaluate_nonclassical_generalization_tests(
+            prepared=prepared,
+            fitted_estimators=fitted_estimators,
+            test_ids=FINAL_ROBUSTNESS_TEST_IDS,
+        )
+    )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        build_reference_mae_degradation_table(
+            summary,
+            reference_test_id="A",
+        )
+    )
+
+    return GeneralizationSuiteBenchmarkResult(
+        predictions=predictions,
+        summary=summary,
+        degradation=degradation,
+    )
+
+
+@dataclass(frozen=True)
+class ClassicalGeneralizationSuiteBenchmarkResult:
+    """Classical reconvolution benchmark across Tests A-F.
+
+    Every curve is fitted using its correct IRF width.
+
+    The fitted decay model remains mono-exponential for every
+    test, including bi-exponential Test F.
+    """
+
+    predictions: pd.DataFrame
+    summary: pd.DataFrame
+    degradation: pd.DataFrame
+
+    fit_diagnostics: pd.DataFrame
+
+
+def evaluate_classical_generalization_suite_benchmark(
+    *,
+    tests: dict[
+        str,
+        GeneralizationTestMeasurements,
+    ],
+    irf_centre_ns: float,
+    temporal_shift_bounds: tuple[
+        float,
+        float,
+    ] = (-0.5, 0.5),
+    objective: str = "poisson",
+    background_fraction: float = 0.10,
+) -> ClassicalGeneralizationSuiteBenchmarkResult:
+    """Evaluate mono-exponential reconvolution on Tests A-F.
+
+    The correct per-curve IRF width is supplied for every test.
+
+    Consequently:
+
+    - Test C measures robustness to broader IRFs when the
+      instrument response itself is known;
+    - the separate Day-54 nominal-IRF Test-C experiment remains
+      the diagnostic for explicit IRF-model mismatch;
+    - Test F isolates decay-model mismatch because its IRF is
+      still supplied correctly.
+    """
+
+    missing_test_ids = (
+        set(FINAL_ROBUSTNESS_TEST_IDS)
+        - set(tests)
+    )
+
+    if missing_test_ids:
+        raise ValueError(
+            "Missing final classical robustness tests: "
+            + ", ".join(
+                sorted(missing_test_ids)
+            )
+        )
+
+    prediction_tables: list[
+        pd.DataFrame
+    ] = []
+
+    diagnostic_tables: list[
+        pd.DataFrame
+    ] = []
+
+    estimator_name = (
+        "classical_reconvolution_mono_model"
+    )
+
+    for test_id in FINAL_ROBUSTNESS_TEST_IDS:
+        test = tests[
+            test_id
+        ]
+
+        if test.test_id != test_id:
+            raise ValueError(
+                "Dictionary key and test.test_id must match."
+            )
+
+        diagnostics = (
+            _evaluate_classical_generalization_test(
+                test=test,
+                irf_centre_ns=irf_centre_ns,
+                temporal_shift_bounds=(
+                    temporal_shift_bounds
+                ),
+                objective=objective,
+                background_fraction=(
+                    background_fraction
+                ),
+
+                # Use the correct per-curve IRF width.
+                assumed_irf_fwhm_ns=None,
+
+                irf_mode="correct_test_irf",
+            )
+        )
+
+        diagnostics = diagnostics.copy(
+            deep=True
+        )
+
+        diagnostics[
+            "estimator"
+        ] = estimator_name
+
+        diagnostics[
+            "classical_decay_model"
+        ] = (
+            "monoexponential_reconvolution"
+        )
+
+        diagnostic_tables.append(
+            diagnostics
+        )
+
+        prediction_tables.append(
+            _build_classical_generalization_prediction_table(
+                test=test,
+                diagnostics=diagnostics,
+                estimator_name=estimator_name,
+            )
+        )
+
+    predictions = pd.concat(
+        prediction_tables,
+        ignore_index=True,
+    )
+
+    fit_diagnostics = pd.concat(
+        diagnostic_tables,
+        ignore_index=True,
+    )
+
+    summary = (
+        summarize_generalization_predictions(
+            predictions
+        )
+    )
+
+    degradation = (
+        build_reference_mae_degradation_table(
+            summary,
+            reference_test_id="A",
+        )
+    )
+
+    return (
+        ClassicalGeneralizationSuiteBenchmarkResult(
+            predictions=predictions,
+            summary=summary,
+            degradation=degradation,
+            fit_diagnostics=fit_diagnostics,
+        )
+    )
+
+
+@dataclass(frozen=True)
+class Week8RobustnessReport:
+    """Compact final Week-8 robustness synthesis."""
+
+    principal_summary: pd.DataFrame
+
+    mae_matrix: pd.DataFrame
+    degradation_matrix: pd.DataFrame
+
+    classical_failure_rate_matrix: pd.DataFrame
+
+
+def build_week8_robustness_report(
+    *,
+    nonclassical_result: (
+        GeneralizationSuiteBenchmarkResult
+    ),
+    classical_result: (
+        ClassicalGeneralizationSuiteBenchmarkResult
+    ),
+) -> Week8RobustnessReport:
+    """Build compact A-F robustness tables.
+
+    Test F is scored against the dominant-component lifetime
+    tau_1. The alternative signal-photon-weighted lifetime
+    remains a separate descriptive Day-55 diagnostic.
+    """
+
+    principal_estimators = (
+        (
+            "constant_mean",
+            "none",
+            "constant_mean",
+        ),
+        (
+            "mean_arrival_time",
+            "engineered_features",
+            "mean_arrival_time",
+        ),
+        (
+            "ridge",
+            "engineered_features",
+            "ridge",
+        ),
+        (
+            "random_forest",
+            "engineered_features",
+            "random_forest",
+        ),
+        (
+            "hist_gradient_boosting",
+            "engineered_features",
+            "hist_gradient_boosting",
+        ),
+    )
+
+    principal_tables: list[
+        pd.DataFrame
+    ] = []
+
+    for (
+        estimator_name,
+        representation_name,
+        display_name,
+    ) in principal_estimators:
+
+        rows = (
+            nonclassical_result.summary.loc[
+                (
+                    nonclassical_result.summary[
+                        "estimator"
+                    ]
+                    == estimator_name
+                )
+                & (
+                    nonclassical_result.summary[
+                        "representation"
+                    ]
+                    == representation_name
+                )
+            ]
+            .copy(
+                deep=True
+            )
+        )
+
+        if set(
+            rows["test_id"]
+        ) != set(
+            FINAL_ROBUSTNESS_TEST_IDS
+        ):
+            raise ValueError(
+                f"{estimator_name!r} does not contain "
+                "complete A-F results."
+            )
+
+        rows[
+            "display_estimator"
+        ] = display_name
+
+        principal_tables.append(
+            rows
+        )
+
+    classical_rows = (
+        classical_result.summary.copy(
+            deep=True
+        )
+    )
+
+    if set(
+        classical_rows["test_id"]
+    ) != set(
+        FINAL_ROBUSTNESS_TEST_IDS
+    ):
+        raise ValueError(
+            "Classical result does not contain "
+            "complete A-F results."
+        )
+
+    classical_rows[
+        "display_estimator"
+    ] = "classical_reconvolution"
+
+    principal_tables.append(
+        classical_rows
+    )
+
+    principal_summary = pd.concat(
+        principal_tables,
+        ignore_index=True,
+    )
+
+    principal_summary[
+        "target_reference"
+    ] = np.where(
+        principal_summary[
+            "test_id"
+        ] == "F",
+        "dominant_component_tau_1",
+        "monoexponential_lifetime",
+    )
+
+    estimator_order = [
+        "constant_mean",
+        "mean_arrival_time",
+        "ridge",
+        "random_forest",
+        "hist_gradient_boosting",
+        "classical_reconvolution",
+    ]
+
+    mae_matrix = (
+        principal_summary.pivot(
+            index="display_estimator",
+            columns="test_id",
+            values="mae_ns",
+        )
+        .reindex(
+            index=estimator_order,
+            columns=(
+                FINAL_ROBUSTNESS_TEST_IDS
+            ),
+        )
+    )
+
+    mae_matrix.index.name = (
+        "estimator"
+    )
+
+    degradation_matrix = (
+        mae_matrix.loc[
+            :,
+            [
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+            ],
+        ]
+        .div(
+            mae_matrix["A"],
+            axis=0,
+        )
+    )
+
+    too_small_reference = (
+        mae_matrix["A"]
+        <= MIN_REFERENCE_MAE_NS
+    )
+
+    degradation_matrix.loc[
+        too_small_reference,
+        :,
+    ] = np.nan
+
+    degradation_matrix.columns = [
+        "B_over_A",
+        "C_over_A",
+        "D_over_A",
+        "E_over_A",
+        "F_over_A",
+    ]
+
+    classical_failure_rate_matrix = (
+        classical_rows.pivot(
+            index="display_estimator",
+            columns="test_id",
+            values=(
+                "classical_failure_rate"
+            ),
+        )
+        .reindex(
+            columns=(
+                FINAL_ROBUSTNESS_TEST_IDS
+            )
+        )
+    )
+
+    classical_failure_rate_matrix.index.name = (
+        "estimator"
+    )
+
+    return Week8RobustnessReport(
+        principal_summary=(
+            principal_summary
+        ),
+        mae_matrix=mae_matrix,
+        degradation_matrix=(
+            degradation_matrix
+        ),
+        classical_failure_rate_matrix=(
+            classical_failure_rate_matrix
+        ),
+    )
