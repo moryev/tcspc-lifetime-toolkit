@@ -18,6 +18,7 @@ from tcspc_toolkit.ml_models import (
     make_hist_gradient_boosting_pipeline,
     make_normalized_histogram_ridge_pipeline,
     make_pca_histogram_ridge_pipeline,
+    make_quantile_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,
 )
@@ -369,4 +370,84 @@ def test_pipeline_total_normalization_matches_representation_helper(
         expected,
     )
 
+
+def test_quantile_hist_gradient_boosting_pipeline_contains_model() -> None:
+    pipeline = (
+        make_quantile_hist_gradient_boosting_pipeline(
+            quantile=0.05,
+        )
+    )
+
+    assert list(
+        pipeline.named_steps
+    ) == [
+        "model",
+    ]
+
+    assert isinstance(
+        pipeline.named_steps["model"],
+        HistGradientBoostingRegressor,
+    )
+
+
+def test_quantile_hist_gradient_boosting_configures_quantile_loss() -> None:
+    quantile = 0.05
+
+    pipeline = (
+        make_quantile_hist_gradient_boosting_pipeline(
+            quantile=quantile,
+        )
+    )
+
+    model = pipeline.named_steps[
+        "model"
+    ]
+
+    assert model.loss == "quantile"
+    assert model.quantile == pytest.approx(
+        quantile
+    )
+    assert (
+        model.random_state
+        == DEFAULT_RANDOM_STATE
+    )
+
+
+def test_quantile_hist_gradient_boosting_random_state_can_be_overridden() -> None:
+    pipeline = (
+        make_quantile_hist_gradient_boosting_pipeline(
+            quantile=0.50,
+            random_state=123,
+        )
+    )
+
+    assert (
+        pipeline
+        .named_steps["model"]
+        .random_state
+        == 123
+    )
+
+
+@pytest.mark.parametrize(
+    ("quantile", "exception_type"),
+    [
+        (0.0, ValueError),
+        (1.0, ValueError),
+        (-0.1, ValueError),
+        (1.1, ValueError),
+        (True, TypeError),
+        ("0.5", TypeError),
+    ],
+)
+def test_quantile_hist_gradient_boosting_rejects_invalid_quantiles(
+    quantile: object,
+    exception_type: type[Exception],
+) -> None:
+    with pytest.raises(
+        exception_type
+    ):
+        make_quantile_hist_gradient_boosting_pipeline(
+            quantile=quantile,  # type: ignore[arg-type]
+        )
 

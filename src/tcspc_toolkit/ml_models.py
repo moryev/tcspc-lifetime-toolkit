@@ -128,6 +128,74 @@ def make_hist_gradient_boosting_pipeline(
     )
 
 
+def make_quantile_hist_gradient_boosting_pipeline(
+    *,
+    quantile: float,
+    random_state: int = DEFAULT_RANDOM_STATE,
+) -> Pipeline:
+    """Create a histogram gradient-boosting quantile-regression pipeline.
+
+    Parameters
+    ----------
+    quantile:
+        Conditional target quantile to estimate. Must lie strictly
+        between 0 and 1.
+
+    random_state:
+        Seed controlling stochastic operations performed by the
+        estimator.
+
+    Returns
+    -------
+    sklearn.pipeline.Pipeline
+        Unfitted histogram gradient-boosting quantile-regression
+        pipeline.
+
+    Notes
+    -----
+    Separate models must be fitted for the lower, median, and upper
+    quantiles. Their predictions are intentionally not reordered if
+    quantile crossing occurs, because crossing is a Week 9 diagnostic
+    rather than something to hide during prediction.
+    """
+
+    if (
+        isinstance(quantile, (bool, np.bool_))
+        or not isinstance(
+            quantile,
+            (
+                int,
+                float,
+                np.integer,
+                np.floating,
+            ),
+        )
+    ):
+        raise TypeError(
+            "quantile must be a real number."
+        )
+
+    quantile = float(quantile)
+
+    if not 0.0 < quantile < 1.0:
+        raise ValueError(
+            "quantile must lie strictly between 0 and 1."
+        )
+
+    return Pipeline(
+        steps=[
+            (
+                "model",
+                HistGradientBoostingRegressor(
+                    loss="quantile",
+                    quantile=quantile,
+                    random_state=random_state,
+                ),
+            ),
+        ]
+    )
+
+
 def make_normalized_histogram_ridge_pipeline(
 ) -> Pipeline:
     """Create a Ridge pipeline for raw TCSPC histograms.

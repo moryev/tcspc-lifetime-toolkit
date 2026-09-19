@@ -232,6 +232,19 @@ class IntervalEvaluationMetrics:
 
 
 @dataclass(frozen=True)
+class QuantileIntervalEvaluationMetrics:
+    """Diagnostics specific to ordered quantile predictions."""
+
+    n_samples: int
+    n_finite_quantile_triplets: int
+    lower_pinball_loss: float
+    median_pinball_loss: float
+    upper_pinball_loss: float
+    mean_pinball_loss: float
+    quantile_crossing_rate: float
+
+
+@dataclass(frozen=True)
 class UncertaintyScoreMetrics:
     """Ranking diagnostics for non-interval uncertainty outputs."""
 
@@ -310,6 +323,119 @@ def evaluate_prediction_intervals(
         median_interval_width=float(np.median(widths)),
         mean_interval_score=float(np.mean(interval_score)),
         interval_failure_rate=failure_rate,
+    )
+
+
+def evaluate_quantile_prediction_intervals(
+    true_lifetimes_ns: NDArray[np.float64],
+    intervals: PredictionIntervalResult,
+    *,
+    lower_quantile: float,
+    median_quantile: float,
+    upper_quantile: float,
+) -> QuantileIntervalEvaluationMetrics:
+    """Evaluate pinball loss and quantile-ordering consistency.
+
+    Only samples with finite lower, median, and upper predictions
+    contribute to the quantile-specific diagnostics.
+
+    A quantile crossing occurs whenever the expected ordering
+
+        lower <= median <= upper
+
+    is violated. Predictions are evaluated as returned and are not
+    reordered or repaired.
+    """
+
+    _validate_ordered_quantiles(
+        lower_quantile=lower_quantile,
+        median_quantile=median_quantile,
+        upper_quantile=upper_quantile,
+    )
+
+    true_lifetimes_ns = _validate_true_lifetimes(
+        true_lifetimes_ns,
+        expected_shape=intervals.prediction.shape,
+    )
+
+    finite_triplet = (
+        np.isfinite(intervals.lower)
+        & np.isfinite(intervals.prediction)
+        & np.isfinite(intervals.upper)
+    )
+
+    n_samples = int(
+        true_lifetimes_ns.size
+    )
+    n_finite = int(
+        np.count_nonzero(
+            finite_triplet
+        )
+    )
+
+    if n_finite == 0:
+        return QuantileIntervalEvaluationMetrics(
+            n_samples=n_samples,
+            n_finite_quantile_triplets=0,
+            lower_pinball_loss=float("nan"),
+            median_pinball_loss=float("nan"),
+            upper_pinball_loss=float("nan"),
+            mean_pinball_loss=float("nan"),
+            quantile_crossing_rate=float("nan"),
+        )
+
+    y = true_lifetimes_ns[
+        finite_triplet
+    ]
+    lower = intervals.lower[
+        finite_triplet
+    ]
+    median = intervals.prediction[
+        finite_triplet
+    ]
+    upper = intervals.upper[
+        finite_triplet
+    ]
+
+    lower_loss = _mean_pinball_loss(
+        y,
+        lower,
+        quantile=lower_quantile,
+    )
+    median_loss = _mean_pinball_loss(
+        y,
+        median,
+        quantile=median_quantile,
+    )
+    upper_loss = _mean_pinball_loss(
+        y,
+        upper,
+        quantile=upper_quantile,
+    )
+
+    crossing = (
+        (lower > median)
+        | (median > upper)
+    )
+
+    return QuantileIntervalEvaluationMetrics(
+        n_samples=n_samples,
+        n_finite_quantile_triplets=n_finite,
+        lower_pinball_loss=lower_loss,
+        median_pinball_loss=median_loss,
+        upper_pinball_loss=upper_loss,
+        mean_pinball_loss=float(
+            np.mean(
+                [
+                    lower_loss,
+                    median_loss,
+                    upper_loss,
+                ]
+            )
+        ),
+        quantile_crossing_rate=float(
+            np.mean(crossing)
+        ),
     )
 
 
@@ -450,3 +576,85 @@ def _validate_1d_same_shape(
         shapes.append(array.shape)
     if len(set(shapes)) != 1:
         raise ValueError("uncertainty output arrays must have the same shape")
+
+
+def _mean_pinball_loss(
+    true_values: NDArray[np.float64],
+    predictions: NDArray[np.float64],
+    *,
+    quantile: float,
+) -> float:
+    """Return the mean pinball loss for one quantile."""
+
+    residual = (
+        true_values
+        - predictions
+    )
+
+    losses = np.where(
+        residual >= 0.0,
+        quantile * residual,
+        (1.0 - quantile) * (-residual),
+    )
+
+    return float(
+        np.mean(losses)
+    )
+
+
+def _validate_ordered_quantiles(
+    *,
+    lower_quantile: float,
+    median_quantile: float,
+    upper_quantile: float,
+) -> None:
+    """Validate strictly increasing quantile levels."""
+
+    quantiles = (
+        lower_quantile,
+        median_quantile,
+        upper_quantile,
+    )
+
+    if any(
+        isinstance(
+            value,
+            (bool, np.bool_),
+        )
+        or not isinstance(
+            value,
+            (
+                int,
+                float,
+                np.integer,
+                np.floating,
+            ),
+        )
+        for value in quantiles
+    ):
+        raise TypeError(
+            "quantiles must be real numbers."
+        )
+
+    lower = float(
+        lower_quantile
+    )
+    median = float(
+        median_quantile
+    )
+    upper = float(
+        upper_quantile
+    )
+
+    if not (
+        0.0
+        < lower
+        < median
+        < upper
+        < 1.0
+    ):
+        raise ValueError(
+            "quantiles must satisfy "
+            "0 < lower_quantile < median_quantile "
+            "< upper_quantile < 1."
+        )
