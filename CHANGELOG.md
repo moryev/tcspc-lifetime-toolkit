@@ -382,3 +382,24 @@ All notable changes to this project will be documented in this file.
 * preprocessing steps that estimate dataset-level parameters, including `StandardScaler` and PCA, are fitted independently inside every training fold;
 * TOTAL histogram normalization is stateless because every histogram is normalized by its own total count;
 * Tests A-F remain untouched and are not used for cross-validation, preprocessing fitting, feature selection, hyperparameter selection, or model selection.
+
+
+## Unreleased — Week 9 uncertainty and failure-awareness
+
+### Added
+
+* reusable quantile-regression pipeline construction using `HistGradientBoostingRegressor` with explicit quantile loss;
+* three-model 0.05/0.50/0.95 quantile lifetime estimator producing nominal 90% prediction intervals;
+* dedicated Week 9 uncertainty-training and held-out calibration workflow using engineered TCSPC features;
+* interval evaluation including empirical coverage, coverage error, mean and median width, interval score, and interval failure rate;
+* quantile-specific evaluation including lower, median, and upper pinball loss and explicit quantile-crossing diagnostics;
+* frozen-estimator evaluation on external robustness conditions without refitting or recalibration;
+* conditional uncertainty evaluation for low-photon, high-photon, elevated-background, weak bi-exponential, and moderate bi-exponential regimes;
+* paired Test-A uncertainty-response diagnostics preserving the Week 8 `pair_id` matching structure;
+* per-pair absolute-error and interval-width changes for direct failure-awareness analysis;
+* Spearman correlation between paired interval-width change and absolute-error change;
+* automated tests covering quantile construction, non-reordered crossing behaviour, uncertainty-development leakage boundaries, feature-schema consistency, frozen external evaluation, canonical condition extraction, and paired Test-A matching.
+
+### Notes
+
+Direct quantile gradient boosting achieves conservative empirical coverage on the current development calibration subset, but its intervals are broad and strongly discretized. Paired robustness evaluation shows partial response to photon-count and background shifts, while controlled bi-exponential model mismatch produces little meaningful increase in predicted uncertainty. The method is therefore retained as the first Week 9 uncertainty baseline rather than treated as a complete failure-detection solution.

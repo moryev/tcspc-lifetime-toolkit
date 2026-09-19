@@ -3,10 +3,12 @@ import pytest
 
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult,
+    QuantileIntervalEvaluationMetrics,
     UncertaintyDataProvenance,
     UncertaintyDataRole,
     UncertaintyScoreResult,
     evaluate_prediction_intervals,
+    evaluate_quantile_prediction_intervals,
     evaluate_selective_prediction,
     evaluate_uncertainty_scores,
     make_uncertainty_development_split,
@@ -136,3 +138,254 @@ def test_selective_prediction_improves_mae_when_score_tracks_error() -> None:
     assert metrics.n_retained == 8
     assert metrics.mae_retained_ns < metrics.mae_all_ns
     assert metrics.mae_improvement_ns > 0.0
+
+
+def test_quantile_interval_metrics_report_pinball_losses() -> None:
+    true = np.array(
+        [
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+        ]
+    )
+
+    intervals = PredictionIntervalResult(
+        prediction=np.array(
+            [
+                1.0,
+                2.2,
+                3.1,
+                4.3,
+            ]
+        ),
+        lower=np.array(
+            [
+                0.8,
+                1.8,
+                2.8,
+                3.8,
+            ]
+        ),
+        upper=np.array(
+            [
+                1.2,
+                2.4,
+                3.2,
+                4.8,
+            ]
+        ),
+        nominal_coverage=0.90,
+        method_id="test_quantiles",
+    )
+
+    metrics = (
+        evaluate_quantile_prediction_intervals(
+            true,
+            intervals,
+            lower_quantile=0.05,
+            median_quantile=0.50,
+            upper_quantile=0.95,
+        )
+    )
+
+    assert isinstance(
+        metrics,
+        QuantileIntervalEvaluationMetrics,
+    )
+
+    assert metrics.n_samples == 4
+    assert (
+        metrics.n_finite_quantile_triplets
+        == 4
+    )
+
+    assert metrics.lower_pinball_loss == pytest.approx(
+        0.01
+    )
+
+    assert metrics.median_pinball_loss == pytest.approx(
+        0.075
+    )
+
+    assert metrics.upper_pinball_loss == pytest.approx(
+        0.02
+    )
+
+    assert metrics.mean_pinball_loss == pytest.approx(
+        0.035
+    )
+
+    assert metrics.quantile_crossing_rate == pytest.approx(
+        0.0
+    )
+
+
+def test_quantile_crossing_detects_internal_order_violations() -> None:
+    true = np.array(
+        [
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+        ]
+    )
+
+    intervals = PredictionIntervalResult(
+        prediction=np.array(
+            [
+                1.0,
+                1.7,
+                3.5,
+                4.0,
+            ]
+        ),
+        lower=np.array(
+            [
+                0.8,
+                1.8,
+                2.8,
+                3.8,
+            ]
+        ),
+        upper=np.array(
+            [
+                1.2,
+                2.2,
+                3.2,
+                4.2,
+            ]
+        ),
+        nominal_coverage=0.90,
+        method_id="test_crossing",
+    )
+
+    metrics = (
+        evaluate_quantile_prediction_intervals(
+            true,
+            intervals,
+            lower_quantile=0.05,
+            median_quantile=0.50,
+            upper_quantile=0.95,
+        )
+    )
+
+    assert metrics.quantile_crossing_rate == pytest.approx(
+        0.5
+    )
+
+
+def test_quantile_metrics_ignore_nonfinite_prediction_triplets() -> None:
+    true = np.array(
+        [
+            1.0,
+            2.0,
+            3.0,
+        ]
+    )
+
+    intervals = PredictionIntervalResult(
+        prediction=np.array(
+            [
+                1.0,
+                np.nan,
+                3.0,
+            ]
+        ),
+        lower=np.array(
+            [
+                0.8,
+                1.8,
+                2.8,
+            ]
+        ),
+        upper=np.array(
+            [
+                1.2,
+                2.2,
+                3.2,
+            ]
+        ),
+        nominal_coverage=0.90,
+        method_id="test_nonfinite",
+    )
+
+    metrics = (
+        evaluate_quantile_prediction_intervals(
+            true,
+            intervals,
+            lower_quantile=0.05,
+            median_quantile=0.50,
+            upper_quantile=0.95,
+        )
+    )
+
+    assert metrics.n_samples == 3
+    assert (
+        metrics.n_finite_quantile_triplets
+        == 2
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "lower_quantile",
+        "median_quantile",
+        "upper_quantile",
+    ),
+    [
+        (0.50, 0.05, 0.95),
+        (0.05, 0.95, 0.50),
+        (0.00, 0.50, 0.95),
+        (0.05, 0.50, 1.00),
+        (0.50, 0.50, 0.95),
+    ],
+)
+def test_quantile_interval_metrics_reject_invalid_quantile_order(
+    lower_quantile: float,
+    median_quantile: float,
+    upper_quantile: float,
+) -> None:
+    true = np.array(
+        [
+            1.0,
+            2.0,
+        ]
+    )
+
+    intervals = PredictionIntervalResult(
+        prediction=np.array(
+            [
+                1.0,
+                2.0,
+            ]
+        ),
+        lower=np.array(
+            [
+                0.8,
+                1.8,
+            ]
+        ),
+        upper=np.array(
+            [
+                1.2,
+                2.2,
+            ]
+        ),
+        nominal_coverage=0.90,
+        method_id="test_quantiles",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="quantiles must satisfy",
+    ):
+        evaluate_quantile_prediction_intervals(
+            true,
+            intervals,
+            lower_quantile=lower_quantile,
+            median_quantile=median_quantile,
+            upper_quantile=upper_quantile,
+        )
+
+
