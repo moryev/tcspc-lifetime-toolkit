@@ -15,23 +15,36 @@ import pytest
 
 import pandas as pd
 
+from tcspc_toolkit.ml_models import (
+    make_ridge_pipeline,
+)
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkDataset,
 )
 from tcspc_toolkit.ml_uncertainty import (
+    DEFAULT_BOOTSTRAP_REPLICATES,
     DEFAULT_LOWER_QUANTILE,
     DEFAULT_MEDIAN_QUANTILE,
     DEFAULT_QUANTILE_NOMINAL_COVERAGE,
     DEFAULT_UPPER_QUANTILE,
+    ML_TRAINING_BOOTSTRAP_METHOD_ID,
     QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
+    RANDOM_FOREST_TREE_SPREAD_METHOD_ID,
+    BootstrapPredictionSpreadEstimator,
+    RandomForestTreeSpreadEstimator,
     QuantileGradientBoostingExternalResult,
     QuantileGradientBoostingIntervalEstimator,
+    evaluate_frozen_ml_uncertainty_score,
     evaluate_frozen_quantile_gradient_boosting,
     fit_and_evaluate_quantile_gradient_boosting,
+    fit_and_evaluate_random_forest_tree_spread,
+    fit_and_evaluate_ridge_bootstrap_spread,
     QuantileGradientBoostingRobustnessResult,
     evaluate_week9_quantile_robustness_conditions,
     QuantileGradientBoostingPairedRobustnessResult,
     evaluate_week9_paired_quantile_response,
+    MLUncertaintyScorePairedRobustnessResult,
+    evaluate_week9_paired_ml_uncertainty_response,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult,
@@ -1123,3 +1136,432 @@ def test_week9_paired_quantile_response_requires_pair_ids() -> None:
         )
 
 
+def test_random_forest_tree_spread_matches_manual_tree_spread() -> None:
+    X = np.linspace(
+        0.0,
+        1.0,
+        80,
+        dtype=np.float64,
+    ).reshape(-1, 1)
+
+    y = (
+        1.0
+        + 3.0 * X[:, 0]
+    )
+
+    estimator = (
+        RandomForestTreeSpreadEstimator()
+    )
+
+    estimator.fit(
+        X,
+        y,
+    )
+
+    scores = estimator.predict(
+        X
+    )
+
+    forest = estimator.pipeline.named_steps[
+        "model"
+    ]
+
+    tree_predictions = np.stack(
+        [
+            tree.predict(X)
+            for tree in forest.estimators_
+        ],
+        axis=0,
+    )
+
+    expected_prediction = np.mean(
+        tree_predictions,
+        axis=0,
+    )
+
+    expected_spread = np.std(
+        tree_predictions,
+        axis=0,
+        ddof=0,
+    )
+
+    assert np.allclose(
+        scores.prediction,
+        expected_prediction,
+    )
+
+    assert np.allclose(
+        scores.uncertainty_score,
+        expected_spread,
+    )
+
+    assert np.all(
+        scores.uncertainty_score >= 0.0
+    )
+
+    assert (
+        scores.method_id
+        == RANDOM_FOREST_TREE_SPREAD_METHOD_ID
+    )
+
+
+def test_bootstrap_prediction_spread_is_reproducible() -> None:
+    X = np.linspace(
+        0.0,
+        1.0,
+        60,
+        dtype=np.float64,
+    ).reshape(-1, 1)
+
+    y = (
+        1.0
+        + 2.0 * X[:, 0]
+        + 0.2 * X[:, 0] ** 2
+    )
+
+    estimator_a = (
+        BootstrapPredictionSpreadEstimator(
+            make_ridge_pipeline(),
+            n_bootstrap=20,
+            random_state=123,
+        )
+    )
+
+    estimator_b = (
+        BootstrapPredictionSpreadEstimator(
+            make_ridge_pipeline(),
+            n_bootstrap=20,
+            random_state=123,
+        )
+    )
+
+    estimator_a.fit(
+        X,
+        y,
+    )
+
+    estimator_b.fit(
+        X,
+        y,
+    )
+
+    scores_a = estimator_a.predict(
+        X
+    )
+
+    scores_b = estimator_b.predict(
+        X
+    )
+
+    assert np.allclose(
+        scores_a.prediction,
+        scores_b.prediction,
+    )
+
+    assert np.allclose(
+        scores_a.uncertainty_score,
+        scores_b.uncertainty_score,
+    )
+
+
+def test_bootstrap_spread_keeps_reference_estimator_prediction() -> None:
+    X = np.linspace(
+        0.0,
+        1.0,
+        60,
+        dtype=np.float64,
+    ).reshape(-1, 1)
+
+    y = (
+        1.0
+        + 2.0 * X[:, 0]
+    )
+
+    estimator = (
+        BootstrapPredictionSpreadEstimator(
+            make_ridge_pipeline(),
+            n_bootstrap=20,
+            random_state=42,
+        )
+    )
+
+    estimator.fit(
+        X,
+        y,
+    )
+
+    scores = estimator.predict(
+        X
+    )
+
+    reference_prediction = (
+        estimator
+        .reference_estimator_
+        .predict(X)
+    )
+
+    assert np.allclose(
+        scores.prediction,
+        reference_prediction,
+    )
+
+    assert np.all(
+        np.isfinite(
+            scores.uncertainty_score
+        )
+    )
+
+    assert np.all(
+        scores.uncertainty_score >= 0.0
+    )
+
+    assert (
+        scores.method_id
+        == ML_TRAINING_BOOTSTRAP_METHOD_ID
+    )
+
+
+def test_bootstrap_requires_at_least_two_replicates() -> None:
+    with pytest.raises(
+        ValueError,
+        match="at least 2",
+    ):
+        BootstrapPredictionSpreadEstimator(
+            make_ridge_pipeline(),
+            n_bootstrap=1,
+        )
+
+
+def test_random_forest_tree_spread_uses_week9_development_split() -> None:
+    development = (
+        _make_synthetic_development_dataset()
+    )
+
+    result = (
+        fit_and_evaluate_random_forest_tree_spread(
+            development
+        )
+    )
+
+    assert len(
+        result.split.training_indices
+    ) == 48
+
+    assert len(
+        result.split.calibration_indices
+    ) == 16
+
+    assert (
+        result.calibration_scores.prediction.shape
+        == (16,)
+    )
+
+    assert (
+        result.score_metrics.n_samples
+        == 16
+    )
+
+    assert (
+        result.calibration_scores.method_id
+        == RANDOM_FOREST_TREE_SPREAD_METHOD_ID
+    )
+
+
+def test_ridge_bootstrap_uses_week9_development_split() -> None:
+    development = (
+        _make_synthetic_development_dataset()
+    )
+
+    result = (
+        fit_and_evaluate_ridge_bootstrap_spread(
+            development,
+            n_bootstrap=20,
+        )
+    )
+
+    assert len(
+        result.split.training_indices
+    ) == 48
+
+    assert len(
+        result.split.calibration_indices
+    ) == 16
+
+    assert (
+        result.calibration_scores.prediction.shape
+        == (16,)
+    )
+
+    assert (
+        result.score_metrics.n_samples
+        == 16
+    )
+
+    assert (
+        result.calibration_scores.method_id
+        == ML_TRAINING_BOOTSTRAP_METHOD_ID
+    )
+
+
+def test_paired_random_forest_uncertainty_response_covers_day59_conditions() -> None:
+    prepared = (
+        _make_synthetic_generalization_prepared_data()
+    )
+
+    calibration = (
+        fit_and_evaluate_random_forest_tree_spread(
+            prepared.development
+        )
+    )
+
+    result = (
+        evaluate_week9_paired_ml_uncertainty_response(
+            calibration,
+            prepared,
+            definition=(
+                default_generalization_suite()
+            ),
+        )
+    )
+
+    assert isinstance(
+        result,
+        MLUncertaintyScorePairedRobustnessResult,
+    )
+
+    assert set(
+        result.condition_results
+    ) == {
+        "B_low_photon",
+        "B_high_photon",
+        "D_high_background",
+        "F_weak_mismatch",
+        "F_moderate_mismatch",
+    }
+
+    assert len(
+        result.summary
+    ) == 5
+
+    assert set(
+        result.summary[
+            "method_id"
+        ]
+    ) == {
+        RANDOM_FOREST_TREE_SPREAD_METHOD_ID
+    }
+
+    assert np.all(
+        result.summary[
+            "n_valid_pairs"
+        ].to_numpy()
+        > 0
+    )
+
+
+def test_paired_ridge_bootstrap_uncertainty_response_covers_day59_conditions() -> None:
+    prepared = (
+        _make_synthetic_generalization_prepared_data()
+    )
+
+    calibration = (
+        fit_and_evaluate_ridge_bootstrap_spread(
+            prepared.development,
+            n_bootstrap=20,
+        )
+    )
+
+    result = (
+        evaluate_week9_paired_ml_uncertainty_response(
+            calibration,
+            prepared,
+            definition=(
+                default_generalization_suite()
+            ),
+        )
+    )
+
+    assert len(
+        result.summary
+    ) == 5
+
+    assert set(
+        result.summary[
+            "method_id"
+        ]
+    ) == {
+        ML_TRAINING_BOOTSTRAP_METHOD_ID
+    }
+
+    assert np.all(
+        result.summary[
+            "n_valid_pairs"
+        ].to_numpy()
+        > 0
+    )
+
+
+def test_paired_ml_uncertainty_diagnostics_preserve_matching_pair_ids() -> None:
+    prepared = (
+        _make_synthetic_generalization_prepared_data()
+    )
+
+    calibration = (
+        fit_and_evaluate_random_forest_tree_spread(
+            prepared.development
+        )
+    )
+
+    result = (
+        evaluate_week9_paired_ml_uncertainty_response(
+            calibration,
+            prepared,
+            definition=(
+                default_generalization_suite()
+            ),
+        )
+    )
+
+    condition = (
+        result.condition_results[
+            "D_high_background"
+        ]
+    )
+
+    diagnostics = (
+        condition.diagnostics
+    )
+
+    assert diagnostics[
+        "pair_id"
+    ].is_unique
+
+    assert np.all(
+        np.isfinite(
+            diagnostics[
+                "reference_uncertainty_score"
+            ]
+        )
+    )
+
+    assert np.all(
+        np.isfinite(
+            diagnostics[
+                "shifted_uncertainty_score"
+            ]
+        )
+    )
+
+    assert np.allclose(
+        diagnostics[
+            "uncertainty_score_change"
+        ],
+        (
+            diagnostics[
+                "shifted_uncertainty_score"
+            ]
+            - diagnostics[
+                "reference_uncertainty_score"
+            ]
+        ),
+    )

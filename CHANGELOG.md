@@ -399,7 +399,27 @@ All notable changes to this project will be documented in this file.
 * per-pair absolute-error and interval-width changes for direct failure-awareness analysis;
 * Spearman correlation between paired interval-width change and absolute-error change;
 * automated tests covering quantile construction, non-reordered crossing behaviour, uncertainty-development leakage boundaries, feature-schema consistency, frozen external evaluation, canonical condition extraction, and paired Test-A matching.
+* Random-Forest tree-disagreement uncertainty scoring based on per-tree lifetime predictions;
+* reusable non-parametric training-data bootstrap prediction spread for arbitrary scikit-learn estimators, demonstrated with Ridge regression;
+* explicit separation between the central Ridge prediction and bootstrap replicas used only for sensitivity estimation;
+* held-out calibration evaluation of non-interval uncertainty scores using error correlation and low-/high-uncertainty error tails;
+* paired Test-A versus Test-B/D/F uncertainty-score diagnostics;
+* regime-level uncertainty-score ratios and paired score-change versus error-change correlations;
+* automated tests for exact Random-Forest tree-spread calculation, bootstrap reproducibility, preservation of the central estimator prediction, Week 9 split isolation, and paired OOD uncertainty evaluation;
 
 ### Notes
 
-Direct quantile gradient boosting achieves conservative empirical coverage on the current development calibration subset, but its intervals are broad and strongly discretized. Paired robustness evaluation shows partial response to photon-count and background shifts, while controlled bi-exponential model mismatch produces little meaningful increase in predicted uncertainty. The method is therefore retained as the first Week 9 uncertainty baseline rather than treated as a complete failure-detection solution.
+Direct quantile gradient boosting achieves conservative empirical coverage on the current development calibration subset, 
+but its intervals are broad and strongly discretized. Paired robustness evaluation shows partial response to photon-count and background shifts, 
+while controlled bi-exponential model mismatch produces little meaningful increase in predicted uncertainty. The method is therefore retained as the first Week 9 
+uncertainty baseline rather than treated as a complete failure-detection solution.
+
+Random-Forest tree disagreement provides strong sample-level error ranking
+on the current held-out development subset and remains informative under
+photon-count and background shifts. Ridge training-bootstrap spread behaves
+more like a detector of training-distribution instability: it responds
+strongly to several acquisition OOD regimes but can provide weak
+sample-level ranking. Moderate bi-exponential mismatch increases Ridge error
+without increasing bootstrap spread, demonstrating that resampling the
+mono-exponential training distribution does not provide a general detector
+of unseen physical model misspecification.
