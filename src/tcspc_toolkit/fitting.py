@@ -453,29 +453,115 @@ def fit_monoexponential_reconvolution(
             ),
         )
 
+        optimal_parameters = (
+            optimization_result.x
+        )
+
     elif objective == "poisson":
-        bounds = list(
+        # L-BFGS-B is sensitive to strongly different parameter
+        # magnitudes. In reconvolution fitting, amplitude may be
+        # O(10^3-10^6), while lifetime, background, and temporal
+        # shift are typically O(10^-2-10^1).
+        #
+        # Optimize dimensionless scaled parameters internally while
+        # preserving the physical parameterization and public API.
+
+        bin_width = float(
+            time_differences[0]
+        )
+
+        shift_scale = max(
+            abs(
+                initial_temporal_shift
+            ),
+            0.1
+            * (
+                    shift_upper
+                    - shift_lower
+            ),
+            bin_width,
+        )
+
+        parameter_scales = np.asarray(
+            [
+                max(
+                    abs(initial_amplitude),
+                    1.0,
+                ),
+                max(
+                    abs(initial_lifetime),
+                    bin_width,
+                ),
+                max(
+                    abs(initial_background),
+                    1.0,
+                ),
+                shift_scale,
+            ],
+            dtype=np.float64,
+        )
+
+        poisson_initial_parameters = (
+            initial_parameters.copy()
+        )
+
+        poisson_initial_parameters[2] = max(
+            poisson_initial_parameters[2],
+            background_lower_bound,
+        )
+
+        scaled_initial_parameters = (
+                poisson_initial_parameters
+                / parameter_scales
+        )
+
+        scaled_lower_bounds = (
+                lower_bounds
+                / parameter_scales
+        )
+
+        scaled_upper_bounds = (
+                upper_bounds
+                / parameter_scales
+        )
+
+        def scaled_poisson_objective(
+                scaled_parameters: NDArray[np.float64],
+        ) -> float:
+            physical_parameters = (
+                    scaled_parameters
+                    * parameter_scales
+            )
+
+            return poisson_objective(
+                physical_parameters
+            )
+
+        scaled_bounds = list(
             zip(
-                lower_bounds,
-                upper_bounds,
+                scaled_lower_bounds,
+                scaled_upper_bounds,
             )
         )
 
         optimization_result = minimize(
-            fun=poisson_objective,
-            x0=initial_parameters,
+            fun=scaled_poisson_objective,
+            x0=scaled_initial_parameters,
             method="L-BFGS-B",
-            bounds=bounds,
+            bounds=scaled_bounds,
         )
-        # TODO: L-BFGS-B supports parameter bounds directly.
-        #       We do not introduce log-parameter transformations or custom gradients yet.
-        #       Those may become worthwhile later if optimization conditioning becomes a problem.
+
+        optimal_parameters = (
+                optimization_result.x
+                * parameter_scales
+        )
+
     (
         amplitude,
         lifetime,
         background,
         temporal_shift,
-    ) = optimization_result.x
+    ) = optimal_parameters
 
     fitted_curve = _reconvolution_model(
         time=time,

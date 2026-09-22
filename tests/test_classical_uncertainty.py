@@ -2,7 +2,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from tcspc_toolkit.classical_uncertainty import (
+    estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
+    evaluate_repeated_poisson_uncertainty,
 )
 from tcspc_toolkit.fitting import (
     ReconvolutionFitResult,
@@ -285,4 +287,183 @@ def test_poisson_local_covariance_rejects_bad_conditioning(
         result.condition_number
     )
 
+
+def test_parametric_poisson_bootstrap_returns_valid_lifetime_distribution(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    fit_result = (
+        _make_reconvolution_fit_result(
+            time=time_axis,
+            irf=irf,
+            amplitude=100_000.0,
+            lifetime=0.8,
+            background=10.0,
+            temporal_shift=0.1,
+        )
+    )
+
+    result = (
+        estimate_parametric_poisson_bootstrap(
+            time=time_axis,
+            irf=irf,
+            fit_result=fit_result,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            rng=np.random.default_rng(
+                61
+            ),
+            n_resamples=12,
+            nominal_coverage=0.90,
+        )
+    )
+
+    assert result.bootstrap_valid
+
+    assert (
+        result.n_successful_fits
+        + result.n_failed_fits
+        == 12
+    )
+
+    assert (
+        result.n_successful_fits
+        >= 2
+    )
+
+    assert result.bootstrap_std_ns > 0.0
+
+    assert (
+        result.lower_ns
+        <= result.bootstrap_median_ns
+        <= result.upper_ns
+    )
+
+    assert (
+        0.0
+        <= result.fit_failure_rate
+        <= 1.0
+    )
+
+    assert (
+        result.lifetime_samples_ns.shape
+        == (12,)
+    )
+
+
+def test_parametric_poisson_bootstrap_is_reproducible(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+) -> None:
+    fit_result = (
+        _make_reconvolution_fit_result(
+            time=time_axis,
+            irf=irf,
+            amplitude=100_000.0,
+            lifetime=0.8,
+            background=10.0,
+            temporal_shift=0.1,
+        )
+    )
+
+    result_1 = (
+        estimate_parametric_poisson_bootstrap(
+            time=time_axis,
+            irf=irf,
+            fit_result=fit_result,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            rng=np.random.default_rng(
+                6101
+            ),
+            n_resamples=6,
+        )
+    )
+
+    result_2 = (
+        estimate_parametric_poisson_bootstrap(
+            time=time_axis,
+            irf=irf,
+            fit_result=fit_result,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            rng=np.random.default_rng(
+                6101
+            ),
+            n_resamples=6,
+        )
+    )
+
+    np.testing.assert_allclose(
+        result_1.lifetime_samples_ns,
+        result_2.lifetime_samples_ns,
+        equal_nan=True,
+    )
+
+
+def test_repeated_poisson_uncertainty_returns_empirical_reference(
+    time_axis: NDArray[np.float64],
+) -> None:
+    result = (
+        evaluate_repeated_poisson_uncertainty(
+            time=time_axis,
+            true_lifetime_ns=0.8,
+            signal_photon_count=100_000,
+            background_per_bin=10.0,
+            irf_centre_ns=1.0,
+            irf_fwhm_ns=0.2,
+            irf_shift_ns=0.0,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            n_repeats=3,
+            n_bootstrap_resamples=3,
+            rng=np.random.default_rng(
+                6102
+            ),
+        )
+    )
+
+    assert (
+        result.lifetime_estimates_ns.shape
+        == (3,)
+    )
+
+    assert (
+        np.count_nonzero(
+            np.isfinite(
+                result.lifetime_estimates_ns
+            )
+        )
+        >= 2
+    )
+
+    assert np.isfinite(
+        result.empirical_std_ns
+    )
+
+    assert result.empirical_std_ns > 0.0
+
+    assert (
+        result.covariance_metrics.n_samples
+        == 3
+    )
+
+    assert (
+        result.bootstrap_metrics.n_samples
+        == 3
+    )
+
+    assert (
+        0.0
+        <= result.fit_failure_rate
+        <= 1.0
+    )
 

@@ -8,6 +8,10 @@ from tcspc_toolkit.classical_evaluation import (
     evaluate_reconvolution_benchmark,
     fit_single_reconvolution_curve,
 )
+from tcspc_toolkit.irf import (
+    generate_gaussian_irf,
+    normalize_irf,
+)
 from tcspc_toolkit.simulation import (
     simulate_irf_convolved_histogram,
 )
@@ -362,3 +366,99 @@ def test_reconvolution_benchmark_rejects_target_length_mismatch(
         )
 
 
+def test_single_poisson_reconvolution_curve_recovers_high_count_lifetime_from_histogram_guess(
+) -> None:
+    """Regression test for Poisson optimizer parameter scaling."""
+
+    time = np.arange(
+        0.0,
+        20.0,
+        0.05,
+        dtype=np.float64,
+    )
+
+    true_lifetime_ns = 2.0
+
+    irf = generate_gaussian_irf(
+        time=time,
+        centre=1.0,
+        fwhm=0.25,
+    )
+
+    irf = normalize_irf(
+        time=time,
+        irf=irf,
+    )
+
+    counts, _ = (
+        simulate_irf_convolved_histogram(
+            time=time,
+            lifetime_ns=(
+                true_lifetime_ns
+            ),
+            signal_photon_count=(
+                100_000
+            ),
+            background_per_bin=0.5,
+            irf_centre_ns=1.0,
+            irf_fwhm_ns=0.25,
+            irf_shift_ns=0.05,
+            rng=np.random.default_rng(
+                61_999
+            ),
+        )
+    )
+
+    initial_guess = (
+        estimate_reconvolution_initial_guess(
+            time=time,
+            counts=counts,
+            irf=irf,
+        )
+    )
+
+    # This realization deliberately produces a noticeably
+    # imperfect histogram-derived lifetime guess.
+    assert (
+        abs(
+            initial_guess.lifetime_ns
+            - true_lifetime_ns
+        )
+        > 0.10
+    )
+
+    result = (
+        fit_single_reconvolution_curve(
+            time=time,
+            counts=counts,
+            irf=irf,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            objective="poisson",
+        )
+    )
+
+    assert result.optimizer_success
+    assert result.valid_fit
+
+    assert (
+        abs(
+            result.fitted_lifetime_ns
+            - true_lifetime_ns
+        )
+        < 0.02
+    )
+
+    assert (
+        abs(
+            result.fitted_temporal_shift_ns
+            - 0.05
+        )
+        < 0.02
+    )
+
+    assert np.isfinite(
+        result.poisson_nll
+    )

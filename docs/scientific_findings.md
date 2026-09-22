@@ -206,3 +206,294 @@ consistent while prediction error increases under an unseen decay model.
 Together with Day 58, these results demonstrate that predictive interval
 width, ensemble disagreement, and training-data sensitivity quantify
 different notions of uncertainty and can fail in different ways.
+
+
+## Day 61 — Classical bootstrap versus empirical repeated-Poisson error
+
+### Scientific question
+
+Day 61 asked whether uncertainty reported by the classical Poisson reconvolution estimator reflects the variability that 
+would actually be observed if the same physical TCSPC measurement were repeated many times.
+
+Three quantities were compared:
+
+* local covariance uncertainty obtained from the expected Poisson Fisher information;
+* parametric Poisson-bootstrap uncertainty obtained by resampling from the fitted expected-count curve and refitting;
+* empirical estimator variability obtained from statistically independent Poisson realizations generated under the same known physical condition.
+
+The repeated-Poisson distribution serves as the empirical reference. Unlike covariance and bootstrap uncertainty, 
+it requires knowledge of the true simulation condition and is therefore a benchmark rather than a deployable per-curve uncertainty estimate.
+
+### Parametric bootstrap formulation
+
+For one fitted TCSPC histogram with fitted expected counts $\hat{\mu}_i$, bootstrap measurements were generated as
+
+$$
+k_i^\ast \sim \operatorname{Poisson}(\hat{\mu}_i).
+$$
+
+Each bootstrap realization was then passed through the same histogram-derived initialization and Poisson reconvolution 
+fitting pipeline as the original measurement.
+
+Time bins were not resampled. This preserves the ordered physical structure of the TCSPC histogram.
+
+The resulting bootstrap lifetime distribution provides a bootstrap standard deviation, median, percentile interval, 
+and refit-failure diagnostics.
+
+### Empirical repeated-Poisson reference
+
+For a fixed known physical condition,
+
+$$
+(\tau, N_{\mathrm{photons}}, B, \mathrm{IRF}, \Delta t),
+$$
+
+independent Poisson measurements were generated and fitted repeatedly.
+
+From the resulting lifetime estimates,
+
+$$
+\hat{\tau}^{(1)},\ldots,\hat{\tau}^{(R)},
+$$
+
+the empirical bias, standard deviation, and RMSE were calculated.
+
+The principal uncertainty-calibration diagnostic was
+
+$$
+R_{\sigma}
+=
+\frac{
+\text{mean estimated uncertainty}
+}{
+\text{empirical repeated-Poisson standard deviation}
+}.
+$$
+
+A value near one indicates agreement between the reported uncertainty and the observed sampling variability. 
+Values below one indicate optimistic uncertainty, while values above one indicate conservative uncertainty.
+
+### Important numerical finding: raw Poisson optimization was poorly scaled
+
+The first Day 61 calibration run revealed an unexpected high-photon failure.
+
+For a representative condition with
+
+$$
+\tau = 2.0\ \mathrm{ns},\qquad
+N_{\mathrm{photons}}=100\,000,\qquad
+B=0.5,
+$$
+
+the histogram-derived initialization produced
+
+$$
+\tau_0 = 1.8176\ \mathrm{ns}.
+$$
+
+The original raw-parameter L-BFGS-B Poisson fit reported successful convergence but returned
+
+$$
+\hat{\tau}=1.8986\ \mathrm{ns},
+$$
+
+with reduced Poisson negative log-likelihood
+
+$$
+\mathrm{NLL}=-580595.56.
+$$
+
+Starting the same optimizer near the known physical truth produced
+
+$$
+\hat{\tau}=2.0036\ \mathrm{ns},
+$$
+
+with the substantially better objective value
+
+$$
+\mathrm{NLL}=-580800.51.
+$$
+
+The difference of approximately
+
+$$
+\Delta\mathrm{NLL}\approx205
+$$
+
+showed that optimizer success did not imply convergence to the best relevant solution.
+
+The underlying problem was numerical parameter scaling. The reconvolution parameters can differ by many orders of magnitude: 
+amplitude may be of order $10^3-10^6$, while lifetime, background, and temporal shift are typically of order $10^{-2}-10^1$.
+
+The Poisson optimizer was therefore changed to operate internally on dimensionless scaled parameters while retaining the 
+same physical model, likelihood, parameter bounds, and public fitting API.
+
+With scaled optimization and the same imperfect initial guess, the fitted lifetime became
+
+$$
+\hat{\tau}=2.00016\ \mathrm{ns},
+$$
+
+with
+
+$$
+\mathrm{NLL}=-580800.80.
+$$
+
+Thus the apparent high-photon uncertainty failure was primarily a numerical optimization failure rather than a failure of 
+the Poisson statistical model.
+
+A dedicated regression test now verifies that the full histogram-derived initialization and Poisson reconvolution pipeline 
+recovers the high-count lifetime even when the initial lifetime estimate is substantially biased.
+
+### Final calibration experiment
+
+After correcting Poisson parameter scaling, the uncertainty experiment was repeated using
+
+$$
+R=50
+$$
+
+independent Poisson measurements per condition and
+
+$$
+B_{\mathrm{bootstrap}}=100
+$$
+
+bootstrap refits per measurement.
+
+The nominal interval coverage was 90%.
+
+Eight physical conditions were evaluated across photon count, background level, and lifetime while keeping the mono-exponential 
+reconvolution model correctly specified.
+
+| Condition                         | Empirical std (ns) | Covariance std (ns) | Covariance ratio | Bootstrap std (ns) | Bootstrap ratio | Covariance coverage | Bootstrap coverage |
+| --------------------------------- | -----------------: | ------------------: | ---------------: | -----------------: | --------------: | ------------------: | -----------------: |
+| 1k photons, low background        |             0.1082 |              0.0923 |            0.853 |             0.0930 |           0.860 |                0.84 |               0.80 |
+| 10k photons, low background       |             0.0245 |              0.0239 |            0.977 |             0.0238 |           0.974 |                0.94 |               0.84 |
+| 100k photons, low background      |             0.0075 |              0.0070 |            0.927 |             0.0071 |           0.942 |                0.88 |               0.90 |
+| 1k photons, elevated background   |             0.1569 |              0.1474 |            0.940 |             0.1473 |           0.939 |                0.86 |               0.84 |
+| 10k photons, elevated background  |             0.0326 |              0.0294 |            0.899 |             0.0297 |           0.910 |                0.90 |               0.88 |
+| 100k photons, elevated background |             0.0077 |              0.0076 |            0.978 |             0.0076 |           0.980 |                0.92 |               0.86 |
+| 1 ns lifetime                     |             0.0132 |              0.0113 |            0.858 |             0.0116 |           0.879 |                0.84 |               0.84 |
+| 4 ns lifetime                     |             0.0641 |              0.0604 |            0.942 |             0.0608 |           0.949 |                0.86 |               0.80 |
+
+Across these conditions, the mean estimated-to-empirical standard-deviation ratios were
+
+$$
+\overline{R}_{\mathrm{cov}}
+\approx0.922,
+$$
+
+and
+
+$$
+\overline{R}_{\mathrm{bootstrap}}
+\approx0.929.
+$$
+
+Both methods therefore tracked empirical repeated-measurement variability reasonably well but were mildly optimistic on average.
+
+The mean empirical interval coverage was
+
+$$
+C_{\mathrm{cov}}
+\approx0.880
+$$
+
+for local covariance intervals and
+
+$$
+C_{\mathrm{bootstrap}}
+\approx0.845
+$$
+
+for bootstrap percentile intervals, compared with the nominal value of 0.90.
+
+### Photon-count dependence
+
+The uncertainty estimates reproduced the physically expected improvement with increasing photon statistics.
+
+For $\tau=2$ ns and low background, the empirical lifetime standard deviation decreased from
+
+$$
+0.1082\ \mathrm{ns}
+$$
+
+at \(10^3\) signal photons to
+
+$$
+0.0245\ \mathrm{ns}
+$$
+
+at \(10^4\) photons and
+
+$$
+0.0075\ \mathrm{ns}
+$$
+
+at \(10^5\) photons.
+
+Both covariance and bootstrap uncertainty followed the same trend closely.
+
+This confirms that the uncertainty machinery responds to changing photon information rather than merely reporting an 
+approximately constant model-dependent scale.
+
+### Background dependence
+
+Elevated background increased lifetime uncertainty most strongly in the low-photon regime.
+
+At $10^3$ photons, increasing the background from 0.5 to 5 counts per bin increased the empirical lifetime standard deviation from approximately
+
+$$
+0.108\ \mathrm{ns}
+$$
+
+to
+
+$$
+0.157\ \mathrm{ns}.
+$$
+
+Both covariance and bootstrap methods reproduced this increase.
+
+At high photon count, the effect of the same background increase was much smaller because signal information remained dominant.
+
+### Covariance versus bootstrap
+
+Under the correctly specified mono-exponential model, the local Fisher-information covariance estimate performed surprisingly well.
+
+Its mean uncertainty ratio was comparable to that of the parametric bootstrap, while its average interval coverage was closer to the nominal 90% value.
+
+This does not establish covariance as universally superior. The covariance approximation is local and depends on a regular, 
+well-conditioned likelihood surface, an adequate physical model, and solutions away from parameter bounds.
+
+The result instead shows that under these regular conditions, the much cheaper local covariance calculation can provide 
+a useful approximation to repeated-measurement lifetime uncertainty.
+
+The parametric bootstrap also reproduced empirical standard deviations well. Its simple percentile intervals showed modest 
+undercoverage in the present experiment, suggesting that variance estimation and interval calibration should be treated as separate questions.
+
+### Failure diagnostics
+
+No primary reconvolution-fit failures or parameter-boundary hits occurred in the final repeated-Poisson calibration experiment.
+
+Bootstrap refit failures were essentially absent, with only negligible failure rates in the short- and long-lifetime conditions.
+
+The observed differences between estimated and empirical uncertainty therefore cannot be explained by selective removal of failed fits.
+
+### Main conclusion
+
+For a correctly specified mono-exponential TCSPC reconvolution model, both local Poisson/Fisher covariance and parametric 
+Poisson bootstrap provide useful estimates of lifetime sampling uncertainty.
+
+Across the tested photon-count, background, and lifetime conditions, both uncertainty scales were generally close to the 
+empirical variability observed over repeated Poisson measurements, although both were mildly optimistic on average.
+
+The most important Day 61 finding was methodological: uncertainty calibration exposed a hidden numerical-conditioning problem 
+in the principal Poisson reconvolution estimator. Once the optimizer was reformulated in scaled dimensionless coordinates, 
+the high-photon systematic bias disappeared and uncertainty calibration became physically consistent.
+
+This demonstrates why uncertainty analysis is valuable not only for reporting confidence in final predictions, but also 
+as a diagnostic tool for identifying failures in the underlying estimator itself.
