@@ -497,3 +497,528 @@ the high-photon systematic bias disappeared and uncertainty calibration became p
 
 This demonstrates why uncertainty analysis is valuable not only for reporting confidence in final predictions, but also 
 as a diagnostic tool for identifying failures in the underlying estimator itself.
+
+
+## Day 62 — Uncertainty calibration under A-F and model-mismatch failure-awareness
+
+### Scientific question
+
+Day 62 froze the Week 9 uncertainty methods and evaluated them across the
+complete Week 8 A-F robustness suite.
+
+The central question was no longer only whether lifetime predictions become
+less accurate under distribution shift, but whether the corresponding
+uncertainty estimates recognize that loss of reliability.
+
+The final A-F tests remained external evaluation data only. They were not
+used for model fitting, uncertainty calibration, threshold selection, or
+conformal calibration.
+
+For Test F, uncertainty was scored against the dominant-component lifetime
+
+$$
+\tau_1,
+$$
+
+which remains the primary frozen Week 8 reference. The
+signal-photon-weighted component lifetime is descriptive only: a
+bi-exponential decay does not possess a unique mono-exponential true
+lifetime.
+
+
+### Quantile gradient boosting across A-F
+
+The direct 0.05/0.50/0.95 gradient-boosting quantile estimator retained
+100% empirical interval coverage across all six A-F tests.
+
+However, the nominal 90% intervals were already highly conservative on the
+held-out development calibration subset, where coverage was also 100%.
+Across A-F, mean interval widths remained approximately 2.46-2.67 ns.
+
+The resulting high coverage therefore does not imply strong
+failure-awareness. The intervals are broad relative to the lifetime errors
+and provide limited discrimination between familiar conditions and shifted
+or misspecified conditions.
+
+The conditional analysis confirmed the same pattern.
+
+Under low-photon Test B, median-prediction MAE increased relative to the
+development calibration reference while mean interval width increased only
+modestly. High-photon Test B produced narrower intervals and somewhat
+improved accuracy.
+
+Elevated-background Test D increased prediction error while interval width
+changed comparatively little.
+
+Controlled bi-exponential Test F produced essentially no useful interval
+response. Weak and moderate mismatch both retained 100% coverage with mean
+interval widths close to those observed for familiar conditions.
+
+Thus the direct quantile interval is conservative enough to contain the
+selected lifetime target, but interval width is not a sensitive indicator
+of physical model mismatch.
+
+
+### Conformalized quantile regression
+
+Split conformalization was applied to the frozen Day 58 quantile estimator
+using only the 16-sample held-out uncertainty-calibration subset.
+
+For every valid calibration sample, the original 90% quantile interval
+already contained the true lifetime. With the non-negative conformal
+nonconformity score
+
+$$
+s_i
+=
+\max
+\left(
+L_i-y_i,\;
+y_i-U_i,\;
+0
+\right),
+$$
+
+the finite-sample conformal correction was therefore
+
+$$
+q_{\mathrm{conf}} = 0.
+$$
+
+Consequently, conformalized intervals were identical to the original
+quantile intervals on both the calibration subset and all A-F robustness
+tests.
+
+This is not a conformal failure. It shows that the underlying quantile
+intervals are already sufficiently conservative that this split-conformal
+correction has nothing to enlarge.
+
+In the present small-data setting, conformalization therefore adds no
+additional practical failure-awareness.
+
+
+### Random-Forest ensemble spread
+
+Random-Forest tree-to-tree spread remained the strongest current
+sample-level ML uncertainty score.
+
+Across the complete A-F suite, the Spearman association between absolute
+lifetime error and tree spread remained approximately 0.72-0.91.
+
+The method responded particularly clearly to acquisition-statistics shifts.
+
+For low-photon Test B, matched MAE increased by approximately
+
+$$
+3.32\times,
+$$
+
+while mean tree spread increased by approximately
+
+$$
+1.66\times.
+$$
+
+For elevated-background Test D, matched MAE increased by approximately
+
+$$
+2.76\times,
+$$
+
+while mean tree spread increased by approximately
+
+$$
+1.32\times.
+$$
+
+Within elevated-background Test D, the spread-error correlation remained
+approximately 0.90.
+
+The response to decay-model mismatch was substantially weaker. Under
+moderate Test F, matched MAE increased by approximately 37%, while mean
+tree spread increased by only approximately 9%.
+
+Tree disagreement therefore remains useful for ranking prediction
+difficulty, but its magnitude should not be interpreted as a calibrated
+lifetime uncertainty or as a general test of physical model validity.
+
+
+### Ridge training-bootstrap spread
+
+Ridge training-bootstrap spread again behaved primarily as a detector of
+instability in the learned mapping rather than as a calibrated
+sample-specific uncertainty measure.
+
+It responded strongly to photon-count and background distribution shifts.
+However, its error-ranking performance was inconsistent across A-F, with
+weak or negative correlations in some regimes.
+
+Most importantly, moderate bi-exponential Test F increased lifetime error
+while mean Ridge bootstrap spread remained essentially unchanged.
+
+This confirms the Day 59 interpretation: resampling the
+mono-exponential training data measures sensitivity to finite training-set
+composition, but all bootstrap models remain confined to the same assumed
+physical data distribution. Agreement between them does not establish that
+the underlying decay model is valid.
+
+
+### Classical covariance and parametric-bootstrap calibration across A-F
+
+The strongest Day 62 result came from applying the Day 60-61 classical
+uncertainty methods to every curve in the frozen A-F suite.
+
+Both methods wrapped the same Poisson mono-exponential reconvolution
+estimator:
+
+* local Poisson/Fisher covariance;
+* parametric Poisson bootstrap with 200 refits per measured curve.
+
+Every test was fitted using the correct per-curve IRF width. Test F
+therefore isolates decay-model misspecification rather than IRF
+misspecification.
+
+The nominal interval coverage was 90%.
+
+| Test | Covariance coverage | Bootstrap coverage | Covariance mean width (ns) | Bootstrap mean width (ns) |
+| --- | ---: | ---: | ---: | ---: |
+| A | 0.891 | 0.885 | 0.333 | 0.327 |
+| B | 0.864 | 0.822 | 0.875 | 0.938 |
+| C | 0.872 | 0.854 | 0.348 | 0.347 |
+| D | 0.912 | 0.917 | 0.473 | 0.475 |
+| E | 0.896 | 0.901 | 0.337 | 0.337 |
+| F | 0.518 | 0.490 | 0.366 | 0.361 |
+
+For familiar Test A, both uncertainty methods were close to nominal
+calibration.
+
+Tests D and E also remained approximately calibrated.
+
+Test B showed moderate undercoverage overall, reflecting the difficulty of
+the low-photon subset.
+
+The decisive failure occurred under Test F. Lifetime MAE increased from
+
+$$
+0.0827\ \mathrm{ns}
+$$
+
+for Test A to
+
+$$
+0.1567\ \mathrm{ns}
+$$
+
+for Test F, an increase of approximately
+
+$$
+1.89\times.
+$$
+
+However, the reported uncertainty scale increased by only approximately
+
+$$
+1.10\times
+$$
+
+for covariance and
+
+$$
+1.11\times
+$$
+
+for the parametric bootstrap.
+
+As a result, nominal 90% coverage collapsed to approximately 52% for local
+covariance and 49% for the parametric bootstrap.
+
+The mean normalized absolute error
+
+$$
+\frac{
+|\hat{\tau}-\tau_{\mathrm{ref}}|
+}{
+\hat{\sigma}_{\tau}
+}
+$$
+
+increased from approximately 0.84 under Test A to approximately 2.52-2.54
+under Test F.
+
+This is a direct example of confident physical misspecification: the
+estimator becomes systematically less accurate without reporting a
+commensurate increase in statistical uncertainty.
+
+
+### Photon-statistics failure-awareness
+
+Classical uncertainty responded strongly and physically to photon
+statistics.
+
+For low-photon Test B, classical MAE was approximately
+
+$$
+0.367\ \mathrm{ns},
+$$
+
+and covariance lifetime uncertainty was approximately
+
+$$
+0.393\ \mathrm{ns}.
+$$
+
+For high-photon Test B, MAE fell to approximately
+
+$$
+0.014\ \mathrm{ns},
+$$
+
+with covariance uncertainty of approximately
+
+$$
+0.0145\ \mathrm{ns}.
+$$
+
+Despite this large change in precision, covariance coverage remained
+similar between the low- and high-photon subsets.
+
+The parametric bootstrap showed the same strong photon-count dependence.
+
+This demonstrates that both classical uncertainty methods successfully
+recognize statistical information loss caused by photon starvation.
+
+
+### Elevated-background failure-awareness
+
+Elevated-background Test D increased the classical uncertainty scale while
+maintaining approximately nominal coverage.
+
+Covariance mean interval width increased from approximately
+
+$$
+0.333\ \mathrm{ns}
+$$
+
+under Test A to
+
+$$
+0.473\ \mathrm{ns}
+$$
+
+under Test D.
+
+Bootstrap width behaved almost identically.
+
+Thus the classical statistical uncertainty estimates respond appropriately
+when the measurement becomes less informative because of background
+contamination.
+
+
+### Severity dependence under bi-exponential mismatch
+
+The Test-F severity analysis made the model-mismatch failure especially
+clear.
+
+For weak mismatch, classical MAE was approximately
+
+$$
+0.107\ \mathrm{ns}.
+$$
+
+Covariance and bootstrap coverage fell to approximately 0.695 and 0.646,
+respectively.
+
+For moderate mismatch, MAE increased to approximately
+
+$$
+0.207\ \mathrm{ns},
+$$
+
+while covariance and bootstrap coverage collapsed further to approximately
+0.344 and 0.333.
+
+At the same time, the reported lifetime standard deviation changed only
+slightly between weak and moderate mismatch.
+
+The normalized error increased from approximately 1.36-1.40 estimated
+standard deviations under weak mismatch to approximately 3.67-3.68 under
+moderate mismatch.
+
+The uncertainty failure therefore becomes substantially more severe as the
+unmodelled secondary component becomes stronger, even though the reported
+statistical uncertainty itself changes very little.
+
+
+### Covariance and bootstrap identify statistical uncertainty, not model uncertainty
+
+The close agreement between local covariance and the 200-resample
+parametric bootstrap is scientifically important.
+
+The Test-F failure cannot be explained as a weakness unique to the local
+Gaussian covariance approximation.
+
+The parametric bootstrap also samples exclusively from the fitted
+mono-exponential model:
+
+$$
+k_i^\ast
+\sim
+\operatorname{Poisson}
+\left(
+\hat{\mu}_i^{\mathrm{mono}}
+\right).
+$$
+
+It therefore measures sampling variability conditional on the assumed
+physical model.
+
+When the real synthetic data are bi-exponential, bootstrap resampling from
+the fitted mono-exponential model cannot represent the missing structural
+uncertainty.
+
+Day 62 therefore establishes a central distinction:
+
+> Good calibration of statistical uncertainty under the assumed model does
+> not imply robustness to physical model misspecification.
+
+
+### Residual diagnostics under Test F
+
+Day 62 also revisited whether signed Poisson deviance residual structure
+could expose model mismatch that scalar goodness-of-fit metrics miss.
+
+For every valid curve, the signed deviance residual
+
+$$
+r_i(t)
+$$
+
+was retained after mono-exponential Poisson reconvolution.
+
+The mean signed residual profile was then calculated as
+
+$$
+\bar{r}(t)
+=
+\frac{1}{N}
+\sum_{i=1}^{N}
+r_i(t)
+$$
+
+for familiar Test A, weak Test F, and moderate Test F.
+
+A paired diagnostic also compared matched Test-F and Test-A curves through
+
+$$
+\overline{
+r_F(t)-r_A(t)
+}.
+$$
+
+
+### Scalar Poisson deviance was almost insensitive to mismatch
+
+Mean Poisson deviance per time bin was approximately
+
+$$
+1.0561
+$$
+
+for Test A,
+
+$$
+1.0602
+$$
+
+for weak Test F, and
+
+$$
+1.0627
+$$
+
+for moderate Test F.
+
+Relative to Test A, the mean-deviance ratios were therefore only
+
+$$
+1.0039
+$$
+
+and
+
+$$
+1.0063.
+$$
+
+Thus scalar Poisson goodness-of-fit remained almost unchanged despite the
+substantial uncertainty-calibration failure observed under Test F.
+
+
+### Signed residual profiles provided only weak additional mismatch information
+
+The RMS magnitude of the mean signed residual profile increased by
+approximately 11% under both weak and moderate Test F.
+
+The maximum absolute mean residual increased by approximately 26% for weak
+mismatch and 29% for moderate mismatch.
+
+However, the residual-profile RMS showed essentially no severity ordering:
+weak and moderate Test F produced almost identical increases.
+
+The time-domain profiles were noisy and strongly overlapping. The paired
+Test-F-minus-Test-A profiles also fluctuated around zero without a clear
+reproducible temporal signature that strengthened systematically from weak
+to moderate mismatch.
+
+Test A itself exhibited a non-zero average residual structure, particularly
+a weak negative late-time baseline. Therefore absolute residual-profile
+magnitude is not a clean standalone model-validity statistic in the current
+benchmark.
+
+The scientifically supported conclusion is consequently negative but
+useful:
+
+> Scalar Poisson goodness-of-fit largely misses the controlled
+> bi-exponential mismatch, while aggregation of signed residual structure
+> provides only modest additional discrimination and no clear
+> severity-dependent temporal signature.
+
+Residual diagnostics should therefore not be presented as a reliable
+current detector of Test-F model misspecification.
+
+
+### Day 62 main conclusion
+
+Day 62 demonstrates that uncertainty quality is strongly
+failure-mechanism-dependent.
+
+Classical covariance and parametric Poisson bootstrap respond appropriately
+to changes in photon statistics and background because those perturbations
+alter statistical information within the assumed physical model.
+
+The same methods can become severely overconfident when the physical decay
+model itself is wrong. Under bi-exponential Test F, lifetime error increases
+far more strongly than the reported uncertainty, causing nominal 90%
+coverage to collapse.
+
+ML uncertainty mechanisms show analogous limitations in different forms.
+Random-Forest tree spread remains a useful error-ranking heuristic, while
+Ridge training-bootstrap spread can detect some acquisition-distribution
+instabilities. Neither constitutes a general physical-model-validity test.
+
+Direct quantile intervals are highly conservative on the current small
+development dataset, and split conformalization adds zero correction because
+all calibration targets already lie inside those intervals.
+
+Finally, neither scalar Poisson deviance nor the current aggregate signed
+residual profiles provide a strong warning of the controlled model mismatch.
+
+The principal Week 9 lesson is therefore:
+
+> An estimator can know how uncertain it is about statistical noise while
+> remaining unaware that its physical model is wrong.
+
+Robust TCSPC lifetime inference should consequently report statistical
+uncertainty together with explicit distribution-shift and model-validity
+diagnostics rather than treating a single uncertainty estimate as a
+universal measure of trust.
