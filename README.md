@@ -1145,39 +1145,52 @@ analysis software.
 
 ## Development roadmap
 
-Following the Version 0.7 generalization, robustness, and uncertainty stage,
-planned development includes:
+Version 0.7.0 completes the Week 8–9 generalization, robustness, uncertainty,
+and failure-awareness stage. The current authoritative post-Week-9 sequence is
+tracked in [Issue #5](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5).
 
-1. generalized synthetic IRF models, measured-IRF loading, calibration, and
-   leading-edge estimation;
-2. ingestion and processing of user-provided experimental TCSPC measurements;
-3. persistent storage of experiments, predictions, fitted parameters, and
-   benchmark results;
-4. consolidation of the Week 7–9 evaluation architecture into a simpler and
-   more stable public benchmarking API;
-5. full integration and regression verification across simulation,
-   preprocessing, fitting, machine-learning, robustness, and uncertainty
-   workflows;
-6. a Purcell-enhanced TCSPC lifetime-sensing demonstration using the validated
-   simulation, inference, robustness, and uncertainty infrastructure;
-7. expanded documentation, examples, and user-oriented workflows;
-8. continuous integration, automated verification, and a reproducible release
-   workflow;
-9. Bayesian Poisson lifetime inference and comparison of posterior credible
-   intervals with the existing covariance, bootstrap, conformal, and
-   repeated-Poisson uncertainty framework;
-10. further API stabilization, package reorganization, type consistency, and
-    scientific-software hardening;
-11. broader physical model-mismatch studies including asymmetric IRFs,
-    structured background, pile-up, dead time, and afterpulsing;
-12. bi- and multi-exponential reconvolution fitting and corresponding
-    model-selection benchmarks;
-13. synthetic-to-real validation using experimental reference measurements;
-14. deep-learning lifetime estimators where they provide a scientifically
-    meaningful comparison with the existing classical and machine-learning
-    methods;
-15. profiling-driven CPU/GPU acceleration, interactive analysis interfaces,
-    and eventually agentic orchestration of validated toolkit operations.
+The planned integration and release path is:
+
+1. [Issue #6](https://github.com/moryev/tcspc-lifetime-toolkit/issues/6) —
+   experimental TCSPC data ingestion, processing, validation, provenance, and
+   estimation;
+2. [Issue #8](https://github.com/moryev/tcspc-lifetime-toolkit/issues/8) —
+   generalized synthetic IRFs, measured IRFs, and leading-edge IRF estimation;
+3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
+   Bayesian Poisson lifetime inference using the canonical measurement and IRF
+   abstractions;
+4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
+   optional SQLite persistence for experiments, predictions, fit results,
+   uncertainty outputs, Bayesian summaries, and benchmark metrics;
+5. [Issue #1](https://github.com/moryev/tcspc-lifetime-toolkit/issues/1) —
+   standardization of array input type annotations;
+6. [Issue #2](https://github.com/moryev/tcspc-lifetime-toolkit/issues/2) —
+   public-API stabilization and package hardening;
+7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —
+   consolidation of the Week 7–9 evaluation architecture;
+8. [Issue #3](https://github.com/moryev/tcspc-lifetime-toolkit/issues/3) —
+   reorganization of `tcspc_toolkit` into coherent subpackages;
+9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
+   full integration and regression verification across the mature workflows;
+10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
+    Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
+11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —
+    Week 11 documentation and user experience;
+12. [Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15) —
+    Week 12 continuous integration and release preparation.
+
+This ordering is deliberate: experimental measurements are introduced before
+IRF generalization and Bayesian inference so that the final scientific and
+software abstractions are not frozen around synthetic-only workflows. API and
+package cleanup then follows the major scientific integrations rather than
+preceding them.
+
+Longer-term extensions beyond the current integration/release roadmap may
+include broader physical model-mismatch studies, pile-up/dead-time/afterpulsing
+models, bi- and multi-exponential inverse fitting and model selection,
+validated synthetic-to-real transfer, deep-learning estimators where
+scientifically justified, profiling-driven acceleration, interactive
+interfaces, and agentic orchestration of validated toolkit operations.
 
 ## Reproducibility
 
