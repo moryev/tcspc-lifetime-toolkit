@@ -1022,3 +1022,63 @@ Robust TCSPC lifetime inference should consequently report statistical
 uncertainty together with explicit distribution-shift and model-validity
 diagnostics rather than treating a single uncertainty estimate as a
 universal measure of trust.
+
+
+## Day 63 — Week 9 synthesis
+
+Notebook 14 consolidates the complete Week 9 uncertainty and
+failure-awareness workflow using the committed library APIs developed during
+Days 57–62.
+
+The final workflow preserves three distinct data roles: uncertainty training,
+held-out development calibration, and frozen external Tests A–F. The A–F
+suite remains excluded from estimator fitting, uncertainty calibration, and
+conformal calibration.
+
+Across the investigated methods, uncertainty is strongly
+estimator-specific. Direct quantile regression produces conservative but
+broad prediction intervals. Random-Forest tree disagreement provides a
+useful sample-level error-ranking signal, while training-data bootstrap
+spread is more sensitive to some acquisition-distribution shifts than to
+individual prediction error.
+
+For the classical Poisson reconvolution estimator, both local
+Fisher-information covariance and parametric Poisson bootstrap reproduce
+sampling variability reasonably well when the mono-exponential forward model
+is correctly specified. Their uncertainty increases appropriately when
+photon information decreases or detector background increases.
+
+The decisive limitation appears under controlled bi-exponential model
+mismatch. Lifetime error increases substantially while the classical
+covariance and bootstrap uncertainty scales increase only modestly, causing
+nominal 90% coverage to collapse. This confirms that these methods quantify
+statistical variability conditional on the assumed model rather than the
+uncertainty associated with an incorrect physical model.
+
+The ML uncertainty mechanisms exhibit related limitations. None of the
+current predictive intervals, ensemble-disagreement scores, or
+training-bootstrap scores constitutes a general detector of physical-model
+validity.
+
+Split conformalization provides no additional correction in the present
+experiment because the original quantile intervals already contain every
+held-out calibration target. Conformal calibration can improve coverage
+relative to a specified calibration distribution, but it does not by itself
+supply awareness of unseen physical model misspecification.
+
+Finally, neither scalar Poisson deviance nor the current aggregate signed
+residual profiles provide a strong independent warning of the controlled
+Test-F mismatch.
+
+The main Week 9 conclusion is therefore:
+
+> **An estimator can correctly quantify statistical uncertainty while
+> remaining confidently wrong because its physical model is incomplete.**
+
+For robust TCSPC lifetime analysis, statistical uncertainty should therefore
+be reported together with explicit distribution-shift, model-validity, and
+failure diagnostics rather than interpreted as a universal measure of
+trustworthiness.
+
+Notebook 14 provides the reproducible synthesis of these results and closes
+the Week 9 uncertainty and failure-awareness stage.

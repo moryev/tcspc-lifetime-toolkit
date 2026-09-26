@@ -1,6 +1,9 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from tcspc_toolkit.generalization import (
+    default_familiar_simulation_domain,
+)
 from tcspc_toolkit.classical_uncertainty import (
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
@@ -467,3 +470,48 @@ def test_repeated_poisson_uncertainty_returns_empirical_reference(
         <= 1.0
     )
 
+
+def test_high_count_repeated_poisson_spread_is_small() -> None:
+    domain = (
+        default_familiar_simulation_domain()
+    )
+
+    time = np.arange(
+        domain.time_start_ns,
+        domain.time_stop_ns,
+        domain.time_step_ns,
+        dtype=np.float64,
+    )
+
+    result = (
+        evaluate_repeated_poisson_uncertainty(
+            time=time,
+            true_lifetime_ns=2.0,
+            signal_photon_count=100_000,
+            background_per_bin=0.5,
+            irf_centre_ns=(
+                domain.irf_centre_ns
+            ),
+            irf_fwhm_ns=0.25,
+            irf_shift_ns=0.05,
+            temporal_shift_bounds=(
+                -0.5,
+                0.5,
+            ),
+            n_repeats=12,
+            n_bootstrap_resamples=2,
+            rng=np.random.default_rng(
+                61_099
+            ),
+            nominal_coverage=0.90,
+        )
+    )
+
+    assert np.isfinite(
+        result.empirical_std_ns
+    )
+
+    assert (
+        result.empirical_std_ns
+        < 0.03
+    )

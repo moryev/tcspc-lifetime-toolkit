@@ -388,38 +388,120 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-* reusable quantile-regression pipeline construction using `HistGradientBoostingRegressor` with explicit quantile loss;
-* three-model 0.05/0.50/0.95 quantile lifetime estimator producing nominal 90% prediction intervals;
-* dedicated Week 9 uncertainty-training and held-out calibration workflow using engineered TCSPC features;
-* interval evaluation including empirical coverage, coverage error, mean and median width, interval score, and interval failure rate;
-* quantile-specific evaluation including lower, median, and upper pinball loss and explicit quantile-crossing diagnostics;
-* frozen-estimator evaluation on external robustness conditions without refitting or recalibration;
-* conditional uncertainty evaluation for low-photon, high-photon, elevated-background, weak bi-exponential, and moderate bi-exponential regimes;
-* paired Test-A uncertainty-response diagnostics preserving the Week 8 `pair_id` matching structure;
-* per-pair absolute-error and interval-width changes for direct failure-awareness analysis;
-* Spearman correlation between paired interval-width change and absolute-error change;
-* automated tests covering quantile construction, non-reordered crossing behaviour, uncertainty-development leakage boundaries, feature-schema consistency, frozen external evaluation, canonical condition extraction, and paired Test-A matching.
-* Random-Forest tree-disagreement uncertainty scoring based on per-tree lifetime predictions;
-* reusable non-parametric training-data bootstrap prediction spread for arbitrary scikit-learn estimators, demonstrated with Ridge regression;
-* explicit separation between the central Ridge prediction and bootstrap replicas used only for sensitivity estimation;
-* held-out calibration evaluation of non-interval uncertainty scores using error correlation and low-/high-uncertainty error tails;
-* paired Test-A versus Test-B/D/F uncertainty-score diagnostics;
-* regime-level uncertainty-score ratios and paired score-change versus error-change correlations;
-* automated tests for exact Random-Forest tree-spread calculation, bootstrap reproducibility, preservation of the central estimator prediction, Week 9 split isolation, and paired OOD uncertainty evaluation;
+* reusable quantile-regression pipeline construction using
+HistGradientBoostingRegressor with explicit quantile loss;
+* three-model 0.05/0.50/0.95 quantile lifetime estimator producing nominal
+90% prediction intervals;
+* dedicated Week-9 uncertainty-training and held-out calibration split;
+* prediction-interval evaluation including empirical coverage, coverage
+* error, mean and median width, interval score, and interval failure rate;
+quantile-specific evaluation including lower, median, and upper pinball
+loss and explicit quantile-crossing diagnostics;
+* frozen quantile-estimator evaluation on external robustness conditions
+without refitting or recalibration;
+* paired Test-A uncertainty-response diagnostics for photon-count,
+background, and model-mismatch shifts;
+* Random-Forest tree-disagreement uncertainty scoring based on per-tree
+lifetime predictions;
+* reusable non-parametric training-data bootstrap prediction spread,
+demonstrated with Ridge regression;
+* uncertainty-score evaluation using error correlation and
+low-/high-uncertainty error subsets;
+* paired A-to-shift uncertainty-score diagnostics retaining the frozen
+Week-8 pair_id structure;
+* local Poisson/Fisher covariance estimation for reconvolution parameters
+using the expected-count Jacobian;
+* parameter scaling for the Fisher-information calculation and explicit
+conditioning diagnostics;
+* explicit covariance failure handling for unsuccessful fits,
+parameter-boundary solutions, rank deficiency, and ill-conditioned local
+information;
+* parametric Poisson-bootstrap uncertainty for reconvolution lifetime
+estimates;
+* bootstrap lifetime distributions, percentile intervals, standard
+deviations, and retained refit/boundary failures;
+* repeated-Poisson empirical calibration experiments in which the physical
+TCSPC condition is fixed and only the independent Poisson realization
+changes;
+* empirical comparison of lifetime sampling variability with local
+covariance and bootstrap uncertainty;
+* split-conformal calibration of the direct quantile prediction intervals
+using only the held-out development calibration subset;
+* complete frozen A–F ML uncertainty scorecards for direct quantile,
+conformalized quantile, Random-Forest disagreement, and Ridge
+training-bootstrap methods;
+* complete frozen A–F classical uncertainty scorecards for local covariance
+and parametric Poisson bootstrap;
+* conditional classical uncertainty scorecards for low/high photon count,
+elevated background, and weak/moderate bi-exponential model mismatch;
+* normalized error-to-uncertainty diagnostics for detecting overconfident
+predictions;
+* signed Poisson-deviance residual matrices and aggregate residual-profile
+diagnostics for familiar versus model-mismatch conditions;
+* paired Test-F-minus-Test-A residual-profile analysis;
+* Notebook 14 (14_uncertainty_and_failure_awareness.ipynb) integrating the
+complete Week-9 uncertainty-calibration and failure-awareness workflow;
+* automated tests covering uncertainty splitting, interval metrics,
+quantile crossing, RF spread, ML-bootstrap reproducibility, local
+covariance validity and conditioning, parametric-bootstrap behaviour,
+repeated-Poisson calibration, A–F identity preservation, conditional
+regime preservation, conformal calibration, classical uncertainty
+scorecards, and residual-structure diagnostics.
+
+### Changed
+
+* reformulated the principal Poisson reconvolution optimizer in scaled
+dimensionless parameter coordinates to improve numerical conditioning
+while preserving the same physical model, likelihood, public fitting API,
+and physical parameter bounds;
+* established uncertainty training, uncertainty calibration, and final A–F
+robustness evaluation as strictly separate data roles;
+* established prediction intervals, uncertainty scores, and empirical
+repeated-measurement variability as distinct uncertainty output types;
+* established the repeated-Poisson experiment as the empirical calibration
+reference for synthetic classical lifetime uncertainty;
+* extended final robustness evaluation from point-estimate accuracy to
+uncertainty coverage, sharpness, normalized error, and failure-awareness;
+* established Test F as a deliberate evaluation of uncertainty under
+physical forward-model misspecification rather than ordinary statistical
+noise;
+* established the dominant-component lifetime tau_1 as the frozen primary
+Test-F scoring reference while retaining the absence of a unique
+mono-exponential lifetime for bi-exponential decay;
+* extended project documentation and README descriptions to include
+uncertainty calibration, conformal evaluation, classical uncertainty,
+and model-mismatch failure-awareness.
 
 ### Notes
 
-Direct quantile gradient boosting achieves conservative empirical coverage on the current development calibration subset, 
-but its intervals are broad and strongly discretized. Paired robustness evaluation shows partial response to photon-count and background shifts, 
-while controlled bi-exponential model mismatch produces little meaningful increase in predicted uncertainty. The method is therefore retained as the first Week 9 
-uncertainty baseline rather than treated as a complete failure-detection solution.
-
-Random-Forest tree disagreement provides strong sample-level error ranking
-on the current held-out development subset and remains informative under
-photon-count and background shifts. Ridge training-bootstrap spread behaves
-more like a detector of training-distribution instability: it responds
-strongly to several acquisition OOD regimes but can provide weak
-sample-level ranking. Moderate bi-exponential mismatch increases Ridge error
-without increasing bootstrap spread, demonstrating that resampling the
-mono-exponential training distribution does not provide a general detector
-of unseen physical model misspecification.
+* direct quantile gradient boosting provides conservative but broad prediction
+intervals on the current small development dataset. Its interval width reacts
+to some acquisition changes but provides weak recognition of controlled
+bi-exponential model mismatch.
+* Random-Forest tree disagreement is the strongest current sample-level ML
+error-ranking uncertainty score, while Ridge training-bootstrap spread is
+more sensitive to several acquisition-distribution shifts than to
+sample-level prediction error.
+* under correctly specified mono-exponential conditions, local Poisson/Fisher
+covariance and parametric Poisson bootstrap both reproduce empirical
+repeated-measurement variability reasonably well and respond physically to
+changes in photon count and detector background.
+* uncertainty calibration exposed a numerical-conditioning problem in the
+Poisson reconvolution optimizer. Scaled optimization removed the resulting
+high-photon systematic bias and restored physically consistent uncertainty
+behaviour.
+* the principal Week-9 failure occurs under controlled bi-exponential model
+mismatch. Classical lifetime error increases substantially while covariance
+and bootstrap uncertainty increase only modestly, causing nominal 90%
+coverage to collapse. Parametric bootstrap therefore does not solve model
+misspecification because it resamples from the same fitted
+mono-exponential model.
+* split conformalization adds zero correction in the current experiment
+because every held-out calibration target already lies inside the original
+direct-quantile interval.
+* scalar Poisson deviance remains almost insensitive to Test-F mismatch, and
+aggregate signed-residual profiles provide only modest additional
+discrimination without a clear severity-dependent temporal signature.
+* the central Week-9 conclusion is that an estimator can quantify statistical
+uncertainty under its assumed physical model while remaining confidently
+wrong when that physical model is incomplete.

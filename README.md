@@ -26,8 +26,11 @@ This project separates TCSPC analysis into reusable physical, statistical, and d
 10. evaluate statistical, physics-inspired, linear, and nonlinear lifetime estimators;
 11. compare engineered features, normalized histograms, and PCA-compressed representations;
 12. benchmark classical reconvolution and ML under controlled lifetime, photon-count, background, IRF-width, and IRF-shift regimes;
-13. introduce controlled model mismatch and quantify estimator degradation;
-14. benchmark inference runtime and throughput alongside predictive accuracy.
+13. evaluate generalization under frozen external distribution-shift and model-mismatch tests;
+14. quantify predictive uncertainty using calibrated intervals, ensemble disagreement, bootstrap sensitivity, and local Poisson information;
+15. compare reported uncertainty with empirical repeated-Poisson sampling variability;
+16. evaluate uncertainty calibration and failure-awareness under the frozen A–F robustness suite;
+17. distinguish statistical uncertainty from failures caused by physical model misspecification.
 
 The current implementation provides a reproducible framework for both
 classical and data-driven TCSPC lifetime estimation.
@@ -39,9 +42,21 @@ background, and temporal IRF shift.
 
 The machine-learning workflow now includes physically inspired baselines,
 scikit-learn regression pipelines, controlled representation benchmarks,
-conditional evaluation across physical operating regimes, comparison with
-classical reconvolution, controlled model-mismatch experiments, and inference
-timing.
+repeated development-set cross-validation, frozen out-of-distribution
+evaluation, conditional robustness analysis, model-mismatch experiments,
+inference timing, direct quantile prediction intervals, Random-Forest
+ensemble-disagreement scores, and training-data bootstrap uncertainty
+scores.
+
+Classical inference now additionally includes local Poisson/Fisher
+covariance uncertainty, parametric Poisson bootstrap intervals,
+repeated-Poisson empirical uncertainty calibration, and A–F evaluation of
+coverage, interval width, uncertainty scale, and failure-awareness.
+
+The toolkit explicitly distinguishes statistical uncertainty conditional on
+an assumed forward model from physical model misspecification. Controlled
+bi-exponential tests demonstrate that an estimator can remain statistically
+confident while its assumed mono-exponential decay model is wrong.
 
 Synthetic benchmark datasets can vary fluorescence lifetime, signal photon
 count, detector background, IRF width, and IRF temporal shift while retaining
@@ -102,7 +117,7 @@ The current version supports:
 * mismatch summaries reporting in-distribution and mismatch MAE, MAE degradation, bias changes, and failure rates;
 * repeated batch inference timing for mean-arrival and machine-learning estimators;
 * reuse of recorded per-curve reconvolution optimization runtimes for computational-cost comparison;
-* estimator-throughput and accuracy-versus-runtime benchmarking.
+* estimator-throughput and accuracy-versus-runtime benchmarking;
 * JSON serialization and loading of configuration objects using `pathlib`;
 * metadata-based selection of machine-learning targets;
 * nonlinear least-squares mono-exponential lifetime fitting;
@@ -125,6 +140,45 @@ The current version supports:
   engineering, leakage-safe representations, classical-versus-ML benchmarking,
   conditional performance analysis, controlled model mismatch, and inference
   timing.
+* frozen Week-8 A–F generalization tests separating familiar conditions,
+photon-count OOD, IRF-width shift, elevated background, temporal
+misalignment, and controlled bi-exponential model mismatch;
+* repeated development-set cross-validation with leakage-safe estimator and
+representation fitting;
+* frozen external robustness evaluation in which Tests A–F never enter model
+training or uncertainty calibration;
+* quantile Histogram Gradient Boosting with separate 0.05, 0.50, and 0.95
+lifetime models defining nominal 90% prediction intervals;
+* prediction-interval evaluation including empirical coverage, coverage
+error, interval width, interval score, failure rate, pinball losses, and
+quantile-crossing diagnostics;
+* Random-Forest tree-to-tree disagreement as an uncertainty-ranking score;
+non-parametric training-data bootstrap prediction spread for
+scikit-learn lifetime estimators;
+* uncertainty-score evaluation through error correlation and
+low-/high-uncertainty error subsets;
+* leakage-safe split-conformal extension of the quantile prediction
+intervals using only the held-out development calibration subset;
+* local Poisson/Fisher covariance estimation for reconvolution parameters
+using the expected-count Jacobian and scaled Fisher information;
+* explicit rejection of singular, ill-conditioned, boundary, and otherwise
+invalid local covariance estimates;
+* parametric Poisson-bootstrap lifetime uncertainty with retained refit and
+parameter-boundary failures;
+* repeated-Poisson experiments that compare reported uncertainty with
+empirical estimator variability while holding the physical measurement
+condition fixed;
+* A–F classical uncertainty scorecards containing coverage, interval width,
+uncertainty scale, normalized error, and failure diagnostics;
+* conditional uncertainty analysis for low/high photon count, elevated
+background, and weak/moderate bi-exponential mismatch;
+* structured signed Poisson-deviance residual analysis for model-mismatch
+diagnostics;
+* explicit demonstration that well-calibrated statistical uncertainty under
+the assumed mono-exponential model does not guarantee detection of
+physical model misspecification;
+* Notebook 14 integrating the complete uncertainty-calibration and
+failure-awareness workflow.
 
 ## Current scientific assumptions
 
@@ -906,6 +960,38 @@ Demonstrates:
 * demonstration that explicit physical nuisance modelling provides strong robustness while forward-model mismatch can produce biased but numerically successful fits;
 * final Week-8 scientific synthesis and transition toward uncertainty and failure-awareness in Week 9.
 
+### `14_uncertainty_and_failure_awareness.ipynb`
+
+Demonstrates:
+
+* reconstruction of the frozen Week-9 uncertainty protocol with 48
+uncertainty-training and 16 held-out calibration samples;
+* strict separation of development training, development calibration, and
+untouched external Tests A–F;
+* direct 0.05/0.50/0.95 quantile lifetime prediction intervals;
+* calibration-subset comparison of nominal coverage and interval width;
+* Random-Forest tree disagreement versus actual lifetime error;
+* Ridge training-bootstrap spread versus actual lifetime error;
+* frozen A–F evaluation of ML uncertainty scores and prediction intervals;
+* split conformalization of the direct quantile intervals;
+*repeated-Poisson comparison of empirical lifetime variability with local
+covariance and parametric-bootstrap uncertainty;
+* full classical A–F uncertainty evaluation using local Poisson/Fisher
+covariance and parametric Poisson bootstrap;
+* conditional comparison of low- and high-photon regimes, elevated
+background, and weak/moderate bi-exponential mismatch;
+* demonstration that classical uncertainty responds physically to loss of
+photon information and elevated background;
+* demonstration that nominal 90% classical coverage collapses under
+bi-exponential model mismatch despite only modest increases in reported
+uncertainty;
+* comparison of scalar Poisson deviance and aggregate signed residual
+profiles as possible model-mismatch diagnostics;
+* demonstration that the present residual diagnostics add only weak
+discrimination beyond the uncertainty-calibration failure;
+* final synthesis of the distinction between statistical uncertainty,
+distribution-shift awareness, and physical model validity.
+
 ## Repository structure
 
 ```text
@@ -938,7 +1024,8 @@ tcspc-lifetime-toolkit/
 │   ├── 10_preprocessing_tcspc_histograms.ipynb
 │   ├── 11_feature_engineering.ipynb
 │   ├── 12_ml_benchmarking.ipynb
-│   └── 13_generalization_and_robustness.ipynb
+│   ├── 13_generalization_and_robustness.ipynb
+│   └── 14_uncertainty_and_failure_awareness.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -947,6 +1034,7 @@ tcspc-lifetime-toolkit/
 │       ├── baselines.py
 │       ├── benchmark_plots.py
 │       ├── classical_evaluation.py
+│       ├── classical_uncertainty.py
 │       ├── cli.py
 │       ├── conditional_evaluation.py
 │       ├── config.py
@@ -964,35 +1052,17 @@ tcspc-lifetime-toolkit/
 │       ├── mismatch_evaluation.py
 │       ├── ml_evaluation.py
 │       ├── ml_models.py
+│       ├── ml_uncertainty.py
 │       ├── models.py
 │       ├── preprocessing.py
 │       ├── representations.py
 │       ├── simulation.py
-│       └── timing_evaluation.py
+│       ├── timing_evaluation.py
+│       ├── uncertainty_evaluation.py
+│       └── uncertainty_robustness.py
 │
-└── tests/
-    ├── conftest.py
-    ├── test_baselines.py
-    ├── test_benchmark_plots.py
-    ├── test_classical_evaluation.py
-    ├── test_conditional_evaluation.py
-    ├── test_config.py
-    ├── test_convolution.py
-    ├── test_datasets.py
-    ├── test_evaluation.py
-    ├── test_feature_integration.py
-    ├── test_features.py
-    ├── test_fitting.py
-    ├── test_irf.py
-    ├── test_mismatch_evaluation.py
-    ├── test_ml_evaluation.py
-    ├── test_ml_models.py
-    ├── test_models.py
-    ├── test_preprocessing.py
-    ├── test_preprocessing_integration.py
-    ├── test_representations.py
-    ├── test_simulation.py
-    └── test_timing_evaluation.py
+└── tests/...
+    
 ```
 
 The modules currently have the following responsibilities:
@@ -1002,6 +1072,7 @@ The modules currently have the following responsibilities:
 * `baselines.py`: statistical and physics-inspired lifetime-estimation baselines, including constant-mean and mean-arrival-time estimators;
 * `benchmark_plots.py`: reusable visualization utilities for prediction accuracy, error distributions, physical-condition dependence, and paired estimator comparisons;
 * `classical_evaluation.py`: batch mono-exponential reconvolution benchmarking, histogram-derived initialization, fit-validity and boundary diagnostics, Poisson fit statistics, error metrics, and runtime summaries;
+* `classical_uncertainty.py`: local Poisson/Fisher covariance, parametric Poisson bootstrap, and repeated-Poisson empirical calibration for reconvolution lifetime uncertainty;
 * `cli.py`: command-line tools for simulating and fitting TCSPC data;
 * `conditional_evaluation.py`: standardized ML/classical prediction diagnostics, numeric regime assignment, and conditional performance summaries across benchmark operating conditions;
 * `config.py`: immutable configuration dataclasses, normalization-mode definitions, and JSON serialization/loading utilities for reproducible simulation and preprocessing workflows;
@@ -1019,11 +1090,14 @@ The modules currently have the following responsibilities:
 * `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
 * `ml_evaluation.py`: reproducible benchmark-dataset construction and splitting, regression metrics, baseline and estimator evaluation, histogram/PCA representation construction, representation benchmarks, photon-count ablation, and split-coverage diagnostics;
 * `ml_models.py`: reusable scikit-learn pipelines for Ridge, Random Forest, and Histogram Gradient Boosting lifetime regression;
+* `ml_uncertainty.py`: quantile-regression prediction intervals, Random-Forest tree-disagreement scores, training-data bootstrap prediction spread, and frozen external ML uncertainty evaluation;
 * `models.py`: mathematical decay models;
 * `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent count normalization;
 * `representations.py`: construction of machine-learning representations from TCSPC histograms, including batch histogram normalization, leakage-safe PCA fitting and transformation, and cumulative explained-variance analysis;
 * `simulation.py`: expected-curve generation and Poisson sampling;
 * `timing_evaluation.py`: repeated batch inference timing, reconvolution-runtime summaries, throughput calculation, and computational-cost comparison;
+* `uncertainty_evaluation.py`: shared Week-9 uncertainty protocol, development/calibration splitting, prediction-interval metrics, uncertainty-score metrics, and selective-prediction diagnostics;
+* `uncertainty_robustness.py`: conformal calibration, ML and classical A–F uncertainty scorecards, conditional failure-awareness analysis, and signed-residual model-mismatch diagnostics;
 * `data/examples/`: small example datasets tracked by Git;
 * `data/generated/`: generated outputs that are not normally tracked by Git;
 * `docs/scientific_findings.md`: cumulative record of durable scientific conclusions established by the benchmark notebooks;
@@ -1033,19 +1107,38 @@ The modules currently have the following responsibilities:
 
 ## Current limitations
 
-The current implementation is intentionally simplified.
+The current implementation is intentionally focused on controlled synthetic
+TCSPC benchmarks.
 
 It does not yet include:
 
-* weighted least-squares fitting;
+* experimental TCSPC file-format import and measured-data validation;
+* measured or experimentally calibrated IRF import workflows;
 * pile-up effects;
 * detector dead time;
 * afterpulsing;
-* time-dependent background;
-* experimental file-format import;
-* calibrated confidence or prediction intervals.
+* time-dependent or structured detector background;
+* full bi- or multi-exponential reconvolution inverse fitting;
+* Bayesian parameter inference or posterior credible intervals;
+* general model-selection or model-adequacy tests for distinguishing decay families;
+* uncertainty guarantees under arbitrary distribution shift or physical model misspecification;
+* validated synthetic-to-real transfer;
+* deep-learning lifetime estimators.
 
-The covariance-based standard errors returned by the current least-squares fit should therefore be interpreted as preliminary local uncertainty estimates.
+The current uncertainty methods quantify different notions of reliability
+and should not be treated as interchangeable. Local Poisson covariance and
+parametric bootstrap are statistical uncertainty estimates conditional on
+the assumed forward model. Random-Forest disagreement and training-bootstrap
+spread are uncertainty scores rather than calibrated lifetime standard
+deviations.
+
+The current experiments demonstrate explicitly that good uncertainty
+calibration under a correctly specified mono-exponential model does not
+guarantee reliable uncertainty when the physical decay model is wrong.
+
+The toolkit therefore remains a research and scientific-software prototype
+rather than a validated replacement for established experimental TCSPC
+analysis software.
 
 ## Development roadmap
 
@@ -1056,15 +1149,16 @@ Planned development stages include:
 3. expanded out-of-distribution benchmarks, including unseen lifetime ranges, leave-one-IRF-out evaluation, and cross-instrument tests;
 4. additional model-mismatch scenarios including asymmetric IRFs, structured background, pile-up, dead time, and afterpulsing;
 5. bi- and multi-exponential reconvolution fitting and corresponding classical benchmarks;
-6. calibrated uncertainty estimation and prediction intervals for classical and machine-learning estimators;
-7. a Purcell-enhanced lifetime-sensing demonstration;
-8. support for fitting user-provided experimental TCSPC data and standard experimental file formats;
-9. synthetic-to-real validation using experimental reference measurements;
-10. deep-learning models such as MLPs, 1D CNNs, autoencoders, and photon-efficient neural estimators;
-11. interoperability with established TCSPC/FLIM analysis libraries where scientifically useful;
-12. profiling-driven CPU/GPU acceleration for large-scale inference;
-13. a graphical or interactive benchmark interface;
-14. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to orchestrate deterministic preprocessing, fitting, benchmarking, and reporting functions.
+6. Bayesian lifetime inference and comparison of posterior credible intervals with the existing covariance, bootstrap, conformal, and repeated-Poisson calibration framework;
+7. support for user-provided experimental TCSPC data, measured IRFs, and common experimental file formats;
+8. synthetic-to-real validation using experimental reference measurements;
+9. a Purcell-enhanced lifetime-sensing demonstration;
+10. expanded model-mismatch scenarios including asymmetric IRFs, structured background, pile-up, dead time, and afterpulsing;
+11. deep-learning models such as MLPs, 1D CNNs, autoencoders, and photon-efficient neural estimators;
+12. interoperability with established TCSPC/FLIM analysis libraries where scientifically useful;
+13. profiling-driven CPU/GPU acceleration for large-scale inference;
+14. a graphical or interactive benchmark interface;
+15. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to orchestrate deterministic preprocessing, fitting, benchmarking, and reporting functions.
 
 ## Reproducibility
 
