@@ -4,6 +4,14 @@ A scientific Python toolkit for simulating, fitting, and evaluating time-correla
 
 The project is being developed as an end-to-end framework for classical and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC simulation and data processing, reproducible benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
 
+Version 0.7.0 extends the toolkit beyond in-distribution estimator
+benchmarking to controlled generalization, robustness, uncertainty
+calibration, and failure-awareness. The current benchmark now evaluates not
+only whether lifetime estimators are accurate under familiar conditions, but
+also whether their performance survives distribution shift, whether their
+reported uncertainty tracks statistical degradation, and whether they detect
+failure when the assumed physical decay model is wrong.
+
 ## Scientific motivation
 
 Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
@@ -135,50 +143,54 @@ The current version supports:
 * random and group-aware train-test evaluation;
 * data-leakage analysis for repeated noisy realizations;
 * CSV export of simulated and evaluated data;
-* Jupyter notebooks demonstrating classical fitting, realistic TCSPC simulation,
-  reconvolution fitting, Poisson-aware validation, preprocessing, feature
-  engineering, leakage-safe representations, classical-versus-ML benchmarking,
-  conditional performance analysis, controlled model mismatch, and inference
-  timing.
+* Jupyter notebooks demonstrating classical fitting, realistic TCSPC
+  simulation, reconvolution fitting, Poisson-aware validation, preprocessing,
+  feature engineering, leakage-safe representations, classical-versus-ML
+  benchmarking, robustness analysis, uncertainty calibration, and
+  failure-awareness;
 * frozen Week-8 A–F generalization tests separating familiar conditions,
-photon-count OOD, IRF-width shift, elevated background, temporal
-misalignment, and controlled bi-exponential model mismatch;
+  photon-count OOD, IRF-width shift, elevated background, temporal
+  misalignment, and controlled bi-exponential model mismatch;
 * repeated development-set cross-validation with leakage-safe estimator and
-representation fitting;
+  representation fitting;
 * frozen external robustness evaluation in which Tests A–F never enter model
-training or uncertainty calibration;
-* quantile Histogram Gradient Boosting with separate 0.05, 0.50, and 0.95
-lifetime models defining nominal 90% prediction intervals;
+  training, representation fitting, or uncertainty calibration;
+* paired familiar-versus-shifted evaluation using matched physical conditions;
+* direct quantile lifetime estimation with separate 0.05, 0.50, and 0.95
+  Histogram Gradient Boosting models defining nominal 90% prediction
+  intervals;
 * prediction-interval evaluation including empirical coverage, coverage
-error, interval width, interval score, failure rate, pinball losses, and
-quantile-crossing diagnostics;
+  error, interval width, interval score, failure rate, pinball losses, and
+  quantile-crossing diagnostics;
 * Random-Forest tree-to-tree disagreement as an uncertainty-ranking score;
-non-parametric training-data bootstrap prediction spread for
-scikit-learn lifetime estimators;
+* non-parametric training-data bootstrap prediction spread for scikit-learn
+  lifetime estimators;
 * uncertainty-score evaluation through error correlation and
-low-/high-uncertainty error subsets;
-* leakage-safe split-conformal extension of the quantile prediction
-intervals using only the held-out development calibration subset;
+  low-/high-uncertainty error subsets;
+* leakage-safe split-conformal extension of direct quantile prediction
+  intervals using only the held-out development calibration subset;
 * local Poisson/Fisher covariance estimation for reconvolution parameters
-using the expected-count Jacobian and scaled Fisher information;
+  using the expected-count Jacobian and scaled Fisher information;
 * explicit rejection of singular, ill-conditioned, boundary, and otherwise
-invalid local covariance estimates;
+  invalid local covariance estimates;
 * parametric Poisson-bootstrap lifetime uncertainty with retained refit and
-parameter-boundary failures;
-* repeated-Poisson experiments that compare reported uncertainty with
-empirical estimator variability while holding the physical measurement
-condition fixed;
-* A–F classical uncertainty scorecards containing coverage, interval width,
-uncertainty scale, normalized error, and failure diagnostics;
+  parameter-boundary failures;
+* repeated-Poisson experiments comparing reported uncertainty with empirical
+  estimator variability while holding the physical measurement condition
+  fixed;
+* frozen A–F classical uncertainty evaluation including coverage, interval
+  width, uncertainty scale, normalized error, and failure diagnostics;
 * conditional uncertainty analysis for low/high photon count, elevated
-background, and weak/moderate bi-exponential mismatch;
+  background, and weak/moderate bi-exponential mismatch;
 * structured signed Poisson-deviance residual analysis for model-mismatch
-diagnostics;
+  diagnostics;
 * explicit demonstration that well-calibrated statistical uncertainty under
-the assumed mono-exponential model does not guarantee detection of
-physical model misspecification;
+  an assumed forward model does not guarantee awareness of physical model
+  misspecification;
+* Notebook 13 integrating the complete generalization and robustness
+  workflow;
 * Notebook 14 integrating the complete uncertainty-calibration and
-failure-awareness workflow.
+  failure-awareness workflow.
 
 ## Current scientific assumptions
 
@@ -479,48 +491,39 @@ cross-validation and final A-F robustness evaluation covering photon-count,
 IRF, background, temporal-alignment, and decay-model shifts.
 
 Key findings and their scientific interpretation are maintained in
-[`docs/scientific_findings.md`](docs/scientific_findings.md), with the
-complete Week-8 analysis available in
-[`notebooks/13_generalization_and_robustness.ipynb`](notebooks/13_generalization_and_robustness.ipynb).
+[`docs/scientific_findings.md`](docs/scientific_findings.md). The complete
+Week-8 robustness workflow is available in
+[`notebooks/13_generalization_and_robustness.ipynb`](notebooks/13_generalization_and_robustness.ipynb),
+and the Week-9 uncertainty and failure-awareness synthesis is available in
+[`notebooks/14_uncertainty_and_failure_awareness.ipynb`](notebooks/14_uncertainty_and_failure_awareness.ipynb).
 
 ## Current implementation status
-**Version 0.6 extends the toolkit from machine-learning representation
-construction to a reproducible classical-versus-data-driven TCSPC lifetime
-benchmarking framework.
-The toolkit now supports controlled factorial benchmark datasets spanning
-fluorescence lifetime, signal photon count, detector background, Gaussian IRF
-width, and temporal IRF shift. A common reproducible train/test split can be
-reused across statistical baselines, the physics-inspired mean-arrival-time
-estimator, Ridge regression, Random Forest regression, Histogram Gradient
-Boosting regression, representation benchmarks, and classical
-mono-exponential reconvolution fitting.
-Machine-learning inputs can be represented as physically engineered features,
-TOTAL-normalized histogram bins, or leakage-safe PCA-compressed histograms.
-Controlled representation benchmarks isolate the effect of representation
-while keeping samples, targets, and estimator families fixed, and photon-count
-ablation experiments test the information removed by TOTAL normalization.
-Classical reconvolution benchmarking now records fitted lifetime, optimizer
-success and validity, parameter-boundary hits, Poisson likelihood/deviance
-diagnostics, and per-curve optimization runtime. ML and classical results are
-converted into a common diagnostic representation so that performance can be
-analysed conditionally across lifetime, photon-count, background, IRF-width,
-and IRF-misalignment regimes using MAE, median absolute error, bias,
-upper-tail error quantiles, and failure rate.
-Version 0.6 also introduces controlled model-mismatch evaluation through
-matched weakly bi-exponential test curves. ML estimators remain trained on
-mono-exponential data while classical reconvolution continues to use a
-mono-exponential forward model, allowing distribution shift and physical
-model misspecification to be compared directly.
-Estimator-only computational benchmarking reports repeated batch inference
-time and throughput for the physics-inspired and ML estimators together with
-the recorded optimization cost of classical reconvolution.
-The present implementation still assumes a uniform time grid and Gaussian IRF
-model. Classical reconvolution currently treats the IRF shape and width as
-fixed during an individual fit, although benchmark datasets can contain
-controlled IRF-width variation. Experimental IRF loading, fitted IRF width,
-multi-exponential reconvolution fitting, detector effects such as pile-up,
-dead time and afterpulsing, calibrated uncertainty intervals, experimental
-file-format import, and deep-learning estimators remain future extensions.**
+
+Version 0.7.0 extends the toolkit from in-distribution estimator benchmarking
+to controlled external generalization, robustness, uncertainty calibration,
+and failure-awareness.
+
+The current workflow separates development data from frozen external Tests
+A–F, uses repeated development-set cross-validation for stability analysis,
+and evaluates familiar conditions, photon-count distribution shift, IRF-width
+change, elevated detector background, temporal misalignment, and controlled
+bi-exponential model mismatch.
+
+Uncertainty analysis now includes direct quantile prediction intervals,
+Random-Forest tree disagreement, training-data bootstrap prediction spread,
+local Poisson/Fisher covariance, parametric Poisson bootstrap, repeated-Poisson
+empirical calibration, split conformalization, conditional uncertainty
+scorecards, and residual-based mismatch diagnostics.
+
+The central limitation established by the current benchmark is that statistical
+uncertainty and physical model validity are not equivalent. An estimator can
+remain statistically confident while becoming biased because the assumed
+mono-exponential forward model is incomplete.
+
+The present release remains based on controlled synthetic TCSPC measurements.
+Experimental data ingestion, measured-IRF workflows, synthetic-to-real
+validation, broader inverse decay models, and package/API hardening remain
+future development stages.
 
 ## Installation
 
@@ -974,7 +977,7 @@ untouched external Tests A–F;
 * Ridge training-bootstrap spread versus actual lifetime error;
 * frozen A–F evaluation of ML uncertainty scores and prediction intervals;
 * split conformalization of the direct quantile intervals;
-*repeated-Poisson comparison of empirical lifetime variability with local
+* repeated-Poisson comparison of empirical lifetime variability with local
 covariance and parametric-bootstrap uncertainty;
 * full classical A–F uncertainty evaluation using local Poisson/Fisher
 covariance and parametric Poisson bootstrap;
@@ -1142,27 +1145,44 @@ analysis software.
 
 ## Development roadmap
 
-Planned development stages include:
+Following the Version 0.7 generalization, robustness, and uncertainty stage,
+planned development includes:
 
-1. additional synthetic IRF models and experimental/measured IRF loading and calibration;
-2. automated and noise-aware preprocessing and initial-guess strategies;
-3. expanded out-of-distribution benchmarks, including unseen lifetime ranges, leave-one-IRF-out evaluation, and cross-instrument tests;
-4. additional model-mismatch scenarios including asymmetric IRFs, structured background, pile-up, dead time, and afterpulsing;
-5. bi- and multi-exponential reconvolution fitting and corresponding classical benchmarks;
-6. Bayesian lifetime inference and comparison of posterior credible intervals with the existing covariance, bootstrap, conformal, and repeated-Poisson calibration framework;
-7. support for user-provided experimental TCSPC data, measured IRFs, and common experimental file formats;
-8. synthetic-to-real validation using experimental reference measurements;
-9. a Purcell-enhanced lifetime-sensing demonstration;
-10. expanded model-mismatch scenarios including asymmetric IRFs, structured background, pile-up, dead time, and afterpulsing;
-11. deep-learning models such as MLPs, 1D CNNs, autoencoders, and photon-efficient neural estimators;
-12. interoperability with established TCSPC/FLIM analysis libraries where scientifically useful;
-13. profiling-driven CPU/GPU acceleration for large-scale inference;
-14. a graphical or interactive benchmark interface;
-15. an agentic AI assistant built on top of the validated scientific toolkit, using LLM tool/function calling to orchestrate deterministic preprocessing, fitting, benchmarking, and reporting functions.
+1. generalized synthetic IRF models, measured-IRF loading, calibration, and
+   leading-edge estimation;
+2. ingestion and processing of user-provided experimental TCSPC measurements;
+3. persistent storage of experiments, predictions, fitted parameters, and
+   benchmark results;
+4. consolidation of the Week 7–9 evaluation architecture into a simpler and
+   more stable public benchmarking API;
+5. full integration and regression verification across simulation,
+   preprocessing, fitting, machine-learning, robustness, and uncertainty
+   workflows;
+6. a Purcell-enhanced TCSPC lifetime-sensing demonstration using the validated
+   simulation, inference, robustness, and uncertainty infrastructure;
+7. expanded documentation, examples, and user-oriented workflows;
+8. continuous integration, automated verification, and a reproducible release
+   workflow;
+9. Bayesian Poisson lifetime inference and comparison of posterior credible
+   intervals with the existing covariance, bootstrap, conformal, and
+   repeated-Poisson uncertainty framework;
+10. further API stabilization, package reorganization, type consistency, and
+    scientific-software hardening;
+11. broader physical model-mismatch studies including asymmetric IRFs,
+    structured background, pile-up, dead time, and afterpulsing;
+12. bi- and multi-exponential reconvolution fitting and corresponding
+    model-selection benchmarks;
+13. synthetic-to-real validation using experimental reference measurements;
+14. deep-learning lifetime estimators where they provide a scientifically
+    meaningful comparison with the existing classical and machine-learning
+    methods;
+15. profiling-driven CPU/GPU acceleration, interactive analysis interfaces,
+    and eventually agentic orchestration of validated toolkit operations.
 
 ## Reproducibility
 
-Synthetic photon-count data are generated using NumPy random-number generators. Supplying a fixed `random_seed` makes a simulation reproducible.
+Synthetic photon-count data are generated using NumPy random-number
+generators. Supplying a fixed `random_seed` makes a simulation reproducible.
 
 For example:
 
@@ -1188,15 +1208,27 @@ assert np.array_equal(measured_1, measured_2)
 
 ## Project status
 
-This repository is under active development.
+Version 0.7.0 completes the current generalization, robustness, uncertainty,
+and failure-awareness development stage.
 
-The present codebase is an educational and scientific-software prototype. It is not yet intended as a validated replacement for established experimental TCSPC-analysis software.
+The toolkit now provides an integrated synthetic TCSPC workflow spanning
+physical simulation, preprocessing, classical reconvolution, machine-learning
+estimation, controlled external robustness testing, statistical uncertainty
+calibration, and model-mismatch failure analysis.
+
+The repository remains under active development. The current codebase is a
+research and scientific-software prototype and is not yet intended as a
+validated replacement for established experimental TCSPC-analysis software.
+
+Experimental data handling, measured-IRF workflows, synthetic-to-real
+validation, broader decay-model inference, and package/API hardening remain
+important next development stages.
 
 ## Citation
 
 If you use this toolkit in scientific work, please cite:
 
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.6.0,
+> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.7.0,
 > https://github.com/moryev/tcspc-lifetime-toolkit
 
 Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).

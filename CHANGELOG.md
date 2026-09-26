@@ -354,154 +354,280 @@ All notable changes to this project will be documented in this file.
 * the reported inference benchmark measures estimator-only computational cost rather than complete preprocessing and feature-construction latency.
 
 
-## Unreleased — Week 8 robust evaluation
+## [0.7.0] - 2026-09-26
 
-### Added
+Version 0.7 extends the toolkit from in-distribution estimator benchmarking to
+controlled external generalization, robustness, uncertainty calibration, and
+failure-awareness.
 
-* reproducible repeated K-fold cross-validation infrastructure for development-set performance-stability analysis;
-* canonical repeated-CV configuration using five folds, five repeats, and an explicit CV random seed;
-* long-form fold-level CV results containing repeat, fold, training-set size, validation-set size, MAE, median absolute error, RMSE, signed bias, and $R^2$;
-* aggregate repeated-CV summaries reporting mean and sample standard deviation across repeated train-validation partitions;
-* estimator cloning within every CV fold to prevent fitted-state reuse between folds;
-* leakage-safe TOTAL-normalized histogram Ridge pipeline accepting raw TCSPC histograms directly;
-* leakage-safe TOTAL-normalized histogram → PCA → StandardScaler → Ridge pipeline with PCA fitted independently inside every CV training fold;
-* multi-estimator repeated-CV benchmarking using identical deterministic train-validation partitions across models;
-* automated tests for CV reproducibility, fold/repeat accounting, metric aggregation, estimator cloning, PCA leakage prevention, pipeline structure, and canonical Ridge/Random-Forest/Histogram-Gradient-Boosting integration.
+The release combines the Week 8 and Week 9 development stages. Week 8 asks
+whether estimator performance survives controlled distribution shift and
+physical model mismatch. Week 9 asks whether the corresponding uncertainty
+estimates recognize when the estimator becomes unreliable.
 
-### Changed
+### Week 8 — Generalization and robustness
 
-* extended `ml_models.py` with self-contained raw-histogram regression pipelines suitable for repeated cross-validation;
-* established repeated cross-validation as a development-only operation, separate from the final untouched Week 8 Tests A-F;
-* established raw development histograms, rather than globally precomputed PCA representations, as the required input when evaluating PCA-based models under cross-validation;
-* established mean ± sample-standard-deviation reporting across repeated development-set partitions as the primary CV stability summary.
+#### Added
 
-### Notes
+* frozen Week-8 generalization protocol separating a familiar development
+  domain from untouched final robustness Tests A–F;
+* explicit familiar-domain definitions for fluorescence lifetime, signal
+  photon count, detector background, IRF width, and temporal IRF shift;
+* reproducible paired A–F robustness-suite generation with fixed test-specific
+  random seeds and retained sample provenance;
+* matched `pair_id` structure enabling sample-by-sample comparison between
+  familiar Test A and shifted or misspecified conditions;
+* Test A as the familiar-distribution external reference;
+* Test B for low- and high-photon-count out-of-distribution evaluation;
+* Test C for broadened-IRF evaluation;
+* Test D for elevated detector-background evaluation;
+* Test E for increased temporal IRF-misalignment evaluation;
+* Test F for controlled weak and moderate bi-exponential model mismatch;
+* dominant-component and signal-photon-weighted lifetime references for
+  interpreting bi-exponential Test F;
+* reproducible repeated K-fold cross-validation infrastructure for
+  development-set performance-stability analysis;
+* canonical repeated-CV configuration using five folds, five repeats, and an
+  explicit random seed;
+* long-form fold-level CV results containing repeat, fold, training-set size,
+  validation-set size, MAE, median absolute error, RMSE, signed bias, and
+  $R^2$;
+* aggregate repeated-CV summaries reporting mean and sample standard deviation
+  across repeated train-validation partitions;
+* estimator cloning within every CV fold to prevent fitted-state reuse;
+* leakage-safe engineered-feature, TOTAL-normalized-histogram, and
+  PCA-compressed representation evaluation;
+* leakage-safe TOTAL-normalized-histogram Ridge pipeline operating directly on
+  raw TCSPC histograms;
+* leakage-safe TOTAL-normalized-histogram → PCA → StandardScaler → Ridge
+  pipeline with PCA fitted independently inside every CV training fold;
+* multi-estimator repeated-CV benchmarking using identical deterministic
+  train-validation partitions;
+* frozen external evaluation of Ridge, Random Forest, Histogram Gradient
+  Boosting, mean-arrival estimation, and classical Poisson reconvolution;
+* photon-count-regime diagnostics separating low- and high-photon Test-B
+  conditions;
+* paired familiar-versus-OOD diagnostics for photon-count shifts;
+* controlled instrument/acquisition robustness evaluation across Tests C–E;
+* explicit comparison of correctly specified and deliberately misspecified
+  IRFs under Test C;
+* paired IRF-width diagnostics for broadened-response measurements;
+* temporal-shift recovery diagnostics for Test E;
+* classical reconvolution robustness evaluation using per-curve physical IRF
+  information;
+* controlled comparison of mono-exponential estimators against weak and
+  moderate bi-exponential Test-F measurements;
+* paired Test-A versus Test-F model-mismatch diagnostics;
+* Test-F severity summaries for weak and moderate secondary-component
+  contamination;
+* classical Poisson goodness-of-fit summaries under model mismatch;
+* unified A–F prediction tables and MAE-degradation scorecards for the
+  principal estimators;
+* final Week-8 robustness synthesis combining machine-learning and classical
+  estimator results;
+* Notebook 13 (`13_generalization_and_robustness.ipynb`) integrating the
+  complete Week-8 generalization and robustness workflow;
+* automated tests covering protocol definitions, paired A–F generation,
+  repeated cross-validation, leakage prevention, external-test isolation,
+  photon-count OOD evaluation, instrument/acquisition robustness,
+  model-mismatch evaluation, paired diagnostics, severity analysis, and final
+  robustness synthesis.
 
-* the canonical Week 8 repeated-CV protocol performs 25 evaluations per model using 5 folds × 5 repeats;
-* cross-validation measures sensitivity to development-set sample allocation and does not replace the final A-F robustness suite;
-* preprocessing steps that estimate dataset-level parameters, including `StandardScaler` and PCA, are fitted independently inside every training fold;
-* TOTAL histogram normalization is stateless because every histogram is normalized by its own total count;
-* Tests A-F remain untouched and are not used for cross-validation, preprocessing fitting, feature selection, hyperparameter selection, or model selection.
+#### Changed
 
+* extended the evaluation architecture from a single in-distribution
+  train/test benchmark to an explicit development-versus-external-test
+  protocol;
+* established repeated cross-validation as a development-only operation,
+  separate from the final untouched A–F robustness suite;
+* established Tests A–F as final external evaluation data that cannot enter
+  training, preprocessing fitting, feature selection, hyperparameter
+  selection, or model selection;
+* required learned representation parameters, including PCA, to be fitted
+  exclusively on development data before final-test transformation;
+* established raw development histograms rather than globally precomputed PCA
+  features as the correct input for cross-validated PCA pipelines;
+* established identical repeated-CV partitions across estimators for fair
+  stability comparison;
+* established mean ± sample-standard-deviation reporting across repeated
+  development partitions as the primary CV stability summary;
+* extended generalization evaluation beyond aggregate error to paired
+  degradation, nuisance-specific diagnostics, fit validity, parameter
+  recovery, and goodness-of-fit;
+* established controlled physical distribution shift and forward-model
+  misspecification as distinct robustness questions;
+* established explicit per-curve IRF information for classical Tests C–E so
+  that acquisition degradation can be distinguished from deliberate IRF
+  misspecification;
+* established the dominant-component lifetime `tau_1` as the primary frozen
+  Test-F scoring reference while retaining the signal-photon-weighted
+  lifetime as an additional descriptive reference;
+* distinguished numerical fit success from scientific model validity under
+  deliberate bi-exponential mismatch.
 
-## Unreleased — Week 9 uncertainty and failure-awareness
+#### Notes
 
-### Added
+* the canonical repeated-CV protocol performs 25 evaluations per estimator
+  using 5 folds × 5 repeats;
+* strong development-set cross-validation does not guarantee external
+  robustness;
+* engineered-feature Ridge provides particularly strong repeated-CV
+  performance, while Random Forest is the strongest current ML estimator
+  across most final A–F robustness conditions;
+* low photon count and elevated detector background are the dominant current
+  weaknesses of the engineered-feature ML estimators;
+* IRF broadening is comparatively benign when the broadened IRF is correctly
+  represented, while explicit IRF misspecification is substantially more
+  consequential;
+* classical Poisson reconvolution remains the lowest-MAE principal estimator
+  across the current A–F suite and benefits strongly when relevant nuisance
+  parameters are represented explicitly in the forward model;
+* under Test F, mono-exponential classical reconvolution can remain
+  numerically successful while developing systematic lifetime bias;
+* smaller ML degradation under Test F does not establish correct
+  bi-exponential modelling because the ML estimators were trained only on
+  mono-exponential data;
+* robustness is estimator-, representation-, nuisance-, and mismatch-specific
+  rather than universal;
+* Notebook 13 provides the reproducible synthesis of the complete Week-8
+  robustness stage.
+
+### Week 9 — Uncertainty and failure-awareness
+
+#### Added
 
 * reusable quantile-regression pipeline construction using
-HistGradientBoostingRegressor with explicit quantile loss;
+  `HistGradientBoostingRegressor` with explicit quantile loss;
 * three-model 0.05/0.50/0.95 quantile lifetime estimator producing nominal
-90% prediction intervals;
+  90% prediction intervals;
 * dedicated Week-9 uncertainty-training and held-out calibration split;
 * prediction-interval evaluation including empirical coverage, coverage
-* error, mean and median width, interval score, and interval failure rate;
-quantile-specific evaluation including lower, median, and upper pinball
-loss and explicit quantile-crossing diagnostics;
+  error, mean and median interval width, interval score, and interval failure
+  rate;
+* quantile-specific evaluation including lower, median, and upper pinball loss
+  and explicit quantile-crossing diagnostics;
 * frozen quantile-estimator evaluation on external robustness conditions
-without refitting or recalibration;
-* paired Test-A uncertainty-response diagnostics for photon-count,
-background, and model-mismatch shifts;
+  without refitting or recalibration;
+* paired Test-A uncertainty-response diagnostics for photon-count, background,
+  and model-mismatch shifts;
 * Random-Forest tree-disagreement uncertainty scoring based on per-tree
-lifetime predictions;
+  lifetime predictions;
 * reusable non-parametric training-data bootstrap prediction spread,
-demonstrated with Ridge regression;
+  demonstrated with Ridge regression;
 * uncertainty-score evaluation using error correlation and
-low-/high-uncertainty error subsets;
-* paired A-to-shift uncertainty-score diagnostics retaining the frozen
-Week-8 pair_id structure;
+  low-/high-uncertainty error subsets;
+* paired A-to-shift uncertainty-score diagnostics retaining the frozen Week-8
+  `pair_id` structure;
 * local Poisson/Fisher covariance estimation for reconvolution parameters
-using the expected-count Jacobian;
-* parameter scaling for the Fisher-information calculation and explicit
-conditioning diagnostics;
+  using the expected-count Jacobian;
+* parameter scaling for Fisher-information calculation and explicit matrix
+  conditioning diagnostics;
 * explicit covariance failure handling for unsuccessful fits,
-parameter-boundary solutions, rank deficiency, and ill-conditioned local
-information;
+  parameter-boundary solutions, rank deficiency, and ill-conditioned local
+  information;
 * parametric Poisson-bootstrap uncertainty for reconvolution lifetime
-estimates;
+  estimates;
 * bootstrap lifetime distributions, percentile intervals, standard
-deviations, and retained refit/boundary failures;
+  deviations, and retained refit/boundary failures;
 * repeated-Poisson empirical calibration experiments in which the physical
-TCSPC condition is fixed and only the independent Poisson realization
-changes;
-* empirical comparison of lifetime sampling variability with local
-covariance and bootstrap uncertainty;
+  TCSPC condition is fixed and only the independent Poisson realization
+  changes;
+* empirical comparison of lifetime sampling variability with local covariance
+  and parametric-bootstrap uncertainty;
 * split-conformal calibration of the direct quantile prediction intervals
-using only the held-out development calibration subset;
+  using only the held-out development calibration subset;
 * complete frozen A–F ML uncertainty scorecards for direct quantile,
-conformalized quantile, Random-Forest disagreement, and Ridge
-training-bootstrap methods;
+  conformalized quantile, Random-Forest disagreement, and Ridge
+  training-bootstrap methods;
 * complete frozen A–F classical uncertainty scorecards for local covariance
-and parametric Poisson bootstrap;
+  and parametric Poisson bootstrap;
 * conditional classical uncertainty scorecards for low/high photon count,
-elevated background, and weak/moderate bi-exponential model mismatch;
-* normalized error-to-uncertainty diagnostics for detecting overconfident
-predictions;
+  elevated background, and weak/moderate bi-exponential model mismatch;
+* normalized error-to-uncertainty diagnostics for identifying overconfident
+  predictions;
 * signed Poisson-deviance residual matrices and aggregate residual-profile
-diagnostics for familiar versus model-mismatch conditions;
+  diagnostics for familiar versus model-mismatch conditions;
 * paired Test-F-minus-Test-A residual-profile analysis;
-* Notebook 14 (14_uncertainty_and_failure_awareness.ipynb) integrating the
-complete Week-9 uncertainty-calibration and failure-awareness workflow;
-* automated tests covering uncertainty splitting, interval metrics,
-quantile crossing, RF spread, ML-bootstrap reproducibility, local
-covariance validity and conditioning, parametric-bootstrap behaviour,
-repeated-Poisson calibration, A–F identity preservation, conditional
-regime preservation, conformal calibration, classical uncertainty
-scorecards, and residual-structure diagnostics.
+* Notebook 14 (`14_uncertainty_and_failure_awareness.ipynb`) integrating the
+  complete Week-9 uncertainty-calibration and failure-awareness workflow;
+* automated tests covering uncertainty splitting, interval metrics, quantile
+  crossing, RF spread, ML-bootstrap reproducibility, local covariance
+  validity and conditioning, parametric-bootstrap behaviour,
+  repeated-Poisson calibration, A–F identity preservation, conditional
+  regime preservation, conformal calibration, classical uncertainty
+  scorecards, physical high-count repeated-Poisson behaviour, and
+  residual-structure diagnostics.
 
-### Changed
+#### Changed
 
 * reformulated the principal Poisson reconvolution optimizer in scaled
-dimensionless parameter coordinates to improve numerical conditioning
-while preserving the same physical model, likelihood, public fitting API,
-and physical parameter bounds;
+  dimensionless parameter coordinates to improve numerical conditioning
+  while preserving the same physical model, likelihood, public fitting API,
+  and physical parameter bounds;
 * established uncertainty training, uncertainty calibration, and final A–F
-robustness evaluation as strictly separate data roles;
+  robustness evaluation as strictly separate data roles;
 * established prediction intervals, uncertainty scores, and empirical
-repeated-measurement variability as distinct uncertainty output types;
-* established the repeated-Poisson experiment as the empirical calibration
-reference for synthetic classical lifetime uncertainty;
+  repeated-measurement variability as distinct uncertainty output types;
+* established repeated-Poisson experiments as the empirical calibration
+  reference for synthetic classical lifetime uncertainty;
 * extended final robustness evaluation from point-estimate accuracy to
-uncertainty coverage, sharpness, normalized error, and failure-awareness;
-* established Test F as a deliberate evaluation of uncertainty under
-physical forward-model misspecification rather than ordinary statistical
-noise;
-* established the dominant-component lifetime tau_1 as the frozen primary
-Test-F scoring reference while retaining the absence of a unique
-mono-exponential lifetime for bi-exponential decay;
-* extended project documentation and README descriptions to include
-uncertainty calibration, conformal evaluation, classical uncertainty,
-and model-mismatch failure-awareness.
+  uncertainty coverage, sharpness, normalized error, and failure-awareness;
+* established Test F as a deliberate evaluation of uncertainty under physical
+  forward-model misspecification rather than ordinary statistical noise;
+* retained the dominant-component lifetime `tau_1` as the frozen primary
+  Test-F scoring reference while explicitly recognizing that a
+  bi-exponential decay has no unique mono-exponential true lifetime;
+* extended project documentation from robustness analysis to uncertainty
+  calibration, conformal evaluation, classical uncertainty, and
+  model-mismatch failure-awareness.
 
-### Notes
+#### Notes
 
 * direct quantile gradient boosting provides conservative but broad prediction
-intervals on the current small development dataset. Its interval width reacts
-to some acquisition changes but provides weak recognition of controlled
-bi-exponential model mismatch.
+  intervals on the current small development dataset; interval width reacts
+  to some acquisition changes but provides weak recognition of controlled
+  bi-exponential model mismatch;
 * Random-Forest tree disagreement is the strongest current sample-level ML
-error-ranking uncertainty score, while Ridge training-bootstrap spread is
-more sensitive to several acquisition-distribution shifts than to
-sample-level prediction error.
-* under correctly specified mono-exponential conditions, local Poisson/Fisher
-covariance and parametric Poisson bootstrap both reproduce empirical
-repeated-measurement variability reasonably well and respond physically to
-changes in photon count and detector background.
+  error-ranking uncertainty score, while Ridge training-bootstrap spread is
+  more sensitive to several acquisition-distribution shifts than to
+  sample-level prediction error;
+* under correctly specified mono-exponential conditions, local
+  Poisson/Fisher covariance and parametric Poisson bootstrap reproduce
+  empirical repeated-measurement variability reasonably well and respond
+  physically to changes in photon count and detector background;
 * uncertainty calibration exposed a numerical-conditioning problem in the
-Poisson reconvolution optimizer. Scaled optimization removed the resulting
-high-photon systematic bias and restored physically consistent uncertainty
-behaviour.
+  Poisson reconvolution optimizer; scaled optimization removed the resulting
+  high-photon systematic bias and restored physically consistent uncertainty
+  behaviour;
 * the principal Week-9 failure occurs under controlled bi-exponential model
-mismatch. Classical lifetime error increases substantially while covariance
-and bootstrap uncertainty increase only modestly, causing nominal 90%
-coverage to collapse. Parametric bootstrap therefore does not solve model
-misspecification because it resamples from the same fitted
-mono-exponential model.
-* split conformalization adds zero correction in the current experiment
-because every held-out calibration target already lies inside the original
-direct-quantile interval.
+  mismatch: classical lifetime error increases substantially while
+  covariance and bootstrap uncertainty increase only modestly, causing
+  nominal 90% interval coverage to collapse;
+* parametric bootstrap does not resolve physical model misspecification
+  because its synthetic measurements are sampled from the same fitted
+  mono-exponential forward model;
+* split conformalization adds zero correction in the present experiment
+  because every held-out calibration target already lies inside the original
+  direct-quantile interval;
 * scalar Poisson deviance remains almost insensitive to Test-F mismatch, and
-aggregate signed-residual profiles provide only modest additional
-discrimination without a clear severity-dependent temporal signature.
-* the central Week-9 conclusion is that an estimator can quantify statistical
-uncertainty under its assumed physical model while remaining confidently
-wrong when that physical model is incomplete.
+  aggregate signed-residual profiles provide only modest additional
+  discrimination without a clear severity-dependent temporal signature;
+* the central Week-9 conclusion is that an estimator can correctly quantify
+  statistical uncertainty under its assumed physical model while remaining
+  confidently wrong when that physical model is incomplete;
+* Notebook 14 provides the reproducible synthesis of the complete Week-9
+  uncertainty and failure-awareness stage.
+
+### Release scope
+
+Version 0.7 remains a synthetic-benchmark release. Experimental TCSPC import,
+measured-IRF workflows, synthetic-to-real validation, general bi- and
+multi-exponential inverse fitting, Bayesian inference, detector pile-up,
+dead-time and afterpulsing models, and broader physical model-selection
+diagnostics remain future development stages.
+
+The principal release-level conclusion is that predictive accuracy,
+robustness, and uncertainty calibration are separate requirements. Strong
+in-distribution performance does not guarantee robustness under distribution
+shift, and well-calibrated statistical uncertainty does not guarantee
+awareness of physical model misspecification.
