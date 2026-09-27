@@ -9,5 +9,9 @@ class InvalidHistogramError(TCSPCError, ValueError):
     """Raised when a TCSPC histogram is physically or numerically invalid."""
 
 
+class InvalidMeasurementError(TCSPCError, ValueError):
+    """Raised for invalid experimental data or incompatible inputs."""
+
+
 class FeatureExtractionError(TCSPCError, ValueError):
     """Raised when requested histogram features are mathematically undefined."""

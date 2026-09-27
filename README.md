@@ -90,6 +90,8 @@ The current version supports:
 * generation of independent and grouped synthetic mono-exponential datasets;
 * structured storage of simulated curves and metadata;
 * validation of raw TCSPC histograms, including dimensionality, finite values, non-negative integer-like photon counts, and approximately uniform time bins;
+* strict single-curve CSV import with explicit time units, raw-count or processed-intensity semantics, source provenance, and optional same-grid sampled IRFs;
+* Poisson reconvolution of imported raw counts with a compatible sampled IRF, plus separate opt-in evaluation against a trusted reference lifetime;
 * explicit background estimation from user-selected histogram regions;
 * background subtraction for derived visualization and analysis representations while preserving negative statistical fluctuations;
 * discrete peak detection for raw photon-count histograms;
@@ -190,7 +192,9 @@ The current version supports:
 * Notebook 13 integrating the complete generalization and robustness
   workflow;
 * Notebook 14 integrating the complete uncertainty-calibration and
-  failure-awareness workflow.
+  failure-awareness workflow;
+* Notebook 15 demonstrating explicit-unit experimental-style CSV import,
+  same-grid sampled IRF reconvolution, and carefully labelled ML transfer.
 
 ## Current scientific assumptions
 
@@ -675,6 +679,71 @@ print(f"Absolute error: {absolute_error_ns:.4f} ns")
 print(f"Relative error: {relative_error * 100:.2f}%")
 ```
 
+## Experimental-style CSV workflow
+
+One curve can be imported from a headered CSV file with explicitly declared
+time units and data semantics. The example files in [`data/examples`](data/examples)
+are synthetic demonstrations of this import path, not real measurements. The
+decay times are in picoseconds and the separate sampled IRF times are in
+nanoseconds; both become nanoseconds internally. A real measurement must use
+its own compatible acquired IRF and documented acquisition conditions.
+
+```python
+from tcspc_toolkit.experimental import fit_experimental_reconvolution
+from tcspc_toolkit.measurement_io import (
+    load_sampled_irf_csv,
+    load_tcspc_measurement_csv,
+)
+
+irf = load_sampled_irf_csv(
+    "data/examples/experimental_style_irf.csv",
+    time_unit="ns",
+    time_column="time_ns",
+)
+measurement = load_tcspc_measurement_csv(
+    "data/examples/experimental_style_decay.csv",
+    time_unit="ps",
+    data_kind="raw_counts",
+    time_column="time_ps",
+    irf=irf,
+)
+result = fit_experimental_reconvolution(
+    measurement,
+    temporal_shift_bounds_ns=(-0.5, 0.5),
+)
+print(result.fitted_lifetime_ns, result.poisson_deviance, result.valid_fit)
+```
+
+The Poisson fit accepts only raw integer photon counts. Processed or
+normalized floating-point intensities can be imported, but cannot silently
+enter Poisson-count inference. The supplied IRF must have a matching grid
+after unit conversion; resampling and IRF-origin generalization are later
+work. For now, `temporal_shift_bounds_ns` must include zero because the reused
+fitter initializes the shift at zero; more general alignment and initialization
+are deferred to Issue #8. Fitting treats that sampled IRF as fixed, so IRF
+measurement noise is not propagated into uncertainty. The estimated lifetime and diagnostics
+require **no** ground truth.
+Reference-based error evaluation is a separate, optional call when a trusted
+reference is available. A synthetic-development ML model can consume the
+imported curve on a compatible grid, but that alone does not validate
+synthetic-to-real transfer. See
+[`notebooks/15_experimental_tcspc_workflow.ipynb`](notebooks/15_experimental_tcspc_workflow.ipynb).
+
+CLI migration note: `tcspc fit` now uses the canonical CSV validator. Declare
+the input time unit with `--time-unit` (`ns` by default) and the data semantics
+with `--data-kind` (`raw_counts` by default). Fractional intensities must be
+explicitly declared with `--data-kind processed_intensity`; raw counts must be
+non-negative exact integers within the `int64` range. Irregular time grids are
+rejected. For example, use `tcspc fit --input decay.csv --time-column time_ps
+--counts-column intensity --time-unit ps --data-kind processed_intensity` for
+a fractional picosecond-grid input. The CLI `fit` command remains an **unconvolved
+least-squares baseline**, not the measured-IRF reconvolution workflow shown
+above.
+
+Imported array buffers are copied and read-only, and the top-level metadata
+and provenance mappings are defensively copied and protected. Nested mutable
+objects within those mappings are not recursively frozen.
+
 ## Notebooks
 
 The repository currently includes the following notebook workflows:
@@ -993,7 +1062,15 @@ profiles as possible model-mismatch diagnostics;
 * demonstration that the present residual diagnostics add only weak
 discrimination beyond the uncertainty-calibration failure;
 * final synthesis of the distinction between statistical uncertainty,
-distribution-shift awareness, and physical model validity.
+  distribution-shift awareness, and physical model validity.
+
+### `15_experimental_tcspc_workflow.ipynb`
+
+Demonstrates the deliberately small experimental-style import path using
+synthetic CSV stand-ins: explicit units and raw-count semantics, a separate
+same-grid sampled IRF, provenance, Poisson reconvolution diagnostics,
+compatible-grid ML input with an unvalidated synthetic-development model, and
+reference-based evaluation only when a trusted reference is supplied.
 
 ## Repository structure
 
@@ -1110,13 +1187,13 @@ The modules currently have the following responsibilities:
 
 ## Current limitations
 
-The current implementation is intentionally focused on controlled synthetic
-TCSPC benchmarks.
+The current implementation remains centred on controlled synthetic TCSPC
+benchmarks, with an initial single-curve experimental CSV path.
 
 It does not yet include:
 
-* experimental TCSPC file-format import and measured-data validation;
-* measured or experimentally calibrated IRF import workflows;
+* vendor-specific TCSPC formats and broader multi-curve import;
+* measured-IRF resampling, alignment estimation, and generalized IRF models;
 * pile-up effects;
 * detector dead time;
 * afterpulsing;
@@ -1233,7 +1310,8 @@ The repository remains under active development. The current codebase is a
 research and scientific-software prototype and is not yet intended as a
 validated replacement for established experimental TCSPC-analysis software.
 
-Experimental data handling, measured-IRF workflows, synthetic-to-real
+The initial single-curve CSV import and same-grid sampled-IRF workflow is
+available; vendor formats, generalized IRF handling, synthetic-to-real
 validation, broader decay-model inference, and package/API hardening remain
 important next development stages.
 
