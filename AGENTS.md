@@ -16,6 +16,7 @@ The toolkit combines:
 - instrument-response-function (IRF) modelling and convolution;
 - Poisson photon-counting simulation;
 - classical lifetime fitting and reconvolution;
+- canonical experimental-measurement import and representation;
 - preprocessing and physically interpretable feature extraction;
 - machine-learning lifetime estimation;
 - controlled robustness/generalization benchmarks;
@@ -118,6 +119,21 @@ For experimental workflows:
 - report estimates, diagnostics, and uncertainty without inventing truth;
 - compute MAE, bias, coverage, or other truth-based metrics only when a trusted reference value is explicitly supplied;
 - distinguish a calibration/reference value from a simulated generating parameter.
+
+### Canonical experimental-measurement boundary
+
+Issue #6 established the first canonical experimental-data path. Preserve these semantics in later work:
+
+- `TCSPCMeasurement` is the canonical carrier for one imported experimental histogram.
+- Imported time units are explicit and converted to internal nanoseconds; do not infer units from values or column names.
+- `MeasurementDataKind.RAW_COUNTS` and `MeasurementDataKind.PROCESSED_INTENSITY` are scientifically distinct. Raw Poisson-count methods must pass through the raw-count guard rather than infer semantics from dtype alone.
+- `SampledIRF` is currently a deliberately narrow carrier for an imported sampled/measured IRF, not the final generalized IRF abstraction.
+- The imported IRF trace keeps its own values, metadata, and provenance. Reconvolution normalizes a derived copy rather than mutating the imported trace.
+- Issue #6 accepts only numerically compatible measurement/IRF grids. Do not silently resample, realign, baseline-correct, smooth, or infer zero time.
+- Experimental lifetime estimates are separate from optional reference-based evaluation. A trusted reference is supplied explicitly and is not stored as intrinsic measurement ground truth.
+- Experimental ML adapters may transform/predict with already-fitted development artifacts, but must not fit or refit representations/models on the experimental measurement.
+
+Issue #8 owns generalized IRF sources, deterministic resampling/alignment policy, leading-edge IRF estimation, and broader IRF diagnostics. Build those capabilities on the canonical measurement path above rather than creating a second experimental-data model.
 
 ### Frozen Week-8 robustness protocol
 
@@ -243,11 +259,11 @@ Do not close an issue solely because code was written; confirm its acceptance cr
 
 Issue #5 is the orchestration issue and should be consulted for the full rationale.
 
-The intended implementation order is:
+Current integration status:
 
-1. **#10** — repository/Codex transition (this file and comprehension check);
-2. **#6** — experimental TCSPC data ingestion, processing, and evaluation;
-3. **#8** — generalized IRF models, measured IRFs, and leading-edge estimation;
+1. **#10** — repository/Codex transition — **complete**;
+2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
+3. **#8** — generalized IRF models, measured IRFs, and leading-edge estimation — **next**;
 4. **#4** — Bayesian Poisson inference;
 5. **#9** — SQLite persistence for experiments and benchmark results;
 6. **#1** — standardize array input type annotations;
@@ -259,9 +275,9 @@ The intended implementation order is:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-After the Codex-transition validation in #10, **Issue #6 is the next scientific implementation task**.
+The next scientific implementation task is **Issue #8: generalized IRF models, measured IRFs, and leading-edge estimation**.
 
-Do not skip ahead to API/package restructuring before the experimental-data, generalized-IRF, Bayesian, and persistence requirements have informed the architecture.
+Do not skip ahead to Bayesian/API/package restructuring before the generalized-IRF requirements have informed the architecture.
 
 ## Codex working protocol
 
@@ -278,28 +294,25 @@ For each substantial issue:
 9. Review the final diff against the issue scope and scientific guardrails.
 10. Summarize changes, tests, scientific implications, and remaining limitations.
 
-## First Codex validation task
+## Next Codex orientation task
 
-Before implementing Issue #6, perform a **read-only repository comprehension pass**.
+Before implementing Issue #8, begin with a **read-only orientation pass** in a fresh Codex chat.
 
 Inspect:
 
 - this file;
 - Issue #5;
-- Issue #6;
-- `README.md`;
-- `docs/scientific_findings.md`;
-- `docs/design/master_design_document.md`;
-- the current package tree;
-- the current test suite.
+- Issue #8;
+- the merged Issue #6 implementation, especially `measurements.py`, `measurement_io.py`, and `experimental.py`;
+- the current IRF, convolution, reconvolution, preprocessing, and relevant test modules;
+- `README.md` and `docs/design/master_design_document.md`.
 
 Then summarize, without modifying files:
 
-- the current architecture;
-- the main scientific assumptions;
-- the frozen A–F benchmark rules;
-- the Week-9 uncertainty semantics and main conclusion;
-- the main known architectural/technical debt;
-- the next implementation task.
+- the experimental-measurement abstractions established by Issue #6 that Issue #8 must preserve;
+- the current sampled/measured-IRF limitations;
+- where Gaussian-specific assumptions still live;
+- which IRF responsibilities belong in Issue #8 versus later Bayesian/API/package work;
+- the minimal implementation plan and compatibility risks.
 
-The expected next scientific task is **Issue #6: experimental TCSPC data ingestion, processing, and evaluation**.
+The expected next scientific task is **Issue #8: generalized IRF models, measured IRFs, and leading-edge estimation**.
