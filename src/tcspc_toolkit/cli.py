@@ -3,9 +3,10 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from tcspc_toolkit.fitting import fit_monoexponential_decay
+from tcspc_toolkit.measurement_io import load_tcspc_measurement_csv
+from tcspc_toolkit.measurements import MeasurementDataKind, TimeUnit
 from tcspc_toolkit.simulation import simulate_monoexponential_decay
 
 
@@ -33,40 +34,22 @@ def run_simulation(args: Namespace) -> None:
 
 
 def run_fit(args: Namespace) -> None:
-    """Load a CSV file and fit a monoexponential decay."""
+    """Load a CSV file and fit an unconvolved least-squares baseline."""
 
     input_path = Path(args.input)
-
-    if not input_path.exists():
-        raise SystemExit(
-            f"Error: input file does not exist: {input_path}"
-        )
-
     try:
-        data = pd.read_csv(input_path)
-    except Exception as error:
-        raise SystemExit(
-            f"Error: could not read CSV file: {error}"
-        ) from error
-
-    required_columns = {
-        args.time_column,
-        args.counts_column,
-    }
-
-    missing_columns = required_columns.difference(data.columns)
-
-    if missing_columns:
-        available_columns = ", ".join(data.columns)
-
-        raise SystemExit(
-            "Error: missing required CSV column(s): "
-            f"{', '.join(sorted(missing_columns))}\n"
-            f"Available columns: {available_columns}"
+        measurement = load_tcspc_measurement_csv(
+            input_path,
+            time_unit=args.time_unit,
+            data_kind=args.data_kind,
+            time_column=args.time_column,
+            value_column=args.counts_column,
         )
+    except ValueError as error:
+        raise SystemExit(f"Error: could not import CSV measurement: {error}") from error
 
-    time = data[args.time_column].to_numpy(dtype=np.float64)
-    counts = data[args.counts_column].to_numpy(dtype=np.float64)
+    time = measurement.time_ns
+    counts = measurement.values
 
     automatic_background = float(np.min(counts))
 
@@ -102,24 +85,6 @@ def run_fit(args: Namespace) -> None:
         initial_background,
     )
 
-    if len(time) == 0:
-        raise SystemExit("Error: the input CSV file contains no data.")
-
-    if len(time) != len(counts):
-        raise SystemExit(
-            "Error: time and counts columns have different lengths."
-        )
-
-    if not np.all(np.isfinite(time)):
-        raise SystemExit(
-            f"Error: column '{args.time_column}' contains invalid values."
-        )
-
-    if not np.all(np.isfinite(counts)):
-        raise SystemExit(
-            f"Error: column '{args.counts_column}' contains invalid values."
-        )
-
     try:
         fit_result = fit_monoexponential_decay(
             time=time,
@@ -132,6 +97,7 @@ def run_fit(args: Namespace) -> None:
             f"Error: fitting failed: {error}"
         ) from error
 
+    print(f"Time unit: {args.time_unit}; data kind: {args.data_kind}")
     print(f"Estimated lifetime: {fit_result.lifetime:.2f} ns")
     print(
         "Estimated uncertainty: "
@@ -222,7 +188,7 @@ def main() -> None:
 
     fit_parser = subparsers.add_parser(
         "fit",
-        help="Fit a monoexponential decay stored in a CSV file",
+        help="Fit an unconvolved monoexponential CSV baseline (least squares)",
     )
 
     fit_parser.add_argument(
@@ -244,6 +210,20 @@ def main() -> None:
         type=str,
         default="measured_counts",
         help="Name of the CSV column containing photon counts",
+    )
+
+    fit_parser.add_argument(
+        "--time-unit",
+        choices=[unit.value for unit in TimeUnit],
+        default=TimeUnit.NANOSECOND.value,
+        help="Declared time unit in the CSV (default: ns)",
+    )
+
+    fit_parser.add_argument(
+        "--data-kind",
+        choices=[kind.value for kind in MeasurementDataKind],
+        default=MeasurementDataKind.RAW_COUNTS.value,
+        help="Declared raw or processed data semantics (default: raw_counts)",
     )
 
     fit_parser.add_argument(

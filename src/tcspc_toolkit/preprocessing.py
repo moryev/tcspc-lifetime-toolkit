@@ -20,6 +20,68 @@ _TIME_BIN_ATOL = 1e-12
 _INTEGER_COUNT_ATOL = 1e-9
 
 
+def validate_time_axis(time: ArrayLike) -> NDArray[np.float64]:
+    """Validate the common, uniformly sampled TCSPC time grid.
+
+    The bin-spacing tolerance is also used when comparing a measured IRF
+    grid with its histogram grid: ``rtol=1e-7``, ``atol=1e-12`` in ns.
+    """
+    try:
+        time_array = np.asarray(time, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise InvalidHistogramError(
+            "time must contain numeric values."
+        ) from exc
+
+    if time_array.ndim != 1:
+        raise InvalidHistogramError(
+            "time must be a one-dimensional array."
+        )
+
+    if time_array.size < 2:
+        raise InvalidHistogramError(
+            "histogram must contain at least two bins."
+        )
+
+    if not np.all(np.isfinite(time_array)):
+        raise InvalidHistogramError(
+            "time must contain only finite values."
+        )
+
+    bin_widths = np.diff(time_array)
+    if np.any(bin_widths <= 0.0):
+        raise InvalidHistogramError(
+            "time must be strictly increasing."
+        )
+
+    if not np.allclose(
+        bin_widths,
+        bin_widths[0],
+        rtol=_TIME_BIN_RTOL,
+        atol=_TIME_BIN_ATOL,
+    ):
+        raise InvalidHistogramError(
+            "time bins must be approximately uniform."
+        )
+
+    return time_array
+
+
+def time_axes_compatible(first: ArrayLike, second: ArrayLike) -> bool:
+    """Compare ns grids with the time-bin tolerance, scaled by bin width.
+
+    Scaling by bin width rather than absolute time avoids accepting a shifted
+    grid merely because its time origin has a large numerical value.
+    """
+    first_array = validate_time_axis(first)
+    second_array = validate_time_axis(second)
+    if first_array.shape != second_array.shape:
+        return False
+    bin_width = min(np.diff(first_array)[0], np.diff(second_array)[0])
+    tolerance_ns = _TIME_BIN_ATOL + _TIME_BIN_RTOL * bin_width
+    return bool(np.all(np.abs(first_array - second_array) <= tolerance_ns))
+
+
 def _validate_raw_counts(
     counts: ArrayLike,
 ) -> NDArray[np.float64]:
@@ -106,32 +168,7 @@ def validate_histogram(
             "time and counts must have the same length."
         )
 
-    if time_array.size < 2:
-        raise InvalidHistogramError(
-            "histogram must contain at least two bins."
-        )
-
-    if not np.all(np.isfinite(time_array)):
-        raise InvalidHistogramError(
-            "time must contain only finite values."
-        )
-
-    bin_widths = np.diff(time_array)
-
-    if np.any(bin_widths <= 0.0):
-        raise InvalidHistogramError(
-            "time must be strictly increasing."
-        )
-
-    if not np.allclose(
-        bin_widths,
-        bin_widths[0],
-        rtol=_TIME_BIN_RTOL,
-        atol=_TIME_BIN_ATOL,
-    ):
-        raise InvalidHistogramError(
-            "time bins must be approximately uniform."
-        )
+    validate_time_axis(time_array)
 
 
 def estimate_background(

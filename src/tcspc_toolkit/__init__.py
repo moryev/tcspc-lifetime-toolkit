@@ -32,7 +32,29 @@ from tcspc_toolkit.fitting import (
 from tcspc_toolkit.exceptions import (
     FeatureExtractionError,
     InvalidHistogramError,
+    InvalidMeasurementError,
     TCSPCError,
+)
+
+from tcspc_toolkit.measurements import (
+    MeasurementDataKind,
+    SampledIRF,
+    TCSPCMeasurement,
+    TimeUnit,
+    convert_time_to_ns,
+)
+
+from tcspc_toolkit.measurement_io import (
+    load_sampled_irf_csv,
+    load_tcspc_measurement_csv,
+)
+
+from tcspc_toolkit.experimental import (
+    ReferenceLifetimeEvaluation,
+    evaluate_estimate_against_reference,
+    fit_experimental_reconvolution,
+    measurement_to_feature_table,
+    measurement_to_histogram_batch,
 )
 
 from tcspc_toolkit.preprocessing import (
@@ -83,7 +105,20 @@ __all__ = [
     "fit_monoexponential_reconvolution",
     "TCSPCError",
     "InvalidHistogramError",
+    "InvalidMeasurementError",
     "FeatureExtractionError",
+    "TimeUnit",
+    "MeasurementDataKind",
+    "SampledIRF",
+    "TCSPCMeasurement",
+    "convert_time_to_ns",
+    "load_sampled_irf_csv",
+    "load_tcspc_measurement_csv",
+    "ReferenceLifetimeEvaluation",
+    "fit_experimental_reconvolution",
+    "measurement_to_feature_table",
+    "measurement_to_histogram_batch",
+    "evaluate_estimate_against_reference",
     "align_to_irf",
     "crop_time_window",
     "detect_peak",
