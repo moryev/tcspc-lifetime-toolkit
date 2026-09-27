@@ -1082,6 +1082,9 @@ tcspc-lifetime-toolkit/
 │
 ├── data/
 │   ├── examples/
+│   │   ├── README.md
+│   │   ├── experimental_style_decay.csv
+│   │   ├── experimental_style_irf.csv
 │   │   └── ideal_tcspc_decay.csv
 │   └── generated/
 │       └── .gitkeep
@@ -1105,7 +1108,8 @@ tcspc-lifetime-toolkit/
 │   ├── 11_feature_engineering.ipynb
 │   ├── 12_ml_benchmarking.ipynb
 │   ├── 13_generalization_and_robustness.ipynb
-│   └── 14_uncertainty_and_failure_awareness.ipynb
+│   ├── 14_uncertainty_and_failure_awareness.ipynb
+│   └── 15_experimental_tcspc_workflow.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -1123,12 +1127,15 @@ tcspc-lifetime-toolkit/
 │       ├── datasets.py
 │       ├── evaluation.py
 │       ├── exceptions.py
+│       ├── experimental.py
 │       ├── features.py
 │       ├── fitting.py
 │       ├── generalization.py
 │       ├── generalization_datasets.py
 │       ├── generalization_evaluation.py
 │       ├── irf.py
+│       ├── measurement_io.py
+│       ├── measurements.py
 │       ├── mismatch_evaluation.py
 │       ├── ml_evaluation.py
 │       ├── ml_models.py
@@ -1161,12 +1168,15 @@ The modules currently have the following responsibilities:
 * `datasets.py`: synthetic datasets generation for the consequent ML baseline;
 * `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
 * `exceptions.py`: package-specific exception hierarchy for representing domain-level TCSPC validation and processing errors;
+* `experimental.py`: thin adapters from canonical imported measurements to Poisson reconvolution, ML input preparation, and optional trusted-reference lifetime evaluation;
 * `features.py`: extraction of physically interpretable TCSPC histogram features, including photon-count descriptors, photon-arrival moments, quantile times, half-decay timing, tail characteristics, and early/late count relationships; also defines the stable engineered-feature schema and batch feature-table construction;
 * `fitting.py`: nonlinear parameter estimation and structured fit results;
 * `generalization.py`: frozen Week-8 robustness protocol, familiar-domain definition, A-F test definitions, numerical regimes, and reproducible test-suite configuration;
 * `generalization_datasets.py`: reproducible construction of paired final robustness Tests A-F with aligned targets, nuisance conditions, and provenance metadata;
 * `generalization_evaluation.py`: development-only fitting and final robustness evaluation across Tests A-F, including representation comparisons, classical diagnostics, model mismatch, MAE degradation, and Week-8 synthesis tables;
 * `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
+* `measurement_io.py`: strict single-curve CSV import with explicit time units, raw-count versus processed-intensity semantics, optional sampled IRFs, and source provenance;
+* `measurements.py`: canonical experimental measurement abstractions, including `TCSPCMeasurement`, `SampledIRF`, time-unit conversion, immutable source arrays, and raw-count guards;
 * `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
 * `ml_evaluation.py`: reproducible benchmark-dataset construction and splitting, regression metrics, baseline and estimator evaluation, histogram/PCA representation construction, representation benchmarks, photon-count ablation, and split-coverage diagnostics;
 * `ml_models.py`: reusable scikit-learn pipelines for Ridge, Random Forest, and Histogram Gradient Boosting lifetime regression;
