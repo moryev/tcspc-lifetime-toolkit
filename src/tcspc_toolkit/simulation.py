@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from tcspc_toolkit.convolution import convolve_decay_with_irf
 from tcspc_toolkit.irf import (
@@ -7,6 +7,7 @@ from tcspc_toolkit.irf import (
     normalize_irf,
     shift_irf,
 )
+from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.models import (
     biexponential_decay,
     monoexponential_decay,
@@ -23,6 +24,64 @@ def sample_photon_counts(
         raise ValueError("expected counts must be non-negative")
 
     return rng.poisson(expected_counts)
+
+
+def build_expected_counts_from_irf(
+    ideal_decay: ArrayLike,
+    prepared_irf: PreparedIRF,
+    *,
+    signal_photon_count: int,
+    background_per_bin: float,
+) -> NDArray[np.float64]:
+    """Build finite-window expected counts from an ideal decay and prepared IRF.
+
+    ``signal_photon_count`` is the expected detected signal sum within the
+    supplied time window. Background is constant expected counts per bin and
+    is added after convolution. Poisson sampling remains a separate operation.
+    """
+    if not isinstance(prepared_irf, PreparedIRF):
+        raise TypeError("prepared_irf must be a PreparedIRF")
+    try:
+        decay = np.asarray(ideal_decay, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("ideal_decay must contain numeric values") from exc
+    if decay.ndim != 1 or decay.shape != prepared_irf.time_ns.shape:
+        raise ValueError("ideal_decay must match the prepared IRF time grid")
+    if not np.all(np.isfinite(decay)) or np.any(decay < 0.0):
+        raise ValueError("ideal_decay must contain finite nonnegative values")
+    if (
+        isinstance(signal_photon_count, (bool, np.bool_))
+        or not isinstance(signal_photon_count, (int, np.integer))
+    ):
+        raise ValueError("signal_photon_count must be an integer")
+    if signal_photon_count <= 0:
+        raise ValueError("signal_photon_count must be positive")
+    try:
+        signal_count = float(signal_photon_count)
+    except OverflowError as exc:
+        raise ValueError("signal_photon_count must be finite") from exc
+    if not np.isfinite(signal_count):
+        raise ValueError("signal_photon_count must be finite")
+    try:
+        valid_background = np.isfinite(background_per_bin) and background_per_bin >= 0.0
+    except (TypeError, ValueError):
+        valid_background = False
+    if not valid_background:
+        raise ValueError("background_per_bin must be finite and non-negative")
+
+    convolved_signal = convolve_decay_with_irf(
+        time=prepared_irf.time_ns,
+        decay=decay,
+        irf=prepared_irf.kernel,
+    )
+    signal_sum = float(convolved_signal.sum())
+    if not np.isfinite(signal_sum) or signal_sum <= 0.0:
+        raise ValueError("convolved signal must have a positive finite discrete sum")
+    expected_signal = signal_count * convolved_signal / signal_sum
+    expected_counts = expected_signal + background_per_bin
+    if not np.all(np.isfinite(expected_counts)) or np.any(expected_counts < 0.0):
+        raise ValueError("expected counts must be finite and non-negative")
+    return expected_counts
 
 
 def simulate_irf_convolved_histogram(

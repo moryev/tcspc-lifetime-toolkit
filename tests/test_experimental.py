@@ -15,7 +15,14 @@ from tcspc_toolkit.experimental import (
     measurement_to_histogram_batch,
 )
 from tcspc_toolkit.features import FEATURE_NAMES, extract_features
-from tcspc_toolkit.irf import generate_gaussian_irf, normalize_irf
+from tcspc_toolkit.irf import (
+    IRFProfile,
+    generate_emg_irf_profile,
+    generate_gaussian_irf,
+    generate_gaussian_irf_profile,
+    normalize_irf,
+)
+from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf
 from tcspc_toolkit.measurement_io import load_sampled_irf_csv, load_tcspc_measurement_csv
 from tcspc_toolkit.measurements import (
     MeasurementDataKind,
@@ -32,7 +39,46 @@ from tcspc_toolkit.preprocessing import (
     subtract_background,
 )
 from tcspc_toolkit.representations import normalize_histogram_batch
-from tcspc_toolkit.simulation import simulate_irf_convolved_histogram
+from tcspc_toolkit.simulation import (
+    build_expected_counts_from_irf,
+    simulate_irf_convolved_histogram,
+)
+
+
+def _deterministic_prepared_measurement(
+    source_kind: str, *, attached_irf: SampledIRF | None = None
+) -> tuple[TCSPCMeasurement, IRFProfile, PreparedIRF]:
+    time = np.linspace(0.0, 16.0, 321)
+    if source_kind == "gaussian":
+        profile = generate_gaussian_irf_profile(
+            time,
+            gaussian_centre_ns=1.0,
+            gaussian_fwhm_ns=0.4,
+            provenance={"origin": "controlled_test"},
+        )
+    elif source_kind == "emg":
+        profile = generate_emg_irf_profile(
+            time,
+            gaussian_centre_ns=1.0,
+            gaussian_fwhm_ns=0.4,
+            tail_time_ns=0.35,
+            provenance={"origin": "controlled_test"},
+        )
+    else:
+        raise ValueError("unsupported test IRF source")
+    prepared = prepare_irf(profile, time)
+    decay = monoexponential_decay(time, amplitude=1.0, lifetime=2.2, background=0.0)
+    expected = build_expected_counts_from_irf(
+        decay, prepared, signal_photon_count=400_000, background_per_bin=2.0
+    )
+    measurement = TCSPCMeasurement(
+        time_ns=time,
+        values=np.rint(expected).astype(np.int64),
+        data_kind=MeasurementDataKind.RAW_COUNTS,
+        irf=attached_irf,
+        provenance={"origin": "controlled_histogram"},
+    )
+    return measurement, profile, prepared
 
 
 def _synthetic_experimental_style_measurement(tmp_path: Path) -> TCSPCMeasurement:
@@ -74,6 +120,148 @@ def test_imported_raw_curve_reconvolves_without_reference(tmp_path: Path) -> Non
     assert result.failure_reason is None
     np.testing.assert_array_equal(measurement.values, original_counts)
     np.testing.assert_array_equal(measurement.irf.values, original_irf)
+
+
+def test_attached_sampled_irf_still_passes_normalized_copy_to_poisson_fitter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    measurement = _synthetic_experimental_style_measurement(tmp_path)
+    original_irf = measurement.irf.values.copy()
+    sentinel = object()
+    captured: dict[str, object] = {}
+
+    def capture_fit(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr(
+        "tcspc_toolkit.experimental.fit_single_reconvolution_curve", capture_fit
+    )
+    result = fit_experimental_reconvolution(
+        measurement, temporal_shift_bounds_ns=(-0.5, 0.5)
+    )
+    assert result is sentinel
+    np.testing.assert_array_equal(
+        captured["irf"], normalize_irf(measurement.time_ns, original_irf)
+    )
+    assert captured["objective"] == "poisson"
+    np.testing.assert_array_equal(measurement.irf.values, original_irf)
+
+
+@pytest.mark.parametrize("source_kind", ["gaussian", "emg"])
+def test_prepared_irf_reconvolution_recovers_controlled_lifetime(
+    source_kind: str,
+) -> None:
+    measurement, profile, prepared = _deterministic_prepared_measurement(source_kind)
+    result = fit_experimental_reconvolution(
+        measurement,
+        temporal_shift_bounds_ns=(-0.2, 0.2),
+        prepared_irf=prepared,
+    )
+    assert result.valid_fit
+    assert result.fitted_lifetime_ns == pytest.approx(2.2, abs=0.15)
+    assert result.fitted_temporal_shift_ns == pytest.approx(0.0, abs=0.08)
+    assert np.isfinite(result.poisson_deviance)
+    assert prepared.source is profile
+
+
+def test_explicit_prepared_irf_wins_over_different_attached_sampled_irf() -> None:
+    time = np.linspace(0.0, 16.0, 321)
+    attached = SampledIRF(
+        time_ns=time,
+        values=generate_gaussian_irf(time, centre=2.5, fwhm=0.4),
+        metadata={"role": "deliberately_different"},
+        provenance={"trace": "attached"},
+    )
+    measurement, profile, prepared = _deterministic_prepared_measurement(
+        "emg", attached_irf=attached
+    )
+    original_counts = measurement.values.copy()
+    original_time = measurement.time_ns.copy()
+    original_attached_time = attached.time_ns.copy()
+    original_attached = attached.values.copy()
+    original_source_time = profile.time_ns.copy()
+    original_source = profile.values.copy()
+    original_prepared_time = prepared.time_ns.copy()
+    original_kernel = prepared.kernel.copy()
+    original_source_parameters = dict(profile.source_parameters)
+    original_source_metadata = dict(profile.metadata)
+    original_source_provenance = dict(profile.provenance)
+    original_measurement_metadata = dict(measurement.metadata)
+    original_measurement_provenance = dict(measurement.provenance)
+
+    explicit = fit_experimental_reconvolution(
+        measurement, temporal_shift_bounds_ns=(-0.2, 0.2), prepared_irf=prepared
+    )
+    attached_only = fit_experimental_reconvolution(
+        measurement, temporal_shift_bounds_ns=(-0.2, 0.2)
+    )
+    no_attached = TCSPCMeasurement(
+        time_ns=measurement.time_ns,
+        values=measurement.values,
+        data_kind=MeasurementDataKind.RAW_COUNTS,
+    )
+    prepared_only = fit_experimental_reconvolution(
+        no_attached, temporal_shift_bounds_ns=(-0.2, 0.2), prepared_irf=prepared
+    )
+    assert explicit.valid_fit
+    assert explicit.fitted_lifetime_ns == pytest.approx(2.2, abs=0.15)
+    assert explicit.poisson_deviance == pytest.approx(prepared_only.poisson_deviance)
+    assert explicit.fitted_lifetime_ns == pytest.approx(prepared_only.fitted_lifetime_ns)
+    assert explicit.poisson_deviance < attached_only.poisson_deviance
+    np.testing.assert_array_equal(measurement.values, original_counts)
+    np.testing.assert_array_equal(measurement.time_ns, original_time)
+    np.testing.assert_array_equal(attached.time_ns, original_attached_time)
+    np.testing.assert_array_equal(attached.values, original_attached)
+    np.testing.assert_array_equal(profile.time_ns, original_source_time)
+    np.testing.assert_array_equal(profile.values, original_source)
+    np.testing.assert_array_equal(prepared.time_ns, original_prepared_time)
+    np.testing.assert_array_equal(prepared.kernel, original_kernel)
+    assert dict(profile.source_parameters) == original_source_parameters
+    assert dict(profile.metadata) == original_source_metadata
+    assert dict(profile.provenance) == original_source_provenance
+    assert dict(measurement.metadata) == original_measurement_metadata
+    assert dict(measurement.provenance) == original_measurement_provenance
+    assert dict(attached.metadata) == {"role": "deliberately_different"}
+    assert dict(attached.provenance) == {"trace": "attached"}
+
+
+def test_prepared_irf_grid_mismatch_requires_explicit_preparation() -> None:
+    measurement, profile, _ = _deterministic_prepared_measurement("gaussian")
+    mismatched = prepare_irf(
+        profile, measurement.time_ns + 0.01, resampling="linear"
+    )
+    with pytest.raises(InvalidMeasurementError, match="prepare the IRF explicitly"):
+        fit_experimental_reconvolution(
+            measurement,
+            temporal_shift_bounds_ns=(-0.2, 0.2),
+            prepared_irf=mismatched,
+        )
+
+
+def test_experimental_reconvolution_rejects_non_prepared_irf() -> None:
+    measurement, _, _ = _deterministic_prepared_measurement("gaussian")
+    with pytest.raises(InvalidMeasurementError, match="must be a PreparedIRF"):
+        fit_experimental_reconvolution(
+            measurement,
+            temporal_shift_bounds_ns=(-0.2, 0.2),
+            prepared_irf=object(),
+        )
+
+
+def test_processed_intensity_rejected_even_with_prepared_irf() -> None:
+    raw_measurement, _, prepared = _deterministic_prepared_measurement("gaussian")
+    processed = TCSPCMeasurement(
+        time_ns=raw_measurement.time_ns,
+        values=raw_measurement.values.astype(float) / raw_measurement.values.sum(),
+        data_kind=MeasurementDataKind.PROCESSED_INTENSITY,
+    )
+    with pytest.raises(InvalidMeasurementError, match="raw photon counts"):
+        fit_experimental_reconvolution(
+            processed,
+            temporal_shift_bounds_ns=(-0.2, 0.2),
+            prepared_irf=prepared,
+        )
 
 
 def test_shift_bounds_excluding_zero_fail_before_low_level_fitter(

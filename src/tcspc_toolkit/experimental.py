@@ -20,6 +20,7 @@ from tcspc_toolkit.evaluation import calculate_lifetime_errors
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.features import FEATURE_NAMES, extract_features
 from tcspc_toolkit.irf import normalize_irf
+from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.measurements import TCSPCMeasurement
 from tcspc_toolkit.preprocessing import time_axes_compatible
 
@@ -45,17 +46,40 @@ def fit_experimental_reconvolution(
     *,
     temporal_shift_bounds_ns: tuple[float, float],
     background_fraction: float = 0.10,
+    prepared_irf: PreparedIRF | None = None,
 ) -> ReconvolutionCurveResult:
-    """Fit raw experimental counts with the attached same-grid measured IRF.
+    """Fit raw counts with an explicit prepared IRF or the attached sampled IRF.
 
+    An explicit ``prepared_irf`` takes precedence over ``measurement.irf``.
+    It must already be on the measurement grid; no preparation occurs here.
     Shift bounds must include zero, the reused fitter's current initial shift.
-    More general alignment and initialization belong to Issue #8.
     """
     counts = measurement.require_raw_counts()
-    if measurement.irf is None:
+    if prepared_irf is None and measurement.irf is None:
         raise InvalidMeasurementError(
             "a measured IRF on the histogram grid is required for experimental reconvolution"
         )
+    if prepared_irf is not None:
+        if not isinstance(prepared_irf, PreparedIRF):
+            raise InvalidMeasurementError("prepared_irf must be a PreparedIRF")
+        if not time_axes_compatible(measurement.time_ns, prepared_irf.time_ns):
+            raise InvalidMeasurementError(
+                "prepared_irf grid differs from measurement time grid; "
+                "prepare the IRF explicitly on the measurement grid"
+            )
+        if (
+            prepared_irf.kernel.shape != counts.shape
+            or not np.all(np.isfinite(prepared_irf.kernel))
+            or np.any(prepared_irf.kernel < 0.0)
+        ):
+            raise InvalidMeasurementError(
+                "prepared_irf kernel must be finite, nonnegative, and unit-area"
+            )
+        kernel_area = float(np.trapezoid(prepared_irf.kernel, x=prepared_irf.time_ns))
+        if not np.isfinite(kernel_area) or not np.isclose(
+            kernel_area, 1.0, rtol=1e-10, atol=1e-12
+        ):
+            raise InvalidMeasurementError("prepared_irf kernel must have unit area")
     if counts.size < 5:
         raise InvalidMeasurementError("reconvolution requires at least five time bins")
     try:
@@ -77,11 +101,14 @@ def fit_experimental_reconvolution(
     if not valid_fraction:
         raise InvalidMeasurementError("background_fraction must lie between 0 and 1")
 
-    normalized_irf = normalize_irf(measurement.time_ns, measurement.irf.values)
+    if prepared_irf is None:
+        fitting_irf = normalize_irf(measurement.time_ns, measurement.irf.values)
+    else:
+        fitting_irf = prepared_irf.kernel
     return fit_single_reconvolution_curve(
         time=measurement.time_ns,
         counts=counts,
-        irf=normalized_irf,
+        irf=fitting_irf,
         temporal_shift_bounds=(float(lower), float(upper)),
         objective="poisson",
         background_fraction=background_fraction,
