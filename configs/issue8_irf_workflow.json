@@ -1,0 +1,88 @@
+{
+  "description": "Notebook 16: committed Issue-8 Stage-6 fixed-seed demonstration, independent of frozen Week-8 A-F",
+  "shape_grid_ns": {"start": 0.0, "stop": 12.0, "step": 0.02},
+  "shape_mismatch": {
+    "lifetimes_ns": [1.0, 2.0, 3.0, 4.0],
+    "signal_photon_counts": [200000],
+    "tail_times_ns": [0.18],
+    "gaussian_component_centre_ns": 1.5,
+    "gaussian_component_fwhm_ns": 0.35,
+    "background_per_bin": 1.0,
+    "development_repeats": 30,
+    "external_repeats": 2,
+    "random_seed": 8601,
+    "temporal_shift_bounds_ns": [-0.2, 0.2]
+  },
+  "feature_config": {
+    "tail_start_ns": 5.0,
+    "early_stop_ns": 3.0,
+    "late_start_ns": 7.0,
+    "min_tail_points": 3
+  },
+  "ml": {
+    "random_state": 42,
+    "development_role": "120 Gaussian histograms; 30 per lifetime; all representation/model fitting",
+    "external_role": "8 Gaussian-control and 8 EMG histograms; 2 new Poisson realizations per lifetime in each population; evaluation only",
+    "calibration_role": "none; RF tree spread is a disagreement score, not a calibrated interval"
+  },
+  "conditional_uncertainty": {
+    "pair_ids": [0],
+    "n_bootstrap_resamples": 3,
+    "nominal_coverage": 0.9,
+    "random_seed": 1119
+  },
+  "leading_grid_ns": {"start": 0.0, "stop": 20.0, "step": 0.02},
+  "leading_edge": {
+    "gaussian_irf_peak_ns": 2.0,
+    "gaussian_irf_fwhm_ns": 0.4,
+    "long_lifetime_ns": 8.0,
+    "signal_photon_count": 2000000,
+    "background_per_bin": 1.0,
+    "background_window_ns": [0.0, 1.0],
+    "rising_edge_window_ns": [1.2, 4.0],
+    "smoothing_window_bins": 17,
+    "polynomial_order": 3,
+    "low_photon_count": 2000,
+    "high_background_per_bin": 5000.0,
+    "comparable_lifetime_ns": 0.4,
+    "very_short_lifetime_ns": 0.08,
+    "biexponential_short_lifetime_ns": 0.4,
+    "biexponential_short_amplitude_fraction": 0.9,
+    "misregistration_ns": 2.2,
+    "asymmetric_tail_time_ns": 0.4,
+    "finite_rise_time_ns": 0.5,
+    "n_repeats": 1,
+    "random_seed": 8603,
+    "temporal_shift_bounds_ns": [-0.2, 0.2]
+  },
+  "profile_demo": {
+    "gaussian_centre_ns": 2.0,
+    "gaussian_fwhm_ns": 0.4,
+    "tail_time_ns": 0.4,
+    "amplitude": 1.0
+  },
+  "preparation_demo": {
+    "registration_offset_ns": 0.1,
+    "target_bin_width_ns": 0.125,
+    "support_source_time_ns": [0.0, 0.3, 0.7, 1.0],
+    "support_source_values": [0.0, 1.0, 0.0, 0.0],
+    "support_target_time_ns": [0.0, 0.5, 1.0],
+    "clipped_target_time_ns": [0.25, 0.5, 0.75]
+  },
+  "forward_demo": {
+    "lifetime_ns": 3.0,
+    "signal_photon_count": 100000,
+    "background_per_bin": 1.0,
+    "random_seed": 8616
+  },
+  "experimental_demo": {
+    "irf_csv": "data/examples/experimental_style_irf.csv",
+    "irf_time_unit": "ns",
+    "irf_time_column": "time_ns",
+    "measurement_csv": "data/examples/experimental_style_decay.csv",
+    "measurement_time_unit": "ps",
+    "measurement_time_column": "time_ps",
+    "temporal_shift_bounds_ns": [-0.5, 0.5],
+    "background_fraction": 0.1
+  }
+}

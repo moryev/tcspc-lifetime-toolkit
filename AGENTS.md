@@ -263,8 +263,8 @@ Current integration status:
 
 1. **#10** — repository/Codex transition — **complete**;
 2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
-3. **#8** — generalized IRF models, measured IRFs, and leading-edge estimation — **next**;
-4. **#4** — Bayesian Poisson inference;
+3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **implemented and verified; commit/closure review pending**;
+4. **#4** — Bayesian Poisson inference — **next**;
 5. **#9** — SQLite persistence for experiments and benchmark results;
 6. **#1** — standardize array input type annotations;
 7. **#2** — API stabilization and package hardening;
@@ -275,7 +275,7 @@ Current integration status:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-The next scientific implementation task is **Issue #8: generalized IRF models, measured IRFs, and leading-edge estimation**.
+The next scientific implementation task after Issue #8 review is **Issue #4: Bayesian Poisson inference**.
 
 Do not skip ahead to Bayesian/API/package restructuring before the generalized-IRF requirements have informed the architecture.
 
@@ -296,23 +296,12 @@ For each substantial issue:
 
 ## Next Codex orientation task
 
-Before implementing Issue #8, begin with a **read-only orientation pass** in a fresh Codex chat.
-
-Inspect:
-
-- this file;
-- Issue #5;
-- Issue #8;
-- the merged Issue #6 implementation, especially `measurements.py`, `measurement_io.py`, and `experimental.py`;
-- the current IRF, convolution, reconvolution, preprocessing, and relevant test modules;
-- `README.md` and `docs/design/master_design_document.md`.
-
-Then summarize, without modifying files:
-
-- the experimental-measurement abstractions established by Issue #6 that Issue #8 must preserve;
-- the current sampled/measured-IRF limitations;
-- where Gaussian-specific assumptions still live;
-- which IRF responsibilities belong in Issue #8 versus later Bayesian/API/package work;
-- the minimal implementation plan and compatibility risks.
-
-The expected next scientific task is **Issue #8: generalized IRF models, measured IRFs, and leading-edge estimation**.
+Issue #8's implementation and Notebook 16 establish the generalized IRF
+workflow. Before starting Issue #4 when requested, read this file, Issues #5
+and #4, the Issue-#6 measurement boundary, and the committed Issue-#8 source,
+preparation, estimation, and evaluation APIs. Consult Notebook 16 and the
+design/scientific-findings documentation for the distinction between source
+provenance, preparation history, fixed kernels, approximate proxies, and
+model-conditional uncertainty. Begin with read-only orientation and a scoped
+plan; do not treat roadmap ordering as authorization to implement the next
+issue automatically.

@@ -81,8 +81,11 @@ The current version supports:
 
 * mono-, bi-, and multi-exponential decay modelling;
 * constant detector background counts;
-* Gaussian instrument response function generation;
-* IRF normalization to unit temporal area;
+* Gaussian and exponentially modified Gaussian (EMG) instrument response functions;
+* generalized sampled source profiles and explicitly prepared, unit-area target-grid kernels;
+* explicit sampled/imported-IRF registration and linear resampling with support/sampling diagnostics;
+* opt-in, failure-aware leading-edge IRF proxies, never automatic replacements for measured IRFs;
+* controlled IRF shape-family mismatch and proxy-failure evaluation, independent of frozen A–F;
 * non-integer temporal IRF shifting;
 * numerical convolution of fluorescence decays with IRFs;
 * IRF-convolved TCSPC simulation with Poisson photon-count sampling;
@@ -91,7 +94,7 @@ The current version supports:
 * structured storage of simulated curves and metadata;
 * validation of raw TCSPC histograms, including dimensionality, finite values, non-negative integer-like photon counts, and approximately uniform time bins;
 * strict single-curve CSV import with explicit time units, raw-count or processed-intensity semantics, source provenance, and optional same-grid sampled IRFs;
-* Poisson reconvolution of imported raw counts with a compatible sampled IRF, plus separate opt-in evaluation against a trusted reference lifetime;
+* Poisson reconvolution of imported raw counts with a compatible sampled IRF or explicit `PreparedIRF`, plus separate opt-in evaluation against a trusted reference lifetime;
 * explicit background estimation from user-selected histogram regions;
 * background subtraction for derived visualization and analysis representations while preserving negative statistical fluctuations;
 * discrete peak detection for raw photon-count histograms;
@@ -220,7 +223,7 @@ I_\tau(t)
 
 where $\tau$ is the fluorescence lifetime.
 
-The instrument response function describes the temporal broadening introduced by the measurement system. In the current implementation, the IRF is modelled as a Gaussian function,
+The instrument response function describes the temporal broadening introduced by the measurement system. The legacy Gaussian simulation path uses
 
 ```math
 \mathrm{IRF}(t)
@@ -236,6 +239,11 @@ where:
 * $t_0$ is the IRF centre;
 * $\sigma$ determines the IRF width;
 * $C$ is the Gaussian amplitude.
+
+The generalized path also supports EMG and sampled/imported IRFs. EMG
+parameters describe the Gaussian component plus a positive exponential tail;
+the component centre/FWHM are not the full EMG peak/FWHM. The downstream
+convolution consumes sampled arrays, not a Gaussian-specific model.
 
 The Gaussian width is specified through the full width at half maximum (FWHM),
 
@@ -501,6 +509,25 @@ Week-8 robustness workflow is available in
 and the Week-9 uncertainty and failure-awareness synthesis is available in
 [`notebooks/14_uncertainty_and_failure_awareness.ipynb`](notebooks/14_uncertainty_and_failure_awareness.ipynb).
 
+### Generalized IRFs and failure awareness
+
+Issue #8 adds the explicit workflow
+`IRFProfile → prepare_irf → PreparedIRF → simulation / reconvolution`.
+Gaussian, EMG, imported `SampledIRF`, and deliberately requested leading-edge
+proxies share this path. Source values/provenance stay distinct from derived
+kernels and their preparation history. Registration and linear resampling
+are caller choices; support loss is reported separately from target-grid
+quadrature change.
+
+`fit_experimental_reconvolution(..., prepared_irf=...)` explicitly overrides
+an attached sampled IRF, without automatic preparation or resampling. The
+legacy attached-IRF path is unchanged. Leading-edge estimates are approximate
+proxies, not measured/true IRFs; numerical success does not certify physical
+accuracy. [Notebook 16](notebooks/16_generalized_irf_and_failure_awareness.ipynb)
+demonstrates these boundaries and controlled shape-mismatch/failure studies.
+Their findings and the small ML/bootstrap fixture limitations are recorded in
+[`docs/scientific_findings.md`](docs/scientific_findings.md).
+
 ## Current implementation status
 
 Version 0.7.0 extends the toolkit from in-distribution estimator benchmarking
@@ -524,8 +551,9 @@ uncertainty and physical model validity are not equivalent. An estimator can
 remain statistically confident while becoming biased because the assumed
 mono-exponential forward model is incomplete.
 
-The present release remains based on controlled synthetic TCSPC measurements.
-Experimental data ingestion, measured-IRF workflows, synthetic-to-real
+The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
+measurements. Post-release integration adds the Issue-#6 single-curve import
+boundary and Issue-#8 generalized IRF/proxy workflows. Synthetic-to-real
 validation, broader inverse decay models, and package/API hardening remain
 future development stages.
 
@@ -1072,6 +1100,18 @@ same-grid sampled IRF, provenance, Poisson reconvolution diagnostics,
 compatible-grid ML input with an unvalidated synthetic-development model, and
 reference-based evaluation only when a trusted reference is supplied.
 
+### `16_generalized_irf_and_failure_awareness.ipynb`
+
+Demonstrates source profiles, explicit registration/resampling and support
+diagnostics, generic Gaussian/EMG simulation, prepared-IRF experimental
+reconvolution, leading-edge proxies, paired IRF shape mismatch, conditional
+uncertainty, and Gaussian-trained ML transfer. It calls committed library
+code with [`configs/issue8_irf_workflow.json`](configs/issue8_irf_workflow.json).
+After the editable development install, restart the notebook kernel and run
+all cells; the manifest is located from the repository or notebook directory.
+The discrete-target ML fixture and three-bootstrap interface demonstration
+are intentionally not broad robustness or calibrated-coverage studies.
+
 ## Repository structure
 
 ```text
@@ -1079,6 +1119,10 @@ tcspc-lifetime-toolkit/
 ├── README.md
 ├── pyproject.toml
 ├── .gitignore
+│
+├── configs/
+│   ├── example_simulation.json
+│   └── issue8_irf_workflow.json
 │
 ├── data/
 │   ├── examples/
@@ -1109,7 +1153,8 @@ tcspc-lifetime-toolkit/
 │   ├── 12_ml_benchmarking.ipynb
 │   ├── 13_generalization_and_robustness.ipynb
 │   ├── 14_uncertainty_and_failure_awareness.ipynb
-│   └── 15_experimental_tcspc_workflow.ipynb
+│   ├── 15_experimental_tcspc_workflow.ipynb
+│   └── 16_generalized_irf_and_failure_awareness.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -1134,6 +1179,9 @@ tcspc-lifetime-toolkit/
 │       ├── generalization_datasets.py
 │       ├── generalization_evaluation.py
 │       ├── irf.py
+│       ├── irf_preparation.py
+│       ├── irf_estimation.py
+│       ├── irf_evaluation.py
 │       ├── measurement_io.py
 │       ├── measurements.py
 │       ├── mismatch_evaluation.py
@@ -1174,7 +1222,10 @@ The modules currently have the following responsibilities:
 * `generalization.py`: frozen Week-8 robustness protocol, familiar-domain definition, A-F test definitions, numerical regimes, and reproducible test-suite configuration;
 * `generalization_datasets.py`: reproducible construction of paired final robustness Tests A-F with aligned targets, nuisance conditions, and provenance metadata;
 * `generalization_evaluation.py`: development-only fitting and final robustness evaluation across Tests A-F, including representation comparisons, classical diagnostics, model mismatch, MAE degradation, and Week-8 synthesis tables;
-* `irf.py`: generation and manipulation of instrument response functions, including Gaussian IRF construction, normalization, temporal shifting, and related validation;
+* `irf.py`: generalized sampled source profiles, Gaussian/EMG generation, normalization, temporal shifting, and validation;
+* `irf_preparation.py`: imported-source adapter, explicit registration/resampling, derived target-grid kernels, and support/sampling diagnostics;
+* `irf_estimation.py`: explicit leading-edge derivative proxies with construction failures and factual diagnostics;
+* `irf_evaluation.py`: library-backed IRF shape mismatch, Gaussian-trained ML transfer, conditional uncertainty, and leading-edge failure studies independent of frozen A–F;
 * `measurement_io.py`: strict single-curve CSV import with explicit time units, raw-count versus processed-intensity semantics, optional sampled IRFs, and source provenance;
 * `measurements.py`: canonical experimental measurement abstractions, including `TCSPCMeasurement`, `SampledIRF`, time-unit conversion, immutable source arrays, and raw-count guards;
 * `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
@@ -1203,7 +1254,7 @@ benchmarks, with an initial single-curve experimental CSV path.
 It does not yet include:
 
 * vendor-specific TCSPC formats and broader multi-curve import;
-* measured-IRF resampling, alignment estimation, and generalized IRF models;
+* automatic zero-time inference, blind IRF reconstruction, or guarantees for leading-edge proxy accuracy;
 * pile-up effects;
 * detector dead time;
 * afterpulsing;
@@ -1240,12 +1291,13 @@ The planned integration and release path is:
 
 1. [Issue #6](https://github.com/moryev/tcspc-lifetime-toolkit/issues/6) —
    experimental TCSPC data ingestion, processing, validation, provenance, and
-   estimation;
+   estimation — implemented;
 2. [Issue #8](https://github.com/moryev/tcspc-lifetime-toolkit/issues/8) —
-   generalized synthetic IRFs, measured IRFs, and leading-edge IRF estimation;
+   generalized IRFs, explicit sampled-IRF preparation, and leading-edge
+   proxy/failure-awareness evaluation — implemented and verified; commit/issue review pending;
 3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
    Bayesian Poisson lifetime inference using the canonical measurement and IRF
-   abstractions;
+   abstractions — next;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
    uncertainty outputs, Bayesian summaries, and benchmark metrics;
@@ -1320,10 +1372,12 @@ The repository remains under active development. The current codebase is a
 research and scientific-software prototype and is not yet intended as a
 validated replacement for established experimental TCSPC-analysis software.
 
-The initial single-curve CSV import and same-grid sampled-IRF workflow is
-available; vendor formats, generalized IRF handling, synthetic-to-real
+Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
+explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
+inference is next in Issue #5's sequence; vendor formats, synthetic-to-real
 validation, broader decay-model inference, and package/API hardening remain
-important next development stages.
+future work. Issue #8 implementation and verification are complete, with commit/closure
+review still pending; this does not change the v0.7.0 release version.
 
 ## Citation
 
