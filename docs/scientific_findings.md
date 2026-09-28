@@ -1082,3 +1082,201 @@ trustworthiness.
 
 Notebook 14 provides the reproducible synthesis of these results and closes
 the Week 9 uncertainty and failure-awareness stage.
+
+---
+
+## Post-Week-9 — Issue #8: generalized IRFs and failure awareness
+
+### Reproducible scope
+
+[Notebook 16](../notebooks/16_generalized_irf_and_failure_awareness.ipynb)
+reproduces the committed Stage-6 fixed-seed demonstrations using library
+functions and [the Issue-#8 manifest](../configs/issue8_irf_workflow.json).
+These experiments are independent of the frozen Week-8 A–F protocol, which
+is unchanged. The results below describe small controlled fixtures, not a
+general robustness or uncertainty-coverage study.
+
+Notebook 16 was executed from a fresh Python 3.12 kernel with NumPy 2.5.1,
+SciPy 1.18.0, pandas 3.0.3, and scikit-learn 1.9.0. Its outputs reproduce the
+Stage-6 results below at the reported precision; versions are also displayed
+in the notebook rather than assumed from an unrecorded environment.
+
+The shape study uses [0, 12) ns at 0.02 ns spacing, lifetimes {1, 2, 3, 4} ns,
+200,000 expected signal photons within that acquisition window, background
+1 count/bin, and seed 8601. The EMG has Gaussian-component centre 1.5 ns,
+Gaussian-component FWHM 0.35 ns, and exponential tail time 0.18 ns. There are
+two external Poisson realizations per lifetime per population (eight each).
+The ML development population has 30 Gaussian realizations per lifetime
+(120 total); development and both external populations use independent RNG
+streams. Fitted residual-shift bounds are ±0.2 ns throughout this comparison.
+
+### Generalized IRF handling
+
+IRF source/origin, sampled source values, preparation history, and the
+forward-model kernel are distinct. `IRFProfile` preserves supplied source
+values, including nonuniform grids; `PreparedIRF` contains a normalized,
+uniform-target-grid kernel and preparation diagnostics. Gaussian, EMG,
+imported `SampledIRF`, and explicit leading-edge proxies all reach the same
+array-based convolution/reconvolution machinery. An imported sampled trace
+is not necessarily an independently measured physical IRF.
+
+Registration and linear resampling are explicit. Neither infers zero time;
+known registration is distinct from residual shift fitted during
+reconvolution. Original imported values and provenance remain intact.
+
+Geometric support loss is separated from target-grid quadrature change.
+For the notebook's piecewise-linear source with times [0, 0.3, 0.7, 1] ns and
+values [0, 1, 0, 0], the source area is 0.35. A target grid [0, 0.5, 1] ns
+retains all available support, yet has pre-normalization area 0.25. A clipped
+target [0.25, 0.5, 0.75] ns retains source area 0.245833 (loss fraction
+0.297619), while its sampled area is 0.229167. Boundary integration is exact
+for the available piecewise-linear source, not for unknown physical tails.
+Normalization does not remedy undersampling; acceptable support loss is
+application dependent.
+
+### IRF shape mismatch with matched peak and full FWHM
+
+The comparison Gaussian is derived only from the noiseless generating EMG.
+Both have sampled peak 1.62 ns and full sampled FWHM approximately
+0.45145465565 ns (agreement better than 1e-9 ns). The EMG's 0.35 ns
+Gaussian-component FWHM is not its full width. Matching peak and FWHM does
+not make Gaussian and EMG shapes equivalent.
+
+Each EMG histogram is fit twice using exactly the same observed counts,
+Poisson objective, background treatment, shift bounds, and initialization
+policy: once with its matched EMG and once with the comparison Gaussian.
+The Gaussian-generated control has matched nuisance conditions and new
+Poisson counts. Results for eight histograms per row are:
+
+| Generated data / assumed IRF | MAE (ns) | Bias (ns) | Mean Poisson deviance |
+|---|---:|---:|---:|
+| EMG / matched EMG | 0.005909 | +0.000906 | 591.609359 |
+| Same EMG counts / Gaussian | 0.032795 | +0.032795 | 709.710133 |
+| Gaussian control / Gaussian | 0.003490 | +0.002798 | 615.431037 |
+
+All 24 fits are valid with no reported boundary hits. Thus higher-order IRF
+shape differences produce a material positive lifetime bias here despite
+matched timing and full width. The notebook retains per-realization signed
+deviance residuals and illustrates additional early-time residual structure
+under the Gaussian assumption. The mean deviance rises in this fixture;
+this does not require matched deviance to win for every noisy realization
+or establish deviance/residuals as universal physical-validity tests.
+
+### Conditional statistical uncertainty under a wrong IRF
+
+For external pair 0, with true lifetime 1 ns:
+
+| Assumed fixed IRF | Lifetime estimate (ns) | Local Poisson/Fisher std (ns) | Three-resample bootstrap endpoints (ns) |
+|---|---:|---:|---:|
+| Matched EMG | 1.004166 | 0.002646 | 0.999421–1.006630 |
+| Gaussian | 1.028703 | 0.002688 | 1.025463–1.030904 |
+
+The bootstrap uses seed 1119 and requested nominal level 0.9. **Three
+resamples demonstrate the interface only; these endpoints are not a
+calibrated interval study or a coverage estimate.** Both covariance and
+bootstrap hold the assumed IRF fixed, propagating no IRF-shape uncertainty.
+Conditional statistical uncertainty can be small even when IRF shape is
+misspecified: the Gaussian estimate is biased while its model-conditional
+uncertainty is narrow.
+
+### Gaussian-trained ML transfer: discrete-target fixture limitation
+
+Ridge, Random Forest, and HistGradientBoosting are fit only on the 120
+Gaussian development histograms. Feature settings are tail start 5 ns,
+early stop 3 ns, late start 7 ns, and at least three tail points; estimator
+random state is 42. Only the established histogram-derived features enter
+models, not lifetime labels, source-kind labels, IRF parameters, or experiment
+metadata. External data do not enter representation/model fitting,
+hyperparameter selection, or calibration.
+
+| Model | Gaussian-control MAE (ns) | EMG MAE (ns) | Gaussian-control bias (ns) | EMG bias (ns) |
+|---|---:|---:|---:|---:|
+| Ridge | 0.022274 | 0.204581 | +0.005659 | +0.204581 |
+| Random Forest | 0.000000 | 0.013750 | 0.000000 | +0.013750 |
+| HistGradientBoosting | 0.000027 | 0.000027 | approximately 0 | approximately 0 |
+
+Both external populations have two new Poisson realizations at each of
+{1, 2, 3, 4} ns; those discrete target values are identical to the development
+support (30 realizations each). The near-perfect RF/HGB control performance
+reflects this tiny high-count, controlled-nuisance, discrete-target fixture:
+tree models can predict already-seen lifetime levels. This is not
+unseen-lifetime generalization. HGB's absence of measurable EMG degradation
+is a negative result for this fixture only, **not evidence of general
+robustness to asymmetric IRFs**. The experiment was not changed to force a
+degradation result.
+
+Mean RF tree spread changes from 0 to 0.056929 ns. It is an ensemble
+disagreement score, not a nominal prediction interval, conformal interval,
+or classical model-conditional parameter standard deviation. No ML interval
+calibration or coverage claim is made here.
+
+### Leading-edge proxy: favorable and adverse regimes
+
+For mono-exponential fluorescence, `S'(t) = A h(t) - S(t)/tau`; therefore
+`h(t) != S'(t)` in general. The derivative proxy does not reconstruct the
+missing `S/tau` term and is never labelled a measured or recovered true IRF.
+
+The favorable condition uses lifetime 8 ns, Gaussian peak 2 ns/FWHM 0.4 ns,
+2,000,000 finite-window signal photons, background 1 count/bin, and [0, 20)
+ns at 0.02 ns spacing. Seed 8603 gives one independent Poisson realization
+per regime. The explicit half-open background window is [0, 1) ns and
+candidate rising-edge window [1.2, 4) ns. Savitzky–Golay settings are 17 bins,
+polynomial order 3, first derivative in count/ns, and `mode="interp"`.
+
+The favorable proxy has peak 1.96 ns (error −0.04 ns), full FWHM 0.383277 ns
+(error −0.016723 ns), and normalized L1 shape error 0.091641. L1 denotes the
+trapezoidal integral of the absolute difference of unit-area profiles, not
+an exact-reconstruction criterion. Its fitted lifetime is 8.008096 ns,
+versus 7.995458 ns using the true synthetic IRF.
+
+| Regime / intended change | Proxy status | L1 shape error | Fit with true IRF (ns) | Fit with proxy (ns) | Additional observation |
+|---|---|---:|---:|---:|---|
+| Favorable baseline | Constructed | 0.091641 | 7.995458 | 8.008096 | Useful approximation |
+| Low photons: 2,000 | Constructed | 1.009749 | 7.481860 | 7.157688 | Proxy FWHM unavailable |
+| High background: 5,000/bin | Constructed | 0.120736 | 8.009286 | 8.033546 | Background ≥ half of observed rising-window counts flagged |
+| Comparable lifetime: 0.4 ns | Constructed | 0.496261 | 0.400538 | 0.428982 | Valid proxy despite shape error |
+| Very short lifetime: 0.08 ns | Constructed | 0.912417 | 0.079596 | 0.152618 | Valid proxy despite large error |
+| Bi-exponential: 0.4/8 ns, short amplitude fraction 0.9 | Constructed | 0.449348 | 1.498194 | 1.532768 | No unique mono-exponential truth |
+| +2.2 ns translation, correct window | Constructed | 0.103228 | 8.021581 | 8.027358 | Window shifted explicitly |
+| +2.2 ns translation, wrong window | Failed | — | 7.998500 | — | Smoothed peak at analysis-window boundary |
+| Strong EMG asymmetry: tail 0.4 ns | Constructed | 0.210944 | 7.988998 | 8.190455 | Proxy FWHM unavailable |
+| Finite physical rise: rise 0.5 ns / decay 8 ns | Constructed | 1.031587 | 8.659080 | 8.246961 | No unique mono-exponential truth |
+
+All constructed proxies report negative derivative clipping, including the
+favorable one. This factual flag alone is not a severity classifier. The
+low-photon and asymmetric cases additionally lack identifiable FWHM; high
+background triggers a background-fraction flag but this realization remains
+fairly accurate. Comparable/very-short lifetimes and finite rise can remain
+numerically constructible and physically poor without a diagnostic that
+identifies the underlying physical cause. Failure, warning, and actual
+physical error must be reported separately.
+
+The asymmetry control matches baseline sampled peak and full FWHM (within
+one 0.02 ns bin and 1e-9 ns, respectively); it is not principally a
+width/timing test. The finite-rise control uses
+`d(u) ∝ exp(-u/tau_decay) - exp(-u/tau_rise)` for `u >= 0`, solely as a local
+emission-dynamics confound. Bi-exponential and finite-rise scalar fits are
+estimates under a misspecified mono-exponential decay model, **not errors
+against a unique mono-exponential truth**; their truth-based lifetime-error
+fields are absent/NaN.
+
+The correctly translated timing control uses edge window [3.4, 6.2) ns;
+the wrong-window case keeps [1.2, 4) ns. These controls use independent
+Poisson realizations, **not an identical-count window ablation**. Translation
+also changes the remaining finite acquisition window while preserving the
+expected detected signal budget. No analysis window is silently realigned.
+
+### Scientific interpretation
+
+Matching peak and FWHM does not eliminate shape-family bias. Leading-edge
+proxies can be useful in favorable regimes, but numerical constructibility,
+warning flags, and physical accuracy are different quantities. Single
+realizations do not estimate regime-wise failure probabilities, and a proxy
+cannot generally identify lifetime/IRF scale separation, mixed decay,
+physical rise, or unseen IRF tails from one histogram.
+
+Issue #8 extends the Week-9 conclusion: **uncertainty within an assumed model
+and evidence that the assumed model is physically correct are different
+questions**. Report model assumptions and controlled failure evidence
+alongside statistical uncertainty, rather than interpreting a narrow
+interval or a well-formed proxy as physical validation.

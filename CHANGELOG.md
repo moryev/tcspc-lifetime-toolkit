@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] — Post-Week-9 integration
+
+### Added — Issue #8
+
+- Generalized `IRFProfile` sources and source-kind provenance, preserving the
+  narrow Issue-#6 `SampledIRF` import boundary.
+- EMG generation and Gaussian/EMG profile factories; legacy Gaussian
+  generation, simulation signatures, and RNG behavior remain unchanged.
+- Explicit `prepare_irf()` registration/resampling, immutable derived
+  `PreparedIRF` kernels, and separate geometric-support/sampling diagnostics.
+- Generic prepared-IRF expected-count construction and explicit prepared-IRF
+  experimental reconvolution, leaving the numerical core array-based.
+- Opt-in raw-count leading-edge derivative proxies with explicit windows,
+  smoothing settings, provenance, diagnostics, and numerical failure states.
+- Library-backed paired IRF shape-mismatch, Gaussian-trained ML transfer,
+  conditional uncertainty, and controlled leading-edge failure experiments,
+  independent of the unchanged frozen Week-8 A–F suite.
+- Notebook 16, its fixed JSON experiment manifest, and scientific/design
+  documentation distinguishing proxy constructibility from physical validity.
+
+### Scientific scope and status
+
+- Leading-edge estimates are proxies, not recovered measured/true IRFs.
+  Fixed-IRF uncertainty does not propagate IRF-shape uncertainty.
+- The three-bootstrap example is an interface demonstration, not calibrated
+  coverage; the near-perfect RF/HGB results use a small discrete-target
+  fixture and do not establish general robustness to IRF asymmetry.
+- Final Stage-7 verification: Notebook 16's 12 code cells pass from a fresh
+  kernel, the requested Issue-#8 regression group passes 184 tests, and the
+  full suite passes 839 tests.
+- Issue #8 implementation and verification are complete; commit/closure
+  review is still pending. Issue #4 (Bayesian Poisson
+  inference) is next in Issue #5's unchanged ordering; it is not implemented
+  here. No release-version bump is included.
+
 ## [0.1.0] - 2026-07-30
 
 ### Added
