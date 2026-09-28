@@ -57,6 +57,12 @@ from tcspc_toolkit.irf_preparation import (
     prepare_irf,
 )
 
+from tcspc_toolkit.irf_estimation import (
+    LeadingEdgeIRFDiagnostics,
+    LeadingEdgeIRFResult,
+    estimate_irf_from_leading_edge,
+)
+
 from tcspc_toolkit.measurement_io import (
     load_sampled_irf_csv,
     load_tcspc_measurement_csv,
@@ -118,6 +124,9 @@ __all__ = [
     "PreparedIRF",
     "irf_profile_from_sampled_irf",
     "prepare_irf",
+    "LeadingEdgeIRFDiagnostics",
+    "LeadingEdgeIRFResult",
+    "estimate_irf_from_leading_edge",
     "normalize_irf",
     "shift_irf",
     "convolve_decay_with_irf",
