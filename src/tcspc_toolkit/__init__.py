@@ -13,7 +13,12 @@ from tcspc_toolkit.datasets import (
 )
 
 from tcspc_toolkit.irf import (
+    IRFProfile,
+    IRFSourceKind,
+    generate_emg_irf,
+    generate_emg_irf_profile,
     generate_gaussian_irf,
+    generate_gaussian_irf_profile,
     normalize_irf,
     shift_irf,
 )
@@ -42,6 +47,13 @@ from tcspc_toolkit.measurements import (
     TCSPCMeasurement,
     TimeUnit,
     convert_time_to_ns,
+)
+
+from tcspc_toolkit.irf_preparation import (
+    IRFPreparationDiagnostics,
+    PreparedIRF,
+    irf_profile_from_sampled_irf,
+    prepare_irf,
 )
 
 from tcspc_toolkit.measurement_io import (
@@ -96,6 +108,15 @@ __all__ = [
     "SyntheticDataset",
     "generate_monoexponential_dataset",
     "generate_gaussian_irf",
+    "generate_emg_irf",
+    "generate_gaussian_irf_profile",
+    "generate_emg_irf_profile",
+    "IRFSourceKind",
+    "IRFProfile",
+    "IRFPreparationDiagnostics",
+    "PreparedIRF",
+    "irf_profile_from_sampled_irf",
+    "prepare_irf",
     "normalize_irf",
     "shift_irf",
     "convolve_decay_with_irf",
