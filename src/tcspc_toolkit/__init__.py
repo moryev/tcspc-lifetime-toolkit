@@ -4,6 +4,7 @@ from tcspc_toolkit.models import (
     monoexponential_decay,
 )
 from tcspc_toolkit.simulation import (
+    build_expected_counts_from_irf,
     sample_photon_counts,
 )
 

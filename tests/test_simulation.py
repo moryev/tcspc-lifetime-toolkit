@@ -1,7 +1,18 @@
 import numpy as np
 import pytest
 
+from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit.irf import (
+    generate_emg_irf_profile,
+    generate_gaussian_irf,
+    generate_gaussian_irf_profile,
+    normalize_irf,
+    shift_irf,
+)
+from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.models import monoexponential_decay
 from tcspc_toolkit.simulation import (
+    build_expected_counts_from_irf,
     sample_photon_counts,
     simulate_biexponential_decay,
     simulate_irf_convolved_biexponential_histogram,
@@ -9,6 +20,125 @@ from tcspc_toolkit.simulation import (
     simulate_monoexponential_decay,
     simulate_multiexponential_decay,
 )
+
+
+@pytest.mark.parametrize(
+    ("irf_shift_ns", "background_per_bin"),
+    [(0.0, 0.0), (0.2, 2.5)],
+)
+def test_prepared_gaussian_expected_counts_match_legacy_deterministic_path(
+    irf_shift_ns: float, background_per_bin: float
+) -> None:
+    time = np.linspace(0.0, 20.0, 401)
+    decay = monoexponential_decay(time, amplitude=1.0, lifetime=2.5, background=0.0)
+    source = generate_gaussian_irf_profile(
+        time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.5
+    )
+    prepared = prepare_irf(
+        source,
+        time,
+        resampling="linear" if irf_shift_ns else "none",
+        registration_offset_ns=irf_shift_ns,
+    )
+    original_kernel = prepared.kernel.copy()
+    signal_photon_count = 50_000
+    expected = build_expected_counts_from_irf(
+        decay,
+        prepared,
+        signal_photon_count=signal_photon_count,
+        background_per_bin=background_per_bin,
+    )
+
+    # Exactly the deterministic calculation inside the unchanged Gaussian wrapper.
+    legacy_irf = normalize_irf(time, generate_gaussian_irf(time, centre=1.0, fwhm=0.5))
+    legacy_irf = normalize_irf(time, shift_irf(time, legacy_irf, irf_shift_ns))
+    legacy_signal = convolve_decay_with_irf(time, decay, legacy_irf)
+    legacy_expected = (
+        signal_photon_count * legacy_signal / legacy_signal.sum() + background_per_bin
+    )
+    np.testing.assert_allclose(expected, legacy_expected, rtol=2e-12, atol=2e-10)
+    assert expected.sum() - background_per_bin * time.size == pytest.approx(
+        signal_photon_count, abs=1e-8
+    )
+    np.testing.assert_array_equal(prepared.kernel, original_kernel)
+    np.testing.assert_array_equal(source.values, generate_gaussian_irf(time, 1.0, 0.5))
+
+
+def test_prepared_emg_uses_generic_expected_counts_path() -> None:
+    time = np.linspace(0.0, 20.0, 401)
+    decay = monoexponential_decay(time, amplitude=1.0, lifetime=2.0, background=0.0)
+    profile = generate_emg_irf_profile(
+        time,
+        gaussian_centre_ns=1.0,
+        gaussian_fwhm_ns=0.4,
+        tail_time_ns=0.5,
+    )
+    prepared = prepare_irf(profile, time)
+    expected = build_expected_counts_from_irf(
+        decay, prepared, signal_photon_count=80_000, background_per_bin=3.0
+    )
+    direct_signal = convolve_decay_with_irf(time, decay, prepared.kernel)
+    np.testing.assert_allclose(expected - 3.0, 80_000 * direct_signal / direct_signal.sum())
+    assert np.all(np.isfinite(expected))
+    assert np.all(expected >= 3.0)
+    assert (expected - 3.0).sum() == pytest.approx(80_000, abs=1e-8)
+
+
+@pytest.mark.parametrize("signal_count", [-1, 0, 1.5, True])
+def test_prepared_expected_counts_reject_invalid_signal_budget(signal_count: object) -> None:
+    time = np.linspace(0.0, 10.0, 101)
+    prepared = prepare_irf(
+        generate_gaussian_irf_profile(
+            time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.5
+        ),
+        time,
+    )
+    with pytest.raises(ValueError, match="signal_photon_count"):
+        build_expected_counts_from_irf(
+            np.ones_like(time),
+            prepared,
+            signal_photon_count=signal_count,
+            background_per_bin=0.0,
+        )
+
+
+@pytest.mark.parametrize("background", [-1.0, float("nan"), float("inf")])
+def test_prepared_expected_counts_reject_invalid_background(background: float) -> None:
+    time = np.linspace(0.0, 10.0, 101)
+    prepared = prepare_irf(
+        generate_gaussian_irf_profile(
+            time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.5
+        ),
+        time,
+    )
+    with pytest.raises(ValueError, match="background_per_bin"):
+        build_expected_counts_from_irf(
+            np.ones_like(time),
+            prepared,
+            signal_photon_count=100,
+            background_per_bin=background,
+        )
+
+
+@pytest.mark.parametrize(
+    "invalid_decay",
+    [np.zeros(100), np.zeros(101), -np.ones(101), np.full(101, np.nan)],
+)
+def test_prepared_expected_counts_reject_unusable_decay(invalid_decay: np.ndarray) -> None:
+    time = np.linspace(0.0, 10.0, 101)
+    prepared = prepare_irf(
+        generate_gaussian_irf_profile(
+            time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.5
+        ),
+        time,
+    )
+    with pytest.raises(ValueError, match="ideal_decay|convolved signal"):
+        build_expected_counts_from_irf(
+            invalid_decay,
+            prepared,
+            signal_photon_count=100,
+            background_per_bin=0.0,
+        )
 
 
 def test_simulate_ideal_decay_returns_correct_shapes() -> None:
