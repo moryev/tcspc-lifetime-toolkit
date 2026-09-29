@@ -21,7 +21,7 @@ from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.features import FEATURE_NAMES, extract_features
 from tcspc_toolkit.irf import normalize_irf
 from tcspc_toolkit.irf_preparation import PreparedIRF
-from tcspc_toolkit.measurements import TCSPCMeasurement
+from tcspc_toolkit.measurements import SampledIRF, TCSPCMeasurement
 from tcspc_toolkit.preprocessing import time_axes_compatible
 
 
@@ -41,20 +41,12 @@ class ReferenceLifetimeEvaluation:
     reference_metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
-def fit_experimental_reconvolution(
+def _resolve_reconvolution_irf(
     measurement: TCSPCMeasurement,
-    *,
-    temporal_shift_bounds_ns: tuple[float, float],
-    background_fraction: float = 0.10,
-    prepared_irf: PreparedIRF | None = None,
-) -> ReconvolutionCurveResult:
-    """Fit raw counts with an explicit prepared IRF or the attached sampled IRF.
-
-    An explicit ``prepared_irf`` takes precedence over ``measurement.irf``.
-    It must already be on the measurement grid; no preparation occurs here.
-    Shift bounds must include zero, the reused fitter's current initial shift.
-    """
-    counts = measurement.require_raw_counts()
+    counts: NDArray[np.int64],
+    prepared_irf: PreparedIRF | None,
+) -> tuple[NDArray[np.float64], PreparedIRF | SampledIRF]:
+    """Select a fixed kernel without changing the source IRF or its grid."""
     if prepared_irf is None and measurement.irf is None:
         raise InvalidMeasurementError(
             "a measured IRF on the histogram grid is required for experimental reconvolution"
@@ -80,6 +72,28 @@ def fit_experimental_reconvolution(
             kernel_area, 1.0, rtol=1e-10, atol=1e-12
         ):
             raise InvalidMeasurementError("prepared_irf kernel must have unit area")
+        return prepared_irf.kernel, prepared_irf
+
+    attached_irf = measurement.irf
+    assert attached_irf is not None
+    return normalize_irf(measurement.time_ns, attached_irf.values), attached_irf
+
+
+def fit_experimental_reconvolution(
+    measurement: TCSPCMeasurement,
+    *,
+    temporal_shift_bounds_ns: tuple[float, float],
+    background_fraction: float = 0.10,
+    prepared_irf: PreparedIRF | None = None,
+) -> ReconvolutionCurveResult:
+    """Fit raw counts with an explicit prepared IRF or the attached sampled IRF.
+
+    An explicit ``prepared_irf`` takes precedence over ``measurement.irf``.
+    It must already be on the measurement grid; no preparation occurs here.
+    Shift bounds must include zero, the reused fitter's current initial shift.
+    """
+    counts = measurement.require_raw_counts()
+    fitting_irf, _ = _resolve_reconvolution_irf(measurement, counts, prepared_irf)
     if counts.size < 5:
         raise InvalidMeasurementError("reconvolution requires at least five time bins")
     try:
@@ -101,10 +115,6 @@ def fit_experimental_reconvolution(
     if not valid_fraction:
         raise InvalidMeasurementError("background_fraction must lie between 0 and 1")
 
-    if prepared_irf is None:
-        fitting_irf = normalize_irf(measurement.time_ns, measurement.irf.values)
-    else:
-        fitting_irf = prepared_irf.kernel
     return fit_single_reconvolution_curve(
         time=measurement.time_ns,
         counts=counts,
