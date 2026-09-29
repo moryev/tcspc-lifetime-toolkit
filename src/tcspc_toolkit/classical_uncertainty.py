@@ -21,9 +21,9 @@ from tcspc_toolkit.simulation import (
     sample_photon_counts,
     simulate_irf_convolved_histogram,
 )
-from tcspc_toolkit.fitting import (
-    ReconvolutionFitResult,
-    _reconvolution_model,
+from tcspc_toolkit.fitting import ReconvolutionFitResult
+from tcspc_toolkit.forward_model import (
+    monoexponential_reconvolution_expected_counts,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
     IntervalEvaluationMetrics,
@@ -560,7 +560,7 @@ def _reconstruct_reconvolution_fit_result(
             "curve_result must represent a valid fit."
         )
 
-    fitted_curve = _reconvolution_model(
+    fitted_curve = monoexponential_reconvolution_expected_counts(
         time=time,
         irf=irf,
         amplitude=(
@@ -1322,7 +1322,7 @@ def _expected_count_jacobian(
             temporal_shift,
         ) = candidate_parameters
 
-        return _reconvolution_model(
+        return monoexponential_reconvolution_expected_counts(
             time=time,
             irf=irf,
             amplitude=float(
@@ -1675,7 +1675,7 @@ def estimate_poisson_reconvolution_local_covariance(
         )
 
     expected_counts = (
-        _reconvolution_model(
+        monoexponential_reconvolution_expected_counts(
             time=time_array,
             irf=irf_array,
             amplitude=fit_result.amplitude,

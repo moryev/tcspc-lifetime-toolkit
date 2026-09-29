@@ -4,9 +4,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit, least_squares, minimize
 
+from tcspc_toolkit.forward_model import (
+    monoexponential_reconvolution_expected_counts,
+)
 from tcspc_toolkit.models import monoexponential_decay
-from tcspc_toolkit.irf import shift_irf
-from tcspc_toolkit.convolution import convolve_decay_with_irf
 
 
 @dataclass(frozen=True)
@@ -110,44 +111,15 @@ def _reconvolution_model(
     background: float,
     temporal_shift: float,
 ) -> NDArray[np.float64]:
-    """
-     time:
-        One-dimensional array containing time-bin positions.
-    irf:
-        Instrument response function evaluated on the same time grid.
-        The IRF should already be normalized.
-    """
-    if amplitude < 0:
-        raise ValueError("amplitude must be non-negative")
-
-    if lifetime <= 0:
-        raise ValueError("lifetime must be positive")
-
-    if background < 0:
-        raise ValueError("background must be non-negative")
-
-    decay = monoexponential_decay(
-        time=time,
-        amplitude=1.0,
-        lifetime=lifetime,
-        background=0.0,
-    )
-
-    shifted_irf = shift_irf(
+    """Compatibility wrapper for the shared deterministic reconvolution model."""
+    return monoexponential_reconvolution_expected_counts(
         time=time,
         irf=irf,
-        shift=temporal_shift,
+        amplitude=amplitude,
+        lifetime=lifetime,
+        background=background,
+        temporal_shift=temporal_shift,
     )
-
-    convolved = convolve_decay_with_irf(
-        time=time,
-        decay=decay,
-        irf=shifted_irf,
-    )
-
-    expected_counts = amplitude * convolved + background
-
-    return expected_counts
 
 
 # Poisson (reduced) NLL
