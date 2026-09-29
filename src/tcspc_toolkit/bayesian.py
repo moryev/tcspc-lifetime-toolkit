@@ -1,8 +1,8 @@
-"""Deterministic Bayesian contracts for mono-exponential Poisson reconvolution.
+"""Bayesian contracts for mono-exponential Poisson reconvolution.
 
-No sampling is performed here. All densities are conditional on one fixed IRF
-kernel, and the Poisson likelihood omits the count-factorial constant exactly
-as the classical objective does.
+The densities below are deterministic and conditional on one fixed IRF kernel.
+The Poisson likelihood omits the count-factorial constant exactly as the
+classical objective does. The optional sampler is imported only when called.
 """
 
 from __future__ import annotations
@@ -394,3 +394,25 @@ def log_posterior(
     jacobian = log_transformation_jacobian(vector, prior)
     total = physical_log_prior + likelihood + jacobian
     return total if math.isfinite(total) else -math.inf
+
+
+def fit_bayesian_monoexponential_reconvolution(
+    measurement: TCSPCMeasurement,
+    *,
+    priors: BayesianPriorConfig,
+    sampling_config: "BayesianSamplingConfig",
+    prepared_irf: PreparedIRF | None = None,
+    irf_model_relation: IRFModelRelation = IRFModelRelation.UNSPECIFIED,
+) -> "BayesianInferenceRun":
+    """Run optional emcee sampling against this module's posterior target."""
+    from tcspc_toolkit.bayesian_sampling import (
+        fit_bayesian_monoexponential_reconvolution as _fit,
+    )
+
+    return _fit(
+        measurement,
+        priors=priors,
+        sampling_config=sampling_config,
+        prepared_irf=prepared_irf,
+        irf_model_relation=irf_model_relation,
+    )
