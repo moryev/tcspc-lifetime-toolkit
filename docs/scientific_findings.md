@@ -2,7 +2,8 @@
 
 This document records durable scientific conclusions established during
 development of the TCSPC Lifetime Toolkit. Detailed numerical evidence,
-plots, and exploratory analyses remain in the corresponding notebooks.
+plots, and exploratory analyses remain in the corresponding notebooks and
+reproducible benchmark workflows.
 
 ## Week 8 — Robust evaluation and OOD generalization
 
@@ -1281,32 +1282,310 @@ questions**. Report model assumptions and controlled failure evidence
 alongside statistical uncertainty, rather than interpreting a narrow
 interval or a well-formed proxy as physical validation.
 
-## Issue #4 Stage-5.5 numerical audit (post-run)
+## Post-Week-9 — Issue #4: Bayesian Poisson inference and model-conditional uncertainty
 
-The frozen Stage-5 scientific CSV and JSON were produced with the historical
-classical criterion: an L-BFGS-B `success` flag plus finite, physical fitted
-parameters. They have **not** been rewritten after this audit. Future Issue-#4
-evaluations use an additional local Poisson-NLL check: feasible 0.001 steps in
-each dimensionless optimizer coordinate must not improve NLL by more than
-0.01. A suspicious optimizer-success result receives one deterministic,
-bounded continuation with tighter relative tolerance; only a subsequently
-validated result is accepted. This check detects gross nonstationarity, not
-global optimality or physical-model correctness.
+Week 9 established that statistical precision can coexist with physical
+model error, and Issue #8 extended that distinction to the assumed IRF.
+Issue #4 asks whether joint Bayesian inference changes this conclusion and
+what posterior information adds to the existing classical uncertainty
+analysis.
 
-A classical-only regeneration and refit of all 480 saved records identified
-one historically accepted fit failing that check:
-`tau4_n10000_b0p5`, baseline realization 22. The original L-BFGS-B run
-stopped after seven iterations on relative objective reduction despite a
-large scaled gradient and a feasible descent direction. The continued fit
-lowers NLL from -31511.122569 to -31589.698635 and changes lifetime from
-4.139127 to 3.921927 ns. All 480 current refits pass the numerical check;
-one required recovery and none remain failed. This is a diagnostic correction,
-not a rerun of Stage-5 Bayesian inference.
+The Bayesian framework consumes canonical raw-count measurements and the
+shared mono-exponential reconvolution model with a fixed prepared IRF.
+Explicit priors on amplitude, lifetime, constant background, and residual
+shift combine with the Poisson likelihood. `emcee` sampling and independent
+ensemble diagnostics support posterior means/medians, credible intervals,
+parameter correlations, and posterior-predictive checks. This preserves the
+experimental-workflow distinction between a measurement, an assumed model,
+and separately supplied benchmark truth.
 
-For the affected realization, classical covariance and the 100-refit
-parametric bootstrap are conditional on the classical fitted curve, so their
-original intervals also change when recomputed with the same bootstrap seed.
-The Bayesian posterior and its diagnostics do not depend on that classical
-fit and were not recomputed. The original Stage-5 summary remains the
-historical result; numerical comparisons using the affected classical record
-should carry this qualification.
+### Matched-model calibration — Stage 5
+
+The [Stage-5 manifest](../configs/issue4_bayesian_workflow.json) defines eight
+principal mono-exponential conditions with 50 repeated Poisson observations
+each. At a lifetime of 2 ns, signal budgets of 1,000, 10,000, and 100,000
+photons are crossed with backgrounds of 0.5 and 5 counts/bin; 1 ns and 4 ns
+lifetimes are also evaluated at 10,000 photons and 0.5 counts/bin. The same
+raw histogram, time grid, fixed Gaussian IRF, background convention, and
+residual-shift bounds feed classical Poisson fitting, local Poisson/Fisher
+covariance, a 100-refit parametric Poisson bootstrap, and Bayesian inference.
+Four predeclared prior-sensitivity jobs add 20 analyses each, paired to the
+corresponding baseline subsets, for 480 inference records in total.
+
+Under this correctly specified model, all three uncertainty approaches
+broadly track empirical repeated-Poisson estimator variability. Covariance
+and bootstrap standard deviations are compared with the spread of classical
+fits; posterior standard deviations are compared with the spread of Bayesian
+posterior medians. These are different estimator-specific denominators.
+All baseline 90% interval-coverage estimates are compatible with nominal
+coverage within finite-sample uncertainty: their 95% Wilson intervals
+contain 0.90. Coverage is conditional on valid intervals or accepted Bayesian
+runs, with failures counted separately. Fifty repetitions per condition do
+not establish exact nominal calibration or justify ranking methods from
+small coverage differences.
+
+Bayesian posterior medians do not materially improve lifetime MAE over
+classical Poisson reconvolution in these matched regimes. More photons
+reduce lifetime error, empirical spread, and reported uncertainty. Higher
+background increases uncertainty and strengthens parameter coupling,
+particularly when photon information is limited; individual finite-sample
+metrics need not change monotonically. The joint posterior adds direct
+information about lifetime–background and lifetime–residual-shift
+correlations, exposing identifiability effects that a marginal lifetime
+interval alone cannot show.
+
+That information has a substantial computational cost. Representative median
+times from the scientific run are approximately 0.03 s for a classical
+Poisson fit, 3.1 s for 100 bootstrap refits, and 60 s for Bayesian inference.
+These are measurements on this hardware and configuration, not universal
+algorithmic ratios. The full Stage-5 run took 31,573.440 s (about 8 h 46 min).
+
+### Classical numerical audit — Stage 5.5
+
+A post-run audit of all 480 saved Stage-5 records found one prematurely
+terminated L-BFGS-B fit: `tau4_n10000_b0p5`, baseline realization 22.
+Optimizer success had been accepted despite a large gradient and a feasible
+descent direction. The toolkit subsequently added post-fit local objective
+validation, one deterministic bounded continuation for suspicious solutions,
+separate optimizer/recovery diagnostics, and robust propagation of classical
+failures to unavailable covariance/bootstrap results. All 480 audited refits
+passed; only that one required recovery. Its lifetime changed from 4.139127
+to 3.921927 ns.
+
+The broad Stage-5 conclusions are unaffected, but comparisons involving that
+historical classical estimate and its conditional covariance/bootstrap
+intervals retain this qualification. The frozen Stage-5 outputs were not
+rewritten, and Bayesian inference was not repeated. Stage 6 uses the hardened
+classical path. Its practical local check guards against gross numerical
+nonstationarity; it does not establish global optimality or model correctness.
+
+### From statistical precision to model mismatch — Stage 6
+
+The next scientific question is whether a narrow uncertainty interval implies
+that the assumed physical model is correct. **Covariance, parametric
+bootstrap, and Bayesian posterior uncertainty are all conditional on the
+assumed model.** They do not automatically include uncertainty from a wrong
+decay family, a wrong IRF shape, or other model-form errors. This is a
+cross-method limitation.
+
+The independent [Stage-6 manifest](../configs/issue4_bayesian_mismatch_workflow.json)
+specifies a matched mono-exponential control, weak and moderate bi-exponential
+decays fitted as mono-exponential, and an EMG-IRF condition analysed under two
+IRF assumptions. Each generating condition has 20 observations: 80 distinct
+histograms and 100 inference evaluations. All use 100,000 expected detected
+signal photons, background 0.5 counts/bin, and the [0, 12) ns window at
+0.05 ns spacing. Local covariance intervals, 100-refit bootstrap percentile
+intervals, and Bayesian credible intervals all use a nominal 90% level and
+shared inference assumptions. These observations are independent of Stage 5
+and frozen Week-8/9 Tests A–F.
+
+### The pseudo-true mono-exponential reference
+
+A bi-exponential decay has no unique physical mono-exponential lifetime.
+The generating component lifetimes and detected-photon fractions therefore
+remain separate from a deterministic projection onto the assumed model:
+
+$$
+\theta^\star
+= \arg\min_{\theta=(A,\tau,B,\Delta t)}
+\sum_i \left[
+\mu_i(\theta)
+- \lambda_i^{\mathrm{true}}\log\mu_i(\theta)
+\right].
+$$
+
+Here $\lambda_i^{\mathrm{true}}$ is the noise-free generating histogram, and
+$\mu_i(\theta)$ uses the same assumed IRF, measurement window, background
+model, and shift bounds as inference. The lifetime coordinate $\tau^\star$
+is a prior-free, deterministic, model-conditional likelihood projection. It
+is not a physical "true lifetime" or a Bayesian posterior estimate.
+
+The decomposition
+
+$$
+\hat{\tau}-\tau_{\mathrm{primary}}
+= (\hat{\tau}-\tau^\star)
++ (\tau^\star-\tau_{\mathrm{primary}})
+$$
+
+separates estimation error inside the assumed model from the physical
+discrepancy introduced by restricting the model family. An estimator can be
+precise near $\tau^\star$ while that projection is displaced from the
+generating primary-component lifetime. The matched Gaussian and matched EMG
+controls both recover $\tau^\star=2.000000000$ ns.
+
+### Weak and moderate decay-model mismatch
+
+Both mixtures have primary lifetime 2 ns and secondary lifetime 4 ns. The
+secondary fractions, 5% and 15%, refer to **detected signal photons in the
+finite measurement window**, following the Week-9/Test-F convention; they
+are not exponential amplitude fractions. Each convolved component is
+normalized by its own finite-window signal sum before the two components
+are mixed. The Stage-6.5-corrected references are 2.073921931 ns for weak
+mismatch and 2.227022556 ns for moderate mismatch.
+
+| Mixture | Point estimator | Bias vs primary (ns) | Bias vs corrected τ* (ns) | MAE vs corrected τ* (ns) |
+|---|---|---:|---:|---:|
+| Weak, 5% | Classical Poisson | +0.072230 | −0.001692 | 0.005807 |
+| Weak, 5% | Bayesian posterior median | +0.071817 | −0.002105 | 0.005921 |
+| Moderate, 15% | Classical Poisson | +0.224940 | −0.002083 | 0.006157 |
+| Moderate, 15% | Bayesian posterior median | +0.224424 | −0.002599 | 0.006375 |
+
+For weak mismatch, reported lifetime standard deviations remain approximately
+0.0076–0.0077 ns. The physical displacement is about 9.3 times the reported
+statistical uncertainty, while both point estimators remain comparatively
+close to the best mono-exponential approximation. For example, the classical
+mean deviation decomposes as approximately
+$0.072230 = -0.001692 + 0.073922$ ns.
+
+For moderate mismatch, reported standard deviations are still only
+0.0082–0.0085 ns, despite a physical displacement of about 26–27 reported
+standard deviations. The corresponding classical decomposition is
+$0.224940 = -0.002083 + 0.227023$ ns. These ratios describe group mean
+deviation divided by mean reported standard deviation; they are not a
+universal calibration score.
+
+| Mixture / reference | Covariance interval inclusion | Bootstrap percentile interval inclusion | Bayesian credible-interval inclusion |
+|---|---:|---:|---:|
+| Weak / primary 2 ns | 0/20 | 0/20 | 0/20 |
+| Weak / corrected τ* | 16/20 | 16/20 | 16/20 |
+| Moderate / primary 2 ns | 0/20 | 0/20 | 0/20 |
+| Moderate / corrected τ* | 19/20 | 19/20 | 19/20 |
+
+All intervals in these two groups are valid, so the inclusion fractions
+also equal the successful-and-including fractions. With only 20 repetitions,
+pseudo-true inclusion is descriptive evidence about targeting the projection,
+not a claim of nominal calibration. All three uncertainty approaches can
+remain narrow and internally consistent around the wrong-model projection
+while excluding the physically meaningful primary-component lifetime.
+
+### Paired IRF-shape mismatch
+
+The IRF experiment holds the mono-exponential generating lifetime at 2 ns
+and uses an asymmetric EMG (Gaussian-component centre 1.5 ns, component FWHM
+0.35 ns, tail time 0.18 ns). Each of the same 20 observed histograms is
+analysed with the matched EMG and a peak/full-FWHM-matched Gaussian constructed
+using Issue #8's matching procedure. Raw counts, priors, sampler settings,
+bootstrap budget, background convention, residual-shift treatment, and
+corresponding random streams are shared within each pair. Only the assumed
+IRF and its provenance change.
+
+The corrected wrong-Gaussian projection is $\tau^\star=2.024957161$ ns.
+Replacing the assumed EMG by the Gaussian shifts the classical fitted
+lifetime by +0.024976 ns on average and the Bayesian posterior median by
++0.024894 ns. Both closely match the deterministic projection shift of
++0.024957 ns. Bayesian posterior standard deviation barely changes, from
+about 0.00745 to 0.00753 ns.
+
+For all three uncertainty approaches, generating-lifetime inclusion falls
+from 19/20 with the matched EMG to 1/20 with the wrong Gaussian. Inclusion of
+the wrong-model pseudo-true lifetime remains 19/20. The interval remains
+conditional on the fixed assumed IRF; IRF-shape uncertainty has not been
+propagated. Agreement with the wrong-model projection must not be described
+as physical-lifetime calibration.
+
+### Sampling diagnostics and posterior-predictive checks
+
+Stage 6 records 99 successful Bayesian evaluations and one
+`insufficient_sampling` rejection in the matched mono control. All
+deliberately misspecified evaluations pass the configured sampler checks:
+20/20 weak mixtures, 20/20 moderate mixtures, and 20/20 wrong-Gaussian IRFs.
+The matched EMG group also passes 20/20. Successful MCMC diagnostics support
+adequate sampling of the assumed posterior under the operational policy;
+they do not establish that the assumed physical model is correct.
+
+Posterior-predictive checks (PPC) are available for the 99 accepted runs,
+using 200 replicated draws per run and explicit early [1, 3) ns and tail
+[7, 12) ns windows. The saved discrepancies include Poisson deviance,
+signed-deviance residual RMS and maximum magnitude, total counts, peak count
+and time, and early/tail counts. Their tail probabilities are descriptive
+model-conditional diagnostics, not universally calibrated frequentist
+p-values. Small deviance tail probabilities mean replicated data rarely
+have as much deviance as the observed histogram.
+
+The matched mono and matched EMG groups provide their respective PPC
+reference distributions. Weak 5% mismatch is not clearly separated from
+the mono control by global deviance: its median tail probability is about
+0.385, and only 1/20 probabilities are at most 0.05. Tail-window counts are
+somewhat more sensitive, with 6/20 at most 0.05. Thus weak mismatch can evade
+global PPC diagnostics even when the physical lifetime displacement is about
+nine reported standard deviations.
+
+Moderate 15% mismatch produces strong predictive tension: deviance tail
+probabilities are at most 0.05 in 20/20 runs, early-window probabilities in
+18/20, and tail-window probabilities in 19/20. The wrong Gaussian IRF also
+has deviance probabilities at most 0.05 in 20/20 runs. Its peak-count
+probability is at least 0.95 in 19/20, indicating that replicated peaks are
+systematically too high relative to the EMG-generated observations. These
+are useful warnings for these controlled mismatches, without defining a
+general model-validity classifier.
+
+The RMS of the across-realization mean signed residual profile gives a
+complementary description of systematic temporal structure:
+
+| Condition / assumed IRF | RMS of mean signed residual profile |
+|---|---:|
+| Mono control / Gaussian | 0.246 |
+| Weak bi-exponential / Gaussian | 0.321 |
+| Moderate bi-exponential / Gaussian | 0.619 |
+| EMG / matched EMG | 0.252 |
+| EMG / assumed Gaussian | 0.572 |
+
+Profiles are averaged over accepted runs (19 mono controls and 20 in each
+other group). The systematic residual structure strengthens substantially
+for moderate decay mismatch and wrong IRF shape, but only modestly for weak
+mismatch. This is consistent with Week 9's warning that scalar goodness of
+fit and aggregate residuals can provide weak discrimination under modest
+mismatch; the high-count Stage-6 study does not change the frozen Test-F
+findings. Per-draw Poisson deviance and scalar residual RMS satisfy
+$\mathrm{RMS}=\sqrt{D/n_{\mathrm{bins}}}$ here, so they are monotonic
+transformations with identical tail-probability ordering, not independent
+evidence. The RMS of the mean signed profile above is a distinct aggregation,
+also not a universal mismatch detector.
+
+### Deterministic reference audit — Stage 6.5
+
+The read-only Stage-6 audit detected insufficient numerical accuracy in the
+original deterministic bi-exponential projections. Stage 6.5 hardened that
+offline reference calculation with a numerically centered Poisson objective,
+diverse deterministic starts including background, strict local descent and
+gradient checks, start-agreement checks, and an independent Poisson-deviance
+least-squares cross-check. This reference calculation has a deliberately
+tighter accuracy contract than routine noisy-data fitting.
+
+The corrected references and inclusion counts above are authoritative for
+this scientific interpretation. The scientific inference records were not
+rerun: only reference-dependent deviations and inclusion summaries were
+recalculated from saved estimates and intervals. Physical-reference results,
+paired IRF displacements, sampler diagnostics, and PPC findings are unchanged.
+The original Stage-5 and Stage-6 scientific CSV/JSON files remain frozen.
+The separate ignored artifact
+`data/generated/issue4/mismatch/scientific_reference_correction_v1.json`
+records original hashes, corrected references, numerical validation, and
+reanalysis provenance; the corresponding
+[correction script](../scripts/correct_issue4_mismatch_references.py) uses
+the persisted inference records and noise-free curves.
+
+### Scientific interpretation and limits
+
+The Bayesian study extends the Week-9 result across all three inference
+approaches. With the correct model, statistical uncertainty broadly follows
+repeated-Poisson variability. With an incorrect model, equally narrow
+uncertainty can surround a physically displaced effective parameter because
+inference is accurately approximating the best description available within
+the wrong model family. Joint posterior correlations describe parameter
+coupling, sampler diagnostics guard against sampling failure, and PPC adds
+evidence about model adequacy; these answer different questions.
+
+The results are limited to 50 baseline repetitions per Stage-5 condition,
+20-realization predeclared prior-sensitivity subsets, and 20 observations per
+Stage-6 generating condition. Coverage and inclusion therefore have finite
+Monte Carlo uncertainty. The tested priors, fixed assumed IRFs, finite MCMC
+budget, and operational convergence diagnostics do not establish general
+prior robustness, formal convergence, or physical validity. The controlled
+2/4 ns mixtures and specified EMG/Gaussian mismatch do not represent every
+experimental model error, and measured runtimes depend on hardware and
+configuration. PPC sensitivity depends on mismatch magnitude and the chosen
+discrepancy; weak mismatch remains difficult to identify. Issue #4 remains
+open pending the final Bayesian notebook and final documentation/API and
+regression review.

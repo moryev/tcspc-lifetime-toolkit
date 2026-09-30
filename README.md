@@ -2,7 +2,7 @@
 
 A scientific Python toolkit for simulating, fitting, and evaluating time-correlated single-photon counting decay curves.
 
-The project is being developed as an end-to-end framework for classical and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC simulation and data processing, reproducible benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
+The project is being developed as an end-to-end framework for classical, Bayesian, and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC simulation and data processing, reproducible benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
 
 Version 0.7.0 extends the toolkit beyond in-distribution estimator
 benchmarking to controlled generalization, robustness, uncertainty
@@ -180,6 +180,11 @@ The current version supports:
   invalid local covariance estimates;
 * parametric Poisson-bootstrap lifetime uncertainty with retained refit and
   parameter-boundary failures;
+* Bayesian Poisson reconvolution with explicit priors, posterior summaries
+  and correlations, independent-ensemble sampling diagnostics, and
+  posterior-predictive checks;
+* controlled Bayesian/classical decay-model and IRF-shape mismatch evaluation
+  distinguishing statistical uncertainty from physical model error;
 * repeated-Poisson experiments comparing reported uncertainty with empirical
   estimator variability while holding the physical measurement condition
   fixed;
@@ -528,6 +533,19 @@ demonstrates these boundaries and controlled shape-mismatch/failure studies.
 Their findings and the small ML/bootstrap fixture limitations are recorded in
 [`docs/scientific_findings.md`](docs/scientific_findings.md).
 
+### Bayesian Poisson inference and model-conditional uncertainty
+
+Issue #4 adds joint posterior inference for amplitude, lifetime, background,
+and residual shift using the shared reconvolution model and a fixed prepared
+IRF. Matched-model calibration and controlled decay/IRF mismatch studies
+compare posterior credible intervals with covariance and bootstrap intervals.
+Posterior correlations and predictive checks add information about parameter
+coupling and model adequacy; successful sampling and narrow intervals do not
+establish physical-model correctness. The verified findings, including the
+corrected deterministic reference analysis, are in
+[`docs/scientific_findings.md`](docs/scientific_findings.md#post-week-9--issue-4-bayesian-poisson-inference-and-model-conditional-uncertainty).
+The final Bayesian notebook and Issue-#4 closure review remain pending.
+
 ## Current implementation status
 
 Version 0.7.0 extends the toolkit from in-distribution estimator benchmarking
@@ -542,9 +560,10 @@ bi-exponential model mismatch.
 
 Uncertainty analysis now includes direct quantile prediction intervals,
 Random-Forest tree disagreement, training-data bootstrap prediction spread,
-local Poisson/Fisher covariance, parametric Poisson bootstrap, repeated-Poisson
-empirical calibration, split conformalization, conditional uncertainty
-scorecards, and residual-based mismatch diagnostics.
+local Poisson/Fisher covariance, parametric Poisson bootstrap, Bayesian
+posteriors and predictive checks, repeated-Poisson empirical calibration,
+split conformalization, conditional uncertainty scorecards, and residual-based
+mismatch diagnostics.
 
 The central limitation established by the current benchmark is that statistical
 uncertainty and physical model validity are not equivalent. An estimator can
@@ -553,9 +572,11 @@ mono-exponential forward model is incomplete.
 
 The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
 measurements. Post-release integration adds the Issue-#6 single-curve import
-boundary and Issue-#8 generalized IRF/proxy workflows. Synthetic-to-real
-validation, broader inverse decay models, and package/API hardening remain
-future development stages.
+boundary, Issue-#8 generalized IRF/proxy workflows, and Issue-#4 Bayesian
+inference with completed calibration and mismatch experiments. The final
+Bayesian notebook and closure review are pending. Synthetic-to-real validation,
+broader inverse decay models, and package/API hardening remain future
+development stages.
 
 ## Installation
 
@@ -1260,18 +1281,17 @@ It does not yet include:
 * afterpulsing;
 * time-dependent or structured detector background;
 * full bi- or multi-exponential reconvolution inverse fitting;
-* Bayesian parameter inference or posterior credible intervals;
 * general model-selection or model-adequacy tests for distinguishing decay families;
 * uncertainty guarantees under arbitrary distribution shift or physical model misspecification;
 * validated synthetic-to-real transfer;
 * deep-learning lifetime estimators.
 
 The current uncertainty methods quantify different notions of reliability
-and should not be treated as interchangeable. Local Poisson covariance and
-parametric bootstrap are statistical uncertainty estimates conditional on
-the assumed forward model. Random-Forest disagreement and training-bootstrap
-spread are uncertainty scores rather than calibrated lifetime standard
-deviations.
+and should not be treated as interchangeable. Local Poisson covariance,
+parametric bootstrap, and Bayesian posterior uncertainty are conditional on
+the assumed forward model and fixed IRF. Random-Forest disagreement and
+training-bootstrap spread are uncertainty scores rather than calibrated
+lifetime standard deviations.
 
 The current experiments demonstrate explicitly that good uncertainty
 calibration under a correctly specified mono-exponential model does not
@@ -1297,7 +1317,9 @@ The planned integration and release path is:
    proxy/failure-awareness evaluation — implemented and verified; commit/issue review pending;
 3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
    Bayesian Poisson lifetime inference using the canonical measurement and IRF
-   abstractions — next;
+   abstractions — inference and scientific evaluation implemented; final
+   notebook, documentation/API consistency review, regression, and issue
+   closure pending;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
    uncertainty outputs, Bayesian summaries, and benchmark metrics;
@@ -1374,10 +1396,11 @@ validated replacement for established experimental TCSPC-analysis software.
 
 Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
-inference is next in Issue #5's sequence; vendor formats, synthetic-to-real
-validation, broader decay-model inference, and package/API hardening remain
-future work. Issue #8 implementation and verification are complete, with commit/closure
-review still pending; this does not change the v0.7.0 release version.
+inference, posterior diagnostics, and controlled model-mismatch evaluation
+are implemented; Issue #4 remains open for its final notebook and closure
+review. Vendor formats, synthetic-to-real validation, broader decay-model
+inference, and package/API hardening remain future work. These post-release
+integrations do not change the v0.7.0 release version.
 
 ## Citation
 
