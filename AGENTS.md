@@ -41,10 +41,10 @@ The current release is **v0.7.0**. Weeks 8–9 of the scientific roadmap are com
 
 The package supports **Python >= 3.11**.
 
-Create and activate a virtual environment, then install the project in editable mode with development dependencies:
+Create and activate a virtual environment, then install the project in editable mode with development and optional Bayesian dependencies for the full test suite:
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,bayesian]"
 ```
 
 Run the full test suite with:
@@ -264,7 +264,7 @@ Current integration status:
 1. **#10** — repository/Codex transition — **complete**;
 2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
 3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **implemented and verified; commit/closure review pending**;
-4. **#4** — Bayesian Poisson inference — **next**;
+4. **#4** — Bayesian Poisson inference — **implemented, including scientific evaluation and Notebook 17; closure review pending**;
 5. **#9** — SQLite persistence for experiments and benchmark results;
 6. **#1** — standardize array input type annotations;
 7. **#2** — API stabilization and package hardening;
@@ -275,9 +275,9 @@ Current integration status:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-The next scientific implementation task after Issue #8 review is **Issue #4: Bayesian Poisson inference**.
+**Issue #4: Bayesian Poisson inference** has completed implementation, scientific evaluation, numerical audits, documentation, and Notebook 17; issue closure requires review.
 
-Do not skip ahead to Bayesian/API/package restructuring before the generalized-IRF requirements have informed the architecture.
+Preserve the generalized-IRF and Bayesian contracts when later API/package work is explicitly requested.
 
 ## Codex working protocol
 
@@ -294,12 +294,12 @@ For each substantial issue:
 9. Review the final diff against the issue scope and scientific guardrails.
 10. Summarize changes, tests, scientific implications, and remaining limitations.
 
-## Next Codex orientation task
+## Bayesian integration orientation
 
 Issue #8's implementation and Notebook 16 establish the generalized IRF
-workflow. Before starting Issue #4 when requested, read this file, Issues #5
+workflow. When reviewing Issue #4, read this file, Issues #5
 and #4, the Issue-#6 measurement boundary, and the committed Issue-#8 source,
-preparation, estimation, and evaluation APIs. Consult Notebook 16 and the
+preparation, estimation, and evaluation APIs. Consult Notebooks 16–17 and the
 design/scientific-findings documentation for the distinction between source
 provenance, preparation history, fixed kernels, approximate proxies, and
 model-conditional uncertainty. Begin with read-only orientation and a scoped

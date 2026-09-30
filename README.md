@@ -622,12 +622,20 @@ python -m pip install -e .
 
 Editable installation allows changes made inside `src/tcspc_toolkit/` to become available without reinstalling the package after every edit.
 
-### Install the project together with the development dependencies
-
-There are project-specific optional dependencies (such as Jupyter and pytest). If you want to install the project in editable mode together with these optional dependencies:
+Bayesian posterior sampling requires the optional `emcee>=3.1.6,<4` dependency:
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[bayesian]"
+```
+
+The base package remains usable without `emcee`.
+
+### Install the project together with the development dependencies
+
+For Jupyter, pytest, and Bayesian support needed by Notebook 17 and the full test suite:
+
+```bash
+python -m pip install -e ".[dev,bayesian]"
 ```
 
 ## Minimal example
@@ -1327,9 +1335,8 @@ The planned integration and release path is:
    proxy/failure-awareness evaluation — implemented and verified; commit/issue review pending;
 3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
    Bayesian Poisson lifetime inference using the canonical measurement and IRF
-   abstractions — inference and scientific evaluation implemented; final
-   notebook, documentation/API consistency review, regression, and issue
-   closure pending;
+   abstractions — inference, scientific evaluation, documentation, and
+   Notebook 17 implemented; issue closure review pending;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
    uncertainty outputs, Bayesian summaries, and benchmark metrics;
@@ -1407,8 +1414,8 @@ validated replacement for established experimental TCSPC-analysis software.
 Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
 inference, posterior diagnostics, and controlled model-mismatch evaluation
-are implemented; Issue #4 remains open for its final notebook and closure
-review. Vendor formats, synthetic-to-real validation, broader decay-model
+and Notebook 17 are implemented; Issue #4 remains open for closure review.
+Vendor formats, synthetic-to-real validation, broader decay-model
 inference, and package/API hardening remain future work. These post-release
 integrations do not change the v0.7.0 release version.
 
