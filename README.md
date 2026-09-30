@@ -544,7 +544,8 @@ coupling and model adequacy; successful sampling and narrow intervals do not
 establish physical-model correctness. The verified findings, including the
 corrected deterministic reference analysis, are in
 [`docs/scientific_findings.md`](docs/scientific_findings.md#post-week-9--issue-4-bayesian-poisson-inference-and-model-conditional-uncertainty).
-The final Bayesian notebook and Issue-#4 closure review remain pending.
+[Notebook 17](notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
+demonstrates the complete workflow; Issue-#4 closure review remains pending.
 
 ## Current implementation status
 
@@ -574,9 +575,9 @@ The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
 measurements. Post-release integration adds the Issue-#6 single-curve import
 boundary, Issue-#8 generalized IRF/proxy workflows, and Issue-#4 Bayesian
 inference with completed calibration and mismatch experiments. The final
-Bayesian notebook and closure review are pending. Synthetic-to-real validation,
-broader inverse decay models, and package/API hardening remain future
-development stages.
+Bayesian notebook is available; Issue-#4 closure review is pending.
+Synthetic-to-real validation, broader inverse decay models, and package/API
+hardening remain future development stages.
 
 ## Installation
 
@@ -1133,6 +1134,14 @@ all cells; the manifest is located from the repository or notebook directory.
 The discrete-target ML fixture and three-bootstrap interface demonstration
 are intentionally not broad robustness or calibrated-coverage studies.
 
+### `17_bayesian_poisson_inference_and_model_mismatch.ipynb`
+
+Uses one short independent raw-count Bayesian/PPC demonstration and loads the
+completed Stage-5/6 scientific records plus the Stage-6.5 corrected-reference
+artifact. It visualizes matched-model uncertainty, pseudo-true targeting,
+paired IRF mismatch, sampler diagnostics, and posterior-predictive warnings
+without rerunning the multi-hour scientific profiles.
+
 ## Repository structure
 
 ```text
@@ -1175,7 +1184,8 @@ tcspc-lifetime-toolkit/
 │   ├── 13_generalization_and_robustness.ipynb
 │   ├── 14_uncertainty_and_failure_awareness.ipynb
 │   ├── 15_experimental_tcspc_workflow.ipynb
-│   └── 16_generalized_irf_and_failure_awareness.ipynb
+│   ├── 16_generalized_irf_and_failure_awareness.ipynb
+│   └── 17_bayesian_poisson_inference_and_model_mismatch.ipynb
 │
 ├── src/
 │   └── tcspc_toolkit/

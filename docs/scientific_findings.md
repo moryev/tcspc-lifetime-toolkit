@@ -1587,5 +1587,8 @@ prior robustness, formal convergence, or physical validity. The controlled
 experimental model error, and measured runtimes depend on hardware and
 configuration. PPC sensitivity depends on mismatch magnitude and the chosen
 discrepancy; weak mismatch remains difficult to identify. Issue #4 remains
-open pending the final Bayesian notebook and final documentation/API and
-regression review.
+open pending final documentation/API consistency and regression/closure
+review. The completed
+[Bayesian notebook](../notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
+demonstrates the library workflow and these audited findings without rerunning
+the multi-hour scientific profiles.
