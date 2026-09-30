@@ -218,6 +218,13 @@ class Issue4ClassicalFit:
     failure_reason: str | None
     optimizer_seconds: float
     call_seconds: float
+    numerical_validation_passed: bool | None = None
+    max_coordinate_descent_nll: float = math.nan
+    recovery_attempted: bool = False
+    optimizer_status: int | None = None
+    optimizer_message: str | None = None
+    optimizer_nfev: int | None = None
+    optimizer_njev: int | None = None
 
 
 @dataclass(frozen=True)
@@ -310,7 +317,18 @@ def _unavailable_covariance(reason: str) -> Issue4Covariance:
 
 
 def _unavailable_bootstrap(reason: str, requested: int) -> Issue4Bootstrap:
-    return Issue4Bootstrap(False, math.nan, math.nan, math.nan, requested, 0, math.nan, reason, 0.0)
+    return Issue4Bootstrap(
+        valid_interval=False,
+        lifetime_median_ns=math.nan,
+        lifetime_std_ns=math.nan,
+        percentile_lower_ns=math.nan,
+        percentile_upper_ns=math.nan,
+        n_requested=requested,
+        n_valid_refits=0,
+        refit_failure_rate=math.nan,
+        failure_reason=reason,
+        runtime_seconds=0.0,
+    )
 
 
 def evaluate_issue4_realization(
@@ -344,6 +362,13 @@ def evaluate_issue4_realization(
         boundary_hit=fitted.boundary_hit, failure_reason=fitted.failure_reason,
         optimizer_seconds=fitted.runtime_ms / 1000.0,
         call_seconds=fit_call_seconds,
+        numerical_validation_passed=fitted.numerical_validation_passed,
+        max_coordinate_descent_nll=fitted.max_coordinate_descent_nll,
+        recovery_attempted=fitted.recovery_attempted,
+        optimizer_status=fitted.optimizer_status,
+        optimizer_message=fitted.optimizer_message,
+        optimizer_nfev=fitted.optimizer_nfev,
+        optimizer_njev=fitted.optimizer_njev,
     )
 
     if fitted.valid_fit:

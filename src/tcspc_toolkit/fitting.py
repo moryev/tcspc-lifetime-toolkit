@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -34,6 +35,14 @@ class ReconvolutionFitResult:
 
     fitted_curve: NDArray[np.float64]
     success: bool
+    optimizer_reported_success: bool | None = None
+    numerical_validation_passed: bool | None = None
+    max_coordinate_descent_nll: float = np.nan
+    recovery_attempted: bool = False
+    optimizer_status: int | None = None
+    optimizer_message: str | None = None
+    optimizer_nfev: int | None = None
+    optimizer_njev: int | None = None
 
 
 def fit_monoexponential_decay(
@@ -163,6 +172,47 @@ def poisson_negative_log_likelihood(
     return float(np.sum(terms))
 
 
+def _poisson_coordinate_descent_check(
+    objective: Callable[[NDArray[np.float64]], float],
+    scaled_parameters: NDArray[np.float64],
+    scaled_bounds: list[tuple[float, float]],
+) -> tuple[bool, float]:
+    """Reject grossly improvable Poisson fits without using generating truth.
+
+    The fixed 1e-3 dimensionless coordinate probes are deliberately a modest
+    local check, not a proof of global optimality. A reduction above 0.01 NLL
+    units (0.02 deviance units) is larger than the numerical tolerance used
+    here; probes outside the physical bounds are skipped.
+    """
+    if not np.all(np.isfinite(scaled_parameters)):
+        return False, np.nan
+    try:
+        objective_at_fit = float(objective(scaled_parameters))
+    except ValueError:
+        return False, np.nan
+    if not np.isfinite(objective_at_fit):
+        return False, np.nan
+
+    maximum_descent = 0.0
+    for index, (lower, upper) in enumerate(scaled_bounds):
+        if not lower <= scaled_parameters[index] <= upper:
+            return False, np.nan
+        for direction in (-1.0, 1.0):
+            trial = scaled_parameters.copy()
+            trial[index] += direction * 1e-3
+            if not lower <= trial[index] <= upper:
+                continue
+            try:
+                trial_objective = float(objective(trial))
+            except ValueError:
+                continue
+            if np.isfinite(trial_objective):
+                maximum_descent = max(
+                    maximum_descent, objective_at_fit - trial_objective
+                )
+    return maximum_descent <= 0.01, maximum_descent
+
+
 def fit_monoexponential_reconvolution(
     time: NDArray[np.float64],
     counts: NDArray[np.float64] | NDArray[np.int64],
@@ -195,8 +245,9 @@ def fit_monoexponential_reconvolution(
     Returns
     -------
     ReconvolutionFitResult
-        Fitted physical parameters, fitted curve, and optimizer
-        success status.
+        Fitted physical parameters, fitted curve, and validated success status.
+        For Poisson fits, optimizer termination alone is insufficient: a
+        feasible local coordinate probe must also pass.
     """
     if time.ndim != 1:
         raise ValueError("time must be a one-dimensional array")
@@ -428,6 +479,11 @@ def fit_monoexponential_reconvolution(
         optimal_parameters = (
             optimization_result.x
         )
+        numerical_validation_passed = None
+        maximum_descent = np.nan
+        recovery_attempted = False
+        total_nfev = getattr(optimization_result, "nfev", None)
+        total_njev = getattr(optimization_result, "njev", None)
 
     elif objective == "poisson":
         # L-BFGS-B is sensitive to strongly different parameter
@@ -523,6 +579,53 @@ def fit_monoexponential_reconvolution(
             bounds=scaled_bounds,
         )
 
+        numerical_validation_passed, maximum_descent = (
+            _poisson_coordinate_descent_check(
+                scaled_poisson_objective,
+                optimization_result.x,
+                scaled_bounds,
+            )
+        )
+        recovery_attempted = False
+        total_nfev = getattr(optimization_result, "nfev", None)
+        total_njev = getattr(optimization_result, "njev", None)
+
+        # A relative-objective termination can occur while the local
+        # Poisson objective is still plainly descending. Continue only
+        # those suspicious, otherwise successful fits from their own
+        # endpoint, with a tighter relative tolerance and a finite budget.
+        if (
+            optimization_result.success
+            and not numerical_validation_passed
+            and np.all(np.isfinite(optimization_result.x))
+            and np.isfinite(optimization_result.fun)
+        ):
+            recovery_attempted = True
+            continuation = minimize(
+                fun=scaled_poisson_objective,
+                x0=optimization_result.x.copy(),
+                method="L-BFGS-B",
+                bounds=scaled_bounds,
+                options={"ftol": 1e-12, "gtol": 1e-6, "maxiter": 1000},
+            )
+            if total_nfev is not None:
+                total_nfev += getattr(continuation, "nfev", 0)
+            if total_njev is not None:
+                total_njev += getattr(continuation, "njev", 0)
+            if (
+                np.isfinite(continuation.fun)
+                and np.isfinite(optimization_result.fun)
+                and continuation.fun <= optimization_result.fun
+            ):
+                optimization_result = continuation
+                numerical_validation_passed, maximum_descent = (
+                    _poisson_coordinate_descent_check(
+                        scaled_poisson_objective,
+                        optimization_result.x,
+                        scaled_bounds,
+                    )
+                )
+
         optimal_parameters = (
                 optimization_result.x
                 * parameter_scales
@@ -535,13 +638,21 @@ def fit_monoexponential_reconvolution(
         temporal_shift,
     ) = optimal_parameters
 
-    fitted_curve = _reconvolution_model(
-        time=time,
-        irf=irf,
-        amplitude=amplitude,
-        lifetime=lifetime,
-        background=background,
-        temporal_shift=temporal_shift,
+    if np.all(np.isfinite(optimal_parameters)):
+        fitted_curve = _reconvolution_model(
+            time=time,
+            irf=irf,
+            amplitude=amplitude,
+            lifetime=lifetime,
+            background=background,
+            temporal_shift=temporal_shift,
+        )
+    else:
+        fitted_curve = np.full_like(time, np.nan, dtype=np.float64)
+
+    optimizer_reported_success = bool(optimization_result.success)
+    success = optimizer_reported_success and (
+        numerical_validation_passed is not False
     )
 
     return ReconvolutionFitResult(
@@ -550,5 +661,13 @@ def fit_monoexponential_reconvolution(
         background=float(background),
         temporal_shift=float(temporal_shift),
         fitted_curve=fitted_curve,
-        success=bool(optimization_result.success),
+        success=success,
+        optimizer_reported_success=optimizer_reported_success,
+        numerical_validation_passed=numerical_validation_passed,
+        max_coordinate_descent_nll=float(maximum_descent),
+        recovery_attempted=recovery_attempted,
+        optimizer_status=int(optimization_result.status),
+        optimizer_message=str(optimization_result.message),
+        optimizer_nfev=total_nfev,
+        optimizer_njev=total_njev,
     )

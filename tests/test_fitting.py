@@ -3,6 +3,9 @@ import warnings
 import numpy as np
 import pytest
 from numpy.typing import NDArray
+from scipy.optimize import OptimizeResult
+
+import tcspc_toolkit.fitting as fitting
 
 from tcspc_toolkit.fitting import (
     LifetimeFitResult,
@@ -952,3 +955,37 @@ def test_reconvolution_fit_rejects_unknown_objective(
             ),
             objective="invalid",
         )
+
+
+def test_poisson_optimizer_termination_without_local_optimality_is_failure(
+    time_axis: NDArray[np.float64],
+    irf: NDArray[np.float64],
+    monkeypatch,
+) -> None:
+    counts = _reconvolution_model(
+        time_axis, irf, amplitude=1000.0, lifetime=2.0,
+        background=1.0, temporal_shift=0.0,
+    )
+    calls = []
+
+    def falsely_successful_minimize(*, fun, x0, **kwargs):
+        calls.append(kwargs)
+        return OptimizeResult(
+            x=x0.copy(), fun=fun(x0), success=True, status=0,
+            message="false relative-objective convergence", nfev=1, njev=1,
+        )
+
+    monkeypatch.setattr(fitting, "minimize", falsely_successful_minimize)
+    result = fit_monoexponential_reconvolution(
+        time=time_axis, counts=counts, irf=irf,
+        initial_guess=(800.0, 1.0, 5.0, 0.1),
+        temporal_shift_bounds=(-0.2, 0.2),
+        objective="poisson",
+    )
+    assert len(calls) == 2
+    assert calls[1]["options"]["ftol"] < 1e-9
+    assert result.optimizer_reported_success
+    assert not result.success
+    assert result.numerical_validation_passed is False
+    assert result.max_coordinate_descent_nll > 0.01
+    assert result.recovery_attempted

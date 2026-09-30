@@ -60,6 +60,13 @@ class ReconvolutionCurveResult:
 
     failure_reason: str | None
     exception_message: str | None
+    numerical_validation_passed: bool | None = None
+    max_coordinate_descent_nll: float = np.nan
+    recovery_attempted: bool = False
+    optimizer_status: int | None = None
+    optimizer_message: str | None = None
+    optimizer_nfev: int | None = None
+    optimizer_njev: int | None = None
 
 
 @dataclass(frozen=True)
@@ -470,12 +477,13 @@ def fit_single_reconvolution_curve(
         bin_width_ns=bin_width_ns,
     )
 
-    poisson_nll = (
-        poisson_negative_log_likelihood(
+    try:
+        poisson_nll = poisson_negative_log_likelihood(
             observed=counts_array,
             expected=fit_result.fitted_curve,
         )
-    )
+    except ValueError:
+        poisson_nll = np.nan
 
     try:
         deviance_residuals = (
@@ -496,7 +504,11 @@ def fit_single_reconvolution_curve(
 
     failure_reason: str | None = None
 
-    if not fit_result.success:
+    optimizer_reported_success = fit_result.optimizer_reported_success
+    if optimizer_reported_success is None:
+        optimizer_reported_success = fit_result.success
+
+    if not optimizer_reported_success:
         failure_reason = (
             "optimizer_unsuccessful"
         )
@@ -511,6 +523,9 @@ def fit_single_reconvolution_curve(
             "non_physical_parameters"
         )
 
+    elif fit_result.numerical_validation_passed is False:
+        failure_reason = "poisson_numerical_validation_failed"
+
     return ReconvolutionCurveResult(
         initial_amplitude=initial_guess.amplitude,
         initial_lifetime_ns=initial_guess.lifetime_ns,
@@ -524,7 +539,7 @@ def fit_single_reconvolution_curve(
         fitted_temporal_shift_ns=(
             fit_result.temporal_shift
         ),
-        optimizer_success=fit_result.success,
+        optimizer_success=bool(optimizer_reported_success),
         valid_fit=valid_fit,
         boundary_hit=boundary_hit,
         poisson_nll=float(poisson_nll),
@@ -532,6 +547,13 @@ def fit_single_reconvolution_curve(
         runtime_ms=float(runtime_ms),
         failure_reason=failure_reason,
         exception_message=None,
+        numerical_validation_passed=fit_result.numerical_validation_passed,
+        max_coordinate_descent_nll=fit_result.max_coordinate_descent_nll,
+        recovery_attempted=fit_result.recovery_attempted,
+        optimizer_status=fit_result.optimizer_status,
+        optimizer_message=fit_result.optimizer_message,
+        optimizer_nfev=fit_result.optimizer_nfev,
+        optimizer_njev=fit_result.optimizer_njev,
     )
 
 

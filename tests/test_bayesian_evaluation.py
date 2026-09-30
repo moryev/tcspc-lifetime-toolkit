@@ -2,7 +2,8 @@
 
 import json
 import math
-from dataclasses import replace
+from dataclasses import asdict, replace
+from enum import Enum
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,6 +122,29 @@ def _toy_record(index: int, *, classical_lifetime: float = 2.0,
     )
 
 
+def _fake_successful_bayesian_inference():
+    summaries = tuple(BayesianParameterSummary(
+        name, unit, 1.5, 1.5, 0.1, 1.3, 1.7
+    ) for name, unit in (
+        ("amplitude", "scale"), ("lifetime_ns", "ns"),
+        ("background_per_bin", "counts_per_bin"), ("temporal_shift_ns", "ns"),
+    ))
+    return SimpleNamespace(result=SimpleNamespace(
+        status=BayesianSamplingStatus.SUCCESS, parameter_summaries=summaries,
+        correlation_matrix=np.eye(4),
+        diagnostics=SimpleNamespace(
+            accepted=True, approximate_effective_samples=np.ones(4) * 100,
+            mean_acceptance_fraction=0.4, failure_reasons=(),
+            production_steps=100, retained_samples=2400, extension_count=0,
+            autocorrelation_time_steps=np.ones((2, 4)) * 10,
+            autocorrelation_relative_change=np.ones((2, 4)) * 0.05,
+            maximum_ensemble_mean_difference_sd=0.1,
+            maximum_ensemble_median_difference_sd=0.1,
+        ),
+        runtime=BayesianRuntime(0.1, 0.2, 0.1, 0.4),
+    ))
+
+
 def test_true_reconvolution_amplitude_is_not_signal_photon_budget() -> None:
     condition, _ = _condition_and_config()
     expected, true_amplitude = build_issue4_expected_counts(condition)
@@ -175,26 +199,7 @@ def test_all_methods_are_paired_to_one_raw_observation(monkeypatch) -> None:
         assert kwargs["prepared_irf"] is condition.assumed_irf
         assert kwargs["sampling_config"].random_seed == seeds.bayesian
         seen.append("bayesian")
-        summaries = tuple(BayesianParameterSummary(
-            name, unit, 1.5, 1.5, 0.1, 1.3, 1.7
-        ) for name, unit in (
-            ("amplitude", "scale"), ("lifetime_ns", "ns"),
-            ("background_per_bin", "counts_per_bin"), ("temporal_shift_ns", "ns"),
-        ))
-        return SimpleNamespace(result=SimpleNamespace(
-            status=BayesianSamplingStatus.SUCCESS, parameter_summaries=summaries,
-            correlation_matrix=np.eye(4),
-            diagnostics=SimpleNamespace(
-                accepted=True, approximate_effective_samples=np.ones(4) * 100,
-                mean_acceptance_fraction=0.4, failure_reasons=(),
-                production_steps=100, retained_samples=2400, extension_count=0,
-                autocorrelation_time_steps=np.ones((2, 4)) * 10,
-                autocorrelation_relative_change=np.ones((2, 4)) * 0.05,
-                maximum_ensemble_mean_difference_sd=0.1,
-                maximum_ensemble_median_difference_sd=0.1,
-            ),
-            runtime=BayesianRuntime(0.1, 0.2, 0.1, 0.4),
-        ))
+        return _fake_successful_bayesian_inference()
 
     monkeypatch.setattr(evaluation, "fit_single_reconvolution_curve", fake_classical)
     monkeypatch.setattr(evaluation, "estimate_poisson_reconvolution_local_covariance", fake_covariance)
@@ -224,6 +229,88 @@ def test_processed_intensity_cannot_enter_paired_poisson_path() -> None:
             true_reconvolution_amplitude=10.0,
             seeds=issue4_realization_seeds(config, condition.condition_id, 0),
         )
+
+
+def test_invalid_classical_fit_preserves_bayesian_and_failure_accounting(monkeypatch) -> None:
+    condition, config = _condition_and_config()
+    expected, amplitude = build_issue4_expected_counts(condition)
+    seeds = issue4_realization_seeds(config, condition.condition_id, 0)
+    measurement = sample_issue4_observation(
+        condition, expected, seeds.observation, 0,
+    )
+    observed = measurement.require_raw_counts().copy()
+    called = []
+
+    def invalid_classical(**kwargs):
+        np.testing.assert_array_equal(kwargs["counts"], observed)
+        called.append("classical")
+        return ReconvolutionCurveResult(
+            30.0, 1.5, 1.0, 0.0, 30.0, 1.5, 1.0, 0.04,
+            True, False, False, -100.0, 2.0, 1.0,
+            "poisson_numerical_validation_failed", None,
+            numerical_validation_passed=False,
+            max_coordinate_descent_nll=0.4,
+            recovery_attempted=True,
+        )
+
+    def unexpected_uncertainty(**kwargs):
+        pytest.fail("invalid classical fit must not enter covariance or bootstrap")
+
+    def fake_bayesian(measured, **kwargs):
+        assert measured is measurement
+        np.testing.assert_array_equal(measured.require_raw_counts(), observed)
+        assert kwargs["sampling_config"].random_seed == seeds.bayesian
+        called.append("bayesian")
+        return _fake_successful_bayesian_inference()
+
+    monkeypatch.setattr(evaluation, "fit_single_reconvolution_curve", invalid_classical)
+    monkeypatch.setattr(
+        evaluation, "estimate_poisson_reconvolution_local_covariance",
+        unexpected_uncertainty,
+    )
+    monkeypatch.setattr(
+        evaluation, "estimate_parametric_poisson_bootstrap",
+        unexpected_uncertainty,
+    )
+    monkeypatch.setattr(
+        evaluation, "fit_bayesian_monoexponential_reconvolution", fake_bayesian,
+    )
+    record = evaluate_issue4_realization(
+        condition, config, measurement, realization_index=0,
+        true_reconvolution_amplitude=amplitude, seeds=seeds,
+    )
+    assert called == ["classical", "bayesian"]
+    assert record.classical_fit.optimizer_success
+    assert not record.classical_fit.valid_fit
+    assert record.classical_fit.recovery_attempted
+    assert not record.covariance.valid_interval
+    assert record.covariance.failure_reason == "classical_fit_invalid"
+    assert not record.bootstrap.valid_interval
+    assert record.bootstrap.n_requested == config.n_bootstrap_resamples
+    assert record.bootstrap.n_valid_refits == 0
+    assert record.bootstrap.failure_reason == "classical_fit_invalid"
+    assert math.isnan(record.bootstrap.refit_failure_rate)
+    assert all(math.isnan(value) for value in (
+        record.bootstrap.lifetime_median_ns,
+        record.bootstrap.lifetime_std_ns,
+        record.bootstrap.percentile_lower_ns,
+        record.bootstrap.percentile_upper_ns,
+    ))
+    assert record.bayesian.valid_interval
+    summary = summarize_issue4_condition((record,))
+    assert summary.n_valid_classical_fits == 0
+    assert summary.classical_fit_failure_rate == 1.0
+    assert [(entry.n_attempted, entry.n_valid, entry.failure_rate)
+            for entry in summary.intervals] == [
+                (1, 0, 1.0), (1, 0, 1.0), (1, 1, 0.0),
+            ]
+
+    payload = asdict(record)
+    serialized = json.dumps(
+        payload,
+        default=lambda value: value.value if isinstance(value, Enum) else value,
+    )
+    assert "classical_fit_invalid" in serialized
 
 
 def test_coverage_failure_denominators_and_widths_are_explicit() -> None:

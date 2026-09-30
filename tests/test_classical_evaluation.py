@@ -1,17 +1,34 @@
+import hashlib
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 from numpy.typing import NDArray
+from scipy.optimize import OptimizeResult
+
+import tcspc_toolkit.fitting as fitting
 
 from tcspc_toolkit.classical_evaluation import (
     estimate_reconvolution_initial_guess,
     evaluate_reconvolution_benchmark,
     fit_single_reconvolution_curve,
 )
+from tcspc_toolkit.bayesian_evaluation import (
+    BayesianClassicalCondition,
+    build_issue4_expected_counts,
+    derive_issue4_seed,
+    sample_issue4_observation,
+)
+from tcspc_toolkit.fitting import poisson_negative_log_likelihood
+from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
+    generate_gaussian_irf_profile,
     normalize_irf,
 )
+from tcspc_toolkit.irf_preparation import prepare_irf
 from tcspc_toolkit.simulation import (
     simulate_irf_convolved_histogram,
 )
@@ -462,3 +479,122 @@ def test_single_poisson_reconvolution_curve_recovers_high_count_lifetime_from_hi
     assert np.isfinite(
         result.poisson_nll
     )
+
+
+def test_stage5_tau4_realization_22_is_not_falsely_accepted() -> None:
+    """Reproduce the frozen observation, without reading generated results."""
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "configs" /
+         "issue4_bayesian_workflow.json").read_text(encoding="utf-8")
+    )
+    grid = manifest["time_grid_ns"]
+    time = np.arange(grid["start"], grid["stop"], grid["step"])
+    irf_spec = manifest["irf"]
+    prepared = prepare_irf(
+        generate_gaussian_irf_profile(
+            time, gaussian_centre_ns=irf_spec["centre_ns"],
+            gaussian_fwhm_ns=irf_spec["fwhm_ns"],
+            provenance={"workflow": "issue4_stage5_matched"},
+        ), time,
+    )
+    spec = next(item for item in manifest["conditions"]
+                if item["id"] == "tau4_n10000_b0p5")
+    model = manifest["common_model"]
+    condition = BayesianClassicalCondition(
+        condition_id=spec["id"], time_ns=time,
+        generating_irf=prepared, assumed_irf=prepared,
+        true_lifetime_ns=spec["lifetime_ns"],
+        signal_photon_count=spec["signal_photon_count"],
+        background_per_bin=spec["background_per_bin"],
+        true_temporal_shift_ns=model["true_temporal_shift_ns"],
+        n_repeats=manifest["profiles"]["scientific"]["n_repeats_per_condition"],
+    )
+    seed = derive_issue4_seed(
+        manifest["randomness"]["base_seed"], condition.condition_id, 22,
+        "observation",
+    )
+    assert seed == 17339757615716598031
+    expected, _ = build_issue4_expected_counts(condition)
+    counts = sample_issue4_observation(
+        condition, expected, seed, 22,
+    ).require_raw_counts()
+    assert hashlib.sha256(np.ascontiguousarray(counts).tobytes()).hexdigest() == (
+        "af659370fe88e8d9080edc1454af70f7699698fd6379d286fddb290af206088d"
+    )
+
+    def nll(parameters: np.ndarray) -> float:
+        return poisson_negative_log_likelihood(
+            counts,
+            monoexponential_reconvolution_expected_counts(
+                time, prepared.kernel, *parameters,
+            ),
+        )
+
+    historical = np.array([
+        125.02722273171824, 4.139127277582876,
+        3.3232667423982516, 0.007020469422371944,
+    ])
+    lower_background = historical.copy()
+    lower_background[2] -= 0.01
+    assert nll(historical) - nll(lower_background) > 0.3
+
+    fitted = fit_single_reconvolution_curve(
+        time=time, counts=counts, irf=prepared.kernel,
+        temporal_shift_bounds=tuple(model["temporal_shift_bounds_ns"]),
+        objective="poisson",
+        background_fraction=model["classical_background_fraction"],
+    )
+    assert fitted.optimizer_success
+    assert fitted.valid_fit
+    assert fitted.numerical_validation_passed is True
+    assert fitted.max_coordinate_descent_nll <= 0.01
+    parameters = np.array([
+        fitted.fitted_amplitude, fitted.fitted_lifetime_ns,
+        fitted.fitted_background, fitted.fitted_temporal_shift_ns,
+    ])
+    assert nll(historical) - nll(parameters) > 1.0
+
+    # Independently probe the accepted fit in the same dimensionless
+    # coordinate system as the optimizer's numerical check.
+    scales = np.array([
+        max(abs(fitted.initial_amplitude), 1.0),
+        max(abs(fitted.initial_lifetime_ns), time[1] - time[0]),
+        max(abs(fitted.initial_background), 1.0),
+        max(abs(fitted.initial_temporal_shift_ns), 0.04, time[1] - time[0]),
+    ])
+    bounds = [(0.0, np.inf), (1e-12, np.inf),
+              (1e-12, np.inf), tuple(model["temporal_shift_bounds_ns"])]
+    for index in range(4):
+        for direction in (-1.0, 1.0):
+            trial = parameters.copy()
+            trial[index] += direction * 1e-3 * scales[index]
+            if bounds[index][0] <= trial[index] <= bounds[index][1]:
+                assert nll(parameters) - nll(trial) <= 0.01
+
+
+def test_nonfinite_optimizer_output_is_recorded_as_invalid(monkeypatch) -> None:
+    time = np.arange(0.0, 6.0, 0.05)
+    irf = normalize_irf(time, generate_gaussian_irf(time, centre=1.0, fwhm=0.3))
+    counts = np.random.default_rng(42).poisson(
+        monoexponential_reconvolution_expected_counts(
+            time, irf, 1000.0, 1.5, 1.0, 0.0,
+        )
+    )
+
+    def invalid_minimize(*, x0, **kwargs):
+        return OptimizeResult(
+            x=np.full_like(x0, np.nan), fun=np.nan, success=True, status=0,
+            message="spurious success", nfev=1, njev=1,
+        )
+
+    monkeypatch.setattr(fitting, "minimize", invalid_minimize)
+    result = fit_single_reconvolution_curve(
+        time=time, counts=counts, irf=irf,
+        temporal_shift_bounds=(-0.2, 0.2), objective="poisson",
+    )
+    assert result.optimizer_success
+    assert not result.valid_fit
+    assert result.failure_reason == "non_finite_parameters"
+    assert result.numerical_validation_passed is False
+    assert not result.recovery_attempted
+    assert np.isnan(result.poisson_nll)

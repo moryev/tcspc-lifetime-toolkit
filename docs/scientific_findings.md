@@ -1280,3 +1280,33 @@ and evidence that the assumed model is physically correct are different
 questions**. Report model assumptions and controlled failure evidence
 alongside statistical uncertainty, rather than interpreting a narrow
 interval or a well-formed proxy as physical validation.
+
+## Issue #4 Stage-5.5 numerical audit (post-run)
+
+The frozen Stage-5 scientific CSV and JSON were produced with the historical
+classical criterion: an L-BFGS-B `success` flag plus finite, physical fitted
+parameters. They have **not** been rewritten after this audit. Future Issue-#4
+evaluations use an additional local Poisson-NLL check: feasible 0.001 steps in
+each dimensionless optimizer coordinate must not improve NLL by more than
+0.01. A suspicious optimizer-success result receives one deterministic,
+bounded continuation with tighter relative tolerance; only a subsequently
+validated result is accepted. This check detects gross nonstationarity, not
+global optimality or physical-model correctness.
+
+A classical-only regeneration and refit of all 480 saved records identified
+one historically accepted fit failing that check:
+`tau4_n10000_b0p5`, baseline realization 22. The original L-BFGS-B run
+stopped after seven iterations on relative objective reduction despite a
+large scaled gradient and a feasible descent direction. The continued fit
+lowers NLL from -31511.122569 to -31589.698635 and changes lifetime from
+4.139127 to 3.921927 ns. All 480 current refits pass the numerical check;
+one required recovery and none remain failed. This is a diagnostic correction,
+not a rerun of Stage-5 Bayesian inference.
+
+For the affected realization, classical covariance and the 100-refit
+parametric bootstrap are conditional on the classical fitted curve, so their
+original intervals also change when recomputed with the same bootstrap seed.
+The Bayesian posterior and its diagnostics do not depend on that classical
+fit and were not recomputed. The original Stage-5 summary remains the
+historical result; numerical comparisons using the affected classical record
+should carry this qualification.
