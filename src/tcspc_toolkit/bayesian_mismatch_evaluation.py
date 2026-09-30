@@ -17,6 +17,7 @@ from typing import Callable, Literal, Mapping
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import least_squares, minimize
 
 from tcspc_toolkit.bayesian import (
     BayesianPriorConfig,
@@ -49,7 +50,6 @@ from tcspc_toolkit.classical_uncertainty import (
     estimate_poisson_reconvolution_local_covariance,
 )
 from tcspc_toolkit.fitting import (
-    fit_monoexponential_reconvolution,
     poisson_negative_log_likelihood,
 )
 from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
@@ -349,7 +349,7 @@ def build_mismatch_expected_counts(condition: MismatchCondition) -> GeneratingCo
 
 @dataclass(frozen=True)
 class PseudoTrueReference:
-    """Prior-free deterministic projection onto the assumed mono model."""
+    """Prior-free, tightly validated deterministic projection onto the mono model."""
     condition_id: str
     assumption_id: str
     amplitude: float
@@ -365,6 +365,49 @@ class PseudoTrueReference:
     optimizer_message: str | None
     optimizer_nfev: int | None
     maximum_coordinate_descent_nll: float
+    second_best_objective_gap: float = math.nan
+    maximum_scaled_gradient: float = math.nan
+    independent_objective_gap: float = math.nan
+    independent_lifetime_gap_ns: float = math.nan
+    independent_optimizer_status: int | None = None
+    independent_optimizer_message: str | None = None
+    independent_optimizer_nfev: int | None = None
+
+
+def _reference_poisson_deviance_residual(
+    fitted: NDArray[np.float64], expected: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Signed deviance residual; half its squared norm is Poisson NLL plus a constant.
+
+    The small-relative-error series avoids cancellation around a matched curve.
+    It changes numerical conditioning, not the likelihood projection/estimand.
+    """
+    relative = (fitted - expected) / expected
+    terms = np.empty_like(relative)
+    small = np.abs(relative) < 1e-3
+    x = relative[small]
+    terms[small] = x * x * (0.5 - x / 3.0 + x * x / 4.0 - x * x * x / 5.0
+                            + x * x * x * x / 6.0)
+    terms[~small] = relative[~small] - np.log1p(relative[~small])
+    return np.sign(relative) * np.sqrt(2.0 * expected * np.maximum(terms, 0.0))
+
+
+def _reference_coordinate_descent(
+    objective: Callable[[NDArray[np.float64]], float],
+    scaled: NDArray[np.float64],
+    bounds: tuple[tuple[float, float], ...],
+) -> float:
+    """Probe two dimensionless scales; reject descent above 1e-5 NLL units."""
+    at_fit = objective(scaled)
+    maximum = 0.0
+    for index, (lower, upper) in enumerate(bounds):
+        for step in (1e-3, 1e-2):
+            for sign in (-1.0, 1.0):
+                trial = scaled.copy()
+                trial[index] += sign * step
+                if lower <= trial[index] <= upper:
+                    maximum = max(maximum, at_fit - objective(trial))
+    return maximum
 
 
 def construct_pseudo_true_reference(
@@ -373,12 +416,13 @@ def construct_pseudo_true_reference(
     expected_counts: NDArray[np.float64],
     temporal_shift_bounds_ns: tuple[float, float],
 ) -> PseudoTrueReference:
-    """Fit fractional noise-free expectations with four deterministic starts.
+    """Tightly approximate the prior-free, noise-free Poisson projection.
 
-    This is an offline, prior-free likelihood projection. All starts must pass
-    Stage-5.5's Poisson local check and agree within 0.2 NLL and 0.005 ns;
-    otherwise no reference is reported. The explicit bounds and fit diagnostics
-    make ambiguity inspectable rather than silently selecting one basin.
+    This offline benchmark reference has a stricter numerical contract than
+    routine noisy-data fitting. Four diverse background/lifetime/shift starts
+    minimize centered Poisson NLL (original NLL minus a data-only constant).
+    A deviance-residual least-squares solve independently cross-checks the best
+    result. No generating truth or prior is used to select the winner.
     """
     expected = np.asarray(expected_counts, dtype=np.float64)
     if expected.shape != condition.time_ns.shape or not np.all(np.isfinite(expected)):
@@ -387,76 +431,151 @@ def construct_pseudo_true_reference(
         raise ValueError("pseudo-true objective requires positive expectations")
     if not any(assumption is item for item in condition.assumptions):
         raise ValueError("assumption does not belong to condition")
+    shift_lower, shift_upper = temporal_shift_bounds_ns
+    if not (math.isfinite(shift_lower) and math.isfinite(shift_upper)
+            and shift_lower < shift_upper):
+        raise ValueError("reference shift bounds must be finite and increasing")
+    midpoint = 0.5 * (shift_lower + shift_upper)
+    if not shift_lower <= condition.true_temporal_shift_ns <= shift_upper:
+        raise ValueError("generating shift lies outside inference bounds")
     starts = (
-        (0.75 * condition.primary_lifetime_ns, 0.0),
-        (condition.primary_lifetime_ns, condition.true_temporal_shift_ns),
-        (condition.secondary_lifetime_ns or 1.5 * condition.primary_lifetime_ns, 0.0),
-        (2.0 * condition.primary_lifetime_ns, condition.true_temporal_shift_ns),
+        (0.75 * condition.primary_lifetime_ns, max(0.5 * condition.background_per_bin, 1e-8), midpoint),
+        (condition.primary_lifetime_ns, max(condition.background_per_bin, 1e-8), condition.true_temporal_shift_ns),
+        (1.5 * condition.primary_lifetime_ns, max(2.0 * condition.background_per_bin, 1e-8), condition.true_temporal_shift_ns),
+        (2.0 * condition.primary_lifetime_ns, max(4.0 * condition.background_per_bin, 1e-8), midpoint),
     )
+    unit_scale = monoexponential_reconvolution_expected_counts(
+        condition.time_ns, assumption.prepared_irf.kernel, amplitude=1.0,
+        lifetime=condition.primary_lifetime_ns, background=0.0,
+        temporal_shift=condition.true_temporal_shift_ns,
+    )
+    scales = np.array([
+        condition.signal_photon_count / float(unit_scale.sum()),
+        condition.primary_lifetime_ns, max(condition.background_per_bin, 1.0), 0.1,
+    ])
+    bounds = ((0.0, math.inf), (1e-12 / scales[1], math.inf),
+              (1e-12 / scales[2], math.inf),
+              (shift_lower / scales[3], shift_upper / scales[3]))
+
+    def fitted_curve(scaled: NDArray[np.float64]) -> NDArray[np.float64]:
+        amplitude, lifetime, background, shift = scaled * scales
+        return monoexponential_reconvolution_expected_counts(
+            condition.time_ns, assumption.prepared_irf.kernel,
+            amplitude=amplitude, lifetime=lifetime, background=background,
+            temporal_shift=shift,
+        )
+
+    def residual(scaled: NDArray[np.float64]) -> NDArray[np.float64]:
+        curve = fitted_curve(scaled)
+        if not np.all(np.isfinite(curve)) or np.any(curve <= 0):
+            raise ValueError("reference candidate has invalid expected counts")
+        return _reference_poisson_deviance_residual(curve, expected)
+
+    def objective(scaled: NDArray[np.float64]) -> float:
+        try:
+            difference = residual(scaled)
+        except ValueError:
+            return 1e100
+        return float(0.5 * np.dot(difference, difference))
+
     candidates = []
-    for lifetime_start, shift_start in starts:
+    for lifetime_start, background_start, shift_start in starts:
         unit = monoexponential_reconvolution_expected_counts(
             condition.time_ns, assumption.prepared_irf.kernel,
             amplitude=1.0, lifetime=lifetime_start, background=0.0,
             temporal_shift=shift_start,
         )
         amplitude_start = condition.signal_photon_count / float(np.sum(unit))
-        candidate = fit_monoexponential_reconvolution(
-            time=condition.time_ns, counts=expected,
-            irf=assumption.prepared_irf.kernel,
-            initial_guess=(
-                amplitude_start, lifetime_start,
-                max(condition.background_per_bin, 1e-8), shift_start,
-            ),
-            temporal_shift_bounds=temporal_shift_bounds_ns,
-            objective="poisson",
+        initial = np.array((amplitude_start, lifetime_start,
+                            background_start, shift_start)) / scales
+        candidate = minimize(
+            objective, initial, method="L-BFGS-B", jac="3-point", bounds=bounds,
+            options={"ftol": 1e-14, "gtol": 1e-8, "maxiter": 1000,
+                     "maxls": 50, "finite_diff_rel_step": 1e-5},
         )
-        if not candidate.success or candidate.numerical_validation_passed is not True:
+        if not candidate.success or not np.all(np.isfinite(candidate.x)):
             raise RuntimeError(
                 f"pseudo-true optimization failed numerical validation for "
                 f"{condition.condition_id}/{assumption.assumption_id}: "
-                f"{candidate.optimizer_message}"
+                f"{candidate.message}"
             )
-        objective = poisson_negative_log_likelihood(expected, candidate.fitted_curve)
-        if not math.isfinite(objective):
-            raise RuntimeError("pseudo-true objective is nonfinite")
-        candidates.append((objective, candidate))
-    best_objective, best = min(candidates, key=lambda item: item[0])
-    objective_gap = max(item[0] - best_objective for item in candidates)
-    lifetime_gap = max(abs(item[1].lifetime - best.lifetime) for item in candidates)
-    if objective_gap > 0.2 or lifetime_gap > 0.005:
+        value = objective(candidate.x)
+        if not math.isfinite(value) or value >= 1e50:
+            raise RuntimeError("pseudo-true objective or expected counts are invalid")
+        candidates.append((value, candidate))
+    candidates.sort(key=lambda item: item[0])
+    best_centered, best = candidates[0]
+    best_parameters = best.x * scales
+    objective_gap = candidates[-1][0] - best_centered
+    lifetime_gap = max(abs(item[1].x[1] * scales[1] - best_parameters[1]) for item in candidates)
+    if objective_gap > 1e-6 or lifetime_gap > 1e-5:
         raise RuntimeError(
             f"pseudo-true starts disagree for {condition.condition_id}/"
             f"{assumption.assumption_id}: NLL gap={objective_gap:.6g}, "
             f"lifetime gap={lifetime_gap:.6g} ns"
         )
+    maximum_descent = _reference_coordinate_descent(objective, best.x, bounds)
+    gradient = float(np.max(np.abs(best.jac)))
+    if maximum_descent > 1e-5 or not math.isfinite(gradient) or gradient > 1e-3:
+        raise RuntimeError(
+            f"pseudo-true optimization failed strict numerical validation: "
+            f"coordinate descent={maximum_descent:.6g}, scaled gradient={gradient:.6g}"
+        )
     active = []
-    if best.amplitude <= 1e-10:
+    if best_parameters[0] <= 1e-10:
         active.append("amplitude_lower")
-    if best.lifetime <= 1e-10:
+    if best_parameters[1] <= 1e-10:
         active.append("lifetime_lower")
-    if best.background <= 1e-8:
+    if best_parameters[2] <= 1e-8:
         active.append("background_lower")
-    if abs(best.temporal_shift - temporal_shift_bounds_ns[0]) <= 1e-6:
+    if abs(best_parameters[3] - shift_lower) <= 1e-6:
         active.append("shift_lower")
-    if abs(best.temporal_shift - temporal_shift_bounds_ns[1]) <= 1e-6:
+    if abs(best_parameters[3] - shift_upper) <= 1e-6:
         active.append("shift_upper")
+    if active:
+        raise RuntimeError(f"pseudo-true reference has active bounds requiring review: {active}")
+    independent = least_squares(
+        residual, best.x,
+        bounds=(np.array([pair[0] for pair in bounds]),
+                np.array([pair[1] for pair in bounds])),
+        jac="3-point", ftol=1e-13, xtol=1e-13, gtol=1e-11,
+        max_nfev=1000,
+    )
+    independent_gap = abs(objective(independent.x) - best_centered)
+    independent_lifetime_gap = abs(independent.x[1] * scales[1] - best_parameters[1])
+    if (not independent.success or independent_gap > 1e-6
+            or independent_lifetime_gap > 1e-5):
+        raise RuntimeError(
+            f"independent pseudo-true optimizer disagrees: "
+            f"NLL gap={independent_gap:.6g}, "
+            f"lifetime gap={independent_lifetime_gap:.6g} ns"
+        )
+    original_nll = poisson_negative_log_likelihood(expected, fitted_curve(best.x))
+    if not math.isfinite(original_nll):
+        raise RuntimeError("pseudo-true original Poisson NLL is nonfinite")
     return PseudoTrueReference(
         condition_id=condition.condition_id,
         assumption_id=assumption.assumption_id,
-        amplitude=best.amplitude,
-        lifetime_ns=best.lifetime,
-        background_per_bin=best.background,
-        temporal_shift_ns=best.temporal_shift,
-        poisson_nll=best_objective,
+        amplitude=float(best_parameters[0]),
+        lifetime_ns=float(best_parameters[1]),
+        background_per_bin=float(best_parameters[2]),
+        temporal_shift_ns=float(best_parameters[3]),
+        poisson_nll=original_nll,
         n_starts=len(starts),
         max_start_objective_gap=objective_gap,
         max_start_lifetime_gap_ns=lifetime_gap,
         active_bounds=tuple(active),
-        optimizer_status=best.optimizer_status,
-        optimizer_message=best.optimizer_message,
-        optimizer_nfev=best.optimizer_nfev,
-        maximum_coordinate_descent_nll=best.max_coordinate_descent_nll,
+        optimizer_status=int(best.status),
+        optimizer_message=str(best.message),
+        optimizer_nfev=int(best.nfev),
+        maximum_coordinate_descent_nll=maximum_descent,
+        second_best_objective_gap=candidates[1][0] - best_centered,
+        maximum_scaled_gradient=gradient,
+        independent_objective_gap=independent_gap,
+        independent_lifetime_gap_ns=independent_lifetime_gap,
+        independent_optimizer_status=int(independent.status),
+        independent_optimizer_message=str(independent.message),
+        independent_optimizer_nfev=int(independent.nfev),
     )
 
 

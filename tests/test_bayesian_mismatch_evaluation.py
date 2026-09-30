@@ -11,6 +11,7 @@ import pytest
 
 import tcspc_toolkit.bayesian_mismatch_evaluation as mismatch
 from scripts.run_issue4_bayesian_mismatch_benchmarks import _json_safe
+from scripts.correct_issue4_mismatch_references import _comparison_from_saved_row
 from tcspc_toolkit.bayesian_sampling import BayesianSamplingStatus
 
 
@@ -72,16 +73,29 @@ def test_biexponential_fraction_is_detected_finite_window_signal(workflow, name,
 
 
 def test_pseudo_true_prior_free_control_and_biexponential_projection(workflow, references):
-    assert references["mono_control", "gaussian_mono"].lifetime_ns == pytest.approx(2.0, abs=1e-5)
-    assert references["emg_irf", "matched_emg"].lifetime_ns == pytest.approx(2.0, abs=1e-5)
-    assert 2.0 < references["weak_biexponential", "gaussian_mono"].lifetime_ns < 2.2
-    assert 2.2 < references["moderate_biexponential", "gaussian_mono"].lifetime_ns < 2.4
+    assert references["mono_control", "gaussian_mono"].lifetime_ns == pytest.approx(2.0, abs=1e-7)
+    assert references["emg_irf", "matched_emg"].lifetime_ns == pytest.approx(2.0, abs=1e-7)
+    # Independent Poisson-deviance projections of the committed Stage-6 design.
+    assert references["weak_biexponential", "gaussian_mono"].lifetime_ns == pytest.approx(
+        2.07392193, abs=2e-6
+    )
+    assert references["moderate_biexponential", "gaussian_mono"].lifetime_ns == pytest.approx(
+        2.22702256, abs=2e-6
+    )
+    assert references["emg_irf", "gaussian_assumed"].lifetime_ns == pytest.approx(
+        2.02495716, abs=2e-6
+    )
     for reference in references.values():
         assert reference.n_starts == 4
         assert math.isfinite(reference.poisson_nll)
-        assert reference.max_start_objective_gap <= 0.2
-        assert reference.max_start_lifetime_gap_ns <= 0.005
-        assert 0.0 <= reference.maximum_coordinate_descent_nll <= 0.01
+        assert reference.max_start_objective_gap <= 1e-6
+        assert reference.max_start_lifetime_gap_ns <= 1e-5
+        assert reference.second_best_objective_gap <= 1e-6
+        assert 0.0 <= reference.maximum_coordinate_descent_nll <= 1e-5
+        assert reference.maximum_scaled_gradient <= 1e-3
+        assert reference.independent_objective_gap <= 1e-6
+        assert reference.independent_lifetime_gap_ns <= 1e-5
+        assert reference.active_bounds == ()
     condition = workflow.conditions[1]
     expected = mismatch.build_mismatch_expected_counts(condition).expected_counts
     repeated = mismatch.construct_pseudo_true_reference(
@@ -104,14 +118,69 @@ def test_physical_and_pseudo_true_decomposition(workflow, references):
 def test_pseudo_true_fails_explicitly_when_numerical_validation_fails(workflow, monkeypatch):
     condition = workflow.conditions[1]
     generating = mismatch.build_mismatch_expected_counts(condition)
-    monkeypatch.setattr(mismatch, "fit_monoexponential_reconvolution", lambda **kwargs:
-                        SimpleNamespace(success=False, numerical_validation_passed=False,
-                                        optimizer_message="local descent"))
+    monkeypatch.setattr(mismatch, "minimize", lambda *args, **kwargs:
+                        SimpleNamespace(success=False, message="local descent"))
     with pytest.raises(RuntimeError, match="failed numerical validation"):
         mismatch.construct_pseudo_true_reference(
             condition, condition.assumptions[0], generating.expected_counts,
             workflow.config.temporal_shift_bounds_ns,
         )
+
+
+def test_reference_strict_probe_rejects_historical_biexponential_descent(workflow):
+    # The old reference accepted this background-direction descent because its
+    # routine-fit threshold was 0.01 NLL at a single 1e-3 scaled probe.
+    condition = next(item for item in workflow.conditions if item.condition_id == "weak_biexponential")
+    assumed = condition.assumptions[0]
+    expected = mismatch.build_mismatch_expected_counts(condition).expected_counts
+    from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+    from tcspc_toolkit.fitting import poisson_negative_log_likelihood
+
+    historical = dict(amplitude=2396.745151866371, lifetime=2.074616201952051,
+                      background=0.507794164681629, temporal_shift=0.0383308543116744)
+    at_old = poisson_negative_log_likelihood(expected,
+        monoexponential_reconvolution_expected_counts(
+            condition.time_ns, assumed.prepared_irf.kernel, **historical))
+    historical["background"] += 0.01
+    at_perturbation = poisson_negative_log_likelihood(expected,
+        monoexponential_reconvolution_expected_counts(
+            condition.time_ns, assumed.prepared_irf.kernel, **historical))
+    assert at_old - at_perturbation > 0.02
+    def historical_objective(parameters):
+        return poisson_negative_log_likelihood(expected,
+            monoexponential_reconvolution_expected_counts(
+                condition.time_ns, assumed.prepared_irf.kernel,
+                amplitude=parameters[0], lifetime=parameters[1],
+                background=parameters[2], temporal_shift=parameters[3]))
+    old_coordinates = np.array([2396.745151866371, 2.074616201952051,
+                                0.507794164681629, 0.0383308543116744])
+    bounds = ((0, math.inf), (1e-12, math.inf), (1e-12, math.inf),
+              workflow.config.temporal_shift_bounds_ns)
+    assert mismatch._reference_coordinate_descent(
+        historical_objective, old_coordinates, bounds
+    ) > 0.02
+
+
+def test_saved_row_reference_reanalysis_uses_saved_intervals_without_refits():
+    row = {
+        "classical_fit_valid_fit": "True", "classical_fit_lifetime_ns": "2.1",
+        "covariance_valid_interval": "True", "covariance_lifetime_std_ns": "0.02",
+        "covariance_local_gaussian_lower_ns": "2.07",
+        "covariance_local_gaussian_upper_ns": "2.13",
+        "bootstrap_valid_interval": "True", "bootstrap_lifetime_std_ns": "0.021",
+        "bootstrap_percentile_lower_ns": "2.06", "bootstrap_percentile_upper_ns": "2.14",
+        "bayesian_status": "insufficient_sampling", "bayesian_diagnostics_accepted": "False",
+        "bayesian_lifetime_median_ns": "2.11", "bayesian_posterior_lifetime_std_ns": "0.02",
+        "bayesian_credible_lower_ns": "2.08", "bayesian_credible_upper_ns": "2.14",
+    }
+    old = _comparison_from_saved_row(row, "covariance", 2.06)
+    corrected = _comparison_from_saved_row(row, "covariance", 2.08)
+    assert old.reference_included is False
+    assert corrected.reference_included is True
+    assert corrected.deviation_ns == pytest.approx(0.02)
+    assert corrected.deviation_to_reported_std == pytest.approx(1.0)
+    assert _comparison_from_saved_row(row, "bootstrap", 2.08).reference_included is True
+    assert _comparison_from_saved_row(row, "bayesian", 2.08).reference_included is None
 
 
 def test_workflow_passes_one_measurement_object_to_both_irf_assumptions(
