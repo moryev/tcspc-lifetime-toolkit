@@ -13,16 +13,18 @@ The TCSPC Lifetime Toolkit is a scientific Python package for simulating, fittin
 The toolkit combines:
 
 - physical decay models;
-- instrument-response-function (IRF) modelling and convolution;
+- instrument-response-function (IRF) modelling, generalized sampled/source profiles, preparation, and convolution;
 - Poisson photon-counting simulation;
 - classical lifetime fitting and reconvolution;
 - canonical experimental-measurement import and representation;
 - preprocessing and physically interpretable feature extraction;
 - machine-learning lifetime estimation;
 - controlled robustness/generalization benchmarks;
-- uncertainty calibration and failure-awareness analysis.
+- uncertainty calibration and failure-awareness analysis;
+- Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
+- controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current release is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. The repository is now in the post-Week-9 integration phase described in GitHub Issue #5.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete, and post-v0.7.0 Issues #6, #8, and #4 have also been implemented and closed. The repository is now in the post-Week-9 integration phase described in GitHub Issue #5, with Issue #9 (SQLite persistence) next in the planned sequence.
 
 ## Repository map
 
@@ -31,7 +33,8 @@ The current release is **v0.7.0**. Weeks 8–9 of the scientific roadmap are com
 - `notebooks/` — reproducible scientific demonstrations and analyses.
 - `docs/scientific_findings.md` — accumulated scientific findings, including the Week 8–9 conclusions.
 - `docs/design/master_design_document.md` — current design principles.
-- `configs/` — committed configuration files used for reproducible workflows.
+- `configs/` — committed configuration files used for reproducible workflows, including the Issue-8 and Issue-4 manifests.
+- `scripts/` — focused reproducibility/audit utilities; keep scientific algorithms in the package when they are reusable.
 - `data/` — project data area; do not add large or restricted experimental datasets without explicit approval.
 - `README.md` — public project overview, installation instructions, and current capabilities.
 - `CHANGELOG.md` — release history.
@@ -82,6 +85,7 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - mathematical models are separate from simulation workflows;
 - IRFs are generated/represented independently from decay models;
 - convolution is an independent operation;
+- the shared mono-exponential reconvolution expected-count model lives in `forward_model.py` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
 - noise sampling is independent from deterministic signal generation;
 - evaluation functions are organized by the quantity being evaluated, not merely by estimator family;
 - public APIs use explicit scientific names;
@@ -106,7 +110,7 @@ The measured TCSPC signal is not generally the ideal fluorescence decay. IRF con
 
 Do not replace reconvolution with a simpler decay fit when the task requires IRF-aware inference.
 
-Keep IRF origin separate from IRF use: synthetic, measured, estimated, and deliberately misspecified IRFs should eventually be able to feed the same downstream forward-model machinery.
+Keep IRF origin separate from IRF use. Synthetic, imported/measured, estimated-proxy, and deliberately misspecified IRF sources now feed the same downstream preparation/forward-model machinery through explicit source provenance and prepared kernels. Do not collapse source identity, preparation history, and the final kernel into one ambiguous object.
 
 ### Ground truth versus experimental reference values
 
@@ -127,13 +131,23 @@ Issue #6 established the first canonical experimental-data path. Preserve these 
 - `TCSPCMeasurement` is the canonical carrier for one imported experimental histogram.
 - Imported time units are explicit and converted to internal nanoseconds; do not infer units from values or column names.
 - `MeasurementDataKind.RAW_COUNTS` and `MeasurementDataKind.PROCESSED_INTENSITY` are scientifically distinct. Raw Poisson-count methods must pass through the raw-count guard rather than infer semantics from dtype alone.
-- `SampledIRF` is currently a deliberately narrow carrier for an imported sampled/measured IRF, not the final generalized IRF abstraction.
-- The imported IRF trace keeps its own values, metadata, and provenance. Reconvolution normalizes a derived copy rather than mutating the imported trace.
-- Issue #6 accepts only numerically compatible measurement/IRF grids. Do not silently resample, realign, baseline-correct, smooth, or infer zero time.
+- `SampledIRF` remains the deliberately narrow carrier for an imported sampled/measured source trace.
+- `IRFProfile` represents a generalized source profile with explicit `IRFSourceKind`, metadata, and provenance.
+- `PreparedIRF` is the derived unit-area kernel on the forward-model grid, with explicit `IRFPreparationDiagnostics`.
+- The imported/source IRF trace keeps its own values, metadata, and provenance. Registration, resampling, and normalization create derived objects rather than mutating the source.
+- The original Issue-6 same-grid path remains backward compatible. When grids differ, use the explicit Issue-8 preparation path; never resample, realign, baseline-correct, smooth, or infer zero time silently.
 - Experimental lifetime estimates are separate from optional reference-based evaluation. A trusted reference is supplied explicitly and is not stored as intrinsic measurement ground truth.
 - Experimental ML adapters may transform/predict with already-fitted development artifacts, but must not fit or refit representations/models on the experimental measurement.
 
-Issue #8 owns generalized IRF sources, deterministic resampling/alignment policy, leading-edge IRF estimation, and broader IRF diagnostics. Build those capabilities on the canonical measurement path above rather than creating a second experimental-data model.
+### Generalized IRF contract
+
+Issue #8 is complete. Preserve its distinction among source provenance, preparation operations, assumed kernels, and failure-aware proxies:
+
+- Gaussian and EMG synthetic profiles, imported sampled profiles, and leading-edge-derived proxies are scientifically different sources even if they ultimately produce arrays on the same target grid.
+- Registration and resampling are explicit operations with diagnostics; support loss and sampling adequacy must remain inspectable.
+- A leading-edge proxy is opt-in and approximate. Numerical constructibility or a warning-free proxy does not establish physical correctness.
+- A deliberately misspecified IRF must remain identifiable as an assumption used for inference; do not rewrite it as if it were the generating/measured IRF.
+- Model-mismatch studies may compare matched and misspecified IRFs on the same observation. Preserve that pairing and provenance.
 
 ### Frozen Week-8 robustness protocol
 
@@ -164,12 +178,13 @@ The repository intentionally distinguishes among:
 - local Poisson/Fisher covariance;
 - repeated-Poisson empirical sampling variability;
 - conformal calibration;
+- Bayesian posterior/credible-interval uncertainty conditional on an explicit prior, mono-exponential model, and fixed assumed IRF;
 - uncertainty under distribution shift;
 - physical model misspecification.
 
 Random-Forest tree spread and training-data bootstrap spread are not automatically nominal prediction intervals.
 
-Classical covariance and parametric Poisson bootstrap quantify statistical uncertainty conditional on the assumed forward model.
+Classical covariance, parametric Poisson bootstrap, and Bayesian posterior uncertainty all quantify statistical uncertainty conditional on an assumed model. Bayesian credible intervals additionally depend on the stated prior and fixed assumed IRF; they are not automatic model-form uncertainty intervals.
 
 The central Week-9 result is:
 
@@ -177,10 +192,26 @@ The central Week-9 result is:
 
 Therefore do not interpret narrow intervals, low ensemble spread, good scalar Poisson deviance, or current aggregate residual diagnostics as universal evidence that the physical model is valid.
 
+
+### Bayesian inference semantics
+
+Issue #4 is complete. Preserve the following contracts established by the final implementation and scientific evaluation:
+
+- Bayesian inference consumes canonical raw-count measurements and the shared mono-exponential reconvolution forward model; do not create a separate Bayesian-only physical forward model.
+- Priors are explicit scientific assumptions. Keep prior policy/configuration identifiable in comparisons and persistence.
+- The assumed IRF is fixed within a Bayesian inference run. Posterior uncertainty does not automatically propagate uncertainty in IRF shape or provenance.
+- Sampling diagnostics assess numerical exploration of the assumed posterior. Successful `emcee` diagnostics do not establish that the decay model or IRF is physically correct.
+- Prior/posterior predictive checks are descriptive model-conditional diagnostics. Their tail probabilities must not be presented as universally calibrated model-validity p-values.
+- Under decay-model mismatch, a bi-exponential generating process has no unique mono-exponential physical truth. Keep generating component parameters distinct from the deterministic pseudo-true mono-exponential projection.
+- A pseudo-true lifetime is a deterministic, prior-free, model-conditional likelihood projection used to separate within-model estimation error from physical model discrepancy. Never label it as the physical "true lifetime".
+- The completed Stage-5 matched-model and Stage-6 mismatch scientific records are frozen evidence. Do not silently rewrite those generated outputs when changing later code; use explicit audit/correction artifacts when scientifically necessary.
+- The Stage-6.5 corrected pseudo-true references and their documented reanalysis are authoritative for Issue-4 mismatch interpretation.
+
 ## Reproducibility rules
 
 - Preserve explicit random seeds where benchmark reproducibility depends on them.
-- Do not replace frozen benchmark seeds or regimes without an explicit task requirement.
+- Preserve the named deterministic random streams used by Issue-4 observation, bootstrap, Bayesian, and posterior-predictive workflows unless an explicit task changes the protocol.
+- Do not replace frozen benchmark seeds, regimes, scientific manifests, or saved reference results without an explicit task requirement.
 - Keep train/calibration/test roles separate.
 - Prefer committed configuration and library code over hidden notebook state.
 - Record new scientific assumptions in code/docstrings/tests and, when they affect interpretation, in project documentation.
@@ -263,9 +294,9 @@ Current integration status:
 
 1. **#10** — repository/Codex transition — **complete**;
 2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
-3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **implemented and verified; commit/closure review pending**;
-4. **#4** — Bayesian Poisson inference — **implemented, including scientific evaluation and Notebook 17; closure review pending**;
-5. **#9** — SQLite persistence for experiments and benchmark results;
+3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **complete and closed**;
+4. **#4** — Bayesian Poisson inference — **complete and closed**, including matched-model calibration, model-mismatch evaluation, numerical audits, documentation, and Notebook 17;
+5. **#9** — SQLite persistence for experiments and benchmark results — **next active integration target**;
 6. **#1** — standardize array input type annotations;
 7. **#2** — API stabilization and package hardening;
 8. **#11** — consolidate Week 7–9 evaluation architecture;
@@ -275,9 +306,7 @@ Current integration status:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-**Issue #4: Bayesian Poisson inference** has completed implementation, scientific evaluation, numerical audits, documentation, and Notebook 17; issue closure requires review.
-
-Preserve the generalized-IRF and Bayesian contracts when later API/package work is explicitly requested.
+**Issue #4: Bayesian Poisson inference** is complete and closed. Preserve the generalized-IRF and Bayesian contracts when implementing Issue #9 and during later API/package work.
 
 ## Codex working protocol
 
@@ -294,14 +323,31 @@ For each substantial issue:
 9. Review the final diff against the issue scope and scientific guardrails.
 10. Summarize changes, tests, scientific implications, and remaining limitations.
 
-## Bayesian integration orientation
+## Current integration orientation
 
-Issue #8's implementation and Notebook 16 establish the generalized IRF
-workflow. When reviewing Issue #4, read this file, Issues #5
-and #4, the Issue-#6 measurement boundary, and the committed Issue-#8 source,
-preparation, estimation, and evaluation APIs. Consult Notebooks 16–17 and the
-design/scientific-findings documentation for the distinction between source
-provenance, preparation history, fixed kernels, approximate proxies, and
-model-conditional uncertainty. Begin with read-only orientation and a scoped
-plan; do not treat roadmap ordering as authorization to implement the next
-issue automatically.
+Issues #6, #8, and #4 are complete. Do not reopen or redesign their scientific
+contracts merely because a later issue needs to consume their outputs.
+
+For Issue #9, begin with read-only orientation across the actual measurement,
+IRF, classical, ML, uncertainty, and Bayesian result objects before designing
+the SQLite schema. In particular:
+
+- keep persistence optional and separate from numerical computation;
+- preserve the distinction between measurements, generating truth, trusted
+  experimental references, assumed models/IRFs, and pseudo-true projections;
+- preserve estimator/method identity, configuration, random seeds, validity
+  states, and provenance needed to reproduce a stored result;
+- store scientifically queryable scalar fields relationally where useful;
+- do not hide all benchmark variables in opaque JSON solely for convenience;
+- do not store large histograms, posterior chains, or model binaries as SQLite
+  BLOBs by default; prefer explicit external artifact references when needed;
+- use parameterized SQL, foreign-key enforcement, schema-version metadata, and
+  explicit transaction/duplicate semantics;
+- prefer Python's standard `sqlite3` module unless the active issue reveals a
+  concrete need for additional infrastructure;
+- do not let persistence requirements force changes to the established
+  scientific result semantics.
+
+Consult Issues #5 and #9 plus the current README, scientific findings, and the
+completed Issue-6/8/4 implementations. Begin Issue #9 with a repository recap
+and schema/API plan before making broad multi-file changes.
