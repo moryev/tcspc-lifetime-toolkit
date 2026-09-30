@@ -12,6 +12,16 @@ also whether their performance survives distribution shift, whether their
 reported uncertainty tracks statistical degradation, and whether they detect
 failure when the assumed physical decay model is wrong.
 
+Post-v0.7.0 integration work has since extended the same architecture with
+canonical experimental-style measurement objects, generalized sampled and
+synthetic IRF handling, and Bayesian Poisson reconvolution. The Bayesian path
+reuses the shared mono-exponential forward model and Poisson observation
+likelihood while adding explicit priors, posterior sampling, sampling
+diagnostics, posterior summaries, posterior-predictive checks, and controlled
+decay-model and IRF-model mismatch evaluation. These integrations are present
+on the current development branch while the package version remains 0.7.0
+pending the later API, package-architecture, and release-stabilization stages.
+
 ## Scientific motivation
 
 Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
@@ -203,6 +213,12 @@ The current version supports:
   failure-awareness workflow;
 * Notebook 15 demonstrating explicit-unit experimental-style CSV import,
   same-grid sampled IRF reconvolution, and carefully labelled ML transfer.
+* Notebook 16 demonstrating generalized IRF construction and preparation,
+  registration/resampling diagnostics, IRF-shape mismatch, leading-edge proxy
+  failure modes, conditional uncertainty, and Gaussian-trained ML transfer;
+* Notebook 17 integrating Bayesian Poisson reconvolution, matched-model
+  uncertainty calibration, pseudo-true model-mismatch references, paired IRF
+  misspecification, sampling diagnostics, and posterior-predictive checks.
 
 ## Current scientific assumptions
 
@@ -1155,11 +1171,14 @@ without rerunning the multi-hour scientific profiles.
 ```text
 tcspc-lifetime-toolkit/
 ├── README.md
+├── CITATION.cff
 ├── pyproject.toml
 ├── .gitignore
 │
 ├── configs/
 │   ├── example_simulation.json
+│   ├── issue4_bayesian_workflow.json
+│   ├── issue4_bayesian_mismatch_workflow.json
 │   └── issue8_irf_workflow.json
 │
 ├── data/
@@ -1195,11 +1214,19 @@ tcspc-lifetime-toolkit/
 │   ├── 16_generalized_irf_and_failure_awareness.ipynb
 │   └── 17_bayesian_poisson_inference_and_model_mismatch.ipynb
 │
+├── scripts/
+│   └── correct_issue4_mismatch_references.py
+│
 ├── src/
 │   └── tcspc_toolkit/
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── baselines.py
+│       ├── bayesian.py
+│       ├── bayesian_evaluation.py
+│       ├── bayesian_mismatch_evaluation.py
+│       ├── bayesian_predictive.py
+│       ├── bayesian_sampling.py
 │       ├── benchmark_plots.py
 │       ├── classical_evaluation.py
 │       ├── classical_uncertainty.py
@@ -1214,13 +1241,14 @@ tcspc-lifetime-toolkit/
 │       ├── experimental.py
 │       ├── features.py
 │       ├── fitting.py
+│       ├── forward_model.py
 │       ├── generalization.py
 │       ├── generalization_datasets.py
 │       ├── generalization_evaluation.py
 │       ├── irf.py
-│       ├── irf_preparation.py
 │       ├── irf_estimation.py
 │       ├── irf_evaluation.py
+│       ├── irf_preparation.py
 │       ├── measurement_io.py
 │       ├── measurements.py
 │       ├── mismatch_evaluation.py
@@ -1236,14 +1264,18 @@ tcspc-lifetime-toolkit/
 │       └── uncertainty_robustness.py
 │
 └── tests/...
-    
 ```
 
 The modules currently have the following responsibilities:
 
 * `__init__.py`: package initialization and definition of the public package interface;
-* `__main__.py`: package entry point for python -m tcspc_toolkit;
+* `__main__.py`: package entry point for `python -m tcspc_toolkit`;
 * `baselines.py`: statistical and physics-inspired lifetime-estimation baselines, including constant-mean and mean-arrival-time estimators;
+* `bayesian.py`: core Bayesian mono-exponential Poisson-reconvolution contracts, explicit prior definitions, transformed-parameter posterior evaluation, canonical raw-count/IRF resolution, and the high-level Bayesian fitting interface;
+* `bayesian_sampling.py`: `emcee` posterior sampling, independent-ensemble execution, operational sampling diagnostics, convergence/failure states, posterior summaries, correlations, and inference timing;
+* `bayesian_predictive.py`: prior- and posterior-predictive sampling, expected-count and replicated-count predictive bands, discrepancy calculations, and posterior-predictive diagnostics conditional on a fixed assumed model and IRF;
+* `bayesian_evaluation.py`: reproducible paired classical/covariance/bootstrap/Bayesian evaluation on the same raw Poisson observations, including deterministic seed streams, interval semantics, runtime accounting, calibration summaries, and prior-sensitivity support;
+* `bayesian_mismatch_evaluation.py`: controlled decay-model and IRF-model mismatch evaluation, deterministic pseudo-true mono-exponential references, paired matched/misspecified IRF inference, posterior-predictive mismatch diagnostics, and explicit failure accounting;
 * `benchmark_plots.py`: reusable visualization utilities for prediction accuracy, error distributions, physical-condition dependence, and paired estimator comparisons;
 * `classical_evaluation.py`: batch mono-exponential reconvolution benchmarking, histogram-derived initialization, fit-validity and boundary diagnostics, Poisson fit statistics, error metrics, and runtime summaries;
 * `classical_uncertainty.py`: local Poisson/Fisher covariance, parametric Poisson bootstrap, and repeated-Poisson empirical calibration for reconvolution lifetime uncertainty;
@@ -1252,38 +1284,41 @@ The modules currently have the following responsibilities:
 * `config.py`: immutable configuration dataclasses, normalization-mode definitions, and JSON serialization/loading utilities for reproducible simulation and preprocessing workflows;
 * `convolution.py`: numerical convolution and temporal-grid alignment of ideal decay curves with instrument-response functions, including time-bin scaling and measurement-window truncation;
 * `cross_validation.py`: repeated development-set cross-validation, fold-level regression evaluation, aggregate stability summaries, and leakage-safe estimator benchmarking;
-* `datasets.py`: synthetic datasets generation for the consequent ML baseline;
-* `evaluation.py`: fitted signals, residuals, and lifetime-error metrics;
-* `exceptions.py`: package-specific exception hierarchy for representing domain-level TCSPC validation and processing errors;
+* `datasets.py`: synthetic dataset generation for baseline and machine-learning workflows;
+* `evaluation.py`: fitted-signal reconstruction, residual calculations, Poisson-deviance residuals, and lifetime-error metrics;
+* `exceptions.py`: package-specific exception hierarchy for domain-level TCSPC validation and processing errors;
 * `experimental.py`: thin adapters from canonical imported measurements to Poisson reconvolution, ML input preparation, and optional trusted-reference lifetime evaluation;
-* `features.py`: extraction of physically interpretable TCSPC histogram features, including photon-count descriptors, photon-arrival moments, quantile times, half-decay timing, tail characteristics, and early/late count relationships; also defines the stable engineered-feature schema and batch feature-table construction;
-* `fitting.py`: nonlinear parameter estimation and structured fit results;
+* `features.py`: extraction of physically interpretable TCSPC histogram features and batch feature-table construction using a stable engineered-feature schema;
+* `fitting.py`: nonlinear mono-exponential and reconvolution parameter estimation, Poisson likelihood evaluation, numerical fit validation/recovery diagnostics, and structured fit results;
+* `forward_model.py`: shared deterministic mono-exponential IRF-aware expected-count model used by classical fitting, uncertainty, and Bayesian inference;
 * `generalization.py`: frozen Week-8 robustness protocol, familiar-domain definition, A-F test definitions, numerical regimes, and reproducible test-suite configuration;
 * `generalization_datasets.py`: reproducible construction of paired final robustness Tests A-F with aligned targets, nuisance conditions, and provenance metadata;
 * `generalization_evaluation.py`: development-only fitting and final robustness evaluation across Tests A-F, including representation comparisons, classical diagnostics, model mismatch, MAE degradation, and Week-8 synthesis tables;
-* `irf.py`: generalized sampled source profiles, Gaussian/EMG generation, normalization, temporal shifting, and validation;
-* `irf_preparation.py`: imported-source adapter, explicit registration/resampling, derived target-grid kernels, and support/sampling diagnostics;
-* `irf_estimation.py`: explicit leading-edge derivative proxies with construction failures and factual diagnostics;
-* `irf_evaluation.py`: library-backed IRF shape mismatch, Gaussian-trained ML transfer, conditional uncertainty, and leading-edge failure studies independent of frozen A–F;
+* `irf.py`: generalized sampled source profiles, Gaussian/EMG generation, normalization, temporal shifting, source-kind metadata, and validation;
+* `irf_preparation.py`: imported-source adaptation, explicit registration/resampling, preparation of unit-area target-grid kernels, and support/sampling diagnostics;
+* `irf_estimation.py`: explicit leading-edge-derived IRF proxies with construction failures and factual diagnostics;
+* `irf_evaluation.py`: IRF shape-mismatch, Gaussian-trained ML transfer, conditional uncertainty, and leading-edge proxy failure studies independent of the frozen A-F suite;
 * `measurement_io.py`: strict single-curve CSV import with explicit time units, raw-count versus processed-intensity semantics, optional sampled IRFs, and source provenance;
-* `measurements.py`: canonical experimental measurement abstractions, including `TCSPCMeasurement`, `SampledIRF`, time-unit conversion, immutable source arrays, and raw-count guards;
+* `measurements.py`: canonical experimental measurement abstractions, including `TCSPCMeasurement`, `SampledIRF`, explicit data-kind semantics, immutable source arrays, time-unit conversion, metadata/provenance, and raw-count guards;
 * `mismatch_evaluation.py`: matched bi-exponential model-mismatch dataset construction and in-distribution versus mismatch evaluation for ML and classical estimators;
 * `ml_evaluation.py`: reproducible benchmark-dataset construction and splitting, regression metrics, baseline and estimator evaluation, histogram/PCA representation construction, representation benchmarks, photon-count ablation, and split-coverage diagnostics;
 * `ml_models.py`: reusable scikit-learn pipelines for Ridge, Random Forest, and Histogram Gradient Boosting lifetime regression;
 * `ml_uncertainty.py`: quantile-regression prediction intervals, Random-Forest tree-disagreement scores, training-data bootstrap prediction spread, and frozen external ML uncertainty evaluation;
-* `models.py`: mathematical decay models;
-* `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including histogram validation, background estimation and subtraction, peak detection, IRF-relative temporal alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent count normalization;
-* `representations.py`: construction of machine-learning representations from TCSPC histograms, including batch histogram normalization, leakage-safe PCA fitting and transformation, and cumulative explained-variance analysis;
-* `simulation.py`: expected-curve generation and Poisson sampling;
+* `models.py`: mathematical fluorescence-decay models;
+* `preprocessing.py`: composable preprocessing utilities for raw TCSPC histograms, including validation, background estimation/subtraction, peak detection, IRF-relative alignment, time-window cropping, photon-count-preserving rebinning, and analysis-dependent normalization;
+* `representations.py`: machine-learning representations from TCSPC histograms, including batch normalization, leakage-safe PCA fitting/transformation, and cumulative explained-variance analysis;
+* `simulation.py`: expected-count construction, IRF-convolved simulation, and Poisson photon-count sampling;
 * `timing_evaluation.py`: repeated batch inference timing, reconvolution-runtime summaries, throughput calculation, and computational-cost comparison;
 * `uncertainty_evaluation.py`: shared Week-9 uncertainty protocol, development/calibration splitting, prediction-interval metrics, uncertainty-score metrics, and selective-prediction diagnostics;
-* `uncertainty_robustness.py`: conformal calibration, ML and classical A–F uncertainty scorecards, conditional failure-awareness analysis, and signed-residual model-mismatch diagnostics;
+* `uncertainty_robustness.py`: conformal calibration, ML and classical A-F uncertainty scorecards, conditional failure-awareness analysis, and signed-residual model-mismatch diagnostics;
+* `configs/`: reproducible JSON manifests for simulation and the Issue-8 and Issue-4 scientific workflows;
 * `data/examples/`: small example datasets tracked by Git;
-* `data/generated/`: generated outputs that are not normally tracked by Git;
-* `docs/scientific_findings.md`: cumulative record of durable scientific conclusions established by the benchmark notebooks;
-* `notebooks/`: documented analysis workflows;
-* `tests/`: automated verification of physical, numerical, and package behaviour;
-* `pyproject.toml`: package metadata, dependencies, build configuration, and command-line entry points.
+* `data/generated/`: generated scientific outputs that are not normally tracked by Git;
+* `docs/scientific_findings.md`: cumulative record of durable scientific conclusions established by the benchmark and post-Week-9 workflows;
+* `notebooks/`: documented end-to-end analysis and scientific validation workflows;
+* `scripts/`: focused reproducibility and audit utilities, including the Stage-6.5 Issue-4 pseudo-true-reference correction script;
+* `tests/`: automated verification of physical, numerical, statistical, and package behaviour;
+* `pyproject.toml`: package metadata, dependencies, optional Bayesian dependency, build configuration, and command-line entry points.
 
 ## Current limitations
 
@@ -1332,11 +1367,11 @@ The planned integration and release path is:
    estimation — implemented;
 2. [Issue #8](https://github.com/moryev/tcspc-lifetime-toolkit/issues/8) —
    generalized IRFs, explicit sampled-IRF preparation, and leading-edge
-   proxy/failure-awareness evaluation — implemented and verified; commit/issue review pending;
+   proxy/failure-awareness evaluation — implemented, verified, and closed;
 3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
    Bayesian Poisson lifetime inference using the canonical measurement and IRF
    abstractions — inference, scientific evaluation, documentation, and
-   Notebook 17 implemented; issue closure review pending;
+   Notebook 17 implemented, final acceptance review completed, and issue closed;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
    uncertainty outputs, Bayesian summaries, and benchmark metrics;
@@ -1402,10 +1437,12 @@ assert np.array_equal(measured_1, measured_2)
 Version 0.7.0 completes the current generalization, robustness, uncertainty,
 and failure-awareness development stage.
 
-The toolkit now provides an integrated synthetic TCSPC workflow spanning
-physical simulation, preprocessing, classical reconvolution, machine-learning
-estimation, controlled external robustness testing, statistical uncertainty
-calibration, and model-mismatch failure analysis.
+The toolkit now provides an integrated TCSPC workflow spanning physical
+simulation, canonical experimental-style measurements, generalized IRF
+handling, preprocessing, classical reconvolution, machine-learning estimation,
+controlled external robustness testing, statistical uncertainty calibration,
+Bayesian Poisson inference, posterior-predictive diagnostics, and
+model-mismatch failure analysis.
 
 The repository remains under active development. The current codebase is a
 research and scientific-software prototype and is not yet intended as a
@@ -1414,7 +1451,7 @@ validated replacement for established experimental TCSPC-analysis software.
 Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
 inference, posterior diagnostics, and controlled model-mismatch evaluation
-and Notebook 17 are implemented; Issue #4 remains open for closure review.
+and Notebook 17 are implemented; Issue #4 is complete and closed.
 Vendor formats, synthetic-to-real validation, broader decay-model
 inference, and package/API hardening remain future work. These post-release
 integrations do not change the v0.7.0 release version.
