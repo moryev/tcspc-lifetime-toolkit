@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "description": "Issue-4 Stage-6 controlled model mismatch; independent of frozen Stage-5 and Week-8/9 outputs",
+  "time_grid_ns": {"start": 0.0, "stop": 12.0, "step": 0.05},
+  "measurement_window_ns": [0.0, 12.0],
+  "common_model": {
+    "signal_photon_count": 100000,
+    "background_per_bin": 0.5,
+    "true_temporal_shift_ns": 0.04,
+    "temporal_shift_bounds_ns": [-0.2, 0.2],
+    "nominal_interval_level": 0.9,
+    "classical_background_fraction": 0.1,
+    "background_convention": "constant expected counts per bin added after reconvolution",
+    "signal_budget_convention": "expected detected signal photons in the finite measurement window"
+  },
+  "irfs": {
+    "gaussian": {"kind": "synthetic_gaussian_prepared", "centre_ns": 1.5, "fwhm_ns": 0.35},
+    "emg": {
+      "kind": "synthetic_emg_prepared",
+      "gaussian_component_centre_ns": 1.5,
+      "gaussian_component_fwhm_ns": 0.35,
+      "tail_time_ns": 0.18
+    },
+    "emg_gaussian_comparison": "Issue-8 sampled principal peak and full-FWHM match"
+  },
+  "conditions": [
+    {
+      "id": "mono_control",
+      "mechanism": "decay",
+      "generating_model": "monoexponential",
+      "primary_lifetime_ns": 2.0,
+      "generating_irf": "gaussian",
+      "assumptions": [{"id": "gaussian_mono", "irf": "gaussian"}]
+    },
+    {
+      "id": "weak_biexponential",
+      "mechanism": "decay",
+      "generating_model": "biexponential",
+      "primary_lifetime_ns": 2.0,
+      "secondary_lifetime_ns": 4.0,
+      "secondary_detected_fraction": 0.05,
+      "generating_irf": "gaussian",
+      "assumptions": [{"id": "gaussian_mono", "irf": "gaussian"}]
+    },
+    {
+      "id": "moderate_biexponential",
+      "mechanism": "decay",
+      "generating_model": "biexponential",
+      "primary_lifetime_ns": 2.0,
+      "secondary_lifetime_ns": 4.0,
+      "secondary_detected_fraction": 0.15,
+      "generating_irf": "gaussian",
+      "assumptions": [{"id": "gaussian_mono", "irf": "gaussian"}]
+    },
+    {
+      "id": "emg_irf",
+      "mechanism": "irf",
+      "generating_model": "monoexponential",
+      "primary_lifetime_ns": 2.0,
+      "generating_irf": "emg",
+      "assumptions": [
+        {"id": "matched_emg", "irf": "emg"},
+        {"id": "gaussian_assumed", "irf": "emg_peak_fwhm_gaussian"}
+      ]
+    }
+  ],
+  "priors": {
+    "amplitude_gamma_shape_rate": [1.0, 0.0004],
+    "lifetime_lognormal_log_mean_std": [0.6931471805599453, 0.8],
+    "background_gamma_shape_rate": [1.2, 0.24],
+    "shift_uniform_bounds_ns": [-0.2, 0.2]
+  },
+  "predictive_windows_ns": {"early": [1.0, 3.0], "tail": [7.0, 12.0]},
+  "randomness": {
+    "namespace": "issue4:stage6:v1",
+    "base_seed": 9406,
+    "streams": ["observation", "bootstrap", "bayesian", "posterior_predictive"],
+    "derivation": "SHA-256 of namespace:base_seed:condition_id:realization_index:stream, first 64 bits little-endian",
+    "shared_within_irf_assumption_pair": true
+  },
+  "profiles": {
+    "smoke": {
+      "purpose": "plumbing and timing only; no scientific mismatch claim",
+      "n_repeats_per_condition": 2,
+      "n_bootstrap_resamples": 6,
+      "n_posterior_predictive_draws": 20,
+      "bayesian_sampling": {
+        "n_walkers": 12,
+        "warmup_steps": 45,
+        "production_steps": 70,
+        "max_production_steps": 70,
+        "extension_steps": 20,
+        "n_ensembles": 2,
+        "min_autocorrelation_multiples": 2.0,
+        "max_autocorrelation_relative_change": 5.0,
+        "min_effective_samples": 10.0,
+        "max_ensemble_location_difference_sd": 3.0,
+        "min_mean_acceptance_fraction": 0.01,
+        "max_mean_acceptance_fraction": 0.99
+      }
+    },
+    "scientific": {
+      "purpose": "predeclared controlled mismatch study; manual execution only",
+      "n_repeats_per_condition": 20,
+      "n_bootstrap_resamples": 100,
+      "n_posterior_predictive_draws": 200,
+      "bayesian_sampling": {
+        "n_walkers": 32,
+        "warmup_steps": 500,
+        "production_steps": 1000,
+        "max_production_steps": 5000,
+        "extension_steps": 500,
+        "n_ensembles": 2,
+        "min_autocorrelation_multiples": 50.0,
+        "max_autocorrelation_relative_change": 0.2,
+        "min_effective_samples": 100.0,
+        "max_ensemble_location_difference_sd": 0.5,
+        "min_mean_acceptance_fraction": 0.1,
+        "max_mean_acceptance_fraction": 0.9
+      }
+    }
+  },
+  "outputs": "compact per-inference CSV, condition/reference/aggregate JSON, and deterministic seeds under ignored data/generated/issue4/mismatch/; no chains"
+}
