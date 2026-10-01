@@ -561,7 +561,7 @@ establish physical-model correctness. The verified findings, including the
 corrected deterministic reference analysis, are in
 [`docs/scientific_findings.md`](docs/scientific_findings.md#post-week-9--issue-4-bayesian-poisson-inference-and-model-conditional-uncertainty).
 [Notebook 17](notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
-demonstrates the complete workflow; Issue-#4 closure review remains pending.
+demonstrates the complete workflow; Issue #4 is complete and closed.
 
 ## Current implementation status
 
@@ -591,7 +591,7 @@ The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
 measurements. Post-release integration adds the Issue-#6 single-curve import
 boundary, Issue-#8 generalized IRF/proxy workflows, and Issue-#4 Bayesian
 inference with completed calibration and mismatch experiments. The final
-Bayesian notebook is available; Issue-#4 closure review is pending.
+Bayesian notebook is available; Issue #4 is complete and closed.
 Synthetic-to-real validation, broader inverse decay models, and package/API
 hardening remain future development stages.
 
