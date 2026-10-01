@@ -43,7 +43,10 @@ link. Trusted experimental references and pseudo-true likelihood projections
 have distinct lifetime_references kinds and foreign-key scopes. Corrected
 pseudo-true references receive new versions; historical reference rows remain.
 A bi-exponential generating condition has no unique mono-exponential physical
-truth. The Stage-6.5 projection remains prior-free and model-conditional.
+truth. A recorded bi-exponential condition must have both positive component
+lifetimes and a secondary detected fraction strictly between zero and one;
+missing component truth is not a complete generating condition. The Stage-6.5
+projection remains prior-free and model-conditional.
 
 irf_sources records source identity; prepared_irfs records registration,
 resampling, normalization and kernel identity. The measurement's attached IRF
@@ -63,6 +66,17 @@ Poisson method to processed values. Generating photon budget, observed total
 counts, fitted reconvolution amplitude and background per bin use different
 columns and units. Time and lifetime columns are nanoseconds; stored runtimes
 are seconds and retain a named measurement scope.
+Counts and cardinalities such as bin counts, photon budgets, observed totals,
+artifact byte sizes, realization indices, optimizer evaluations, resamples,
+Bayesian steps/draws and benchmark denominators must have SQLite integer
+storage after affinity conversion. Nullable count fields accept NULL where
+their scientific row contract permits it. Continuous background, amplitude,
+fraction, probability, coverage, lifetime and runtime fields remain real-valued.
+
+Complete Poisson reconvolution assumptions require a prepared IRF and exactly
+one explicit temporal-shift mode: a fixed shift with no bounds, or a lower and
+upper bound with no fixed shift and lower < upper. Historical contexts marked
+`historical_incomplete` may retain missing or partial shift evidence.
 
 No array, posterior chain, fitted curve, residual profile, model binary or
 fitted PCA object is stored as a SQLite BLOB by default. Their rows may link
@@ -111,6 +125,11 @@ record; a conflicting payload must raise. No silent replacement or default
 upsert is planned. Scientific failures are records: fit validity, optimizer
 success, numerical validation, interval validity, sampling status and
 diagnostic acceptance remain separate fields.
+For a shared estimator result, `is_valid=1` requires `status='available'` and a
+non-NULL numeric lifetime estimate. It does not require a positive estimate:
+finite zero or negative ML predictions remain valid outputs under the current
+ML evaluation contract. Estimator-specific physical constraints belong at the
+scientific adapter boundary. Invalid results may retain a finite estimate.
 
 ## Canonical array hashes
 
@@ -199,6 +218,10 @@ Any trigger defined on a toolkit table is rejected because it can change
 persistence behavior; triggers on user tables or views are allowed. Missing or
 altered toolkit-owned objects still make the database incompatible.
 Reopening a compatible database does not rewrite it.
+The four constraint corrections in this document amend the unreleased schema
+v1 definition. They are not a migration or schema v2: a database made from the
+earlier provisional Stage-1 v1 DDL has a different toolkit definition and must
+be recreated before use with this version.
 
 Schema creation runs in a transaction. On a DDL, metadata or validation
 failure, no partially initialized schema is committed. SQLite may already

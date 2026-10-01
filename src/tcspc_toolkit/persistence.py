@@ -117,7 +117,8 @@ _TABLES: tuple[tuple[str, str], ...] = (
             artifact_kind TEXT NOT NULL CHECK (length(trim(artifact_kind)) > 0),
             format TEXT NOT NULL CHECK (length(trim(format)) > 0),
             sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
-            byte_size INTEGER CHECK (byte_size IS NULL OR byte_size >= 0),
+            byte_size INTEGER CHECK (byte_size IS NULL OR
+                (typeof(byte_size) = 'integer' AND byte_size >= 0)),
             locator_json TEXT NOT NULL DEFAULT '{}'
         )
         """,
@@ -134,7 +135,8 @@ _TABLES: tuple[tuple[str, str], ...] = (
             source_kind TEXT CHECK (source_kind IS NULL OR source_kind IN
                 ('synthetic_gaussian', 'synthetic_emg', 'imported_sampled',
                  'leading_edge_estimate')),
-            n_bins INTEGER NOT NULL CHECK (n_bins > 1),
+            n_bins INTEGER NOT NULL
+                CHECK (typeof(n_bins) = 'integer' AND n_bins > 1),
             source_grid_sha256 TEXT NOT NULL
                 CHECK (length(source_grid_sha256) = 64),
             source_values_sha256 TEXT NOT NULL
@@ -172,7 +174,8 @@ _TABLES: tuple[tuple[str, str], ...] = (
             kernel_sha256 TEXT NOT NULL CHECK (length(kernel_sha256) = 64),
             kernel_artifact_id INTEGER REFERENCES artifacts(artifact_id)
                 ON DELETE RESTRICT,
-            n_bins INTEGER NOT NULL CHECK (n_bins > 1),
+            n_bins INTEGER NOT NULL
+                CHECK (typeof(n_bins) = 'integer' AND n_bins > 1),
             time_start_ns REAL NOT NULL,
             time_step_ns REAL NOT NULL CHECK (time_step_ns > 0),
             registration_offset_ns REAL,
@@ -225,7 +228,8 @@ _TABLES: tuple[tuple[str, str], ...] = (
             secondary_lifetime_ns REAL,
             secondary_detected_fraction REAL,
             signal_photon_count INTEGER NOT NULL
-                CHECK (signal_photon_count > 0),
+                CHECK (typeof(signal_photon_count) = 'integer'
+                    AND signal_photon_count > 0),
             background_per_bin REAL NOT NULL
                 CHECK (background_per_bin >= 0),
             true_temporal_shift_ns REAL NOT NULL,
@@ -246,9 +250,12 @@ _TABLES: tuple[tuple[str, str], ...] = (
                 OR
                 (generating_model = 'biexponential'
                     AND mono_lifetime_ns IS NULL
+                    AND primary_lifetime_ns IS NOT NULL
                     AND primary_lifetime_ns > 0
+                    AND secondary_lifetime_ns IS NOT NULL
                     AND secondary_lifetime_ns > 0
-                    AND secondary_detected_fraction >= 0
+                    AND secondary_detected_fraction IS NOT NULL
+                    AND secondary_detected_fraction > 0
                     AND secondary_detected_fraction < 1)
                 OR
                 (generating_model = 'other'
@@ -277,13 +284,15 @@ _TABLES: tuple[tuple[str, str], ...] = (
             data_kind TEXT NOT NULL
                 CHECK (data_kind IN ('raw_counts', 'processed_intensity')),
             sample_id TEXT,
-            n_bins INTEGER NOT NULL CHECK (n_bins > 1),
+            n_bins INTEGER NOT NULL
+                CHECK (typeof(n_bins) = 'integer' AND n_bins > 1),
             time_start_ns REAL NOT NULL,
             time_step_ns REAL NOT NULL CHECK (time_step_ns > 0),
             time_grid_sha256 TEXT NOT NULL
                 CHECK (length(time_grid_sha256) = 64),
             values_sha256 TEXT NOT NULL CHECK (length(values_sha256) = 64),
-            observed_total_counts INTEGER,
+            observed_total_counts INTEGER CHECK (observed_total_counts IS NULL
+                OR typeof(observed_total_counts) = 'integer'),
             observation_seed_decimal TEXT,
             metadata_json TEXT NOT NULL DEFAULT '{}',
             provenance_json TEXT NOT NULL DEFAULT '{}',
@@ -320,7 +329,9 @@ _TABLES: tuple[tuple[str, str], ...] = (
             regime_id TEXT,
             pair_id TEXT,
             realization_index INTEGER
-                CHECK (realization_index IS NULL OR realization_index >= 0),
+                CHECK (realization_index IS NULL OR
+                    (typeof(realization_index) = 'integer'
+                        AND realization_index >= 0)),
             dataset_key TEXT,
             membership_json TEXT NOT NULL DEFAULT '{}',
             PRIMARY KEY (run_id, measurement_id)
@@ -385,6 +396,20 @@ _TABLES: tuple[tuple[str, str], ...] = (
                 context_completeness <> 'complete'
                 OR observation_model <> 'poisson_reconvolution'
                 OR prepared_irf_id IS NOT NULL
+            ),
+            CHECK (
+                context_completeness <> 'complete'
+                OR observation_model <> 'poisson_reconvolution'
+                OR (
+                    (fixed_temporal_shift_ns IS NOT NULL
+                        AND temporal_shift_lower_ns IS NULL
+                        AND temporal_shift_upper_ns IS NULL)
+                    OR
+                    (fixed_temporal_shift_ns IS NULL
+                        AND temporal_shift_lower_ns IS NOT NULL
+                        AND temporal_shift_upper_ns IS NOT NULL
+                        AND temporal_shift_lower_ns < temporal_shift_upper_ns)
+                )
             )
         )
         """,
@@ -474,7 +499,7 @@ _TABLES: tuple[tuple[str, str], ...] = (
                 is_valid = 0 OR
                 (status = 'available'
                     AND lifetime_estimate_ns IS NOT NULL
-                    AND lifetime_estimate_ns > 0)
+                    AND typeof(lifetime_estimate_ns) IN ('integer', 'real'))
             ),
             CHECK (
                 random_seed_decimal IS NULL OR (
@@ -512,12 +537,17 @@ _TABLES: tuple[tuple[str, str], ...] = (
             poisson_nll REAL,
             poisson_deviance REAL,
             max_coordinate_descent_nll REAL,
-            optimizer_status INTEGER,
+            optimizer_status INTEGER CHECK (optimizer_status IS NULL
+                OR typeof(optimizer_status) = 'integer'),
             optimizer_message TEXT,
             optimizer_nfev INTEGER
-                CHECK (optimizer_nfev IS NULL OR optimizer_nfev >= 0),
+                CHECK (optimizer_nfev IS NULL OR
+                    (typeof(optimizer_nfev) = 'integer'
+                        AND optimizer_nfev >= 0)),
             optimizer_njev INTEGER
-                CHECK (optimizer_njev IS NULL OR optimizer_njev >= 0),
+                CHECK (optimizer_njev IS NULL OR
+                    (typeof(optimizer_njev) = 'integer'
+                        AND optimizer_njev >= 0)),
             optimizer_seconds REAL
                 CHECK (optimizer_seconds IS NULL OR optimizer_seconds >= 0),
             call_seconds REAL
@@ -560,8 +590,10 @@ _TABLES: tuple[tuple[str, str], ...] = (
             reported_std_ns REAL,
             resample_median_ns REAL,
             n_requested INTEGER
-                CHECK (n_requested IS NULL OR n_requested >= 0),
-            n_valid INTEGER CHECK (n_valid IS NULL OR n_valid >= 0),
+                CHECK (n_requested IS NULL OR
+                    (typeof(n_requested) = 'integer' AND n_requested >= 0)),
+            n_valid INTEGER CHECK (n_valid IS NULL OR
+                (typeof(n_valid) = 'integer' AND n_valid >= 0)),
             refit_failure_rate REAL
                 CHECK (refit_failure_rate IS NULL
                     OR refit_failure_rate BETWEEN 0 AND 1),
@@ -630,12 +662,12 @@ _TABLES: tuple[tuple[str, str], ...] = (
             lifetime_mean_ns REAL,
             mean_acceptance_fraction REAL,
             minimum_effective_samples REAL,
-            production_steps INTEGER CHECK (production_steps IS NULL
-                OR production_steps >= 0),
-            retained_samples INTEGER CHECK (retained_samples IS NULL
-                OR retained_samples >= 0),
-            extension_count INTEGER CHECK (extension_count IS NULL
-                OR extension_count >= 0),
+            production_steps INTEGER CHECK (production_steps IS NULL OR
+                (typeof(production_steps) = 'integer' AND production_steps >= 0)),
+            retained_samples INTEGER CHECK (retained_samples IS NULL OR
+                (typeof(retained_samples) = 'integer' AND retained_samples >= 0)),
+            extension_count INTEGER CHECK (extension_count IS NULL OR
+                (typeof(extension_count) = 'integer' AND extension_count >= 0)),
             minimum_autocorrelation_multiples REAL,
             maximum_autocorrelation_relative_change REAL,
             maximum_ensemble_mean_difference_sd REAL,
@@ -652,8 +684,8 @@ _TABLES: tuple[tuple[str, str], ...] = (
             correlation_json TEXT NOT NULL DEFAULT '[]',
             ppc_status TEXT CHECK (ppc_status IS NULL OR ppc_status IN
                 ('not_requested', 'success', 'not_available', 'failed')),
-            ppc_n_draws INTEGER CHECK (ppc_n_draws IS NULL
-                OR ppc_n_draws >= 0),
+            ppc_n_draws INTEGER CHECK (ppc_n_draws IS NULL OR
+                (typeof(ppc_n_draws) = 'integer' AND ppc_n_draws >= 0)),
             ppc_runtime_seconds REAL,
             ppc_deviance_tail_probability REAL,
             ppc_discrepancies_json TEXT NOT NULL DEFAULT '{}',
@@ -688,11 +720,14 @@ _TABLES: tuple[tuple[str, str], ...] = (
             value_status TEXT NOT NULL
                 CHECK (value_status IN ('finite', 'undefined')),
             metric_value REAL,
-            n_attempted INTEGER NOT NULL CHECK (n_attempted >= 0),
-            n_valid INTEGER CHECK (n_valid IS NULL
-                OR n_valid BETWEEN 0 AND n_attempted),
-            n_contributing INTEGER CHECK (n_contributing IS NULL
-                OR n_contributing BETWEEN 0 AND n_attempted),
+            n_attempted INTEGER NOT NULL
+                CHECK (typeof(n_attempted) = 'integer' AND n_attempted >= 0),
+            n_valid INTEGER CHECK (n_valid IS NULL OR
+                (typeof(n_valid) = 'integer'
+                    AND n_valid BETWEEN 0 AND n_attempted)),
+            n_contributing INTEGER CHECK (n_contributing IS NULL OR
+                (typeof(n_contributing) = 'integer'
+                    AND n_contributing BETWEEN 0 AND n_attempted)),
             denominator_kind TEXT NOT NULL
                 CHECK (length(trim(denominator_kind)) > 0),
             test_id TEXT,
@@ -706,8 +741,9 @@ _TABLES: tuple[tuple[str, str], ...] = (
                     'trusted_experimental', 'pseudo_true_mono')),
             reference_version TEXT,
             signal_photon_count INTEGER
-                CHECK (signal_photon_count IS NULL
-                    OR signal_photon_count > 0),
+                CHECK (signal_photon_count IS NULL OR
+                    (typeof(signal_photon_count) = 'integer'
+                        AND signal_photon_count > 0)),
             background_per_bin REAL
                 CHECK (background_per_bin IS NULL
                     OR background_per_bin >= 0),

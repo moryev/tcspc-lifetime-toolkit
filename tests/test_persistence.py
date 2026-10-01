@@ -15,6 +15,9 @@ from tcspc_toolkit import persistence
 
 
 _DIGEST = "a" * 64
+_PROVISIONAL_STAGE1_SHA256 = (
+    "3d0328a99e113187259eb4b042df4beab690181506c7fa38a17c7e8ae1415478"
+)
 _TABLE_NAMES = {
     "schema_metadata",
     "experiment_runs",
@@ -101,6 +104,32 @@ def _seed_result_graph(connection):
     return run_id, measurement_id, model_id, result_id
 
 
+def _insert_condition(
+    connection, *, key="condition-1", model="monoexponential", mono=2.0,
+    primary=None, secondary=None, fraction=None,
+):
+    return connection.execute(
+        "INSERT INTO simulation_conditions "
+        "(condition_key, condition_id, generating_model, mono_lifetime_ns, "
+        "primary_lifetime_ns, secondary_lifetime_ns, "
+        "secondary_detected_fraction, signal_photon_count, "
+        "background_per_bin, true_temporal_shift_ns) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (key, "local-condition", model, mono, primary, secondary, fraction,
+         1000, 0.2, 0.0),
+    ).lastrowid
+
+
+def _insert_prepared_irf(connection, key="prepared-1"):
+    return connection.execute(
+        "INSERT INTO prepared_irfs "
+        "(preparation_key, preparation_kind, time_grid_sha256, "
+        "kernel_sha256, n_bins, time_start_ns, time_step_ns) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (key, "supplied_kernel", _DIGEST, _DIGEST, 3, 0.0, 0.25),
+    ).lastrowid
+
+
 def test_new_database_has_complete_versioned_schema(database_path):
     with closing(persistence.connect_database(database_path)) as connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
@@ -149,6 +178,58 @@ def test_compatible_reopen_is_idempotent(database_path):
         assert tuple(connection.execute(
             "SELECT created_at_utc, definition_sha256 FROM schema_metadata"
         ).fetchone()) == before
+
+
+def test_provisional_stage1_v1_fingerprint_is_rejected(database_path):
+    assert persistence.SCHEMA_VERSION == 1
+    assert persistence._SERIALIZATION_VERSION == 1
+    assert persistence._definition_sha256() != _PROVISIONAL_STAGE1_SHA256
+    with closing(sqlite3.connect(database_path)) as connection:
+        connection.execute(
+            "UPDATE schema_metadata SET definition_sha256 = ?",
+            (_PROVISIONAL_STAGE1_SHA256,),
+        )
+        connection.commit()
+    with pytest.raises(persistence.PersistenceSchemaError, match="schema metadata"):
+        persistence.connect_database(database_path)
+    with pytest.raises(persistence.PersistenceSchemaError, match="schema metadata"):
+        persistence.initialize_database(database_path)
+
+
+def test_provisional_biexponential_table_ddl_is_rejected():
+    with closing(sqlite3.connect(":memory:", isolation_level=None)) as connection:
+        for name, statement in persistence._TABLES:
+            if name == "simulation_conditions":
+                # Reconstruct the original Stage-1 v1 CHECK for this table.
+                previous = statement.replace(
+                    "AND primary_lifetime_ns IS NOT NULL\n", "",
+                ).replace(
+                    "AND secondary_lifetime_ns IS NOT NULL\n", "",
+                ).replace(
+                    "AND secondary_detected_fraction IS NOT NULL\n", "",
+                ).replace(
+                    "AND secondary_detected_fraction > 0",
+                    "AND secondary_detected_fraction >= 0",
+                )
+                assert previous != statement
+                statement = previous
+            connection.execute(statement)
+        for _, statement in persistence._INDEXES:
+            connection.execute(statement)
+        connection.execute(
+            "INSERT INTO schema_metadata "
+            "(singleton_id, schema_name, schema_version, "
+            "serialization_version, definition_sha256, created_at_utc) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (1, "tcspc_lifetime_toolkit", 1, 1,
+             _PROVISIONAL_STAGE1_SHA256, "2026-10-01T00:00:00+00:00"),
+        )
+        connection.execute("PRAGMA user_version = 1")
+        with pytest.raises(
+            persistence.PersistenceSchemaError,
+            match="missing or altered table: simulation_conditions",
+        ):
+            persistence.initialize_database(connection)
 
 
 def test_unrelated_incomplete_and_unsupported_databases_are_rejected(tmp_path, database_path):
@@ -414,11 +495,12 @@ def test_generating_attached_and_assumed_irf_links_remain_distinct(database_path
             assumption_id = connection.execute(
                 "INSERT INTO model_assumptions "
                 "(assumption_key, assumed_decay_model, observation_model, "
-                "background_convention, prepared_irf_id, context_completeness) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "background_convention, prepared_irf_id, context_completeness, "
+                "fixed_temporal_shift_ns) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 ("assumption-1", "monoexponential", "poisson_reconvolution",
                  "fitted_constant_per_bin", prepared_ids["assumed"],
-                 "complete"),
+                 "complete", 0.0),
             ).lastrowid
             with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
                 connection.execute(
@@ -438,6 +520,304 @@ def test_generating_attached_and_assumed_irf_links_remain_distinct(database_path
             "WHERE m.measurement_id = ?", (assumption_id, measurement_id),
         ).fetchone()
         assert tuple(links) == ("generating", "attached", "assumed")
+
+
+@pytest.mark.parametrize(
+    "model,mono,primary,secondary,fraction,accepted",
+    [
+        ("monoexponential", 2.0, None, None, None, True),
+        ("monoexponential", None, None, None, None, False),
+        ("monoexponential", 2.0, 1.0, None, None, False),
+        ("biexponential", None, 1.0, 3.0, 0.2, True),
+        ("biexponential", None, None, 3.0, 0.2, False),
+        ("biexponential", None, 1.0, None, 0.2, False),
+        ("biexponential", None, 1.0, 3.0, None, False),
+        ("biexponential", None, None, None, None, False),
+        ("biexponential", None, 1.0, 3.0, 0.0, False),
+        ("biexponential", None, 1.0, 3.0, 1.0, False),
+        ("biexponential", None, 1.0, 3.0, -0.1, False),
+        ("biexponential", None, 1.0, 3.0, 1.1, False),
+        ("biexponential", None, 0.0, 3.0, 0.2, False),
+        ("biexponential", None, -1.0, 3.0, 0.2, False),
+        ("biexponential", None, 1.0, 0.0, 0.2, False),
+        ("biexponential", None, 1.0, -3.0, 0.2, False),
+    ],
+    ids=[
+        "valid-mono", "mono-missing-lifetime", "mono-extra-component",
+        "valid-bi", "bi-missing-primary", "bi-missing-secondary",
+        "bi-missing-fraction", "bi-all-missing", "bi-zero-fraction",
+        "bi-unit-fraction", "bi-negative-fraction", "bi-fraction-above-one",
+        "bi-zero-primary", "bi-negative-primary", "bi-zero-secondary",
+        "bi-negative-secondary",
+    ],
+)
+def test_generating_condition_component_constraints(
+    database_path, model, mono, primary, secondary, fraction, accepted,
+):
+    with closing(persistence.connect_database(database_path)) as connection:
+        if accepted:
+            condition_pk = _insert_condition(
+                connection, model=model, mono=mono, primary=primary,
+                secondary=secondary, fraction=fraction,
+            )
+            row = connection.execute(
+                "SELECT generating_model, mono_lifetime_ns, primary_lifetime_ns, "
+                "secondary_lifetime_ns, secondary_detected_fraction "
+                "FROM simulation_conditions WHERE condition_pk = ?",
+                (condition_pk,),
+            ).fetchone()
+            assert tuple(row) == (model, mono, primary, secondary, fraction)
+        else:
+            with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+                _insert_condition(
+                    connection, model=model, mono=mono, primary=primary,
+                    secondary=secondary, fraction=fraction,
+                )
+
+
+@pytest.mark.parametrize(
+    "fixed,lower,upper,completeness,accepted",
+    [
+        (0.0, None, None, "complete", True),
+        (None, -0.5, 0.5, "complete", True),
+        (None, None, None, "complete", False),
+        (None, -0.5, None, "complete", False),
+        (None, None, 0.5, "complete", False),
+        (0.0, -0.5, 0.5, "complete", False),
+        (None, 0.5, -0.5, "complete", False),
+        (None, 0.5, 0.5, "complete", False),
+        (None, None, None, "historical_incomplete", True),
+        (None, -0.5, None, "historical_incomplete", True),
+        (0.0, -0.5, 0.5, "historical_incomplete", True),
+    ],
+    ids=[
+        "fixed", "bounded", "missing", "lower-only", "upper-only",
+        "fixed-and-bounded", "reversed-bounds", "equal-bounds",
+        "historical-missing", "historical-partial", "historical-ambiguous",
+    ],
+)
+def test_complete_poisson_assumption_shift_modes(
+    database_path, fixed, lower, upper, completeness, accepted,
+):
+    with closing(persistence.connect_database(database_path)) as connection:
+        prepared_id = _insert_prepared_irf(connection)
+        statement = (
+            "INSERT INTO model_assumptions "
+            "(assumption_key, assumed_decay_model, observation_model, "
+            "background_convention, prepared_irf_id, context_completeness, "
+            "fixed_temporal_shift_ns, temporal_shift_lower_ns, "
+            "temporal_shift_upper_ns) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        values = (
+            "assumption-1", "monoexponential", "poisson_reconvolution",
+            "fitted_constant_per_bin", prepared_id, completeness,
+            fixed, lower, upper,
+        )
+        if accepted:
+            connection.execute(statement, values)
+        else:
+            with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+                connection.execute(statement, values)
+
+
+def test_complete_poisson_assumption_still_requires_prepared_irf(database_path):
+    with closing(persistence.connect_database(database_path)) as connection:
+        with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+            connection.execute(
+                "INSERT INTO model_assumptions "
+                "(assumption_key, assumed_decay_model, observation_model, "
+                "background_convention, context_completeness, "
+                "fixed_temporal_shift_ns) VALUES (?, ?, ?, ?, ?, ?)",
+                ("missing-irf", "monoexponential", "poisson_reconvolution",
+                 "fitted_constant_per_bin", "complete", 0.0),
+            )
+
+
+@pytest.mark.parametrize(
+    "estimate,valid,status,accepted",
+    [
+        (2.0, 1, "available", True),
+        (0.0, 1, "available", True),
+        (-0.5, 1, "available", True),
+        (None, 1, "available", False),
+        ("not-numeric", 1, "available", False),
+        (1.5, 0, "failed", True),
+        (-0.5, 0, "failed", True),
+    ],
+    ids=[
+        "valid-positive", "valid-zero-ml", "valid-negative-ml",
+        "valid-null", "valid-nonnumeric", "invalid-retains-positive",
+        "invalid-retains-negative",
+    ],
+)
+def test_shared_result_validity_preserves_ml_estimates(
+    database_path, estimate, valid, status, accepted,
+):
+    with closing(persistence.connect_database(database_path)) as connection:
+        run_id, measurement_id, _, _ = _seed_result_graph(connection)
+        ml_model_id = _insert_model(connection, key="ml-model", family="ml")
+        statement = (
+            "INSERT INTO estimator_results "
+            "(run_id, measurement_id, model_id, point_summary, status, "
+            "is_valid, source_result_type, lifetime_estimate_ns) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        values = (
+            run_id, measurement_id, ml_model_id, "lifetime_ns", status,
+            valid, "ml_prediction_fixture", estimate,
+        )
+        if accepted:
+            result_id = connection.execute(statement, values).lastrowid
+            assert connection.execute(
+                "SELECT lifetime_estimate_ns FROM estimator_results "
+                "WHERE result_id = ?", (result_id,),
+            ).fetchone()[0] == estimate
+        else:
+            with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+                connection.execute(statement, values)
+
+
+@pytest.fixture
+def integer_constraint_rows(database_path):
+    with closing(persistence.connect_database(database_path)) as connection:
+        with persistence.transaction(connection):
+            run_id, measurement_id, _, result_id = _seed_result_graph(connection)
+            artifact_id = connection.execute(
+                "INSERT INTO artifacts "
+                "(artifact_key, path, path_base, artifact_kind, format, sha256) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                ("artifact-1", "array.npy", "database_directory", "array", "npy",
+                 _DIGEST),
+            ).lastrowid
+            source_id = connection.execute(
+                "INSERT INTO irf_sources "
+                "(source_key, source_representation, n_bins, "
+                "source_grid_sha256, source_values_sha256) "
+                "VALUES (?, ?, ?, ?, ?)",
+                ("irf-source-1", "bare_array", 3, _DIGEST, _DIGEST),
+            ).lastrowid
+            prepared_id = _insert_prepared_irf(connection)
+            condition_pk = _insert_condition(connection)
+            connection.execute(
+                "INSERT INTO fit_details (result_id, valid_fit) VALUES (?, ?)",
+                (result_id, 0),
+            )
+            uncertainty_id = connection.execute(
+                "INSERT INTO uncertainty_results "
+                "(result_id, method_id, output_kind, method_config_json, "
+                "method_config_sha256, interpretation, calibration_scope, "
+                "is_valid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (result_id, "spread", "uncertainty_score", "{}", _DIGEST,
+                 "heuristic", "none", 0),
+            ).lastrowid
+            bayesian_model_id = _insert_model(
+                connection, key="bayesian-1", family="bayesian",
+            )
+            bayesian_result_id = _insert_result(
+                connection, run_id, measurement_id, bayesian_model_id,
+            )
+            connection.execute(
+                "INSERT INTO bayesian_summaries "
+                "(result_id, sampling_status, diagnostics_accepted) "
+                "VALUES (?, ?, ?)",
+                (bayesian_result_id, "insufficient_sampling", 0),
+            )
+            metric_id = connection.execute(
+                "INSERT INTO benchmark_metrics "
+                "(run_id, metric_name, metric_unit, scope_sha256, scope_json, "
+                "value_status, n_attempted, denominator_kind) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, "mae", "ns", _DIGEST, "{}", "undefined", 5,
+                 "attempted"),
+            ).lastrowid
+        keys = {
+            "artifacts": ("artifact_id = ?", (artifact_id,)),
+            "irf_sources": ("irf_source_id = ?", (source_id,)),
+            "prepared_irfs": ("prepared_irf_id = ?", (prepared_id,)),
+            "simulation_conditions": ("condition_pk = ?", (condition_pk,)),
+            "measurements": ("measurement_id = ?", (measurement_id,)),
+            "run_measurements": (
+                "run_id = ? AND measurement_id = ?", (run_id, measurement_id),
+            ),
+            "fit_details": ("result_id = ?", (result_id,)),
+            "uncertainty_results": ("uncertainty_id = ?", (uncertainty_id,)),
+            "bayesian_summaries": ("result_id = ?", (bayesian_result_id,)),
+            "benchmark_metrics": ("metric_id = ?", (metric_id,)),
+        }
+        yield connection, keys
+
+
+@pytest.mark.parametrize(
+    "table,column,value,nullable",
+    [
+        ("artifacts", "byte_size", 12, True),
+        ("irf_sources", "n_bins", 3, False),
+        ("prepared_irfs", "n_bins", 3, False),
+        ("simulation_conditions", "signal_photon_count", 1000, False),
+        ("measurements", "n_bins", 3, False),
+        ("measurements", "observed_total_counts", 6, False),
+        ("run_measurements", "realization_index", 1, True),
+        ("fit_details", "optimizer_status", 0, True),
+        ("fit_details", "optimizer_nfev", 1, True),
+        ("fit_details", "optimizer_njev", 1, True),
+        ("uncertainty_results", "n_requested", 3, True),
+        ("uncertainty_results", "n_valid", 1, True),
+        ("bayesian_summaries", "production_steps", 1, True),
+        ("bayesian_summaries", "retained_samples", 1, True),
+        ("bayesian_summaries", "extension_count", 1, True),
+        ("bayesian_summaries", "ppc_n_draws", 1, True),
+        ("benchmark_metrics", "n_attempted", 5, False),
+        ("benchmark_metrics", "n_valid", 1, True),
+        ("benchmark_metrics", "n_contributing", 1, True),
+        ("benchmark_metrics", "signal_photon_count", 1000, True),
+    ],
+    ids=lambda value: str(value),
+)
+def test_count_and_cardinality_storage_is_integer(
+    integer_constraint_rows, table, column, value, nullable,
+):
+    connection, keys = integer_constraint_rows
+    where, key_values = keys[table]
+    # Table and column names come from this fixed test matrix, never user input.
+    update = f"UPDATE {table} SET {column} = ? WHERE {where}"
+    lookup = f"SELECT {column}, typeof({column}) FROM {table} WHERE {where}"
+    for invalid in (1.5, "not-a-number"):
+        with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+            connection.execute(update, (invalid, *key_values))
+    connection.execute(update, (value, *key_values))
+    assert tuple(connection.execute(lookup, key_values).fetchone()) == (
+        value, "integer",
+    )
+    if nullable:
+        connection.execute(update, (None, *key_values))
+        assert tuple(connection.execute(lookup, key_values).fetchone()) == (
+            None, "null",
+        )
+
+
+def test_integer_affinity_accepts_numeric_text_and_processed_counts_can_be_null(
+    integer_constraint_rows,
+):
+    connection, keys = integer_constraint_rows
+    artifact_where, artifact_key = keys["artifacts"]
+    connection.execute(
+        f"UPDATE artifacts SET byte_size = ? WHERE {artifact_where}",
+        ("12", *artifact_key),
+    )
+    assert connection.execute(
+        f"SELECT byte_size, typeof(byte_size) FROM artifacts WHERE {artifact_where}",
+        artifact_key,
+    ).fetchone()[:] == (12, "integer")
+    measurement_where, measurement_key = keys["measurements"]
+    connection.execute(
+        f"UPDATE measurements SET data_kind = 'processed_intensity', "
+        f"observed_total_counts = NULL WHERE {measurement_where}",
+        measurement_key,
+    )
+    assert connection.execute(
+        f"SELECT observed_total_counts FROM measurements WHERE {measurement_where}",
+        measurement_key,
+    ).fetchone()[0] is None
 
 
 def test_model_specs_are_reusable_and_need_no_trained_artifact(database_path):
