@@ -1468,6 +1468,7 @@ def record_irf_source(
     from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
     from tcspc_toolkit.measurements import SampledIRF
 
+    supplied_source = source
     estimate_diagnostics = None
     if isinstance(source, LeadingEdgeIRFResult):
         if source.profile is None:
@@ -1502,6 +1503,35 @@ def record_irf_source(
         "metadata_json": _mapping_json(source.metadata, "metadata"),
         "provenance_json": _mapping_json(provenance, "provenance"),
     }
+    if on_duplicate == "reuse_identical":
+        if connection.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
+            raise ValueError("foreign keys must be enabled before recording")
+        with transaction(connection):
+            existing = connection.execute(
+                "SELECT irf_source_id, source_representation FROM irf_sources "
+                "WHERE source_key = ?", (payload["source_key"],),
+            ).fetchone()
+            if existing is not None:
+                source_id = int(existing[0])
+                try:
+                    _verify_irf_source(connection, source_id, supplied_source)
+                except ValueError as exc:
+                    raise PersistenceConflictError("conflicting irf_sources stable key") from exc
+                cursor = connection.execute(
+                    "SELECT * FROM irf_sources WHERE irf_source_id = ?", (source_id,),
+                )
+                row = dict(zip((item[0] for item in cursor.description), cursor.fetchone()))
+                if not all(
+                    _same_payload_value(column, row[column], value)
+                    for column, value in payload.items()
+                    if column != "source_representation"
+                ):
+                    raise PersistenceConflictError("conflicting irf_sources stable key")
+                return source_id
+            return _record_row(
+                connection, table="irf_sources", key_columns=("source_key",),
+                payload=payload, return_column="irf_source_id", on_duplicate=on_duplicate,
+            )
     return _record_row(
         connection, table="irf_sources", key_columns=("source_key",),
         payload=payload, return_column="irf_source_id", on_duplicate=on_duplicate,
@@ -1542,20 +1572,99 @@ def record_legacy_irf_source(
 def _verify_irf_source(
     connection: sqlite3.Connection, source_id: int, source: Any,
 ) -> None:
-    from tcspc_toolkit.irf import IRFProfile
+    from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
+    from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
     from tcspc_toolkit.measurements import SampledIRF
 
+    diagnostics = None
+    if isinstance(source, LeadingEdgeIRFResult):
+        if source.profile is None:
+            raise ValueError("failed leading-edge estimation has no IRF source")
+        diagnostics = source.diagnostics
+        source = source.profile
     if not isinstance(source, (IRFProfile, SampledIRF)):
         raise TypeError("source must be an IRFProfile or SampledIRF")
-    row = connection.execute(
-        "SELECT source_grid_sha256, source_values_sha256, source_kind "
+    cursor = connection.execute(
+        "SELECT source_representation, source_kind, n_bins, source_grid_sha256, "
+        "source_values_sha256, source_parameters_json, metadata_json, provenance_json "
         "FROM irf_sources WHERE irf_source_id = ?", (source_id,),
-    ).fetchone()
-    if row is None or tuple(row) != (
-        _hash_time_grid_ns(source.time_ns), _hash_irf_source_values(source.values),
-        source.source_kind.value if isinstance(source, IRFProfile) else "imported_sampled",
+    )
+    found = cursor.fetchone()
+    if found is None:
+        raise ValueError("IRF source ID does not identify the supplied source")
+    row = dict(zip((item[0] for item in cursor.description), found))
+    kind = source.source_kind.value if isinstance(source, IRFProfile) else "imported_sampled"
+    representations = (
+        {"sampled_irf", "profile"}
+        if kind == IRFSourceKind.IMPORTED_SAMPLED.value else {"profile"}
+    )
+    parameters = source.source_parameters if isinstance(source, IRFProfile) else {}
+    provenance = dict(source.provenance)
+    stored_provenance = json.loads(row["provenance_json"])
+    if (
+        diagnostics is None and kind == IRFSourceKind.LEADING_EDGE_ESTIMATE.value
+        and "leading_edge_diagnostics" not in provenance
+    ):
+        # A PreparedIRF carries its source profile but not the estimation result.
+        stored_provenance.pop("leading_edge_diagnostics", None)
+    elif diagnostics is not None:
+        provenance["leading_edge_diagnostics"] = diagnostics
+    if (
+        row["source_representation"] not in representations
+        or row["source_kind"] != kind
+        or row["n_bins"] != len(source.time_ns)
+        or row["source_grid_sha256"] != _hash_time_grid_ns(source.time_ns)
+        or row["source_values_sha256"] != _hash_irf_source_values(source.values)
+        or not _same_payload_value(
+            "source_parameters_json", row["source_parameters_json"], _mapping_json(parameters, "source_parameters"),
+        )
+        or not _same_payload_value(
+            "metadata_json", row["metadata_json"], _mapping_json(source.metadata, "metadata"),
+        )
+        or _canonical_json(stored_provenance) != _canonical_json(provenance)
     ):
         raise ValueError("IRF source ID does not identify the supplied source")
+
+
+def _verify_prepared_irf(
+    connection: sqlite3.Connection, prepared_id: int, prepared: Any,
+) -> None:
+    from tcspc_toolkit.irf_preparation import PreparedIRF
+
+    if not isinstance(prepared, PreparedIRF):
+        raise TypeError("prepared must be a PreparedIRF")
+    cursor = connection.execute(
+        "SELECT * FROM prepared_irfs WHERE prepared_irf_id = ?", (prepared_id,),
+    )
+    found = cursor.fetchone()
+    if found is None:
+        raise ValueError("prepared IRF ID does not identify the supplied prepared IRF")
+    row = dict(zip((item[0] for item in cursor.description), found))
+    if row["preparation_kind"] not in ("explicit", "legacy_same_grid_normalization") or row["irf_source_id"] is None:
+        raise ValueError("prepared IRF ID does not identify the supplied prepared IRF")
+    try:
+        _verify_irf_source(connection, row["irf_source_id"], prepared.source)
+    except ValueError as exc:
+        raise ValueError("prepared IRF ID does not identify the supplied prepared IRF") from exc
+    expected = _prepared_payload(
+        preparation_key=row["preparation_key"], source_id=row["irf_source_id"],
+        time=prepared.time_ns, kernel=prepared.kernel, kind=row["preparation_kind"],
+        diagnostics=prepared.diagnostics, kernel_artifact_id=row["kernel_artifact_id"],
+        preparation_provenance=None,
+    )
+    actual_diagnostics = json.loads(row["diagnostics_json"])
+    if isinstance(actual_diagnostics, dict):
+        # Supplemental caller provenance is not present on PreparedIRF itself.
+        actual_diagnostics.pop("preparation_provenance", None)
+    if (
+        _canonical_json(actual_diagnostics) != expected["diagnostics_json"]
+        or any(
+            not _same_payload_value(column, row[column], value)
+            for column, value in expected.items()
+            if column != "diagnostics_json"
+        )
+    ):
+        raise ValueError("prepared IRF ID does not identify the supplied prepared IRF")
 
 
 def _prepared_payload(
@@ -1760,15 +1869,10 @@ def record_issue4_condition(
     if not isinstance(condition, (BayesianClassicalCondition, MismatchCondition)):
         raise TypeError("condition must be an Issue-4 generating condition")
     generating_id = _integer(generating_irf_id, "generating_irf_id", minimum=1)
-    actual = connection.execute(
-        "SELECT time_grid_sha256, kernel_sha256 FROM prepared_irfs "
-        "WHERE prepared_irf_id = ?", (generating_id,),
-    ).fetchone()
-    if actual is None or tuple(actual) != (
-        _hash_time_grid_ns(condition.generating_irf.time_ns),
-        _hash_prepared_kernel(condition.generating_irf.kernel),
-    ):
-        raise ValueError("generating_irf_id does not identify the condition's generating IRF")
+    try:
+        _verify_prepared_irf(connection, generating_id, condition.generating_irf)
+    except ValueError as exc:
+        raise ValueError("generating_irf_id does not identify the condition's generating IRF") from exc
     extras = {} if generating_parameters is None else dict(generating_parameters)
     if isinstance(condition, BayesianClassicalCondition):
         model = "monoexponential"
@@ -2002,9 +2106,25 @@ def bayesian_model_configuration(priors: Any, sampler: Any) -> dict[str, Any]:
 
     if not isinstance(priors, BayesianPriorConfig) or not isinstance(sampler, BayesianSamplingConfig):
         raise TypeError("expected BayesianPriorConfig and BayesianSamplingConfig")
-    sampler_values = _json_value(sampler)
-    sampler_values.pop("random_seed")
-    return {"priors": _json_value(priors), "sampler": sampler_values}
+    return _without_bayesian_sampling_seed({"priors": priors, "sampler": sampler})
+
+
+def _without_bayesian_sampling_seed(value: Any) -> dict[str, Any]:
+    """Omit only the recognized Bayesian sampler execution-seed field."""
+    from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
+
+    normalized = _json_value(value)
+    if not isinstance(normalized, dict):
+        raise TypeError("Bayesian configuration must be a mapping or dataclass")
+    if isinstance(value, BayesianSamplingConfig):
+        normalized.pop("random_seed", None)
+    elif isinstance(value, Mapping) and isinstance(
+        value.get("sampler"), (BayesianSamplingConfig, Mapping)
+    ):
+        # The direct sampler.random_seed path is execution-specific. Other
+        # seed-named fields have no such established meaning and are retained.
+        normalized["sampler"].pop("random_seed", None)
+    return normalized
 
 
 def record_model_version(
@@ -2022,7 +2142,11 @@ def record_model_version(
     """Register one reusable estimator specification, not a fitted observation."""
     if family not in ("classical", "ml", "bayesian", "baseline"):
         raise ValueError("invalid model family")
-    config_json, config_sha = _configuration_json(configuration)
+    reusable_configuration = (
+        _without_bayesian_sampling_seed(configuration)
+        if family == "bayesian" else configuration
+    )
+    config_json, config_sha = _configuration_json(reusable_configuration)
     if family == "bayesian" and config_json == "{}":
         raise ValueError("Bayesian specification needs explicit prior/sampler configuration")
     payload = {
@@ -2235,11 +2359,21 @@ def record_pseudo_true_reference(
     assumed_id = _integer(assumption_id, "assumption_id", minimum=1)
     _require_row(connection, "simulation_conditions", "condition_pk", condition_id)
     assumption = connection.execute(
-        "SELECT assumed_decay_model, observation_model FROM model_assumptions "
+        "SELECT assumed_decay_model, observation_model, context_completeness, "
+        "fixed_temporal_shift_ns, temporal_shift_lower_ns, temporal_shift_upper_ns "
+        "FROM model_assumptions "
         "WHERE assumption_id = ?", (assumed_id,),
     ).fetchone()
-    if assumption is None or tuple(assumption) != ("monoexponential", "poisson_reconvolution"):
+    if assumption is None or tuple(assumption[:2]) != ("monoexponential", "poisson_reconvolution"):
         raise ValueError("pseudo-true mono projection requires a mono Poisson assumption")
+    shift = _optional_scalar(projection_temporal_shift_ns, "projection_temporal_shift_ns")
+    if shift is not None and assumption[2] == "complete":
+        fixed_shift, lower_shift, upper_shift = assumption[3:6]
+        if fixed_shift is not None:
+            if not math.isclose(shift, fixed_shift, rel_tol=1e-7, abs_tol=1e-12):
+                raise ValueError("projection shift conflicts with the fixed model assumption")
+        elif lower_shift is None or upper_shift is None or not lower_shift <= shift <= upper_shift:
+            raise ValueError("projection shift lies outside the model assumption bounds")
     _check_superseded_reference(
         connection, supersedes_reference_id=supersedes_reference_id,
         reference_kind="pseudo_true_mono", reference_version=reference_version,

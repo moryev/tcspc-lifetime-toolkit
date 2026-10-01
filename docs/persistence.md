@@ -292,7 +292,8 @@ different evidence.
 `record_simulation_condition` accepts explicit mono-, bi- or other generating
 physics, including photon budget, background, shift and generating prepared
 IRF. `record_issue4_condition` consumes the existing matched/mismatch Issue-4
-condition objects after verifying the generating kernel identity. Additional
+condition objects after verifying the linked source and full prepared-IRF
+identity, not merely an equal generating kernel. Additional
 generating parameters remain in canonical JSON. No generating lifetime is
 read from a measurement's metadata or its `sample_id`; a synthetic observation
 may have no condition. Bi-exponential components stay in
@@ -325,12 +326,27 @@ measurement-attached IRF (`measurements`) and inference-assumed prepared IRF
 is not a fitted temporal shift. Deliberate IRF misspecification is the relation
 between generating/attached and assumed IRFs, not a fabricated source kind;
 per-result relation labels are deferred to the result adapters.
+When an existing IRF ID is supplied or an IRF key is reused, matching grid and
+sample hashes are necessary but not sufficient. The adapter also checks source
+kind, parameters, metadata and provenance, or the linked source and available
+preparation operations/diagnostics, respectively. The equivalent
+`SampledIRF`-to-imported-`IRFProfile` representation conversion remains valid;
+missing estimation-result-only diagnostics are not fabricated from a source
+profile.
 
 `record_model_version` registers a reusable classical, baseline, ML or
 Bayesian estimator specification. ML may link a training run and external
 trained/representation artifacts; classical and Bayesian specifications need
 no such artifacts. Prior policy labels alone are insufficient: Bayesian
 configuration should contain the actual prior and reusable sampler settings.
+At the `record_model_version` boundary, the direct Bayesian
+`sampler.random_seed` field (or the seed of a directly supplied
+`BayesianSamplingConfig`) is removed before configuration hashing and storage.
+That recognized sampling seed identifies an execution, not reusable
+prior/sampler policy. Other sampler settings remain, as do seed-named fields
+at unknown or nested paths; they are not silently classified as execution
+seeds. ML training seeds remain part of ML model configuration and may
+identify distinct trained reusable models.
 `record_model_assumption` records physical decay/observation/background and
 shift policy with the assumed prepared IRF separately. Complete Poisson
 reconvolution contexts require one fixed or bounded shift mode; incomplete
@@ -352,6 +368,12 @@ known mono truth and bi-exponential component lifetimes remain in generating
 conditions. Every Stage-2 duplicate key raises by default; identical reuse
 compares the complete normalized payload, including parsed canonical JSON.
 Changed content under a stable key raises rather than upserts.
+When a pseudo-true projection provides a temporal shift, a complete fixed-shift
+assumption requires agreement within `math.isclose` tolerances (`rtol=1e-7`,
+`atol=1e-12` ns); a complete bounded/free-shift assumption requires an inclusive
+in-bounds value. Explicitly incomplete historical assumptions do not invent a
+missing shift policy. This check also applies to the direct Issue-4 wrapper and
+precedes duplicate reuse; the projection shift is not generating truth.
 
 ## Query and compatibility boundaries
 

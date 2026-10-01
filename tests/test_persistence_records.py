@@ -6,6 +6,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import closing
+from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ from tcspc_toolkit.irf import (
     IRFProfile, IRFSourceKind, generate_emg_irf_profile, generate_gaussian_irf_profile,
 )
 from tcspc_toolkit.irf_estimation import estimate_irf_from_leading_edge
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.irf_preparation import irf_profile_from_sampled_irf, prepare_irf
 from tcspc_toolkit.measurements import MeasurementDataKind, SampledIRF, TCSPCMeasurement
 from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements, BenchmarkDataset
 
@@ -500,6 +501,16 @@ def test_successful_leading_edge_result_preserves_construction_diagnostics(db):
     ).fetchone()
     assert row[0] == "leading_edge_estimate"
     assert json.loads(row[1])["leading_edge_diagnostics"]["status"] == "proxy_constructed"
+    assert persistence.record_irf_source(
+        db, result, source_key="proxy/success",
+        derived_from_measurement_id=measurement_id,
+        on_duplicate="reuse_identical",
+    ) == source_id
+    prepared_id = persistence.record_prepared_irf(
+        db, prepare_irf(result.profile, time),
+        preparation_key="proxy/prepared", irf_source_id=source_id,
+    )
+    assert prepared_id > 0
 
 
 def test_legacy_source_and_supplied_kernel_keep_incomplete_provenance(db):
@@ -555,6 +566,150 @@ def test_one_source_two_preparations_and_diagnostics(db):
         db, fine, preparation_key="fine", irf_source_id=source_id,
         on_duplicate="reuse_identical",
     ) == fine_id
+
+
+def test_existing_source_id_requires_matching_source_identity(db):
+    original = _profile()
+    source_id = persistence.record_irf_source(db, original, source_key="identity/source")
+    same = replace(original, provenance=dict(original.provenance))
+    accepted = persistence.record_prepared_irf(
+        db, prepare_irf(same, _grid()), preparation_key="identity/same",
+        irf_source_id=source_id,
+    )
+    assert accepted > 0
+    conflicting_provenance = replace(original, provenance={"source": "other-calibration"})
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_prepared_irf(
+            db, prepare_irf(conflicting_provenance, _grid()),
+            preparation_key="identity/wrong-provenance", irf_source_id=source_id,
+        )
+    conflicting_parameters = replace(
+        original, source_parameters={**original.source_parameters, "calibration": "other"},
+    )
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_prepared_irf(
+            db, prepare_irf(conflicting_parameters, _grid()),
+            preparation_key="identity/wrong-parameters", irf_source_id=source_id,
+        )
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_prepared_irf(
+            db, prepare_irf(replace(original, metadata={"detector": "different"}), _grid()),
+            preparation_key="identity/wrong-metadata", irf_source_id=source_id,
+        )
+    with pytest.raises(persistence.PersistenceConflictError, match="conflicting"):
+        persistence.record_irf_source(
+            db, conflicting_provenance, source_key="identity/source",
+            on_duplicate="reuse_identical",
+        )
+    assert db.execute("SELECT COUNT(*) FROM prepared_irfs").fetchone()[0] == 1
+
+
+def test_imported_sampled_source_and_equivalent_profile_share_identity(db):
+    sampled = SampledIRF(
+        time_ns=_grid(), values=np.array([0, 0, 1, 3, 2, 1, 0, 0, 0], dtype=float),
+        metadata={"detector": "reference"}, provenance={"file": "source.csv"},
+    )
+    source_id = persistence.record_irf_source(db, sampled, source_key="imported/source")
+    profile = irf_profile_from_sampled_irf(sampled)
+    assert persistence.record_irf_source(
+        db, profile, source_key="imported/source", on_duplicate="reuse_identical",
+    ) == source_id
+    prepared_id = persistence.record_prepared_irf(
+        db, prepare_irf(profile, _grid()), preparation_key="imported/prepared",
+        source_key="imported/source", on_duplicate="reuse_identical",
+    )
+    assert db.execute(
+        "SELECT irf_source_id FROM prepared_irfs WHERE prepared_irf_id = ?",
+        (prepared_id,),
+    ).fetchone()[0] == source_id
+    assert db.execute(
+        "SELECT source_representation FROM irf_sources WHERE irf_source_id = ?",
+        (source_id,),
+    ).fetchone()[0] == "sampled_irf"
+
+
+def test_attached_source_conflict_rejects_measurement_reuse(db):
+    sampled = SampledIRF(
+        time_ns=_grid(), values=np.array([0, 0, 1, 3, 2, 1, 0, 0, 0], dtype=float),
+        provenance={"file": "calibration-A.csv"},
+    )
+    measurement = _raw_measurement(irf=sampled)
+    source_id = persistence.record_irf_source(db, sampled, source_key="attached/A")
+    measurement_id = persistence.record_measurement(
+        db, measurement, measurement_key="observed/1",
+        attached_irf_source_id=source_id,
+    )
+    other = replace(sampled, provenance={"file": "calibration-B.csv"})
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_measurement(
+            db, replace(measurement, irf=other), measurement_key="observed/1",
+            attached_irf_source_id=source_id, on_duplicate="reuse_identical",
+        )
+    assert db.execute("SELECT COUNT(*) FROM measurements").fetchone()[0] == 1
+    assert measurement_id > 0
+
+
+def test_issue4_condition_checks_source_and_preparation_history(db):
+    prepared, prepared_id = _prepared(db)
+
+    def condition(irf):
+        return BayesianClassicalCondition(
+            condition_id="identity-condition", time_ns=_grid(),
+            generating_irf=irf, assumed_irf=irf, true_lifetime_ns=1.5,
+            signal_photon_count=500, background_per_bin=0.1,
+            true_temporal_shift_ns=0.0, n_repeats=2,
+        )
+
+    recorded = persistence.record_issue4_condition(
+        db, condition(prepared), condition_key="identity/condition",
+        generating_irf_id=prepared_id,
+    )
+    assert persistence.record_issue4_condition(
+        db, condition(prepared), condition_key="identity/condition",
+        generating_irf_id=prepared_id, on_duplicate="reuse_identical",
+    ) == recorded
+    different_source = prepare_irf(
+        replace(prepared.source, provenance={"source": "different"}), _grid(),
+    )
+    np.testing.assert_array_equal(different_source.kernel, prepared.kernel)
+    different_source_id = persistence.record_irf_source(
+        db, different_source.source, source_key="identity/different-source",
+    )
+    with pytest.raises(persistence.PersistenceConflictError, match="conflicting"):
+        persistence.record_prepared_irf(
+            db, different_source, preparation_key="prep",
+            irf_source_id=different_source_id, on_duplicate="reuse_identical",
+        )
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_issue4_condition(
+            db, condition(different_source), condition_key="identity/condition",
+            generating_irf_id=prepared_id, on_duplicate="reuse_identical",
+        )
+    different_history = replace(
+        prepared, diagnostics=replace(
+            prepared.diagnostics, registration_offset_ns=0.125,
+        ),
+    )
+    with pytest.raises(ValueError, match="does not identify"):
+        persistence.record_issue4_condition(
+            db, condition(different_history), condition_key="identity/condition",
+            generating_irf_id=prepared_id, on_duplicate="reuse_identical",
+        )
+    assert db.execute("SELECT COUNT(*) FROM simulation_conditions").fetchone()[0] == 1
+
+
+def test_prepared_irf_conflicting_reuse_rolls_back_new_source(db):
+    prepared, _ = _prepared(db, "source/A", "prepared/A")
+    conflicting = prepare_irf(
+        replace(prepared.source, provenance={"source": "different"}), _grid(),
+    )
+    with pytest.raises(persistence.PersistenceConflictError, match="conflicting"):
+        persistence.record_prepared_irf(
+            db, conflicting, source_key="source/temporary",
+            preparation_key="prepared/A", on_duplicate="reuse_identical",
+        )
+    assert db.execute("SELECT COUNT(*) FROM irf_sources").fetchone()[0] == 1
+    assert db.execute("SELECT COUNT(*) FROM prepared_irfs").fetchone()[0] == 1
 
 
 def test_generating_attached_and_assumed_irfs_are_independent(db):
@@ -645,6 +800,117 @@ def test_reusable_model_specs_classical_ml_bayesian(db, tmp_path):
             db, model_key="bayes/empty", estimator_name="emcee_poisson",
             family="bayesian", configuration={}, prior_policy_id="policy-b",
         )
+
+
+def test_bayesian_recording_boundary_excludes_execution_seed_only(db):
+    priors = _priors()
+    sampler = BayesianSamplingConfig(random_seed=17)
+
+    def record_bayesian(key, selected_priors, selected_sampler, **extra):
+        return persistence.record_model_version(
+            db, model_key=key, estimator_name="emcee_poisson", family="bayesian",
+            configuration={"priors": selected_priors, "sampler": selected_sampler},
+            prior_policy_id="policy-a", **extra,
+        )
+
+    first = record_bayesian("bayes/direct", priors, sampler)
+    assert record_bayesian(
+        "bayes/direct", priors, replace(sampler, random_seed=2**64 - 1),
+        on_duplicate="reuse_identical",
+    ) == first
+    reused = record_bayesian(
+        "bayes/another-execution", priors, replace(sampler, random_seed=99),
+    )
+    rows = db.execute(
+        "SELECT model_id, configuration_json, configuration_sha256 FROM model_versions "
+        "WHERE model_id IN (?, ?) ORDER BY model_id", (first, reused),
+    ).fetchall()
+    assert rows[0][1:] == rows[1][1:]
+    stored = json.loads(rows[0][1])
+    assert "random_seed" not in stored["sampler"]
+    assert stored["sampler"]["n_walkers"] == sampler.n_walkers
+    assert stored["sampler"]["production_steps"] == sampler.production_steps
+
+    changed_sampler = record_bayesian(
+        "bayes/different-policy", priors, replace(sampler, n_walkers=64),
+    )
+    changed_prior = record_bayesian(
+        "bayes/different-prior", replace(
+            priors, lifetime_ns=LogNormalPrior(log_mean=0.1, log_std=0.5),
+        ), sampler,
+    )
+    hashes = [row[0] for row in db.execute(
+        "SELECT configuration_sha256 FROM model_versions "
+        "WHERE model_id IN (?, ?, ?) ORDER BY model_id",
+        (first, changed_sampler, changed_prior),
+    )]
+    assert len(set(hashes)) == 3
+    with pytest.raises(persistence.PersistenceConflictError, match="conflicting"):
+        record_bayesian(
+            "bayes/direct", priors, replace(sampler, n_walkers=64),
+            on_duplicate="reuse_identical",
+        )
+
+    ml_first = persistence.record_model_version(
+        db, model_key="ml/seed-1", estimator_name="random_forest", family="ml",
+        configuration={"n_estimators": 100, "random_seed": 1},
+    )
+    ml_second = persistence.record_model_version(
+        db, model_key="ml/seed-2", estimator_name="random_forest", family="ml",
+        configuration={"n_estimators": 100, "random_seed": 2},
+    )
+    ml_rows = db.execute(
+        "SELECT configuration_json, configuration_sha256 FROM model_versions "
+        "WHERE model_id IN (?, ?) ORDER BY model_id", (ml_first, ml_second),
+    ).fetchall()
+    assert [json.loads(row[0])["random_seed"] for row in ml_rows] == [1, 2]
+    assert ml_rows[0][1] != ml_rows[1][1]
+
+
+def test_bayesian_seed_normalization_preserves_unclassified_nested_seeds(db):
+    configuration = persistence.bayesian_model_configuration(
+        _priors(), BayesianSamplingConfig(random_seed=17),
+    )
+    configuration["sampler"]["random_seed"] = 17
+    configuration["sampler"]["future_policy"] = {"random_seed": 41}
+    configuration["prior_provenance"] = {"random_seed": 53}
+
+    def record(key, content, **extra):
+        return persistence.record_model_version(
+            db, model_key=key, estimator_name="emcee_poisson",
+            family="bayesian", configuration=content, **extra,
+        )
+
+    first = record("bayes/nested-seeds", configuration)
+    changed_execution_seed = json.loads(json.dumps(configuration))
+    changed_execution_seed["sampler"]["random_seed"] = 99
+    assert record(
+        "bayes/nested-seeds", changed_execution_seed,
+        on_duplicate="reuse_identical",
+    ) == first
+    stored_json, base_hash = db.execute(
+        "SELECT configuration_json, configuration_sha256 FROM model_versions "
+        "WHERE model_id = ?", (first,),
+    ).fetchone()
+    stored = json.loads(stored_json)
+    assert "random_seed" not in stored["sampler"]
+    assert stored["sampler"]["future_policy"]["random_seed"] == 41
+    assert stored["prior_provenance"]["random_seed"] == 53
+    assert configuration["sampler"]["random_seed"] == 17
+
+    changed_future_seed = json.loads(json.dumps(configuration))
+    changed_future_seed["sampler"]["future_policy"]["random_seed"] = 42
+    changed_prior_seed = json.loads(json.dumps(configuration))
+    changed_prior_seed["prior_provenance"]["random_seed"] = 54
+    for key, changed in (
+        ("bayes/future-policy-seed", changed_future_seed),
+        ("bayes/prior-provenance-seed", changed_prior_seed),
+    ):
+        changed_id = record(key, changed)
+        assert db.execute(
+            "SELECT configuration_sha256 FROM model_versions WHERE model_id = ?",
+            (changed_id,),
+        ).fetchone()[0] != base_hash
 
 
 def test_complete_and_historical_physical_assumptions(db):
@@ -788,6 +1054,70 @@ def test_trusted_and_corrected_pseudo_true_references(db):
         )
 
 
+def test_pseudo_true_projection_shift_matches_physical_assumption(db):
+    _, prepared_id = _prepared(db)
+    condition = _condition(
+        db, prepared_id, key="shift-projection-condition",
+        generating_model="biexponential", mono_lifetime_ns=None,
+        primary_lifetime_ns=1.0, secondary_lifetime_ns=3.0,
+        secondary_detected_fraction=0.3,
+    )
+    common = dict(
+        assumed_decay_model="monoexponential",
+        observation_model="poisson_reconvolution", background_convention="per_bin",
+    )
+    fixed = persistence.record_model_assumption(
+        db, assumption_key="projection-fixed", context_completeness="complete",
+        prepared_irf_id=prepared_id, fixed_temporal_shift_ns=0.0, **common,
+    )
+    bounded = persistence.record_model_assumption(
+        db, assumption_key="projection-bounded", context_completeness="complete",
+        prepared_irf_id=prepared_id, temporal_shift_lower_ns=-0.25,
+        temporal_shift_upper_ns=0.25, **common,
+    )
+    incomplete = persistence.record_model_assumption(
+        db, assumption_key="projection-historical",
+        context_completeness="historical_incomplete", **common,
+    )
+
+    for key, assumption, shift in (
+        ("fixed-exact", fixed, 0.0),
+        ("fixed-roundoff", fixed, 5e-13),
+        ("bounded-middle", bounded, 0.1),
+        ("bounded-lower", bounded, -0.25),
+        ("bounded-upper", bounded, 0.25),
+        ("historical", incomplete, 0.8),
+    ):
+        reference_id = persistence.record_pseudo_true_reference(
+            db, reference_key=key, reference_version="v1",
+            condition_pk=condition, assumption_id=assumption, lifetime_ns=1.7,
+            projection_temporal_shift_ns=shift,
+        )
+        assert db.execute(
+            "SELECT projection_temporal_shift_ns FROM lifetime_references "
+            "WHERE reference_id = ?", (reference_id,),
+        ).fetchone()[0] == shift
+
+    for key, assumption, shift in (
+        ("fixed-conflict", fixed, 0.01),
+        ("below-bounds", bounded, -0.25001),
+        ("above-bounds", bounded, 0.25001),
+    ):
+        with pytest.raises(ValueError, match="projection shift"):
+            persistence.record_pseudo_true_reference(
+                db, reference_key=key, reference_version="v1",
+                condition_pk=condition, assumption_id=assumption, lifetime_ns=1.7,
+                projection_temporal_shift_ns=shift,
+            )
+    with pytest.raises(ValueError, match="projection shift"):
+        persistence.record_pseudo_true_reference(
+            db, reference_key="fixed-exact", reference_version="v1",
+            condition_pk=condition, assumption_id=fixed, lifetime_ns=1.7,
+            projection_temporal_shift_ns=0.01, on_duplicate="reuse_identical",
+        )
+    assert db.execute("SELECT COUNT(*) FROM lifetime_references").fetchone()[0] == 6
+
+
 def test_issue4_pseudo_true_object_preserves_validation_and_scoped_ids(db):
     _, irf_id = _prepared(db)
     condition = _condition(db, irf_id, key="issue4-condition")
@@ -823,6 +1153,37 @@ def test_issue4_pseudo_true_object_preserves_validation_and_scoped_ids(db):
     assert validation["active_bounds"] == ["background_lower"]
     assert "second_best_objective_gap" in validation["nonfinite_fields"]
     assert validation["second_best_objective_gap"] is None
+    with pytest.raises(ValueError, match="projection shift conflicts"):
+        persistence.record_issue4_pseudo_true_reference(
+            db, replace(reference, temporal_shift_ns=0.01),
+            reference_key="issue4/projection/v1", reference_version="v1",
+            condition_pk=condition, assumption_id=assumption,
+            on_duplicate="reuse_identical",
+        )
+    bounded_assumption = persistence.record_model_assumption(
+        db, assumption_key="issue4-bounded-assumption-global",
+        source_assumption_id="issue4-bounded-assumption-local",
+        assumed_decay_model="monoexponential",
+        observation_model="poisson_reconvolution",
+        background_convention="per_bin", context_completeness="complete",
+        prepared_irf_id=irf_id, temporal_shift_lower_ns=-0.25,
+        temporal_shift_upper_ns=0.25,
+    )
+    bounded_reference = replace(
+        reference, assumption_id="issue4-bounded-assumption-local",
+        temporal_shift_ns=0.25,
+    )
+    persistence.record_issue4_pseudo_true_reference(
+        db, bounded_reference, reference_key="issue4/bounded/v1",
+        reference_version="v1", condition_pk=condition,
+        assumption_id=bounded_assumption,
+    )
+    with pytest.raises(ValueError, match="projection shift lies outside"):
+        persistence.record_issue4_pseudo_true_reference(
+            db, replace(bounded_reference, temporal_shift_ns=0.26),
+            reference_key="issue4/bounded/v2", reference_version="v2",
+            condition_pk=condition, assumption_id=bounded_assumption,
+        )
     with pytest.raises(ValueError, match="source assumption"):
         persistence.record_issue4_pseudo_true_reference(
             db, reference, reference_key="issue4/wrong", reference_version="v1",
