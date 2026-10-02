@@ -928,6 +928,83 @@ references = store.query_references(
 )  # All matching versions, not an automatically selected reference.
 ```
 
+## End-to-end roundtrip example (Stage 7)
+
+Run [examples/persistence_roundtrip.py](../examples/persistence_roundtrip.py)
+from the checkout with the project installed in its environment (including the
+mandatory pandas dependency):
+
+```bash
+python examples/persistence_roundtrip.py --output data/generated/roundtrip.sqlite
+```
+
+Choose a new output path in an existing directory. The script refuses to replace
+**any** existing file, including an earlier example database; there is no implicit
+overwrite or cleanup. Tests use temporary paths. The observation and predictive
+replicates use fixed seeds; run/database timestamps record the actual invocation,
+so repeatability concerns the scientific payload, not byte-identical database files.
+
+This is a persistence integration example, not a benchmark or an inference
+validation. It uses one 48-bin synthetic raw-count measurement, a mono-exponential
+generating lifetime of 2 ns, a 5000-photon expected signal budget and background of
+2 counts/bin. The observed count total is a separate measurement fact; the
+forward-model amplitude (and fitted amplitude) is not the signal-photon budget.
+A Gaussian source and its same-grid preparation have separate persisted identities.
+
+The callable `run_persistence_roundtrip(database_path)` performs this sequence:
+
+1. Construct the measurement, IRF source/preparation, small Poisson reconvolution
+   fit and Poisson/Fisher local covariance using existing scientific APIs.
+2. Construct explicitly illustrative `BayesianReconvolutionResult` and
+   `BayesianPosteriorPredictiveResult` fixtures. **No MCMC runs.** Posterior
+   parameters, sampler diagnostics/counts and zero timings are hand-constructed
+   examples, not measured inference results. Three fixed fixture parameter draws
+   and seeded Poisson replicates feed the existing PPC diagnostic function.
+3. Initialize SQLite; record the run, generating condition, measurement and run
+   membership, IRF source/preparation, classical/Bayesian model specifications and
+   shared complete mono-exponential Poisson assumption with bounded shift support.
+4. Record the classical point/fit details and its covariance uncertainty; record
+   the Bayesian posterior-median point and summary/PPC extension. The run and
+   Bayesian execution metadata explicitly mark the Bayesian fixture.
+5. Record the six facts from one actual `RobustnessMetrics` evaluation: `mae_ns`,
+   `median_absolute_error_ns`, `rmse_ns`, `bias_ns`, `p90_absolute_error_ns` and
+   `p95_absolute_error_ns`. Its explicit singleton population selects the classical
+   measurement/model/assumption/condition and known `generating_mono` reference
+   semantics. Counts are one, with denominator `evaluated_predictions`. These are
+   demonstration facts, not evidence of benchmark performance. No redundant
+   `lifetime_references` row is created for known generating truth.
+6. Commit the transaction and **close the writer**. Reopen through
+   `connect_database(path, readonly=True)`; retrieve saved facts with the public
+   query helpers and convert them using `query_to_dataframe`. No fitting or
+   scientific evaluation occurs in this phase.
+
+The function returns `(queries, frames)`, dictionaries keyed by the names below.
+Its assertions demonstrate these row grains without a universal flattened table:
+
+| Dictionary key / query family | Saved rows |
+|---|---|
+| `runs` / `query_runs` | 1 run |
+| `measurements` / `query_measurements` | 1 measurement, explicit generating join |
+| `irf_sources` / `query_irf_sources` | 1 source |
+| `prepared_irfs` / `query_prepared_irfs` | 1 preparation, explicit source join |
+| `results` / `query_results` | 2 point results for the same measurement, only 1 fit extension |
+| `uncertainty` / `query_uncertainty` | 1 covariance summary owned by the classical result |
+| `bayesian` / `query_bayesian` | 1 summary/PPC extension owned by the Bayesian result |
+| `metrics` / `query_metrics` | 6 aggregate metric facts sharing one explicit scope |
+
+Generating lifetime remains in generating context, not in the point-result
+columns. Bayesian posterior mean remains separate from its canonical median.
+Credible bounds and requested posterior probability stay in Bayesian parameter
+summary JSON; they do not create another Stage-4 uncertainty row. Covariance SD
+alone has no nominal interval coverage. The Bayesian and metric queries explicitly
+request decoded JSON; other queries retain canonical JSON text. DataFrames retain
+the same row grain, ordering, NULLs and scientific meanings as the plain results.
+
+Large posterior chains and predictive arrays may be stored externally and
+referenced through the artifact table; this compact example persists summaries
+only. Experimental/trusted references, mismatch/pseudo-true references, alternate
+assumptions, ML and interval calibration are deliberately outside this small demo.
+
 ## Compatibility boundaries
 
 The first schema supports joins across observations, generating conditions,
@@ -939,8 +1016,8 @@ must not import persistence or initialize a database.
 
 Version 1 detects incompatible databases and stops. Migrations, database
 merging, automatic external artifact storage, broad public API exports and
-full dataclass reconstruction are future work. A focused SQLite example will
-be fast and deterministic. Bayesian persistence is verified with deterministic
-result fixtures, without live MCMC or an emcee dependency. Full examples/demos,
-arbitrary SQL execution, automatic reference selection and scientific
-reconstruction remain outside Stage 6.
+full dataclass reconstruction are future work. The focused roundtrip example and
+Bayesian persistence tests use deterministic fixtures without live MCMC or an
+emcee dependency. Arbitrary SQL execution, automatic reference selection and
+scientific reconstruction remain outside the persistence access layer. This
+example does not mark Issue #9 final acceptance or release work complete.

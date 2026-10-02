@@ -22,6 +22,12 @@ decay-model and IRF-model mismatch evaluation. These integrations are present
 on the current development branch while the package version remains 0.7.0
 pending the later API, package-architecture, and release-stabilization stages.
 
+SQLite-backed persistence now records measurements, IRF provenance, estimator
+results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
+query/DataFrame helpers. See the [persistence contract](docs/persistence.md) and
+the [small end-to-end roundtrip example](examples/persistence_roundtrip.py)
+(deterministic Bayesian fixtures; no MCMC required).
+
 ## Scientific motivation
 
 Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
