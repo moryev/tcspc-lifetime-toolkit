@@ -1,7 +1,6 @@
-"""Optional SQLite schema and connection support for TCSPC result persistence.
+"""Optional SQLite schema, connections, and scientific-record adapters.
 
-This module does not import, initialize, or alter the numerical workflows.
-Scientific-object adapters are intentionally deferred beyond Issue-9 Stage 1.
+Numerical workflows do not import or initialize this persistence boundary.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import itertools
 import json
 import math
 import sqlite3
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
 from datetime import datetime, timezone
@@ -2340,6 +2339,21 @@ def record_trusted_lifetime_reference(
     )
 
 
+def _validate_assumed_temporal_shift(
+    shift: float, *, context_completeness: str,
+    fixed_shift: float | None, lower_shift: float | None,
+    upper_shift: float | None, label: str,
+) -> None:
+    """Check a valid inferred shift against an explicitly complete physical policy."""
+    if context_completeness != "complete":
+        return
+    if fixed_shift is not None:
+        if not math.isclose(shift, fixed_shift, rel_tol=1e-7, abs_tol=1e-12):
+            raise ValueError(f"{label} shift conflicts with the fixed model assumption")
+    elif lower_shift is None or upper_shift is None or not lower_shift <= shift <= upper_shift:
+        raise ValueError(f"{label} shift lies outside the model assumption bounds")
+
+
 def record_pseudo_true_reference(
     connection: sqlite3.Connection, *, reference_key: str,
     reference_version: str, condition_pk: int, assumption_id: int,
@@ -2367,13 +2381,12 @@ def record_pseudo_true_reference(
     if assumption is None or tuple(assumption[:2]) != ("monoexponential", "poisson_reconvolution"):
         raise ValueError("pseudo-true mono projection requires a mono Poisson assumption")
     shift = _optional_scalar(projection_temporal_shift_ns, "projection_temporal_shift_ns")
-    if shift is not None and assumption[2] == "complete":
-        fixed_shift, lower_shift, upper_shift = assumption[3:6]
-        if fixed_shift is not None:
-            if not math.isclose(shift, fixed_shift, rel_tol=1e-7, abs_tol=1e-12):
-                raise ValueError("projection shift conflicts with the fixed model assumption")
-        elif lower_shift is None or upper_shift is None or not lower_shift <= shift <= upper_shift:
-            raise ValueError("projection shift lies outside the model assumption bounds")
+    if shift is not None:
+        _validate_assumed_temporal_shift(
+            shift, context_completeness=assumption[2],
+            fixed_shift=assumption[3], lower_shift=assumption[4],
+            upper_shift=assumption[5], label="projection",
+        )
     _check_superseded_reference(
         connection, supersedes_reference_id=supersedes_reference_id,
         reference_kind="pseudo_true_mono", reference_version=reference_version,
@@ -2452,3 +2465,532 @@ def record_issue4_pseudo_true_reference(
         validation=diagnostics, provenance=provenance,
         on_duplicate=on_duplicate,
     )
+
+
+# Stage-3 point results. Source dataclasses stay in their scientific modules.
+def _result_number(
+    value: Any, name: str, nonfinite: dict[str, str], *, nonnegative: bool = False,
+) -> float | None:
+    """Keep finite result scalars relational and classify known nonfinite values."""
+    if value is None:
+        return None
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be numeric or None")
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be numeric or None") from exc
+    if math.isnan(number):
+        nonfinite[name] = "nan"
+        return None
+    if math.isinf(number):
+        nonfinite[name] = "+inf" if number > 0 else "-inf"
+        return None
+    if nonnegative and number < 0:
+        raise ValueError(f"{name} must be nonnegative")
+    return number
+
+
+def _result_flag(value: Any, name: str) -> int:
+    if not isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be a boolean")
+    return int(value)
+
+
+def _optional_result_flag(value: Any, name: str) -> int | None:
+    return None if value is None else _result_flag(value, name)
+
+
+def _optional_diagnostic_text(value: Any, name: str) -> str | None:
+    if value is not None and not isinstance(value, str):
+        raise ValueError(f"{name} must be text or None")
+    return value
+
+
+def _optional_optimizer_status(value: Any) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        raise ValueError("optimizer_status must be an integer or None")
+    status = int(value)
+    if not -(2**63) <= status <= 2**63 - 1:
+        raise ValueError("optimizer_status exceeds SQLite int64 range")
+    return status
+
+
+def _estimator_payload(
+    *, run_id: int, measurement_id: int, model_id: int,
+    assumption_id: int | None, analysis_key: str, point_summary: str,
+    status: Literal["available", "failed", "unavailable"], is_valid: bool,
+    source_result_type: str, irf_model_relation: str,
+    lifetime_estimate_ns: Any, failure_reason: str | None,
+    runtime_seconds: Any, runtime_scope: str | None,
+    random_seed: int | str | None, execution: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if status not in ("available", "failed", "unavailable"):
+        raise ValueError("invalid estimator result status")
+    if irf_model_relation not in (
+        "unspecified", "matched", "deliberately_misspecified",
+    ):
+        raise ValueError("invalid IRF model relation")
+    valid = _result_flag(is_valid, "is_valid")
+    assumed_id = _optional_integer(assumption_id, "assumption_id", minimum=1)
+    if assumed_id is None and irf_model_relation != "unspecified":
+        raise ValueError("an IRF model relation requires a physical assumption")
+    if (runtime_seconds is None) != (runtime_scope is None):
+        raise ValueError("runtime_seconds and runtime_scope must be supplied together")
+    nonfinite: dict[str, str] = {}
+    lifetime = _result_number(lifetime_estimate_ns, "lifetime_estimate_ns", nonfinite)
+    runtime = _result_number(
+        runtime_seconds, "runtime_seconds", nonfinite, nonnegative=True,
+    )
+    if valid and (status != "available" or lifetime is None):
+        raise ValueError("valid result requires an available finite lifetime estimate")
+    return {
+        "run_id": _integer(run_id, "run_id", minimum=1),
+        "measurement_id": _integer(measurement_id, "measurement_id", minimum=1),
+        "model_id": _integer(model_id, "model_id", minimum=1),
+        "assumption_id": assumed_id,
+        "analysis_key": _required_text(analysis_key, "analysis_key"),
+        "point_summary": _required_text(point_summary, "point_summary"),
+        "status": status,
+        "is_valid": valid,
+        "irf_model_relation": irf_model_relation,
+        "source_result_type": _required_text(source_result_type, "source_result_type"),
+        "lifetime_estimate_ns": lifetime,
+        "failure_reason": _optional_diagnostic_text(failure_reason, "failure_reason"),
+        "runtime_seconds": runtime,
+        "runtime_scope": _optional_text(runtime_scope, "runtime_scope"),
+        "random_seed_decimal": _decimal_seed(random_seed, "random_seed"),
+        "nonfinite_fields_json": _canonical_json(nonfinite),
+        "execution_json": _mapping_json(execution, "execution"),
+    }
+
+
+def _require_result_model(
+    connection: sqlite3.Connection, model_id: int, *, families: tuple[str, ...],
+) -> str:
+    row = connection.execute(
+        "SELECT family, estimator_name FROM model_versions WHERE model_id = ?",
+        (_integer(model_id, "model_id", minimum=1),),
+    ).fetchone()
+    if row is None or row[0] not in families:
+        raise ValueError(f"model_id must identify a {', '.join(families)} specification")
+    return str(row[1])
+
+
+def _record_estimator_row(
+    connection: sqlite3.Connection, payload: dict[str, Any], *,
+    on_duplicate: DuplicatePolicy,
+) -> tuple[int, bool]:
+    """Insert or compare one NULL-safe run/measurement/model/assumption analysis."""
+    if on_duplicate not in ("raise", "reuse_identical"):
+        raise ValueError("on_duplicate must be 'raise' or 'reuse_identical'")
+    if connection.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
+        raise ValueError("foreign keys must be enabled before recording")
+    columns = [row[1] for row in connection.execute("PRAGMA table_info(estimator_results)")]
+    if set(payload) != set(columns) - {"result_id"}:
+        raise RuntimeError("incomplete estimator_results adapter payload")
+    with transaction(connection):
+        membership = connection.execute(
+            "SELECT 1 FROM run_measurements WHERE run_id = ? AND measurement_id = ?",
+            (payload["run_id"], payload["measurement_id"]),
+        ).fetchone()
+        if membership is None:
+            raise ValueError("run_measurements membership is required for a result")
+        cursor = connection.execute(
+            "SELECT * FROM estimator_results WHERE run_id = ? AND measurement_id = ? "
+            "AND model_id = ? AND assumption_id IS ? AND analysis_key = ?",
+            (payload["run_id"], payload["measurement_id"], payload["model_id"],
+             payload["assumption_id"], payload["analysis_key"]),
+        )
+        found = cursor.fetchone()
+        if found is not None:
+            existing = dict(zip((item[0] for item in cursor.description), found))
+            if on_duplicate == "raise":
+                raise PersistenceConflictError("duplicate estimator_results identity")
+            if not all(
+                _same_payload_value(column, existing[column], value)
+                for column, value in payload.items()
+            ):
+                raise PersistenceConflictError("conflicting estimator_results identity")
+            return int(existing["result_id"]), False
+        names = tuple(payload)
+        placeholders = ", ".join("?" for _ in names)
+        inserted = connection.execute(
+            f"INSERT INTO estimator_results ({', '.join(names)}) VALUES ({placeholders})",
+            tuple(payload.values()),
+        )
+        return int(inserted.lastrowid), True
+
+
+def _classical_fit_payloads(
+    result: Any, *, run_id: int, measurement_id: int, model_id: int,
+    assumption_id: int, analysis_key: str, irf_model_relation: str,
+    execution: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
+    from tcspc_toolkit.fitting import ReconvolutionFitResult
+
+    if isinstance(result, ReconvolutionFitResult):
+        valid = _result_flag(result.success, "success")
+        lifetime = result.lifetime
+        amplitude, background, shift = (
+            result.amplitude, result.background, result.temporal_shift,
+        )
+        initial = (None, None, None, None)
+        optimizer_success = result.optimizer_reported_success
+        boundary_hit = None
+        poisson_nll = poisson_deviance = None
+        failure_reason = exception_message = None
+        runtime_seconds = runtime_scope = None
+        source_type = "tcspc_toolkit.fitting.ReconvolutionFitResult"
+    elif isinstance(result, ReconvolutionCurveResult):
+        valid = _result_flag(result.valid_fit, "valid_fit")
+        lifetime = result.fitted_lifetime_ns
+        amplitude, background, shift = (
+            result.fitted_amplitude, result.fitted_background,
+            result.fitted_temporal_shift_ns,
+        )
+        initial = (
+            result.initial_amplitude, result.initial_lifetime_ns,
+            result.initial_background, result.initial_temporal_shift_ns,
+        )
+        optimizer_success = result.optimizer_success
+        boundary_hit = result.boundary_hit
+        poisson_nll, poisson_deviance = result.poisson_nll, result.poisson_deviance
+        failure_reason, exception_message = result.failure_reason, result.exception_message
+        try:
+            runtime_seconds = float(result.runtime_ms) / 1000.0
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("runtime_ms must be numeric") from exc
+        runtime_scope = "curve_fit_phase_after_initialization"
+        source_type = "tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult"
+    else:
+        raise TypeError("result must be ReconvolutionFitResult or ReconvolutionCurveResult")
+
+    numerical = _optional_result_flag(
+        result.numerical_validation_passed, "numerical_validation_passed",
+    )
+    if valid and numerical == 0:
+        raise ValueError("a numerically rejected classical fit cannot be valid")
+    point = _estimator_payload(
+        run_id=run_id, measurement_id=measurement_id, model_id=model_id,
+        assumption_id=assumption_id, analysis_key=analysis_key,
+        point_summary="fitted_lifetime_ns",
+        status="available" if valid else "failed", is_valid=bool(valid),
+        source_result_type=source_type, irf_model_relation=irf_model_relation,
+        lifetime_estimate_ns=lifetime, failure_reason=failure_reason,
+        runtime_seconds=runtime_seconds, runtime_scope=runtime_scope,
+        random_seed=None, execution=execution,
+    )
+    if valid and point["lifetime_estimate_ns"] <= 0:
+        raise ValueError("a valid classical fit must have a positive lifetime")
+    details_nonfinite: dict[str, str] = {}
+    details = {
+        "result_id": 0,  # Replaced after the point row is inserted.
+        "source_success": valid,
+        "optimizer_reported_success": _optional_result_flag(
+            optimizer_success, "optimizer_reported_success",
+        ),
+        "valid_fit": valid,
+        "numerical_validation_passed": numerical,
+        "recovery_attempted": _result_flag(result.recovery_attempted, "recovery_attempted"),
+        "boundary_hit": _optional_result_flag(boundary_hit, "boundary_hit"),
+        "fitted_amplitude": _result_number(
+            amplitude, "fitted_amplitude", details_nonfinite,
+        ),
+        "fitted_background_per_bin": _result_number(
+            background, "fitted_background_per_bin", details_nonfinite,
+        ),
+        "fitted_temporal_shift_ns": _result_number(
+            shift, "fitted_temporal_shift_ns", details_nonfinite,
+        ),
+        "initial_amplitude": _result_number(
+            initial[0], "initial_amplitude", details_nonfinite,
+        ),
+        "initial_lifetime_ns": _result_number(
+            initial[1], "initial_lifetime_ns", details_nonfinite,
+        ),
+        "initial_background_per_bin": _result_number(
+            initial[2], "initial_background_per_bin", details_nonfinite,
+        ),
+        "initial_temporal_shift_ns": _result_number(
+            initial[3], "initial_temporal_shift_ns", details_nonfinite,
+        ),
+        "poisson_nll": _result_number(poisson_nll, "poisson_nll", details_nonfinite),
+        "poisson_deviance": _result_number(
+            poisson_deviance, "poisson_deviance", details_nonfinite,
+        ),
+        "max_coordinate_descent_nll": _result_number(
+            result.max_coordinate_descent_nll,
+            "max_coordinate_descent_nll", details_nonfinite,
+        ),
+        "optimizer_status": _optional_optimizer_status(result.optimizer_status),
+        "optimizer_message": _optional_diagnostic_text(
+            result.optimizer_message, "optimizer_message",
+        ),
+        "optimizer_nfev": _optional_integer(result.optimizer_nfev, "optimizer_nfev"),
+        "optimizer_njev": _optional_integer(result.optimizer_njev, "optimizer_njev"),
+        "optimizer_seconds": None,
+        "call_seconds": None,
+        "exception_message": _optional_diagnostic_text(
+            exception_message, "exception_message",
+        ),
+        "diagnostics_json": "{}",
+        "nonfinite_fields_json": _canonical_json(details_nonfinite),
+    }
+    if valid and (
+        details["optimizer_reported_success"] == 0
+        or details["fitted_amplitude"] is None
+        or details["fitted_amplitude"] < 0
+        or details["fitted_background_per_bin"] is None
+        or details["fitted_background_per_bin"] < 0
+        or details["fitted_temporal_shift_ns"] is None
+    ):
+        raise ValueError("a valid classical fit requires finite physical parameters")
+    return point, details
+
+
+def record_reconvolution_fit(
+    connection: sqlite3.Connection, result: Any, *, run_id: int,
+    measurement_id: int, model_id: int, assumption_id: int,
+    analysis_key: str = "default", irf_model_relation: str = "unspecified",
+    execution: Mapping[str, Any] | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Atomically record a classical point result and its fit-only details."""
+    run = _integer(run_id, "run_id", minimum=1)
+    measured = _integer(measurement_id, "measurement_id", minimum=1)
+    model = _integer(model_id, "model_id", minimum=1)
+    assumed = _integer(assumption_id, "assumption_id", minimum=1)
+    if connection.execute(
+        "SELECT 1 FROM run_measurements WHERE run_id = ? AND measurement_id = ?",
+        (run, measured),
+    ).fetchone() is None:
+        raise ValueError("run_measurements membership is required for a result")
+    model_row = connection.execute(
+        "SELECT family, configuration_json FROM model_versions WHERE model_id = ?",
+        (model,),
+    ).fetchone()
+    if model_row is None or model_row[0] != "classical":
+        raise ValueError("model_id must identify a classical specification")
+    configuration = json.loads(model_row[1])
+    objective = configuration.get("objective") if isinstance(configuration, dict) else None
+    if not isinstance(objective, str) or objective not in ("poisson", "least_squares"):
+        raise ValueError("classical model configuration requires a recognized objective")
+    assumption = connection.execute(
+        "SELECT assumed_decay_model, observation_model, context_completeness, "
+        "prepared_irf_id, fixed_temporal_shift_ns, temporal_shift_lower_ns, "
+        "temporal_shift_upper_ns FROM model_assumptions WHERE assumption_id = ?",
+        (assumed,),
+    ).fetchone()
+    if assumption is None or assumption[0] != "monoexponential":
+        raise ValueError("reconvolution fit requires a monoexponential model assumption")
+    observation_objective = {
+        "poisson_reconvolution": "poisson",
+        "least_squares_reconvolution": "least_squares",
+    }.get(assumption[1])
+    if observation_objective is not None and objective != observation_objective:
+        raise ValueError("classical model objective conflicts with observation assumption")
+    if assumption[2] == "complete" and assumption[3] is None:
+        raise ValueError("complete reconvolution assumption requires a prepared IRF")
+    measurement = connection.execute(
+        "SELECT data_kind, n_bins, time_grid_sha256, time_start_ns, time_step_ns "
+        "FROM measurements WHERE measurement_id = ?", (measured,),
+    ).fetchone()
+    if measurement is None:
+        raise ValueError("measurement_id must identify a stored measurement")
+    if objective == "poisson" and measurement[0] != "raw_counts":
+        raise ValueError("Poisson reconvolution requires a raw-count measurement")
+    if assumption[3] is not None:
+        prepared = connection.execute(
+            "SELECT n_bins, time_grid_sha256, time_start_ns, time_step_ns "
+            "FROM prepared_irfs WHERE prepared_irf_id = ?", (assumption[3],),
+        ).fetchone()
+        if prepared is None or tuple(measurement[1:]) != tuple(prepared):
+            raise ValueError("prepared IRF target grid differs from measurement time grid")
+    point, details = _classical_fit_payloads(
+        result, run_id=run, measurement_id=measured,
+        model_id=model, assumption_id=assumed,
+        analysis_key=analysis_key, irf_model_relation=irf_model_relation,
+        execution=execution,
+    )
+    if point["is_valid"]:
+        _validate_assumed_temporal_shift(
+            details["fitted_temporal_shift_ns"],
+            context_completeness=assumption[2], fixed_shift=assumption[4],
+            lower_shift=assumption[5], upper_shift=assumption[6], label="fitted",
+        )
+    with transaction(connection):
+        result_id, inserted = _record_estimator_row(
+            connection, point, on_duplicate=on_duplicate,
+        )
+        details["result_id"] = result_id
+        if inserted:
+            _record_row(
+                connection, table="fit_details", key_columns=("result_id",),
+                payload=details, return_column=None, on_duplicate="raise",
+            )
+        else:
+            cursor = connection.execute(
+                "SELECT * FROM fit_details WHERE result_id = ?", (result_id,),
+            )
+            found = cursor.fetchone()
+            if found is None:
+                raise PersistenceConflictError("reused classical result lacks fit_details")
+            existing = dict(zip((item[0] for item in cursor.description), found))
+            if not all(
+                _same_payload_value(column, existing[column], value)
+                for column, value in details.items()
+            ):
+                raise PersistenceConflictError("conflicting fit_details for reused result")
+        return result_id
+
+
+def _prediction_vector(predictions: ArrayLike) -> np.ndarray:
+    source = _numeric_vector(predictions, name="predictions")
+    try:
+        values = np.asarray(source, dtype=np.float64)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("predictions must be representable as float64") from exc
+    if not np.all(np.isfinite(values)):
+        raise ValueError("benchmark and baseline predictions must be finite")
+    return values
+
+
+def _ordered_measurement_ids(
+    measurement_ids: Sequence[int], *, n_predictions: int,
+) -> tuple[int, ...]:
+    if isinstance(measurement_ids, np.ndarray):
+        if measurement_ids.ndim != 1:
+            raise ValueError("measurement_ids must be a one-dimensional ordered sequence")
+        supplied = tuple(measurement_ids)
+    elif isinstance(measurement_ids, Sequence) and not isinstance(
+        measurement_ids, (str, bytes),
+    ):
+        supplied = tuple(measurement_ids)
+    else:
+        raise ValueError("measurement_ids must be an ordered sequence of IDs")
+    if len(supplied) != n_predictions:
+        raise ValueError("measurement_ids length must equal prediction count")
+    ids = tuple(_integer(item, "measurement_id", minimum=1) for item in supplied)
+    if len(set(ids)) != len(ids):
+        raise ValueError("measurement_ids must not repeat within one prediction batch")
+    return ids
+
+
+def _record_prediction_batch(
+    connection: sqlite3.Connection, *, predictions: np.ndarray,
+    measurement_ids: tuple[int, ...], run_id: int, model_id: int,
+    assumption_id: int | None, analysis_key: str, source_result_type: str,
+    irf_model_relation: str, on_duplicate: DuplicatePolicy,
+) -> tuple[int, ...]:
+    # Normalize before opening the write transaction; the ordered index is
+    # evidence of the supplied array-to-measurement alignment.
+    payloads = tuple(
+        _estimator_payload(
+            run_id=run_id, measurement_id=measurement_id, model_id=model_id,
+            assumption_id=assumption_id, analysis_key=analysis_key,
+            point_summary="predicted_lifetime_ns", status="available",
+            is_valid=True, source_result_type=source_result_type,
+            irf_model_relation=irf_model_relation,
+            lifetime_estimate_ns=prediction, failure_reason=None,
+            runtime_seconds=None, runtime_scope=None, random_seed=None,
+            execution={"prediction_index": index},
+        )
+        for index, (measurement_id, prediction) in enumerate(
+            zip(measurement_ids, predictions, strict=True)
+        )
+    )
+    with transaction(connection):
+        return tuple(
+            _record_estimator_row(connection, payload, on_duplicate=on_duplicate)[0]
+            for payload in payloads
+        )
+
+
+def record_regression_predictions(
+    connection: sqlite3.Connection, result: Any, *, run_id: int,
+    measurement_ids: Sequence[int], model_id: int,
+    assumption_id: int | None = None, analysis_key: str = "default",
+    irf_model_relation: str = "unspecified",
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record ordered RegressionBenchmarkResult predictions, never its metrics."""
+    from tcspc_toolkit.ml_evaluation import RegressionBenchmarkResult
+
+    if not isinstance(result, RegressionBenchmarkResult):
+        raise TypeError("result must be a RegressionBenchmarkResult")
+    estimator_name = _require_result_model(
+        connection, model_id, families=("ml", "baseline"),
+    )
+    if estimator_name != result.estimator_name:
+        raise ValueError("model_id estimator_name differs from benchmark result")
+    predictions = _prediction_vector(result.y_pred)
+    ids = _ordered_measurement_ids(measurement_ids, n_predictions=len(predictions))
+    return _record_prediction_batch(
+        connection, predictions=predictions, measurement_ids=ids,
+        run_id=run_id, model_id=model_id, assumption_id=assumption_id,
+        analysis_key=analysis_key,
+        source_result_type="tcspc_toolkit.ml_evaluation.RegressionBenchmarkResult",
+        irf_model_relation=irf_model_relation, on_duplicate=on_duplicate,
+    )
+
+
+def record_baseline_predictions(
+    connection: sqlite3.Connection, predictions: ArrayLike, *,
+    baseline_name: Literal["constant_mean", "mean_arrival_time"],
+    run_id: int, measurement_ids: Sequence[int], model_id: int,
+    assumption_id: int | None = None, analysis_key: str = "default",
+    irf_model_relation: str = "unspecified",
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record one ordered array from either current baseline estimator."""
+    sources = {
+        "constant_mean": "tcspc_toolkit.baselines.predict_constant_mean_baseline",
+        "mean_arrival_time": "tcspc_toolkit.baselines.estimate_lifetime_from_mean_arrival",
+    }
+    if baseline_name not in sources:
+        raise ValueError("unsupported baseline_name")
+    estimator_name = _require_result_model(
+        connection, model_id, families=("baseline",),
+    )
+    if estimator_name != baseline_name:
+        raise ValueError("model_id estimator_name differs from baseline_name")
+    values = _prediction_vector(predictions)
+    ids = _ordered_measurement_ids(measurement_ids, n_predictions=len(values))
+    return _record_prediction_batch(
+        connection, predictions=values, measurement_ids=ids,
+        run_id=run_id, model_id=model_id, assumption_id=assumption_id,
+        analysis_key=analysis_key, source_result_type=sources[baseline_name],
+        irf_model_relation=irf_model_relation, on_duplicate=on_duplicate,
+    )
+
+
+def record_scalar_prediction(
+    connection: sqlite3.Connection, prediction_ns: Any, *,
+    run_id: int, measurement_id: int, model_id: int,
+    source_result_type: str, assumption_id: int | None = None,
+    analysis_key: str = "default",
+    status: Literal["available", "failed", "unavailable"] = "available",
+    is_valid: bool = True, failure_reason: str | None = None,
+    irf_model_relation: str = "unspecified",
+    runtime_seconds: float | None = None, runtime_scope: str | None = None,
+    random_seed: int | str | None = None,
+    execution: Mapping[str, Any] | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Record an explicitly identified already-fitted ML or baseline output."""
+    _require_result_model(connection, model_id, families=("ml", "baseline"))
+    payload = _estimator_payload(
+        run_id=run_id, measurement_id=measurement_id, model_id=model_id,
+        assumption_id=assumption_id, analysis_key=analysis_key,
+        point_summary="predicted_lifetime_ns", status=status, is_valid=is_valid,
+        source_result_type=source_result_type,
+        irf_model_relation=irf_model_relation,
+        lifetime_estimate_ns=prediction_ns, failure_reason=failure_reason,
+        runtime_seconds=runtime_seconds, runtime_scope=runtime_scope,
+        random_seed=random_seed, execution=execution,
+    )
+    return _record_estimator_row(connection, payload, on_duplicate=on_duplicate)[0]

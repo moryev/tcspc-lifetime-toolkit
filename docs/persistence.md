@@ -2,9 +2,9 @@
 
 The persistence module is an optional boundary around scientific results.
 Stage 1 provides schema v1, validated connections, transactions and canonical
-hashing. Stage 2 records scientific identities and provenance. Per-observation
-estimator results, uncertainty, Bayesian summaries and benchmark metrics do
-not have adapters yet.
+hashing. Stage 2 records scientific identities and provenance. Stage 3 records
+classical point fits and ML/baseline predictions. Uncertainty, Bayesian
+summaries and benchmark metrics do not have adapters yet.
 
 ## Scientific entities
 
@@ -54,7 +54,9 @@ is a separate relationship from the generating IRF and the IRF assumed by an
 estimator. An imported sampled source is not automatically an independently
 measured physical IRF. IRF model relation is declared on each result, since
 the same assumption can be matched for one observation and misspecified for
-another. Neither a valid kernel nor good sampling diagnostics establishes
+another. The Stage-3 adapter records this relation only when the caller
+declares it; equal kernels do not establish a match. Neither a valid kernel
+nor good sampling diagnostics establishes
 physical model correctness.
 The bare_array source representation and supplied_kernel preparation kind
 make incomplete historical kernel-only evidence explicit; neither assigns a
@@ -119,7 +121,7 @@ without a leading plus sign or leading zeros, except for "0". This applies
 to run, observation, result and uncertainty seed columns. Stream names and
 derivation policy remain in run/execution provenance.
 
-Scientific rows are immutable through the Stage-2 adapters. Insert is the
+Scientific rows are immutable through the Stage-2/3 adapters. Insert is the
 default. An explicit `on_duplicate="reuse_identical"` accepts an identical existing
 record; a conflicting payload must raise. No silent replacement or default
 upsert is planned. Scientific failures are records: fit validity, optimizer
@@ -200,7 +202,7 @@ or infinity maps to NULL and is named in nonfinite_fields_json so it remains
 distinguishable from None. Finite values from rejected or invalid results are
 retained. Required identity/configuration values reject nonfinite inputs.
 SQLite CHECK constraints enforce structural relationships and ordinary range
-rules; later result adapters must also enforce finite scientific scalars and
+rules; Stage-3 result adapters enforce finite scientific scalars and
 cross-table type consistency. pandas may display SQL NULL as NaN.
 
 ## Connection and transaction behavior
@@ -242,7 +244,7 @@ Commit failure rolls back the top-level transaction. Callers close their
 connections. It is an error to pass a connection already in a transaction
 to initialize_database, since foreign-key activation must happen first.
 
-No transaction encloses numerical fitting, training or sampling. Stage-2
+No transaction encloses numerical fitting, training or sampling. Stage-2/3
 multi-row adapters use the transaction/savepoint helper for short, atomic inserts.
 Parameterized SQL will bind all user-supplied values. Scientific failures
 are valid data; SQL and serialization errors cause rollback.
@@ -325,7 +327,7 @@ measurement-attached IRF (`measurements`) and inference-assumed prepared IRF
 (`model_assumptions`) are independent relationships. Registration/resampling
 is not a fitted temporal shift. Deliberate IRF misspecification is the relation
 between generating/attached and assumed IRFs, not a fabricated source kind;
-per-result relation labels are deferred to the result adapters.
+per-result relation labels are recorded by the Stage-3 result adapters.
 When an existing IRF ID is supplied or an IRF key is reused, matching grid and
 sample hashes are necessary but not sufficient. The adapter also checks source
 kind, parameters, metadata and provenance, or the linked source and available
@@ -374,6 +376,92 @@ assumption requires agreement within `math.isclose` tolerances (`rtol=1e-7`,
 in-bounds value. Explicitly incomplete historical assumptions do not invent a
 missing shift policy. This check also applies to the direct Issue-4 wrapper and
 precedes duplicate reuse; the projection shift is not generating truth.
+
+## Stage-3 point-result boundary
+
+One `estimator_results` row identifies one point analysis by
+`(run_id, measurement_id, model_id, assumption_id or NULL, analysis_key)`.
+The schema's `COALESCE(assumption_id, 0)` uniqueness index makes the NULL case
+unique too. The run must already contain the measurement in `run_measurements`.
+The model ID names a reusable specification, not a fitted observation; the
+analysis key distinguishes intentional repeat analyses, not automatic retries.
+Neither local `sample_id`, truth/reference lifetime, DataFrame index nor fitted
+curve determines this identity. An IRF relation is `unspecified`, `matched` or
+`deliberately_misspecified`; a non-unspecified relation requires an explicit
+assumption. Proxy/estimated is an IRF source kind, not a fourth relation value.
+
+`record_reconvolution_fit` accepts `ReconvolutionFitResult` or
+`ReconvolutionCurveResult`, requires a classical model specification with an
+explicit `configuration_json["objective"]` of `poisson` or `least_squares` and an
+explicit mono-exponential physical assumption, and atomically writes the point
+row plus one `fit_details` extension. The point summary is
+`fitted_lifetime_ns`. The lower
+result's `success` supplies its overall valid/source-success state; its
+optimizer-reported success and numerical validation remain separate. The
+curve result supplies `valid_fit`, optimizer success, boundary and recovery
+flags, starting/fitted parameters, Poisson NLL/deviance and failure/exception
+details. An invalid fit may retain a finite lifetime and diagnostics with
+`status='failed'` and `is_valid=0`. Unavailable lower-level initial guesses,
+Poisson metrics, boundary assessment and runtime stay NULL rather than being
+recomputed. Valid classical fits must retain finite physical fitted parameters
+and a positive lifetime, consistent with their source fit contract. The fitted
+curve is not stored as a BLOB.
+
+The optimization objective belongs to the reusable `model_versions`
+configuration; `model_assumptions` separately records the physical observation
+and forward-model assumptions. An explicit `poisson_reconvolution` or
+`least_squares_reconvolution` observation model must agree with the model
+objective. A Poisson objective requires a raw-count measurement; least squares
+accepts raw counts or processed intensity. Complete reconvolution assumptions
+require a prepared IRF. When an assumption links one, its prepared **target**
+grid must match the measurement's bin count, canonical time-grid hash, start,
+and step; the IRF source may have a different original grid. A valid classical
+fit's temporal shift must agree with a complete fixed-shift assumption within
+`math.isclose(rtol=1e-7, atol=1e-12 ns)` or lie within inclusive bounded-shift
+limits. Failed fits retain their diagnostic shift even when outside those
+limits. Explicitly incomplete historical assumptions do not supply a missing
+shift policy. These context checks precede duplicate reuse.
+
+The curve result's `runtime_ms` is converted to seconds with scope
+`curve_fit_phase_after_initialization`: the source timer begins after initial
+guess construction and includes more than just optimizer work. It is neither
+an exact optimizer-only time nor a whole-call time, so `optimizer_seconds` and
+`call_seconds` remain NULL. The lower result carries no runtime. Benchmark-wide
+timing is not divided among observations. Classical and batch prediction rows
+have no invented execution seed.
+
+`record_regression_predictions` accepts `RegressionBenchmarkResult` plus an
+explicit ordered `measurement_ids` sequence and a matching ML or baseline
+model specification. `record_baseline_predictions` accepts the actual
+constant-mean or mean-arrival prediction array with its named baseline model.
+Both create only `estimator_results` rows, with summary
+`predicted_lifetime_ns` and zero-based `prediction_index` in each row's
+execution JSON. The ordered sequence must match prediction count, contain no
+duplicate measurement ID, and refer to existing run memberships; unordered
+containers such as sets are rejected. No DataFrame-index, `sample_id`, truth or
+representation inference occurs. Representation identity comes from
+`model_versions`. Aggregate errors, relative errors
+and benchmark metrics are not copied into point rows. Official benchmark and
+baseline outputs require finite predictions, but zero and negative finite
+predictions remain valid under current ML evaluation semantics. Batch rows
+have no invented per-sample runtime or seed.
+
+`record_scalar_prediction` is the explicit already-fitted single-output path
+for an ML or baseline model, including experimental measurements without
+generating truth. Its caller supplies the source type, status/validity, and
+any genuinely measured runtime scope or execution seed. A valid generic point
+requires an available finite estimate, but not positivity; an invalid row may
+retain a finite estimate or record a nonfinite one as NULL. Source NaN,
+positive infinity and negative infinity in result scalars become SQL NULL
+with `"nan"`, `"+inf"` and `"-inf"` entries, respectively, in the owning row's
+`nonfinite_fields_json`. A missing source value is NULL without such an entry.
+
+All Stage-3 writes use the Stage-2 duplicate spelling: default
+`on_duplicate="raise"`; `reuse_identical` compares the complete normalized
+persisted payload. Classical reuse checks both the point row and its required
+`fit_details` row. A conflict or failure at any point in a batch or composed
+classical write rolls back that write unit, including within an outer
+savepoint. No row is silently updated or suffixed.
 
 ## Query and compatibility boundaries
 
