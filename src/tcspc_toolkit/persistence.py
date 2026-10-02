@@ -12,7 +12,7 @@ import math
 import sqlite3
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -2994,3 +2994,1282 @@ def record_scalar_prediction(
         random_seed=random_seed, execution=execution,
     )
     return _record_estimator_row(connection, payload, on_duplicate=on_duplicate)[0]
+
+
+# Stage-4 per-observation uncertainty. The scientific result types remain in
+# their numerical modules; this boundary records their existing outputs.
+def _ordered_result_ids(result_ids: Sequence[int], *, size: int) -> tuple[int, ...]:
+    if isinstance(result_ids, np.ndarray):
+        if result_ids.ndim != 1:
+            raise ValueError("result_ids must be a one-dimensional ordered sequence")
+        supplied = tuple(result_ids)
+    elif isinstance(result_ids, Sequence) and not isinstance(result_ids, (str, bytes)):
+        supplied = tuple(result_ids)
+    else:
+        raise ValueError("result_ids must be an ordered sequence")
+    if len(supplied) != size:
+        raise ValueError("result_ids length must match uncertainty output length")
+    ids = tuple(_integer(item, "result_id", minimum=1) for item in supplied)
+    if len(set(ids)) != len(ids):
+        raise ValueError("result_ids must not repeat within one batch")
+    return ids
+
+
+def _require_point_for_uncertainty(
+    connection: sqlite3.Connection, result_id: int, *, family: str | None = None,
+    prediction: Any = None,
+) -> None:
+    row = connection.execute(
+        "SELECT r.lifetime_estimate_ns, m.family, r.nonfinite_fields_json "
+        "FROM estimator_results AS r "
+        "JOIN model_versions AS m ON m.model_id = r.model_id WHERE r.result_id = ?",
+        (result_id,),
+    ).fetchone()
+    if row is None:
+        raise ValueError(f"unknown estimator_results.result_id: {result_id}")
+    if family is not None and row[1] != family:
+        raise ValueError(f"uncertainty source requires a {family} point result")
+    if prediction is not None:
+        nonfinite: dict[str, str] = {}
+        source_prediction = _result_number(prediction, "prediction", nonfinite)
+        stored_nonfinite = json.loads(row[2]).get("lifetime_estimate_ns")
+        if row[0] != source_prediction or stored_nonfinite != nonfinite.get("prediction"):
+            raise ValueError("uncertainty prediction differs from its point result")
+
+
+def _require_poisson_classical_point(
+    connection: sqlite3.Connection, result_id: int,
+) -> None:
+    row = connection.execute(
+        "SELECT model.configuration_json, measurement.data_kind "
+        "FROM estimator_results AS point "
+        "JOIN model_versions AS model ON model.model_id = point.model_id "
+        "JOIN measurements AS measurement ON measurement.measurement_id = point.measurement_id "
+        "WHERE point.result_id = ? AND model.family = 'classical'",
+        (result_id,),
+    ).fetchone()
+    if row is None or json.loads(row[0]).get("objective") != "poisson" or (
+        row[1] != "raw_counts"
+    ):
+        raise ValueError("Poisson classical uncertainty requires a raw-count Poisson fit")
+
+
+def _uncertainty_payload(
+    *, result_id: int, method_id: str, output_kind: str,
+    method_configuration: Mapping[str, Any], interpretation: str,
+    calibration_scope: str, is_valid: bool,
+    interval_kind: str | None = None, nominal_coverage: Any = None,
+    lower_ns: Any = None, upper_ns: Any = None,
+    uncertainty_score: Any = None, reported_std_ns: Any = None,
+    resample_median_ns: Any = None, n_requested: int | None = None,
+    n_valid: int | None = None, refit_failure_rate: Any = None,
+    runtime_seconds: Any = None, random_seed: int | str | None = None,
+    calibration_run_id: int | None = None, samples_artifact_id: int | None = None,
+    failure_reason: str | None = None,
+    diagnostics: Mapping[str, Any] | None = None,
+    extra_nonfinite: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    if output_kind not in ("prediction_interval", "uncertainty_score", "covariance_summary"):
+        raise ValueError("unsupported Stage-4 uncertainty output_kind")
+    config_json, config_hash = _configuration_json(method_configuration)
+    nonfinite = dict(extra_nonfinite or {})
+    lower = _result_number(lower_ns, "lower_ns", nonfinite)
+    upper = _result_number(upper_ns, "upper_ns", nonfinite)
+    score = _result_number(uncertainty_score, "uncertainty_score", nonfinite)
+    std = _result_number(reported_std_ns, "reported_std_ns", nonfinite)
+    median = _result_number(resample_median_ns, "resample_median_ns", nonfinite)
+    failure_rate = _result_number(refit_failure_rate, "refit_failure_rate", nonfinite)
+    runtime = _result_number(runtime_seconds, "runtime_seconds", nonfinite)
+    valid = _result_flag(is_valid, "is_valid")
+    if (valid and std is not None and std < 0) or (score is not None and score < 0):
+        raise ValueError("valid uncertainty spread and source scores must be nonnegative")
+    if failure_rate is not None and not 0 <= failure_rate <= 1:
+        raise ValueError("refit_failure_rate must lie in [0, 1]")
+    if runtime is not None and runtime < 0:
+        raise ValueError("runtime_seconds must be nonnegative")
+    requested = _optional_integer(n_requested, "n_requested")
+    valid_count = _optional_integer(n_valid, "n_valid")
+    if requested is not None and valid_count is not None and valid_count > requested:
+        raise ValueError("n_valid cannot exceed n_requested")
+    if output_kind == "prediction_interval":
+        kind = _required_text(interval_kind, "interval_kind")
+        coverage = _finite_scalar(nominal_coverage, "nominal_coverage")
+        if not 0 < coverage < 1:
+            raise ValueError("nominal_coverage must lie strictly between 0 and 1")
+        if score is not None or "uncertainty_score" in nonfinite:
+            raise ValueError("interval uncertainty cannot contain a score")
+        if valid and (lower is None or upper is None or lower > upper):
+            raise ValueError("valid interval requires finite ordered bounds")
+    elif output_kind == "uncertainty_score":
+        kind = coverage = None
+        if interval_kind is not None or nominal_coverage is not None or lower_ns is not None or upper_ns is not None:
+            raise ValueError("score-only uncertainty cannot contain interval fields")
+        if valid and score is None:
+            raise ValueError("valid uncertainty score must be finite")
+    else:
+        kind = coverage = None
+        if any(item is not None for item in (
+            interval_kind, nominal_coverage, lower_ns, upper_ns, uncertainty_score,
+        )):
+            raise ValueError("covariance summary cannot contain interval or score fields")
+        if valid and std is None:
+            raise ValueError("valid covariance summary requires a finite lifetime std")
+    return {
+        "result_id": _integer(result_id, "result_id", minimum=1),
+        "calibration_run_id": _optional_integer(calibration_run_id, "calibration_run_id", minimum=1),
+        "samples_artifact_id": _optional_integer(samples_artifact_id, "samples_artifact_id", minimum=1),
+        "method_id": _required_text(method_id, "method_id"),
+        "output_kind": output_kind, "interval_kind": kind,
+        "nominal_coverage": coverage,
+        "method_config_json": config_json, "method_config_sha256": config_hash,
+        "interpretation": _required_text(interpretation, "interpretation"),
+        "calibration_scope": _required_text(calibration_scope, "calibration_scope"),
+        "is_valid": valid, "lower_ns": lower, "upper_ns": upper,
+        "uncertainty_score": score, "reported_std_ns": std,
+        "resample_median_ns": median, "n_requested": requested,
+        "n_valid": valid_count, "refit_failure_rate": failure_rate,
+        "runtime_seconds": runtime,
+        "random_seed_decimal": _decimal_seed(random_seed, "random_seed"),
+        "failure_reason": _optional_diagnostic_text(failure_reason, "failure_reason"),
+        "diagnostics_json": _mapping_json(diagnostics, "diagnostics"),
+        "nonfinite_fields_json": _canonical_json(nonfinite),
+    }
+
+
+def _record_uncertainty_rows(
+    connection: sqlite3.Connection, payloads: Sequence[dict[str, Any]], *,
+    on_duplicate: DuplicatePolicy,
+) -> tuple[int, ...]:
+    if on_duplicate not in ("raise", "reuse_identical"):
+        raise ValueError("on_duplicate must be 'raise' or 'reuse_identical'")
+    if connection.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
+        raise ValueError("foreign keys must be enabled before recording")
+    expected = {row[1] for row in connection.execute("PRAGMA table_info(uncertainty_results)")}
+    if any(set(payload) != expected - {"uncertainty_id"} for payload in payloads):
+        raise RuntimeError("incomplete uncertainty_results adapter payload")
+    ids: list[int] = []
+    with transaction(connection):
+        for payload in payloads:
+            _require_point_for_uncertainty(connection, payload["result_id"])
+            for table, column, value in (
+                ("experiment_runs", "run_id", payload["calibration_run_id"]),
+                ("artifacts", "artifact_id", payload["samples_artifact_id"]),
+            ):
+                if value is not None:
+                    _require_row(connection, table, column, value)
+            cursor = connection.execute(
+                "SELECT * FROM uncertainty_results WHERE result_id = ? AND method_id = ? "
+                "AND output_kind = ? AND method_config_sha256 = ? "
+                "AND nominal_coverage IS ?",
+                (payload["result_id"], payload["method_id"], payload["output_kind"],
+                 payload["method_config_sha256"], payload["nominal_coverage"]),
+            )
+            found = cursor.fetchone()
+            if found is not None:
+                existing = dict(zip((item[0] for item in cursor.description), found))
+                if on_duplicate == "raise":
+                    raise PersistenceConflictError("duplicate uncertainty_results identity")
+                if not all(_same_payload_value(column, existing[column], value)
+                           for column, value in payload.items()):
+                    raise PersistenceConflictError("conflicting uncertainty_results identity")
+                ids.append(int(existing["uncertainty_id"]))
+            else:
+                names = tuple(payload)
+                inserted = connection.execute(
+                    f"INSERT INTO uncertainty_results ({', '.join(names)}) "
+                    f"VALUES ({', '.join('?' for _ in names)})",
+                    tuple(payload.values()),
+                )
+                ids.append(int(inserted.lastrowid))
+    return tuple(ids)
+
+
+def record_prediction_intervals(
+    connection: sqlite3.Connection, intervals: Any, *,
+    result_ids: Sequence[int], method: Any,
+    method_configuration: Mapping[str, Any], interval_kind: str,
+    calibration_run_id: int | None = None,
+    diagnostics: Mapping[str, Any] | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Attach ordered source prediction intervals to existing point results."""
+    from tcspc_toolkit.uncertainty_evaluation import (
+        PredictionIntervalResult, UncertaintyMethodDefinition,
+        UncertaintyOutputKind,
+    )
+    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
+    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.classical_uncertainty import CLASSICAL_UNCERTAINTY_METHODS
+
+    if not isinstance(intervals, PredictionIntervalResult):
+        raise TypeError("intervals must be a PredictionIntervalResult")
+    if not isinstance(method, UncertaintyMethodDefinition):
+        raise TypeError("method must be an UncertaintyMethodDefinition")
+    if method.method_id != intervals.method_id or method.output_kind != UncertaintyOutputKind.PREDICTION_INTERVAL:
+        raise ValueError("interval method definition conflicts with source intervals")
+    if method.method_id in ML_UNCERTAINTY_METHODS:
+        family = "ml"
+        if method != ML_UNCERTAINTY_METHODS[method.method_id]:
+            raise ValueError("interval method definition differs from source registry")
+    elif method.method_id in CLASSICAL_UNCERTAINTY_METHODS:
+        family = "classical"
+        if method != CLASSICAL_UNCERTAINTY_METHODS[method.method_id]:
+            raise ValueError("interval method definition differs from source registry")
+    elif method.method_id == CONFORMALIZED_QUANTILE_METHOD_ID:
+        family = "ml"
+    else:
+        raise ValueError("interval method is not a current repository method")
+    calibrated = method.method_id in ("split_conformal", CONFORMALIZED_QUANTILE_METHOD_ID)
+    if calibrated != (calibration_run_id is not None):
+        raise ValueError("conformal intervals require a calibration run; other intervals do not")
+    if not isinstance(method_configuration, Mapping):
+        raise TypeError("method_configuration must be a mapping")
+    config = dict(method_configuration)
+    for key, value in (("nominal_coverage", float(intervals.nominal_coverage)),
+                       ("interval_kind", _required_text(interval_kind, "interval_kind"))):
+        if key in config and config[key] != value:
+            raise ValueError(f"{key} conflicts with source interval")
+        config[key] = value
+    if calibrated:
+        calibrated_run = _integer(calibration_run_id, "calibration_run_id", minimum=1)
+        if "calibration_run_id" in config and config["calibration_run_id"] != calibrated_run:
+            raise ValueError("calibration_run_id conflicts with method configuration")
+        config["calibration_run_id"] = calibrated_run
+    ids = _ordered_result_ids(result_ids, size=len(intervals.prediction))
+    payloads = []
+    for index, result_id in enumerate(ids):
+        _require_point_for_uncertainty(
+            connection, result_id, family=family,
+            prediction=intervals.prediction[index],
+        )
+        if family == "classical":
+            _require_poisson_classical_point(connection, result_id)
+        lower = intervals.lower[index]
+        central = intervals.prediction[index]
+        upper = intervals.upper[index]
+        sample_diagnostics = dict(diagnostics or {})
+        triplet_crossed = False
+        if method.method_id == "quantile_gradient_boosting":
+            triplet_crossed = bool(
+                np.isfinite(lower) and np.isfinite(central) and np.isfinite(upper)
+                and (lower > central or central > upper)
+            )
+            sample_diagnostics["quantile_triplet_crossed"] = triplet_crossed
+        payloads.append(_uncertainty_payload(
+            result_id=result_id, method_id=method.method_id,
+            output_kind="prediction_interval", method_configuration=config,
+            interpretation=method.interpretation, calibration_scope=method.calibration_scope,
+            is_valid=bool(intervals.valid_interval_mask[index]),
+            interval_kind=interval_kind, nominal_coverage=intervals.nominal_coverage,
+            lower_ns=lower, upper_ns=upper, calibration_run_id=calibration_run_id,
+            diagnostics=sample_diagnostics,
+        ))
+    return _record_uncertainty_rows(connection, payloads, on_duplicate=on_duplicate)
+
+
+def record_quantile_intervals(
+    connection: sqlite3.Connection, intervals: Any, *,
+    result_ids: Sequence[int], on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record the current q05/q50/q95 interval without creating a median point."""
+    from tcspc_toolkit.ml_uncertainty import (
+        DEFAULT_LOWER_QUANTILE, DEFAULT_MEDIAN_QUANTILE, DEFAULT_UPPER_QUANTILE,
+        ML_UNCERTAINTY_METHODS, QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
+    )
+    if not math.isclose(
+        intervals.nominal_coverage,
+        DEFAULT_UPPER_QUANTILE - DEFAULT_LOWER_QUANTILE,
+        rel_tol=0.0, abs_tol=1e-12,
+    ):
+        raise ValueError("quantile interval coverage differs from q05/q95 definition")
+    return record_prediction_intervals(
+        connection, intervals, result_ids=result_ids,
+        method=ML_UNCERTAINTY_METHODS[QUANTILE_GRADIENT_BOOSTING_METHOD_ID],
+        method_configuration={
+            "lower_quantile": DEFAULT_LOWER_QUANTILE,
+            "median_quantile": DEFAULT_MEDIAN_QUANTILE,
+            "upper_quantile": DEFAULT_UPPER_QUANTILE,
+            "interval_rule": "unrepaired_quantile_predictions",
+        },
+        interval_kind="quantile", on_duplicate=on_duplicate,
+    )
+
+
+def record_conformal_intervals(
+    connection: sqlite3.Connection, intervals: Any, *,
+    result_ids: Sequence[int], calibration_run_id: int,
+    correction_ns: float, n_calibration_scores: int,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record split-conformalized quantile intervals and calibration identity."""
+    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty_evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
+    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
+
+    correction = _finite_scalar(correction_ns, "correction_ns", nonnegative=True)
+    n_scores = _integer(n_calibration_scores, "n_calibration_scores", minimum=1)
+    calibrated_run = _integer(calibration_run_id, "calibration_run_id", minimum=1)
+    base = ML_UNCERTAINTY_METHODS["split_conformal"]
+    method = UncertaintyMethodDefinition(
+        method_id=CONFORMALIZED_QUANTILE_METHOD_ID,
+        output_kind=UncertaintyOutputKind.PREDICTION_INTERVAL,
+        interpretation=base.interpretation, calibration_scope=base.calibration_scope,
+    )
+    return record_prediction_intervals(
+        connection, intervals, result_ids=result_ids, method=method,
+        method_configuration={
+            "base_method": "quantile_gradient_boosting",
+            "calibration_policy": "finite_sample_split_conformal",
+            "calibration_run_id": calibrated_run,
+            "correction_ns": correction,
+            "n_calibration_scores": n_scores,
+        },
+        interval_kind="conformalized_quantile", calibration_run_id=calibrated_run,
+        on_duplicate=on_duplicate,
+    )
+
+
+def record_uncertainty_scores(
+    connection: sqlite3.Connection, scores: Any, *,
+    result_ids: Sequence[int], method: Any,
+    method_configuration: Mapping[str, Any], n_members: int | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Attach score-only ensemble or bootstrap spread without interval claims."""
+    from tcspc_toolkit.uncertainty_evaluation import (
+        UncertaintyMethodDefinition, UncertaintyOutputKind, UncertaintyScoreResult,
+    )
+    from tcspc_toolkit.ml_uncertainty import (
+        ML_TRAINING_BOOTSTRAP_METHOD_ID, ML_UNCERTAINTY_METHODS,
+        RANDOM_FOREST_TREE_SPREAD_METHOD_ID,
+    )
+
+    if not isinstance(scores, UncertaintyScoreResult):
+        raise TypeError("scores must be an UncertaintyScoreResult")
+    if not isinstance(method, UncertaintyMethodDefinition):
+        raise TypeError("method must be an UncertaintyMethodDefinition")
+    if method.method_id != scores.method_id or method.output_kind != UncertaintyOutputKind.UNCERTAINTY_SCORE:
+        raise ValueError("score method definition conflicts with source scores")
+    if method.method_id not in ML_UNCERTAINTY_METHODS or method != ML_UNCERTAINTY_METHODS[method.method_id]:
+        raise ValueError("score method is not a current repository method")
+    if not isinstance(method_configuration, Mapping):
+        raise TypeError("method_configuration must be a mapping")
+    config = dict(method_configuration)
+    spread_definition, ddof = {
+        RANDOM_FOREST_TREE_SPREAD_METHOD_ID: ("population_std", 0),
+        ML_TRAINING_BOOTSTRAP_METHOD_ID: ("sample_std", 1),
+    }[method.method_id]
+    for key, canonical in (("spread", spread_definition), ("ddof", ddof)):
+        if key in config and config[key] != canonical:
+            raise ValueError(f"{key} conflicts with the source spread definition")
+        config[key] = canonical
+    if n_members is not None:
+        members = _integer(n_members, "n_members", minimum=1)
+        if "n_members" in config and config["n_members"] != members:
+            raise ValueError("n_members conflicts with method configuration")
+        config["n_members"] = members
+    ids = _ordered_result_ids(result_ids, size=len(scores.prediction))
+    payloads = []
+    for index, result_id in enumerate(ids):
+        _require_point_for_uncertainty(
+            connection, result_id, family="ml", prediction=scores.prediction[index],
+        )
+        payloads.append(_uncertainty_payload(
+            result_id=result_id, method_id=method.method_id,
+            output_kind="uncertainty_score", method_configuration=config,
+            interpretation=method.interpretation, calibration_scope=method.calibration_scope,
+            is_valid=bool(scores.valid_score_mask[index]),
+            uncertainty_score=scores.uncertainty_score[index],
+        ))
+    return _record_uncertainty_rows(connection, payloads, on_duplicate=on_duplicate)
+
+
+def record_classical_covariance_uncertainty(
+    connection: sqlite3.Connection, covariance: Any, *,
+    result_id: int, method_configuration: Mapping[str, Any],
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Store a per-fit Poisson/Fisher local summary, never empirical variability."""
+    from tcspc_toolkit.classical_uncertainty import (
+        CLASSICAL_UNCERTAINTY_METHODS, POISSON_LOCAL_COVARIANCE_METHOD_ID,
+        PoissonLocalCovarianceResult,
+    )
+    if not isinstance(covariance, PoissonLocalCovarianceResult):
+        raise TypeError("covariance must be a PoissonLocalCovarianceResult")
+    point_id = _integer(result_id, "result_id", minimum=1)
+    _require_point_for_uncertainty(connection, point_id, family="classical")
+    _require_poisson_classical_point(connection, point_id)
+    matrix = np.asarray(covariance.covariance_matrix)
+    if matrix.shape != (4, 4):
+        raise ValueError("covariance_matrix must have shape (4, 4)")
+    nonfinite: dict[str, str] = {}
+    matrix_values = [
+        [_result_number(value, f"covariance_matrix[{i}][{j}]", nonfinite)
+         for j, value in enumerate(row)]
+        for i, row in enumerate(matrix)
+    ]
+    diagnostics = {
+        "covariance_matrix": matrix_values,
+        "amplitude_std": _result_number(covariance.amplitude_std, "amplitude_std", nonfinite),
+        "background_std": _result_number(covariance.background_std, "background_std", nonfinite),
+        "temporal_shift_std": _result_number(
+            covariance.temporal_shift_std, "temporal_shift_std", nonfinite,
+        ),
+        "condition_number": _result_number(covariance.condition_number, "condition_number", nonfinite),
+        "information_rank": _integer(covariance.information_rank, "information_rank"),
+        "boundary_hit": bool(_result_flag(covariance.boundary_hit, "boundary_hit")),
+    }
+    definition = CLASSICAL_UNCERTAINTY_METHODS[POISSON_LOCAL_COVARIANCE_METHOD_ID]
+    payload = _uncertainty_payload(
+        result_id=point_id, method_id=definition.method_id,
+        output_kind="covariance_summary", method_configuration=method_configuration,
+        interpretation=definition.interpretation,
+        calibration_scope=definition.calibration_scope,
+        is_valid=covariance.covariance_valid, reported_std_ns=covariance.lifetime_std,
+        failure_reason=covariance.failure_reason, diagnostics=diagnostics,
+        extra_nonfinite=nonfinite,
+    )
+    return _record_uncertainty_rows(connection, (payload,), on_duplicate=on_duplicate)[0]
+
+
+def record_parametric_bootstrap_uncertainty(
+    connection: sqlite3.Connection, bootstrap: Any, *,
+    result_id: int, method_configuration: Mapping[str, Any],
+    bootstrap_seed: int | str | None = None,
+    samples_artifact_id: int | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Store one Poisson refit-bootstrap interval and std in the same row."""
+    from tcspc_toolkit.classical_uncertainty import (
+        CLASSICAL_UNCERTAINTY_METHODS, PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
+        ParametricPoissonBootstrapResult,
+    )
+    if not isinstance(bootstrap, ParametricPoissonBootstrapResult):
+        raise TypeError("bootstrap must be a ParametricPoissonBootstrapResult")
+    point_id = _integer(result_id, "result_id", minimum=1)
+    _require_point_for_uncertainty(
+        connection, point_id, family="classical", prediction=bootstrap.source_lifetime_ns,
+    )
+    _require_poisson_classical_point(connection, point_id)
+    requested = _integer(bootstrap.n_resamples, "n_resamples", minimum=1)
+    successful = _integer(bootstrap.n_successful_fits, "n_successful_fits")
+    failed = _integer(bootstrap.n_failed_fits, "n_failed_fits")
+    boundary_hits = _integer(bootstrap.n_boundary_hits, "n_boundary_hits")
+    if successful + failed != requested or boundary_hits > successful:
+        raise ValueError("bootstrap replicate counts are inconsistent")
+    if np.asarray(bootstrap.lifetime_samples_ns).shape != (requested,):
+        raise ValueError("bootstrap samples length differs from n_resamples")
+    if not isinstance(method_configuration, Mapping):
+        raise TypeError("method_configuration must be a mapping")
+    config = dict(method_configuration)
+    for key, value in (
+        ("n_resamples", requested),
+        ("nominal_coverage", float(bootstrap.nominal_coverage)),
+        ("interval_rule", "central_percentile"),
+    ):
+        if key in config and config[key] != value:
+            raise ValueError(f"{key} conflicts with bootstrap method configuration")
+        config[key] = value
+    nonfinite: dict[str, str] = {}
+    diagnostics = {
+        "n_failed_fits": failed, "n_boundary_hits": boundary_hits,
+        "boundary_hit_rate": _result_number(
+            bootstrap.boundary_hit_rate, "boundary_hit_rate", nonfinite,
+        ),
+    }
+    definition = CLASSICAL_UNCERTAINTY_METHODS[PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID]
+    payload = _uncertainty_payload(
+        result_id=point_id, method_id=definition.method_id,
+        output_kind="prediction_interval", method_configuration=config,
+        interpretation=definition.interpretation,
+        calibration_scope=definition.calibration_scope,
+        is_valid=bootstrap.bootstrap_valid, interval_kind="bootstrap_percentile",
+        nominal_coverage=bootstrap.nominal_coverage,
+        lower_ns=bootstrap.lower_ns, upper_ns=bootstrap.upper_ns,
+        reported_std_ns=bootstrap.bootstrap_std_ns,
+        resample_median_ns=bootstrap.bootstrap_median_ns,
+        n_requested=requested, n_valid=successful,
+        refit_failure_rate=bootstrap.fit_failure_rate,
+        random_seed=bootstrap_seed, samples_artifact_id=samples_artifact_id,
+        failure_reason=bootstrap.failure_reason, diagnostics=diagnostics,
+        extra_nonfinite=nonfinite,
+    )
+    return _record_uncertainty_rows(connection, (payload,), on_duplicate=on_duplicate)[0]
+
+
+@dataclass(frozen=True)
+class BenchmarkMetricScope:
+    """Caller-selected aggregate population and scientific comparison context.
+
+    ``population_key`` identifies the exact selection, not just a regime label.
+    Supply stored measurement IDs when available; external datasets retain their
+    explicit dataset and selection identities without inventing measurement rows.
+    """
+
+    run_id: int
+    population_key: str
+    dataset_key: str
+    reference_semantics: str
+    model_id: int | None = None
+    assumption_id: int | None = None
+    condition_pk: int | None = None
+    reference_id: int | None = None
+    reference_ids: Sequence[int] | None = None
+    source_artifact_id: int | None = None
+    test_id: str | None = None
+    regime_id: str | None = None
+    method_id: str | None = None
+    method_configuration: Mapping[str, Any] | None = None
+    nominal_coverage: float | None = None
+    reference_kind: str | None = None
+    reference_version: str | None = None
+    signal_photon_count: int | None = None
+    background_per_bin: float | None = None
+    measurement_ids: Sequence[int] | None = None
+    selection: Mapping[str, Any] | None = None
+
+
+def _metric_scope(
+    connection: sqlite3.Connection, scope: BenchmarkMetricScope, *,
+    n_attempted: int,
+) -> dict[str, Any]:
+    if not isinstance(scope, BenchmarkMetricScope):
+        raise TypeError("scope must be a BenchmarkMetricScope")
+    run_id = _integer(scope.run_id, "run_id", minimum=1)
+    run = connection.execute(
+        "SELECT protocol_id, protocol_version, profile FROM experiment_runs WHERE run_id = ?",
+        (run_id,),
+    ).fetchone()
+    if run is None:
+        raise ValueError("scope run_id must identify an experiment run")
+    population_key = _required_text(scope.population_key, "population_key")
+    dataset_key = _required_text(scope.dataset_key, "dataset_key")
+    reference_semantics = _required_text(scope.reference_semantics, "reference_semantics")
+    selection = json.loads(_mapping_json(scope.selection, "selection"))
+    ids: tuple[int, ...] | None = None
+    selected_conditions: set[int] = set()
+    has_measurement_without_condition = False
+    if scope.measurement_ids is not None:
+        ids = _ordered_measurement_ids(scope.measurement_ids, n_predictions=n_attempted)
+        for measurement_id in ids:
+            row = connection.execute(
+                "SELECT rm.test_id, rm.regime_id, rm.dataset_key, m.condition_pk "
+                "FROM run_measurements AS rm JOIN measurements AS m "
+                "ON m.measurement_id = rm.measurement_id "
+                "WHERE rm.run_id = ? AND rm.measurement_id = ?",
+                (run_id, measurement_id),
+            ).fetchone()
+            if row is None:
+                raise ValueError("scope measurement is not a member of its run")
+            if row[3] is None:
+                has_measurement_without_condition = True
+            else:
+                selected_conditions.add(int(row[3]))
+            for actual, selected, label in (
+                (row[0], scope.test_id, "test_id"),
+                (row[1], scope.regime_id, "regime_id"),
+                (row[2], dataset_key, "dataset_key"),
+                (row[3], scope.condition_pk, "condition_pk"),
+            ):
+                if selected is not None and actual != selected:
+                    raise ValueError(f"scope {label} conflicts with measurement membership")
+    model_id = _optional_integer(scope.model_id, "model_id", minimum=1)
+    assumption_id = _optional_integer(scope.assumption_id, "assumption_id", minimum=1)
+    condition_pk = _optional_integer(scope.condition_pk, "condition_pk", minimum=1)
+    reference_id = _optional_integer(scope.reference_id, "reference_id", minimum=1)
+    if scope.reference_ids is not None:
+        if reference_id is not None:
+            raise ValueError("use either one reference_id or a reference_ids set")
+        if not isinstance(scope.reference_ids, Sequence) or isinstance(
+            scope.reference_ids, (str, bytes),
+        ) or not scope.reference_ids:
+            raise ValueError("reference_ids must be a nonempty ordered sequence")
+        reference_ids = tuple(
+            _integer(item, "reference_id", minimum=1) for item in scope.reference_ids
+        )
+        if len(set(reference_ids)) != len(reference_ids):
+            raise ValueError("reference_ids must not repeat")
+    else:
+        reference_ids = None
+    source_artifact_id = _optional_integer(scope.source_artifact_id, "source_artifact_id", minimum=1)
+    for table, column, value in (
+        ("model_versions", "model_id", model_id),
+        ("model_assumptions", "assumption_id", assumption_id),
+        ("artifacts", "artifact_id", source_artifact_id),
+    ):
+        if value is not None:
+            _require_row(connection, table, column, value)
+    condition = None
+    if condition_pk is not None:
+        condition = connection.execute(
+            "SELECT generating_model, signal_photon_count, background_per_bin "
+            "FROM simulation_conditions WHERE condition_pk = ?", (condition_pk,),
+        ).fetchone()
+        if condition is None:
+            raise ValueError("unknown simulation condition in metric scope")
+    reference_kind = _optional_text(scope.reference_kind, "reference_kind")
+    reference_version = _optional_text(scope.reference_version, "reference_version")
+    if reference_kind not in (None, "generating_mono", "primary_component",
+                               "trusted_experimental", "pseudo_true_mono"):
+        raise ValueError("unsupported benchmark reference_kind")
+    pseudo_reference_conditions: set[int] = set()
+    for linked_reference_id in (
+        (reference_id,) if reference_id is not None else (reference_ids or ())
+    ):
+        reference = connection.execute(
+            "SELECT reference_kind, reference_version, condition_pk, assumption_id, "
+            "measurement_id FROM lifetime_references WHERE reference_id = ?",
+            (linked_reference_id,),
+        ).fetchone()
+        if reference is None:
+            raise ValueError("unknown lifetime reference in metric scope")
+        if reference_kind != reference[0] or reference_version != reference[1]:
+            raise ValueError("metric reference kind/version conflicts with linked reference")
+        if reference[0] == "pseudo_true_mono" and (
+            condition_pk is not None and condition_pk != reference[2]
+            or assumption_id is not None and assumption_id != reference[3]
+        ):
+            raise ValueError("pseudo-true metric scope conflicts with reference context")
+        if reference[0] == "pseudo_true_mono":
+            pseudo_reference_conditions.add(int(reference[2]))
+        if reference[0] == "trusted_experimental" and ids is not None and (
+            reference[4] not in ids
+        ):
+            raise ValueError("trusted reference is outside metric measurement population")
+    if reference_kind in ("trusted_experimental", "pseudo_true_mono") and (
+        reference_id is None and reference_ids is None
+    ):
+        raise ValueError("trusted and pseudo-true scopes require reference ID(s)")
+    if reference_ids is not None and reference_kind not in (
+        "trusted_experimental", "pseudo_true_mono",
+    ):
+        raise ValueError("reference_ids only apply to stored trusted or pseudo-true references")
+    if reference_kind == "pseudo_true_mono" and ids is not None and (
+        has_measurement_without_condition
+        or pseudo_reference_conditions != selected_conditions
+    ):
+        raise ValueError("pseudo-true references must match selected measurement conditions")
+    if reference_kind in ("generating_mono", "primary_component"):
+        expected_model = "monoexponential" if reference_kind == "generating_mono" else "biexponential"
+        if condition is not None and condition[0] != expected_model:
+            raise ValueError("generating reference must match its simulation condition")
+        if ids is not None and condition is None:
+            generating_models = connection.execute(
+                "SELECT c.generating_model FROM simulation_conditions AS c "
+                "JOIN measurements AS m ON m.condition_pk = c.condition_pk "
+                "WHERE m.measurement_id IN (" + ",".join("?" for _ in ids) + ")",
+                ids,
+            ).fetchall() if ids else []
+            if len(generating_models) != len(ids) or any(
+                item[0] != expected_model for item in generating_models
+            ):
+                raise ValueError("population generating models conflict with reference kind")
+    if reference_kind is not None and reference_kind not in reference_semantics:
+        raise ValueError("reference_semantics must identify the selected reference kind")
+    if reference_kind is None and any(kind in reference_semantics for kind in (
+        "generating_mono", "primary_component", "trusted_experimental", "pseudo_true_mono",
+    )):
+        raise ValueError("reference_semantics names a reference kind missing from scope")
+    photon_count = _optional_integer(scope.signal_photon_count, "signal_photon_count", minimum=1)
+    background = _optional_scalar(scope.background_per_bin, "background_per_bin", nonnegative=True)
+    if condition is not None and (photon_count is not None and photon_count != condition[1]
+                                  or background is not None and background != condition[2]):
+        raise ValueError("metric regime values conflict with simulation condition")
+    if condition is not None:
+        photon_count = condition[1]
+        background = condition[2]
+    method_id = _optional_text(scope.method_id, "method_id")
+    if (method_id is None) != (scope.method_configuration is None):
+        raise ValueError("method_id and method_configuration must be supplied together")
+    method_config_hash = None
+    method_config = None
+    if scope.method_configuration is not None:
+        method_config_json, method_config_hash = _configuration_json(scope.method_configuration)
+        method_config = json.loads(method_config_json)
+    coverage = None
+    if scope.nominal_coverage is not None:
+        coverage = _finite_scalar(scope.nominal_coverage, "nominal_coverage")
+        if not 0 < coverage < 1:
+            raise ValueError("nominal_coverage must lie strictly between 0 and 1")
+        if method_id is None:
+            raise ValueError("nominal coverage requires an uncertainty method")
+    context = {
+        "run_id": run_id, "protocol_id": run[0], "protocol_version": run[1],
+        "profile": run[2], "population_key": population_key,
+        "dataset_key": dataset_key, "selection": selection,
+        "measurement_ids": sorted(ids) if ids is not None else None,
+        "model_id": model_id, "assumption_id": assumption_id,
+        "condition_pk": condition_pk, "reference_id": reference_id,
+        "reference_ids": sorted(reference_ids) if reference_ids is not None else None,
+        "source_artifact_id": source_artifact_id,
+        "test_id": _optional_text(scope.test_id, "test_id"),
+        "regime_id": _optional_text(scope.regime_id, "regime_id"),
+        "method_id": method_id, "method_configuration": method_config,
+        "method_config_sha256": method_config_hash,
+        "nominal_coverage": coverage, "reference_kind": reference_kind,
+        "reference_version": reference_version,
+        "reference_semantics": reference_semantics,
+        "signal_photon_count": photon_count, "background_per_bin": background,
+    }
+    serialized = _canonical_json(context)
+    context["scope_json"] = serialized
+    context["scope_sha256"] = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    return context
+
+
+def _metric_fact(
+    context: Mapping[str, Any], *, name: str, unit: str, value: Any,
+    n_attempted: int, n_valid: int | None, n_contributing: int | None,
+    denominator_kind: str,
+) -> dict[str, Any]:
+    attempted = _integer(n_attempted, "n_attempted")
+    valid = _optional_integer(n_valid, "n_valid")
+    contributing = _optional_integer(n_contributing, "n_contributing")
+    if valid is not None and valid > attempted or contributing is not None and contributing > attempted:
+        raise ValueError("metric counts cannot exceed attempted population")
+    if valid is not None and contributing is not None and contributing > valid and (
+        denominator_kind not in (
+            "attempted_observations", "attempted_fits", "attempted_realizations",
+        )
+    ):
+        raise ValueError("contributing count cannot exceed valid count")
+    nonfinite: dict[str, str] = {}
+    number = _result_number(value, "metric_value", nonfinite)
+    return {
+        "run_id": context["run_id"], "model_id": context["model_id"],
+        "assumption_id": context["assumption_id"],
+        "condition_pk": context["condition_pk"],
+        "reference_id": context["reference_id"],
+        "source_artifact_id": context["source_artifact_id"],
+        "metric_name": _required_text(name, "metric_name"),
+        "metric_unit": _required_text(unit, "metric_unit"),
+        "scope_sha256": context["scope_sha256"],
+        "scope_json": context["scope_json"],
+        "value_status": "finite" if number is not None else "undefined",
+        "metric_value": number, "n_attempted": attempted,
+        "n_valid": valid, "n_contributing": contributing,
+        "denominator_kind": _required_text(denominator_kind, "denominator_kind"),
+        "test_id": context["test_id"], "regime_id": context["regime_id"],
+        "method_id": context["method_id"],
+        "nominal_coverage": context["nominal_coverage"],
+        "reference_kind": context["reference_kind"],
+        "reference_version": context["reference_version"],
+        "signal_photon_count": context["signal_photon_count"],
+        "background_per_bin": context["background_per_bin"],
+        "nonfinite_fields_json": _canonical_json(nonfinite),
+    }
+
+
+def _record_metric_facts(
+    connection: sqlite3.Connection, scope: BenchmarkMetricScope, *,
+    n_attempted: int,
+    facts: Sequence[tuple[str, str, Any, int | None, int | None, str]],
+    on_duplicate: DuplicatePolicy,
+) -> tuple[int, ...]:
+    if not facts:
+        raise ValueError("at least one benchmark metric fact is required")
+    with transaction(connection):
+        context = _metric_scope(connection, scope, n_attempted=n_attempted)
+        payloads = [
+            _metric_fact(context, name=name, unit=unit, value=value,
+                         n_attempted=n_attempted, n_valid=valid,
+                         n_contributing=contributing, denominator_kind=denominator)
+            for name, unit, value, valid, contributing, denominator in facts
+        ]
+        return tuple(_record_row(
+            connection, table="benchmark_metrics",
+            key_columns=("run_id", "scope_sha256", "metric_name"),
+            payload=payload, return_column="metric_id", on_duplicate=on_duplicate,
+        ) for payload in payloads)
+
+
+def _validate_attempt_failure_rate(
+    value: Any, *, attempted: int, valid: int, name: str,
+) -> None:
+    rate = _finite_scalar(value, name)
+    if not 0 <= rate <= 1 or not math.isclose(
+        rate, 1.0 - valid / attempted, rel_tol=1e-9, abs_tol=1e-12,
+    ):
+        raise ValueError(f"{name} conflicts with attempted/valid counts")
+
+
+def _validate_interval_coverage_consistency(
+    empirical_coverage: Any, coverage_error: Any, *,
+    nominal_coverage: Any, n_valid_intervals: int,
+) -> None:
+    """Source coverage_error is empirical minus nominal, not an absolute gap."""
+    nonfinite: dict[str, str] = {}
+    empirical = _result_number(empirical_coverage, "empirical_coverage", nonfinite)
+    error = _result_number(coverage_error, "coverage_error", nonfinite)
+    if n_valid_intervals == 0:
+        if nonfinite != {"empirical_coverage": "nan", "coverage_error": "nan"}:
+            raise ValueError("interval coverage is undefined with no valid intervals")
+    elif empirical is None or error is None or not math.isclose(
+        empirical - error, _finite_scalar(nominal_coverage, "nominal_coverage"),
+        rel_tol=0.0, abs_tol=1e-12,
+    ):
+        raise ValueError("interval coverage/error conflicts with nominal coverage")
+
+
+def _require_classical_aggregate_model(
+    connection: sqlite3.Connection, scope: BenchmarkMetricScope, *,
+    required_objective: str | None = None,
+) -> str:
+    """Validate the reusable reconvolution model selected for a classical fact."""
+    model_id = _optional_integer(scope.model_id, "model_id", minimum=1)
+    if model_id is None:
+        raise ValueError("classical aggregate metrics require a model_id")
+    row = connection.execute(
+        "SELECT family, configuration_json FROM model_versions WHERE model_id = ?",
+        (model_id,),
+    ).fetchone()
+    if row is None or row[0] != "classical":
+        raise ValueError("classical aggregate metrics require a classical model")
+    configuration = json.loads(row[1])
+    objective = configuration.get("objective") if isinstance(configuration, dict) else None
+    if not isinstance(objective, str) or objective not in ("poisson", "least_squares"):
+        raise ValueError("classical aggregate model requires a recognized objective")
+    if required_objective is not None and objective != required_objective:
+        raise ValueError(f"classical aggregate model requires objective={required_objective}")
+    if scope.assumption_id is not None:
+        assumption = connection.execute(
+            "SELECT assumed_decay_model, observation_model FROM model_assumptions "
+            "WHERE assumption_id = ?", (scope.assumption_id,),
+        ).fetchone()
+        if assumption is None or assumption[0] != "monoexponential":
+            raise ValueError("classical aggregate requires a monoexponential assumption")
+        assumption_objective = {
+            "poisson_reconvolution": "poisson",
+            "least_squares_reconvolution": "least_squares",
+        }.get(assumption[1])
+        if assumption_objective is not None and objective != assumption_objective:
+            raise ValueError("classical aggregate objective conflicts with assumption")
+    return objective
+
+
+def record_interval_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record aggregate interval calibration/sharpness with source denominators."""
+    from tcspc_toolkit.uncertainty_evaluation import IntervalEvaluationMetrics
+
+    if not isinstance(metrics, IntervalEvaluationMetrics):
+        raise TypeError("metrics must be IntervalEvaluationMetrics")
+    if scope.method_id is None or scope.nominal_coverage is None:
+        raise ValueError("interval metrics require method and nominal coverage in scope")
+    attempted = _integer(metrics.n_samples, "n_samples", minimum=1)
+    valid = _integer(metrics.n_valid_intervals, "n_valid_intervals")
+    _validate_attempt_failure_rate(
+        metrics.interval_failure_rate, attempted=attempted,
+        valid=valid, name="interval_failure_rate",
+    )
+    _validate_interval_coverage_consistency(
+        metrics.empirical_coverage, metrics.coverage_error,
+        nominal_coverage=scope.nominal_coverage, n_valid_intervals=valid,
+    )
+    facts = [
+        ("empirical_coverage", "fraction", metrics.empirical_coverage, valid, valid, "valid_intervals"),
+        ("coverage_error", "fraction", metrics.coverage_error, valid, valid, "valid_intervals"),
+        ("mean_interval_width_ns", "ns", metrics.mean_interval_width, valid, valid, "valid_intervals"),
+        ("median_interval_width_ns", "ns", metrics.median_interval_width, valid, valid, "valid_intervals"),
+        ("mean_interval_score_ns", "ns", metrics.mean_interval_score, valid, valid, "valid_intervals"),
+        ("interval_failure_rate", "fraction", metrics.interval_failure_rate, valid, attempted, "attempted_observations"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_quantile_interval_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record quantile pinball losses and crossing rate, not point intervals."""
+    from tcspc_toolkit.uncertainty_evaluation import QuantileIntervalEvaluationMetrics
+
+    if not isinstance(metrics, QuantileIntervalEvaluationMetrics):
+        raise TypeError("metrics must be QuantileIntervalEvaluationMetrics")
+    if scope.method_id is None or scope.nominal_coverage is None:
+        raise ValueError("quantile metrics require method and nominal coverage")
+    attempted = _integer(metrics.n_samples, "n_samples", minimum=1)
+    valid = _integer(metrics.n_finite_quantile_triplets, "n_finite_quantile_triplets")
+    facts = [
+        ("lower_pinball_loss_ns", "ns", metrics.lower_pinball_loss, valid, valid, "finite_quantile_triplets"),
+        ("median_pinball_loss_ns", "ns", metrics.median_pinball_loss, valid, valid, "finite_quantile_triplets"),
+        ("upper_pinball_loss_ns", "ns", metrics.upper_pinball_loss, valid, valid, "finite_quantile_triplets"),
+        ("mean_pinball_loss_ns", "ns", metrics.mean_pinball_loss, valid, valid, "finite_quantile_triplets"),
+        ("quantile_crossing_rate", "fraction", metrics.quantile_crossing_rate, valid, valid, "finite_quantile_triplets"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_uncertainty_score_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, scores: Any = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record aggregate score/error ranking; tail subset sizes remain unknown."""
+    from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreMetrics
+
+    if not isinstance(metrics, UncertaintyScoreMetrics):
+        raise TypeError("metrics must be UncertaintyScoreMetrics")
+    if scope.method_id is None or scope.nominal_coverage is not None:
+        raise ValueError("score metrics require a method and no nominal coverage")
+    attempted = _integer(metrics.n_samples, "n_samples", minimum=1)
+    valid = _integer(metrics.n_valid_scores, "n_valid_scores")
+    _validate_attempt_failure_rate(
+        metrics.score_failure_rate, attempted=attempted,
+        valid=valid, name="score_failure_rate",
+    )
+    fraction = _finite_scalar(metrics.tail_fraction, "tail_fraction")
+    if not 0 < fraction <= 0.5:
+        raise ValueError("tail_fraction must lie in (0, 0.5]")
+    if not isinstance(scope.selection, Mapping) or scope.selection.get("tail_fraction") != fraction:
+        raise ValueError("score metric selection must identify its tail_fraction")
+    facts = [
+        ("score_failure_rate", "fraction", metrics.score_failure_rate, valid, attempted, "attempted_observations"),
+        ("mean_absolute_error_ns", "ns", metrics.mean_absolute_error_ns, valid, valid, "valid_scores"),
+        ("spearman_error_correlation", "unitless", metrics.spearman_error_correlation, valid, valid, "valid_scores"),
+        ("low_uncertainty_mae_ns", "ns", metrics.low_uncertainty_mae_ns, valid, None, "low_uncertainty_subset"),
+        ("high_uncertainty_mae_ns", "ns", metrics.high_uncertainty_mae_ns, valid, None, "high_uncertainty_subset"),
+        ("tail_fraction", "fraction", fraction, valid, valid, "valid_scores"),
+    ]
+    if scores is not None:
+        from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreResult
+        if not isinstance(scores, UncertaintyScoreResult):
+            raise TypeError("scores must be UncertaintyScoreResult")
+        if scores.method_id != scope.method_id or len(scores.prediction) != attempted or (
+            int(np.count_nonzero(scores.valid_score_mask)) != valid
+        ):
+            raise ValueError("score output differs from aggregate metric population")
+        mean_score = float(np.mean(scores.uncertainty_score[scores.valid_score_mask])) if valid else float("nan")
+        facts.append(("mean_uncertainty_score", "ns", mean_score, valid, valid, "valid_scores"))
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_selective_prediction_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, n_attempted: int,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record the existing selective-rejection evaluation at a stated population."""
+    from tcspc_toolkit.uncertainty_evaluation import SelectivePredictionMetrics
+
+    if not isinstance(metrics, SelectivePredictionMetrics):
+        raise TypeError("metrics must be SelectivePredictionMetrics")
+    if scope.method_id is None or scope.nominal_coverage is not None:
+        raise ValueError("selective score metrics require a method and no nominal coverage")
+    attempted = _integer(n_attempted, "n_attempted", minimum=1)
+    valid = _integer(metrics.n_valid_scores, "n_valid_scores")
+    retained = _integer(metrics.n_retained, "n_retained")
+    if valid == 0 or retained > valid:
+        raise ValueError("selective metrics require valid scores and retained <= valid")
+    rejected = _finite_scalar(metrics.rejection_fraction, "rejection_fraction")
+    if not 0 <= rejected < 1:
+        raise ValueError("rejection_fraction must lie in [0, 1)")
+    if not isinstance(scope.selection, Mapping) or scope.selection.get("rejection_fraction") != rejected:
+        raise ValueError("selective metric scope must identify rejection_fraction")
+    if not math.isclose(
+        _finite_scalar(metrics.retained_fraction, "retained_fraction"),
+        retained / valid, rel_tol=1e-9, abs_tol=1e-12,
+    ):
+        raise ValueError("retained_fraction conflicts with retained/valid counts")
+    facts = [
+        ("retained_fraction", "fraction", metrics.retained_fraction, valid, retained, "valid_scores"),
+        ("mae_all_ns", "ns", metrics.mae_all_ns, valid, valid, "valid_scores"),
+        ("mae_retained_ns", "ns", metrics.mae_retained_ns, valid, retained, "retained_predictions"),
+        ("mae_improvement_ns", "ns", metrics.mae_improvement_ns, valid, retained, "retained_predictions"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_repeated_poisson_metrics(
+    connection: sqlite3.Connection, result: Any, *,
+    scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record empirical sampling variability and method comparisons as facts."""
+    from tcspc_toolkit.classical_uncertainty import (
+        REPEATED_POISSON_REFERENCE_METHOD_ID, RepeatedPoissonUncertaintyResult,
+    )
+
+    if not isinstance(result, RepeatedPoissonUncertaintyResult):
+        raise TypeError("result must be RepeatedPoissonUncertaintyResult")
+    _require_classical_aggregate_model(connection, scope, required_objective="poisson")
+    if scope.method_id != REPEATED_POISSON_REFERENCE_METHOD_ID:
+        raise ValueError("repeated-Poisson scope requires its source method_id")
+    if scope.reference_kind != "generating_mono" or scope.condition_pk is None:
+        raise ValueError("repeated-Poisson metrics require a mono generating condition")
+    if scope.nominal_coverage is None or not math.isclose(
+        scope.nominal_coverage, result.covariance_intervals.nominal_coverage,
+        rel_tol=0.0, abs_tol=1e-12,
+    ) or not math.isclose(
+        scope.nominal_coverage, result.bootstrap_intervals.nominal_coverage,
+        rel_tol=0.0, abs_tol=1e-12,
+    ):
+        raise ValueError("repeated-Poisson nominal coverage conflicts with source intervals")
+    attempted = len(result.lifetime_estimates_ns)
+    if attempted == 0:
+        raise ValueError("repeated-Poisson result has no realizations")
+    valid = int(np.count_nonzero(np.isfinite(result.lifetime_estimates_ns)))
+    _validate_attempt_failure_rate(
+        result.fit_failure_rate, attempted=attempted,
+        valid=valid, name="fit_failure_rate",
+    )
+    if result.covariance_metrics.n_samples != attempted or result.bootstrap_metrics.n_samples != attempted:
+        raise ValueError("repeated-Poisson interval counts conflict with realization count")
+    for interval_metrics in (result.covariance_metrics, result.bootstrap_metrics):
+        _validate_interval_coverage_consistency(
+            interval_metrics.empirical_coverage, interval_metrics.coverage_error,
+            nominal_coverage=scope.nominal_coverage,
+            n_valid_intervals=interval_metrics.n_valid_intervals,
+        )
+    condition = connection.execute(
+        "SELECT mono_lifetime_ns, signal_photon_count, background_per_bin "
+        "FROM simulation_conditions WHERE condition_pk = ?", (scope.condition_pk,),
+    ).fetchone()
+    if condition is None or not math.isclose(result.true_lifetime_ns, condition[0], rel_tol=1e-12) or (
+        result.signal_photon_count != condition[1] or result.background_per_bin != condition[2]
+    ):
+        raise ValueError("repeated-Poisson source conflicts with generating condition")
+    selection = json.loads(_mapping_json(scope.selection, "selection"))
+    for key, value in (
+        ("irf_fwhm_ns", result.irf_fwhm_ns),
+        ("irf_shift_ns", result.irf_shift_ns),
+    ):
+        finite_value = _finite_scalar(value, key, positive=(key == "irf_fwhm_ns"))
+        if key in selection and selection[key] != finite_value:
+            raise ValueError(f"repeated-Poisson {key} conflicts with metric scope")
+        selection[key] = finite_value
+    scope = replace(scope, selection=selection)
+    covariance_valid = result.covariance_metrics.n_valid_intervals
+    bootstrap_valid = result.bootstrap_metrics.n_valid_intervals
+    facts = [
+        ("empirical_lifetime_bias_ns", "ns", result.empirical_bias_ns, valid, valid, "successful_fits"),
+        ("empirical_lifetime_std_ns", "ns", result.empirical_std_ns, valid, valid, "successful_fits"),
+        ("empirical_lifetime_rmse_ns", "ns", result.empirical_rmse_ns, valid, valid, "successful_fits"),
+        ("fit_failure_rate", "fraction", result.fit_failure_rate, valid, attempted, "attempted_realizations"),
+        ("boundary_hit_rate", "fraction", result.boundary_hit_rate, valid, valid, "successful_fits"),
+        ("mean_covariance_std_ns", "ns", result.mean_covariance_std_ns, valid, int(np.count_nonzero(np.isfinite(result.covariance_std_ns))), "finite_covariance_summaries"),
+        ("covariance_to_empirical_std_ratio", "ratio", result.covariance_to_empirical_std_ratio, valid, None, "paired_empirical_comparison"),
+        ("covariance_empirical_coverage", "fraction", result.covariance_metrics.empirical_coverage, covariance_valid, covariance_valid, "valid_intervals"),
+        ("covariance_coverage_error", "fraction", result.covariance_metrics.coverage_error, covariance_valid, covariance_valid, "valid_intervals"),
+        ("covariance_mean_interval_width_ns", "ns", result.covariance_metrics.mean_interval_width, covariance_valid, covariance_valid, "valid_intervals"),
+        ("covariance_median_interval_width_ns", "ns", result.covariance_metrics.median_interval_width, covariance_valid, covariance_valid, "valid_intervals"),
+        ("covariance_mean_interval_score_ns", "ns", result.covariance_metrics.mean_interval_score, covariance_valid, covariance_valid, "valid_intervals"),
+        ("covariance_interval_failure_rate", "fraction", result.covariance_metrics.interval_failure_rate, covariance_valid, attempted, "attempted_realizations"),
+        ("mean_bootstrap_std_ns", "ns", result.mean_bootstrap_std_ns, valid, int(np.count_nonzero(np.isfinite(result.bootstrap_std_ns))), "finite_bootstrap_summaries"),
+        ("bootstrap_to_empirical_std_ratio", "ratio", result.bootstrap_to_empirical_std_ratio, valid, None, "paired_empirical_comparison"),
+        ("bootstrap_empirical_coverage", "fraction", result.bootstrap_metrics.empirical_coverage, bootstrap_valid, bootstrap_valid, "valid_intervals"),
+        ("bootstrap_coverage_error", "fraction", result.bootstrap_metrics.coverage_error, bootstrap_valid, bootstrap_valid, "valid_intervals"),
+        ("bootstrap_mean_interval_width_ns", "ns", result.bootstrap_metrics.mean_interval_width, bootstrap_valid, bootstrap_valid, "valid_intervals"),
+        ("bootstrap_median_interval_width_ns", "ns", result.bootstrap_metrics.median_interval_width, bootstrap_valid, bootstrap_valid, "valid_intervals"),
+        ("bootstrap_mean_interval_score_ns", "ns", result.bootstrap_metrics.mean_interval_score, bootstrap_valid, bootstrap_valid, "valid_intervals"),
+        ("bootstrap_interval_failure_rate", "fraction", result.bootstrap_metrics.interval_failure_rate, bootstrap_valid, attempted, "attempted_realizations"),
+        ("mean_bootstrap_fit_failure_rate", "fraction", result.mean_bootstrap_fit_failure_rate, valid, int(np.count_nonzero(np.isfinite(result.bootstrap_fit_failure_rates))), "finite_bootstrap_failure_rates"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_regression_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, n_attempted: int,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record an existing ML regression summary over an explicit test population."""
+    from tcspc_toolkit.ml_evaluation import RegressionMetrics
+
+    if not isinstance(metrics, RegressionMetrics):
+        raise TypeError("metrics must be RegressionMetrics")
+    attempted = _integer(n_attempted, "n_attempted", minimum=1)
+    facts = [
+        ("mae_ns", "ns", metrics.mae_ns, attempted, attempted, "evaluated_predictions"),
+        ("median_absolute_error_ns", "ns", metrics.median_absolute_error_ns, attempted, attempted, "evaluated_predictions"),
+        ("rmse_ns", "ns", metrics.rmse_ns, attempted, attempted, "evaluated_predictions"),
+        ("mean_relative_error", "ratio", metrics.mean_relative_error, attempted, attempted, "evaluated_predictions"),
+        ("median_relative_error", "ratio", metrics.median_relative_error, attempted, attempted, "evaluated_predictions"),
+        ("r2", "unitless", metrics.r2, attempted, attempted, "evaluated_predictions"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_robustness_metrics(
+    connection: sqlite3.Connection, metrics: Any, *,
+    scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record the existing generalization-summary fields for one selected test."""
+    from tcspc_toolkit.generalization_evaluation import RobustnessMetrics
+
+    if not isinstance(metrics, RobustnessMetrics):
+        raise TypeError("metrics must be RobustnessMetrics")
+    attempted = _integer(metrics.n_samples, "n_samples", minimum=1)
+    facts = [
+        ("mae_ns", "ns", metrics.mae_ns, attempted, attempted, "evaluated_predictions"),
+        ("median_absolute_error_ns", "ns", metrics.median_absolute_error_ns, attempted, attempted, "evaluated_predictions"),
+        ("rmse_ns", "ns", metrics.rmse_ns, attempted, attempted, "evaluated_predictions"),
+        ("bias_ns", "ns", metrics.bias_ns, attempted, attempted, "evaluated_predictions"),
+        ("p90_absolute_error_ns", "ns", metrics.p90_absolute_error_ns, attempted, attempted, "evaluated_predictions"),
+        ("p95_absolute_error_ns", "ns", metrics.p95_absolute_error_ns, attempted, attempted, "evaluated_predictions"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_reconvolution_benchmark_metrics(
+    connection: sqlite3.Connection, summary: Any, *,
+    scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record classical fit success, error, and runtime summary fields."""
+    from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkSummary
+
+    if not isinstance(summary, ReconvolutionBenchmarkSummary):
+        raise TypeError("summary must be ReconvolutionBenchmarkSummary")
+    _require_classical_aggregate_model(connection, scope)
+    attempted = _integer(summary.n_samples, "n_samples", minimum=1)
+    successful = _integer(summary.n_successful_fits, "n_successful_fits")
+    failed = _integer(summary.n_failed_fits, "n_failed_fits")
+    if successful + failed != attempted:
+        raise ValueError("classical benchmark fit counts are inconsistent")
+    _validate_attempt_failure_rate(
+        summary.failure_rate, attempted=attempted,
+        valid=successful, name="failure_rate",
+    )
+    facts = [
+        ("success_rate", "fraction", summary.success_rate, successful, attempted, "attempted_fits"),
+        ("failure_rate", "fraction", summary.failure_rate, successful, attempted, "attempted_fits"),
+        ("mae_valid_ns", "ns", summary.mae_valid_ns, successful, successful, "successful_fits"),
+        ("median_absolute_error_valid_ns", "ns", summary.median_absolute_error_valid_ns, successful, successful, "successful_fits"),
+        ("rmse_valid_ns", "ns", summary.rmse_valid_ns, successful, successful, "successful_fits"),
+        ("mean_runtime_ms", "ms", summary.mean_runtime_ms, None, None, "finite_runtime_records"),
+        ("median_runtime_ms", "ms", summary.median_runtime_ms, None, None, "finite_runtime_records"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def _week9_scorecard_row(row: Any, *, required: set[str]) -> Mapping[str, Any]:
+    import pandas as pd
+
+    if isinstance(row, pd.Series):
+        row = row.to_dict()
+    if not isinstance(row, Mapping) or not required.issubset(row):
+        raise TypeError("row must be one current Week-9 scorecard row")
+    return row
+
+
+def _validate_week9_scorecard_scope(
+    row: Mapping[str, Any], scope: BenchmarkMetricScope, *, interval: bool,
+) -> None:
+    if row["method"] != scope.method_id or row["test_id"] != scope.test_id:
+        raise ValueError("Week-9 scorecard method/test differs from metric scope")
+    reference_kind = {
+        "monoexponential_lifetime": "generating_mono",
+        "dominant_component_tau_1": "primary_component",
+    }.get(row["target_reference"])
+    if reference_kind is None or scope.reference_kind != reference_kind:
+        raise ValueError("Week-9 scorecard reference differs from metric scope")
+    if interval:
+        if row["method"] not in (
+            "quantile_gradient_boosting", "conformalized_quantile_gradient_boosting",
+        ):
+            raise ValueError("interval scorecard adapter requires a current ML interval method")
+        if scope.nominal_coverage is None or not math.isclose(
+            _finite_scalar(scope.nominal_coverage, "nominal_coverage"),
+            _finite_scalar(row["nominal_coverage"], "nominal_coverage"),
+            rel_tol=0.0, abs_tol=1e-12,
+        ):
+            raise ValueError("Week-9 scorecard coverage differs from metric scope")
+    elif scope.nominal_coverage is not None:
+        raise ValueError("score-only Week-9 metrics cannot claim nominal coverage")
+
+
+def record_week9_interval_scorecard_row(
+    connection: sqlite3.Connection, row: Any, *,
+    scope: BenchmarkMetricScope, n_attempted: int, n_valid_intervals: int,
+    n_valid_predictions: int,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record one frozen A-F interval row with caller-supplied missing counts."""
+    source = _week9_scorecard_row(row, required={
+        "method", "test_id", "target_reference", "mae_ns", "nominal_coverage",
+        "empirical_coverage", "coverage_gap", "mean_width_ns",
+        "median_width_ns", "interval_score", "interval_failure_rate",
+    })
+    _validate_week9_scorecard_scope(source, scope, interval=True)
+    attempted = _integer(n_attempted, "n_attempted", minimum=1)
+    valid_intervals = _integer(n_valid_intervals, "n_valid_intervals")
+    valid_predictions = _integer(n_valid_predictions, "n_valid_predictions")
+    if valid_predictions > attempted or valid_intervals > valid_predictions:
+        raise ValueError("interval scorecard prediction/interval counts are inconsistent")
+    _validate_attempt_failure_rate(
+        source["interval_failure_rate"], attempted=attempted,
+        valid=valid_intervals, name="interval_failure_rate",
+    )
+    _validate_interval_coverage_consistency(
+        source["empirical_coverage"], source["coverage_gap"],
+        nominal_coverage=scope.nominal_coverage, n_valid_intervals=valid_intervals,
+    )
+    mae = _result_number(source["mae_ns"], "mae_ns", {})
+    if mae is not None and valid_predictions != attempted:
+        raise ValueError("finite ML scorecard MAE requires all attempted predictions to be finite")
+    facts = [
+        ("mae_ns", "ns", source["mae_ns"], valid_predictions, attempted, "attempted_observations"),
+        ("empirical_coverage", "fraction", source["empirical_coverage"], valid_intervals, valid_intervals, "valid_intervals"),
+        ("coverage_error", "fraction", source["coverage_gap"], valid_intervals, valid_intervals, "valid_intervals"),
+        ("mean_interval_width_ns", "ns", source["mean_width_ns"], valid_intervals, valid_intervals, "valid_intervals"),
+        ("median_interval_width_ns", "ns", source["median_width_ns"], valid_intervals, valid_intervals, "valid_intervals"),
+        ("mean_interval_score_ns", "ns", source["interval_score"], valid_intervals, valid_intervals, "valid_intervals"),
+        ("interval_failure_rate", "fraction", source["interval_failure_rate"], valid_intervals, attempted, "attempted_observations"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )
+
+
+def record_week9_score_only_scorecard_row(
+    connection: sqlite3.Connection, row: Any, *,
+    scope: BenchmarkMetricScope, n_attempted: int, n_valid_scores: int,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> tuple[int, ...]:
+    """Record one frozen A-F score row without guessing absent tail counts."""
+    source = _week9_scorecard_row(row, required={
+        "method", "test_id", "target_reference", "mae_ns",
+        "mean_uncertainty_score", "error_score_spearman",
+        "low_uncertainty_mae_ns", "high_uncertainty_mae_ns",
+        "score_failure_rate",
+    })
+    _validate_week9_scorecard_scope(source, scope, interval=False)
+    if not isinstance(scope.selection, Mapping) or "tail_fraction" not in scope.selection:
+        raise ValueError("scorecard scope must identify the tail_fraction")
+    tail_fraction = _finite_scalar(scope.selection["tail_fraction"], "tail_fraction")
+    if not 0 < tail_fraction <= 0.5:
+        raise ValueError("tail_fraction must lie in (0, 0.5]")
+    attempted = _integer(n_attempted, "n_attempted", minimum=1)
+    valid = _integer(n_valid_scores, "n_valid_scores")
+    _validate_attempt_failure_rate(
+        source["score_failure_rate"], attempted=attempted,
+        valid=valid, name="score_failure_rate",
+    )
+    facts = [
+        ("mean_absolute_error_ns", "ns", source["mae_ns"], valid, valid, "valid_scores"),
+        ("mean_uncertainty_score", "ns", source["mean_uncertainty_score"], valid, valid, "valid_scores"),
+        ("spearman_error_correlation", "unitless", source["error_score_spearman"], valid, valid, "valid_scores"),
+        ("low_uncertainty_mae_ns", "ns", source["low_uncertainty_mae_ns"], valid, None, "low_uncertainty_subset"),
+        ("high_uncertainty_mae_ns", "ns", source["high_uncertainty_mae_ns"], valid, None, "high_uncertainty_subset"),
+        ("score_failure_rate", "fraction", source["score_failure_rate"], valid, attempted, "attempted_observations"),
+    ]
+    return _record_metric_facts(
+        connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
+    )

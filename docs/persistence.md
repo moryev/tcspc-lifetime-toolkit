@@ -463,6 +463,167 @@ persisted payload. Classical reuse checks both the point row and its required
 classical write rolls back that write unit, including within an outer
 savepoint. No row is silently updated or suffixed.
 
+## Stage-4 uncertainty and aggregate evaluation
+
+`uncertainty_results` attaches **one output to one existing**
+`estimator_results.result_id`. It is not a measurement, run, truth, or model
+property. One point result can carry multiple methods or configurations.
+`record_prediction_intervals` consumes the repository's ordered
+`PredictionIntervalResult`, a matching `UncertaintyMethodDefinition`, method
+configuration and an explicit, same-length ordered `result_ids` sequence.
+It stores one `prediction_interval` row per point. The q05/q50/q95 convenience
+adapter `record_quantile_intervals` uses the current quantile method and
+preserves lower, central and upper roles: the central prediction must match the
+existing Stage-3 point row, and no second median point is created. Quantile
+crossing is diagnosed without sorting bounds. A finite median-order crossing
+with ordered outer bounds retains the source interval-valid state; crossed
+outer bounds remain invalid. Current classical
+covariance- or bootstrap-derived `PredictionIntervalResult` arrays can use the
+same ordered interval adapter with their registered method definition and
+their classical point IDs. Truth is not needed to store any interval.
+
+`record_conformal_intervals` is the current conformalized-quantile path. It
+requires the genuinely separate calibration run ID and records its finite
+correction and calibration-score count. The calibration run is not inferred
+from test labels. Ordinary quantile, RF spread, local covariance and ordinary
+bootstrap rows have no calibration run. Method configuration is canonical JSON
+and SHA-256; it contains procedure settings such as quantile levels, interval
+kind, coverage, calibration policy, spread definition, covariance policy and
+bootstrap replicate count as applicable. A conformalized method also includes
+its calibration identity. An execution-specific bootstrap seed stays in
+`random_seed_decimal`, not method configuration. Unknown seed-like configuration
+keys are not silently stripped. Equal JSON content in a different key order
+has the same identity.
+
+`record_uncertainty_scores` writes `uncertainty_score` rows for current RF
+per-tree and ML training-bootstrap spread. They have a nonnegative score, not
+an interval, nominal coverage or standard-error claim. Member count is kept
+in method configuration when known. The typed score adapter fixes RF tree
+spread to population standard deviation (`ddof=0`) and ML training-bootstrap
+spread to sample standard deviation (`ddof=1`); contradictory caller settings
+are rejected before duplicate reuse. `record_classical_covariance_uncertainty`
+writes a `covariance_summary` row for a single Poisson/Fisher local result:
+lifetime standard deviation is relational, while its small parameter matrix,
+condition/rank/boundary diagnostics stay JSON. Classical covariance,
+bootstrap and their interval arrays require a linked raw-count Poisson fit.
+`record_parametric_bootstrap_uncertainty`
+writes **one** `prediction_interval` row containing both percentile bounds and
+bootstrap lifetime standard deviation/median, requested/valid refits, failure
+rate, seed and optional external sample artifact. It does not create a second
+score row or store replicate arrays as a BLOB. These methods remain distinct
+from empirical variability across independently repeated measurements.
+
+Valid intervals require finite ordered bounds (`lower == upper` is allowed),
+and coverage strictly between zero and one. Failed/invalid intervals may keep
+finite crossed bounds; they are never repaired. Failed covariance and
+bootstrap summaries may keep partial diagnostics and zero valid refits.
+Non-finite source scalars become SQL NULL plus `nan`, `+inf` or `-inf` in
+`nonfinite_fields_json`, not fabricated zeros. Explicit `result_ids` are the
+only batch alignment; sets, mismatched lengths, duplicate IDs, DataFrame
+indices and local sample IDs are not accepted as positional mappings.
+
+`benchmark_metrics` is a separate aggregate fact table: one named metric,
+value/status, complete scope and source denominator per row. Public adapters
+map current `IntervalEvaluationMetrics`, `QuantileIntervalEvaluationMetrics`,
+`UncertaintyScoreMetrics`, `SelectivePredictionMetrics`,
+`RepeatedPoissonUncertaintyResult`, `RegressionMetrics`, `RobustnessMetrics`
+and `ReconvolutionBenchmarkSummary` into facts. Their public names are
+`record_interval_metrics`, `record_quantile_interval_metrics`,
+`record_uncertainty_score_metrics`, `record_selective_prediction_metrics`,
+`record_repeated_poisson_metrics`, `record_regression_metrics`,
+`record_robustness_metrics` and `record_reconvolution_benchmark_metrics`.
+The frozen Week-9 ML A–F interval and score-only DataFrame rows also have
+`record_week9_interval_scorecard_row` and
+`record_week9_score_only_scorecard_row` adapters. These require the missing
+attempted/valid counts explicitly; they verify row method, test, reference
+and nominal coverage against the caller's scope, not against hard-coded A–F
+definitions. The supported ML interval rows calculate median MAE as an
+unmasked mean over all attempted predictions. Its metric row therefore uses
+`attempted_observations` as denominator, retains the caller's finite-prediction
+count as `n_valid`, and records all attempts as `n_contributing`. A non-finite
+prediction can make that MAE undefined while a subset of intervals remains
+valid. Valid intervals cannot exceed finite predictions, and a finite ML MAE
+requires all attempted predictions to be finite. Counts are never recovered
+from rounded failure or coverage rates.
+
+The scope is a `BenchmarkMetricScope` supplied by the caller; it includes the
+run/protocol/profile, exact population and dataset keys, optional stored
+measurement membership, Test A–F or condition/regime labels, model and
+assumption, method plus canonical configuration and coverage, and reference
+kind/version/semantics. A local A–F label is not a global population ID.
+Stored measurement IDs, if supplied, must belong to the run and agree with
+declared dataset/test/regime/condition; external evaluations instead supply
+stable population/dataset/selection identity. Scope JSON and its SHA-256 are
+canonical across JSON key order. A linked trusted or pseudo-true reference must
+agree in kind/version (and any declared pseudo-true condition/assumption).
+With an explicit measurement population, pseudo-true reference conditions
+must equal the selected generating-condition set; measurements lacking a
+generating condition cannot acquire a pseudo-true projection. Trusted
+experimental references instead remain tied to their own selected measurement.
+One reference can use the relational `reference_id`; an aggregate over several
+stored references supplies `reference_ids`, which are validated and retained
+in canonical scope JSON because schema v1 has only one reference FK column.
+Generating mono truth and primary bi-exponential components use simulation conditions, not
+invented lifetime-reference rows. Repeated-Poisson scope describes both known
+generating mono truth and the empirical reference distribution, without
+pretending the latter is one point's uncertainty result.
+
+Stable metric names for interval objects are `empirical_coverage`,
+`coverage_error` (signed), `mean_interval_width_ns`,
+`median_interval_width_ns`, `mean_interval_score_ns`, and
+`interval_failure_rate`. Quantile objects add `lower_pinball_loss_ns`,
+`median_pinball_loss_ns`, `upper_pinball_loss_ns`, `mean_pinball_loss_ns`,
+and `quantile_crossing_rate`. Score objects map to `score_failure_rate`,
+`mean_absolute_error_ns`, `spearman_error_correlation`,
+`low_uncertainty_mae_ns`, `high_uncertainty_mae_ns`, and `tail_fraction`;
+when the matching score array is also supplied, they add
+`mean_uncertainty_score`. Selective rejection maps retained fraction and
+all/retained/improvement MAE. General regression, robustness and classical
+benchmark adapters retain their source field names with `_ns` or `_ms` units.
+The repeated-Poisson adapter maps empirical bias/std/RMSE and failure/boundary
+rates, mean covariance/bootstrap std, their ratios to empirical std,
+covariance/bootstrap interval coverage/failure rates, and mean bootstrap refit
+failure rate, along with the source covariance/bootstrap interval width,
+score and signed coverage error. The source IRF FWHM and shift enter its
+canonical selection scope. It creates **only** benchmark rows.
+
+Repeated-Poisson facts require a classical model specification with the
+canonical `poisson` objective. Classical reconvolution benchmark summaries
+also require a classical model specification, with either supported
+reconvolution objective (`poisson` or `least_squares`). An explicitly supplied
+physical assumption must not contradict that objective. These checks precede
+insertion and duplicate reuse.
+
+For interval coverage/width/score, `n_attempted` is the source sample count
+and `n_valid = n_contributing` is the source valid-interval count; interval
+failure rate uses attempted observations as denominator. Signed coverage error
+is `empirical_coverage - nominal_coverage`; finite source values must agree
+with the scope's nominal coverage within `1e-12` absolute tolerance. With zero
+valid intervals, source coverage and coverage error remain undefined rather
+than supplying a new nominal level. Quantile losses and crossing use finite
+triplets. Score correlations and mean score use valid
+scores; failure uses attempted observations. The source score metric does not
+expose the exact low/high tail subset sizes, so those rows leave
+`n_contributing` NULL rather than guessing. Repeated-Poisson rows retain the
+realization count and distinguish successful fits, valid intervals, finite
+method summaries and attempted-realization denominators; boundary-hit rate
+uses successful fits, not all attempts. Classical benchmark
+timing does not expose its exact finite-runtime count, so that contributing
+count stays NULL. `value_status='undefined'` plus SQL NULL and non-finite
+metadata represents a NaN/undefined source metric; a true numerical zero is
+`value_status='finite'`, `metric_value=0.0`.
+
+Selective prediction uses score-only uncertainty and cannot claim nominal
+interval coverage; its rejection fraction remains part of scope selection.
+
+Uncertainty and metric duplicates default to `on_duplicate="raise"`.
+`reuse_identical` compares the full normalized payload, including calibration,
+validity, diagnostics, counts, reference and denominator semantics; it never
+updates a changed metric under a stable key. Each ordered uncertainty batch
+and each multi-fact metric object is one transaction/savepoint: a late invalid
+row or duplicate conflict rolls back the earlier rows of that logical write.
+Stage 4 does not persist posterior, sampler or PPC summaries.
+
 ## Query and compatibility boundaries
 
 The first schema supports joins across observations, generating conditions,
