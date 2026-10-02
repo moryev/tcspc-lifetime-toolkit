@@ -3,8 +3,9 @@
 The persistence module is an optional boundary around scientific results.
 Stage 1 provides schema v1, validated connections, transactions and canonical
 hashing. Stage 2 records scientific identities and provenance. Stage 3 records
-classical point fits and ML/baseline predictions. Uncertainty, Bayesian
-summaries and benchmark metrics do not have adapters yet.
+classical point fits and ML/baseline predictions. Stage 4 records per-observation
+uncertainty and aggregate benchmark metrics. Stage 5 records Bayesian point
+results with posterior, sampler and posterior-predictive summaries.
 
 ## Scientific entities
 
@@ -121,7 +122,7 @@ without a leading plus sign or leading zeros, except for "0". This applies
 to run, observation, result and uncertainty seed columns. Stream names and
 derivation policy remain in run/execution provenance.
 
-Scientific rows are immutable through the Stage-2/3 adapters. Insert is the
+Scientific rows are immutable through the recording adapters. Insert is the
 default. An explicit `on_duplicate="reuse_identical"` accepts an identical existing
 record; a conflicting payload must raise. No silent replacement or default
 upsert is planned. Scientific failures are records: fit validity, optimizer
@@ -244,7 +245,7 @@ Commit failure rolls back the top-level transaction. Callers close their
 connections. It is an error to pass a connection already in a transaction
 to initialize_database, since foreign-key activation must happen first.
 
-No transaction encloses numerical fitting, training or sampling. Stage-2/3
+No transaction encloses numerical fitting, training or sampling. Recording
 multi-row adapters use the transaction/savepoint helper for short, atomic inserts.
 Parameterized SQL will bind all user-supplied values. Scientific failures
 are valid data; SQL and serialization errors cause rollback.
@@ -624,6 +625,153 @@ and each multi-fact metric object is one transaction/savepoint: a late invalid
 row or duplicate conflict rolls back the earlier rows of that logical write.
 Stage 4 does not persist posterior, sampler or PPC summaries.
 
+## Stage-5 Bayesian recording boundary
+
+`record_bayesian_result` accepts `BayesianReconvolutionResult` or
+`BayesianInferenceRun`, optionally with a completed
+`BayesianPosteriorPredictiveResult`. `record_issue4_bayesian_result` accepts
+`BayesianClassicalRealizationResult` or `MismatchInferenceRecord` and translates
+its compact `Issue4Bayesian` and, for mismatch, `MismatchPredictiveSummary`.
+Both adapters return the one canonical `estimator_results.result_id` and insert
+its `bayesian_summaries` extension atomically. Persistence does not run MCMC or
+PPC generation and does not require importing `emcee`.
+
+The point convention is always `point_summary="posterior_median"`:
+`estimator_results.lifetime_estimate_ns` contains the posterior lifetime median.
+The posterior mean is separate in `bayesian_summaries.lifetime_mean_ns`.
+Parameter-summary JSON retains available mean, median, standard deviation,
+equal-tailed credible bounds, parameter names/units and requested posterior
+credible probability. Keeping the lifetime median in the source-complete
+parameter summary does not create a second point identity. A contradictory
+existing point estimate cannot be reused.
+
+Bayesian credible bounds remain in `bayesian_summaries`; Stage 5 does not create
+duplicate `uncertainty_results` rows. These are posterior credible intervals
+conditional on the specified prior, mono-exponential forward model and fixed
+assumed IRF. They are not stored as empirical coverage or frequentist confidence
+intervals.
+
+The reusable model must have `family="bayesian"` and the complete canonical
+`priors`/`sampler` configuration produced by `bayesian_model_configuration`.
+Estimator names remain caller-owned labels. A full sampler result must match
+that configuration, excluding its execution seed. Compact records do not contain
+the original policy objects; the caller must select the corresponding reusable
+model. Matched Issue-4 records additionally check their `prior_policy_id`.
+Prior/sampler policy is not copied into each result or changed by achieved ESS,
+acceptance fraction, runtime or sampling outcome.
+
+Before insertion or reuse, the adapter checks run–measurement membership,
+Bayesian model configuration, a mono-exponential Poisson physical assumption,
+raw-count measurement semantics, and the assumed prepared IRF's complete target
+grid identity (bin count, canonical time-grid hash, start and step). The original
+IRF source grid need not equal the target grid. A full inference/PPC context also
+checks measurement counts, sample identity, metadata/provenance and prepared-IRF
+source/preparation identity against the linked records. Equal arrays alone do
+not override conflicting observation or IRF provenance.
+The attached-sampled-IRF fallback keeps its source relationship and, when the
+full context is present, its kernel identity.
+
+A complete fixed-shift assumption requires a fixed prior at that shift, using
+the existing `rtol=1e-7`, `atol=1e-12` ns comparison. A complete bounded/free-shift
+assumption requires bounded prior support within its inclusive physical bounds.
+The shared shift helper also checks available accepted posterior shift means,
+medians and credible bounds. Rejected/failed results retain out-of-policy
+diagnostic summaries; an explicitly incomplete historical assumption does not
+acquire a missing physical shift policy.
+
+Sampling status is preserved exactly as `success`, `insufficient_sampling`,
+`initialization_failed` or `numerical_failure`. Diagnostic acceptance is a
+separate source decision: acceptance requires `success` and no declared
+diagnostic failure reasons. Success with rejected diagnostics remains storable.
+The adapter does not rerun the diagnostic decision algorithm or claim that
+acceptance establishes physical-model correctness. A finite median from success
+or insufficient sampling is an available point, with `is_valid` reflecting
+diagnostic acceptance; failure statuses retain their diagnostic median, if any,
+as an invalid failed point.
+
+The extension preserves actual production steps, retained draws, extension
+count, mean walker acceptance fraction, minimum approximate effective samples,
+minimum autocorrelation multiples, maximum half-chain autocorrelation change,
+ensemble-location differences, and available parameter correlations. The full
+source's small acceptance/autocorrelation/ESS diagnostic arrays are retained in
+the structured parameter-summary JSON with explicit parameter order; compact
+records retain only their available scalar summaries and two correlation pairs.
+Correlation coefficients must be in `[-1, 1]`, and acceptance fractions and tail
+probabilities in `[0, 1]`. Discrepancy statistics do not receive probability
+bounds. No R-hat or other absent diagnostic is invented.
+
+The parameter-summary JSON also distinguishes configured walker/ensemble counts,
+requested warmup and initial production steps from achieved production steps
+and retained samples. Actual warmup count is unavailable from these result
+objects and remains JSON null. For `BayesianInferenceRun`, a finite-retained-draw
+count checks the supplied physical coordinates, transformed coordinates and log
+probabilities for finiteness; it does not filter or recalculate the posterior
+summaries. For summary-only/compact records this count is unavailable and remains
+null. Initialization, sampling, diagnostic, inference-total and optional measured
+call runtimes retain separate fields. The point runtime is explicitly scoped as
+`bayesian_inference_total`.
+
+Per-observation PPC belongs in this same Bayesian extension. The full PPC result
+uses the existing Issue-4 compact convention: observed discrepancy mean,
+replicated discrepancy median and the source's descriptive `>=` tail fraction
+for Poisson deviance, residual RMS/maximum absolute residual, total counts, peak
+counts/time and caller-defined windows. Draw count, runtime, selection policy,
+predictive-band level and available window bounds are preserved. Compact PPC
+records preserve their supplied scalar tuples, status and failure reason, with
+missing selection/window details left unavailable. Failed PPC may retain partial
+or non-finite diagnostics. No combined model-validity score or generic p-value
+is invented. A full PPC result must match the stored observation, assumed IRF,
+prior, sampling execution and retained-sample count. Aggregate PPC performance
+is not copied into any per-observation row.
+
+The sampling seed is canonical decimal TEXT in
+`estimator_results.random_seed_decimal`, including frozen unsigned Issue-4
+values above signed int64 range. The distinct PPC seed is canonical decimal text
+inside PPC summary JSON when the procedure was attempted. A reserved, unused
+predictive seed is not presented as an executed PPC stream. Observation and
+bootstrap streams keep their existing owners. A changed sampling seed requires
+an explicit new `analysis_key` under the same reusable model/assumption context.
+
+Mismatch records validate their linked generating condition and parameters,
+observed count/hash, available observation seed and run profile, local assumption
+identity and selected pseudo-true reference's condition/assumption scope.
+IRF relation is caller-declared and never inferred
+from numerical equality. Bi-exponential components and generating IRF remain in
+the existing condition; another assumption creates another result for the same
+measurement. A corrected/superseding Stage-6.5 reference can be selected without
+overwriting its predecessor or changing the posterior. The wrapper validates
+that reference but does not bind the posterior identity to an evaluation target:
+the reference ID/version for error or coverage evaluation belongs in the
+Stage-4 metric scope. Historical embedded projection values, per-reference
+deviations/inclusions and aggregate comparisons are not copied into the Bayesian
+summary. Frozen Issue-4 float-array hashes are retained as explicitly labelled
+execution provenance; their signed-zero-preserving convention is not silently
+equated with the schema's canonical float hashes.
+
+Optional `posterior_artifact_id` accepts artifact kind `posterior_chain` or
+`posterior_samples`; optional `predictive_artifact_id` accepts
+`posterior_predictive_samples`. An artifact must exist and its producing run,
+when specified, must match. Its file-byte hash and locator keep the Stage-2
+meaning; paths do not define Bayesian result identity. Summary-only recording
+needs no artifact. Chains, flattened samples, predictive sample matrices,
+predictive bands and residual curves are not embedded as BLOBs or summary JSON.
+Diagnostic plots can be registered separately through `record_artifact`; there
+is no dedicated plot-link column in this extension.
+
+Both adapters default to `on_duplicate="raise"`. `reuse_identical` compares the
+complete normalized point and extension payloads, including seeds, runtimes,
+diagnostics, PPC and artifact IDs. An exactly matching existing point without
+an extension can acquire its extension under this explicit reuse policy; neither
+row is silently updated. Validation precedes reuse, and the composed write uses
+the existing transaction/savepoint infrastructure so an extension failure leaves
+no new point row behind.
+
+Known NaN and positive/negative infinity values become SQL/JSON null with their
+original category and scalar/array path in `nonfinite_fields_json`. Missing
+values remain distinguishable from known non-finite failures. Finite rejected
+diagnostics and crossed failed credible bounds remain unchanged. Invalid results
+are not repaired or replaced with zero.
+
 ## Query and compatibility boundaries
 
 The first schema supports joins across observations, generating conditions,
@@ -636,5 +784,6 @@ must not import persistence or initialize a database.
 Version 1 detects incompatible databases and stops. Migrations, database
 merging, automatic external artifact storage, broad public API exports and
 full dataclass reconstruction are future work. A focused SQLite example will
-be fast and deterministic; Bayesian persistence will be verified with
-deterministic result fixtures, without live MCMC or an emcee dependency.
+be fast and deterministic. Bayesian persistence is verified with deterministic
+result fixtures, without live MCMC or an emcee dependency. SQL/query convenience
+APIs remain outside the implemented recording boundary.

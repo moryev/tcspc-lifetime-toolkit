@@ -2848,6 +2848,863 @@ def record_reconvolution_fit(
         return result_id
 
 
+# Stage-5 Bayesian point results and their posterior/sampler/PPC extension.
+def _bayesian_array_summary(
+    values: Any, name: str, nonfinite: dict[str, str],
+) -> list[Any]:
+    array = np.asarray(values, dtype=np.float64)
+    if array.ndim not in (1, 2):
+        raise ValueError(f"{name} must have one or two dimensions")
+    if array.ndim == 1:
+        return [_result_number(value, f"{name}[{index}]", nonfinite)
+                for index, value in enumerate(array)]
+    return [
+        [_result_number(value, f"{name}[{row},{column}]", nonfinite)
+         for column, value in enumerate(line)]
+        for row, line in enumerate(array)
+    ]
+
+
+def _bayesian_probability(
+    value: Any, name: str, nonfinite: dict[str, str],
+) -> float | None:
+    number = _result_number(value, name, nonfinite)
+    if number is not None and not 0.0 <= number <= 1.0:
+        raise ValueError(f"{name} must lie between zero and one")
+    return number
+
+
+def _bayesian_correlation(
+    value: Any, name: str, nonfinite: dict[str, str],
+) -> float | None:
+    number = _result_number(value, name, nonfinite)
+    if number is not None and not -1.0 <= number <= 1.0:
+        raise ValueError(f"{name} must be a correlation in [-1, 1]")
+    return number
+
+
+def _bayesian_model_context(
+    connection: sqlite3.Connection, *, model_id: int, assumption_id: int,
+    measurement_id: int, source: Any, context: Any | None,
+    sampling_seed: int | str,
+) -> tuple[dict[str, Any], dict[str, Any], sqlite3.Row | tuple]:
+    """Validate the reusable prior and the separately persisted physical model."""
+    from tcspc_toolkit.bayesian import (
+        BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
+    )
+    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingConfig
+
+    model = connection.execute(
+        "SELECT family, estimator_name, configuration_json, prior_policy_id "
+        "FROM model_versions WHERE model_id = ?", (model_id,),
+    ).fetchone()
+    if model is None or model[0] != "bayesian":
+        raise ValueError("model_id must identify the current Bayesian Poisson reconvolution model")
+    configuration = json.loads(model[2])
+    if not isinstance(configuration, dict) or not isinstance(configuration.get("priors"), dict) \
+            or not isinstance(configuration.get("sampler"), dict):
+        raise ValueError("Bayesian model requires explicit prior and sampler configuration")
+    # Compact Issue-4 records omit the policy objects. Require the complete
+    # canonical Stage-2 configuration instead of interpreting a prior label.
+    try:
+        prior_config = configuration["priors"]
+        shift_prior = prior_config["temporal_shift_prior"]
+        validated_priors = BayesianPriorConfig(
+            amplitude=GammaPrior(**prior_config["amplitude"]),
+            lifetime_ns=LogNormalPrior(**prior_config["lifetime_ns"]),
+            background_per_bin=GammaPrior(**prior_config["background_per_bin"]),
+            temporal_shift_prior=None if shift_prior is None else BoundedUniformPrior(**shift_prior),
+            fixed_temporal_shift_ns=prior_config["fixed_temporal_shift_ns"],
+        )
+        validated_sampler = BayesianSamplingConfig(
+            random_seed=int(_decimal_seed(sampling_seed, "sampling_seed")),
+            **configuration["sampler"],
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("Bayesian model requires the complete current prior/sampler policy") from exc
+    reusable = bayesian_model_configuration(validated_priors, validated_sampler)
+    if any(configuration[key] != reusable[key]
+           for key in ("priors", "sampler")):
+        raise ValueError("Bayesian model requires the complete canonical prior/sampler policy")
+    if isinstance(source, BayesianReconvolutionResult) and (
+        configuration["priors"] != _json_value(source.priors)
+        or configuration["sampler"] != _without_bayesian_sampling_seed(source.sampling_config)
+    ):
+        raise ValueError("Bayesian result prior/sampler policy conflicts with model specification")
+    assumption = connection.execute(
+        "SELECT assumed_decay_model, observation_model, context_completeness, "
+        "prepared_irf_id, fixed_temporal_shift_ns, temporal_shift_lower_ns, "
+        "temporal_shift_upper_ns, source_assumption_id "
+        "FROM model_assumptions WHERE assumption_id = ?", (assumption_id,),
+    ).fetchone()
+    if assumption is None or assumption[0] != "monoexponential" \
+            or assumption[1] != "poisson_reconvolution":
+        raise ValueError("Bayesian result requires a monoexponential Poisson assumption")
+    measurement = connection.execute(
+        "SELECT data_kind, n_bins, time_grid_sha256, time_start_ns, time_step_ns, "
+        "values_sha256, condition_pk, attached_irf_source_id, sample_id, metadata_json, provenance_json "
+        "FROM measurements WHERE measurement_id = ?",
+        (measurement_id,),
+    ).fetchone()
+    if measurement is None or measurement[0] != "raw_counts":
+        raise ValueError("Bayesian Poisson inference requires a raw-count measurement")
+    if assumption[2] == "complete" and assumption[3] is None:
+        raise ValueError("complete Bayesian Poisson assumption requires a prepared IRF")
+    if assumption[3] is not None:
+        prepared = connection.execute(
+            "SELECT n_bins, time_grid_sha256, time_start_ns, time_step_ns "
+            "FROM prepared_irfs WHERE prepared_irf_id = ?", (assumption[3],),
+        ).fetchone()
+        if prepared is None or tuple(measurement[1:5]) != tuple(prepared):
+            raise ValueError("prepared IRF target grid differs from measurement time grid")
+    priors = configuration["priors"]
+    fixed_prior = priors.get("fixed_temporal_shift_ns")
+    bounded_prior = priors.get("temporal_shift_prior")
+    if (fixed_prior is None) == (bounded_prior is None):
+        raise ValueError("Bayesian model requires exactly one temporal-shift prior mode")
+    if assumption[2] == "complete":
+        if assumption[4] is not None:
+            if fixed_prior is None:
+                raise ValueError("Bayesian shift prior conflicts with fixed model assumption")
+            prior_shifts = (fixed_prior,)
+        else:
+            if bounded_prior is None:
+                raise ValueError("Bayesian free-shift assumption requires a bounded shift prior")
+            prior_shifts = (bounded_prior["lower_ns"], bounded_prior["upper_ns"])
+        for shift in prior_shifts:
+            _validate_assumed_temporal_shift(
+                shift, context_completeness=assumption[2], fixed_shift=assumption[4],
+                lower_shift=assumption[5], upper_shift=assumption[6], label="Bayesian prior",
+            )
+    if isinstance(source, BayesianReconvolutionResult):
+        if source.model_context.sample_id is not None and measurement[8] is not None \
+                and source.model_context.sample_id != measurement[8]:
+            raise ValueError("Bayesian source sample identity conflicts with stored measurement")
+        if not source.model_context.fixed_irf_assumption:
+            raise ValueError("current Bayesian source requires a fixed IRF assumption")
+        selection = source.model_context.irf_selection
+        if selection not in ("explicit_prepared", "attached_sampled"):
+            raise ValueError("unknown Bayesian source IRF selection")
+        if selection == "explicit_prepared" and assumption[3] is None:
+            raise ValueError("explicit Bayesian prepared IRF is missing from model assumption")
+        if assumption[3] is not None:
+            source_kind = connection.execute(
+                "SELECT s.source_kind FROM prepared_irfs AS p LEFT JOIN irf_sources AS s "
+                "ON p.irf_source_id = s.irf_source_id WHERE p.prepared_irf_id = ?",
+                (assumption[3],),
+            ).fetchone()[0]
+            if source_kind is not None and source_kind != source.model_context.irf_source_kind.value:
+                raise ValueError("Bayesian IRF source kind conflicts with assumed prepared IRF")
+        if selection == "attached_sampled" and assumption[3] is not None:
+            prepared_source = connection.execute(
+                "SELECT irf_source_id FROM prepared_irfs WHERE prepared_irf_id = ?",
+                (assumption[3],),
+            ).fetchone()[0]
+            if measurement[7] is None or prepared_source != measurement[7]:
+                raise ValueError("Bayesian attached IRF conflicts with assumed prepared source")
+    if context is not None:
+        if isinstance(source, BayesianReconvolutionResult) and (
+            context.irf_model_relation != source.model_context.irf_model_relation
+            or context.irf_selection != source.model_context.irf_selection
+            or context.irf_source_kind != source.model_context.irf_source_kind
+        ):
+            raise ValueError("Bayesian source summary conflicts with full model context")
+        if context.prepared_irf is not None:
+            if assumption[3] is None:
+                raise ValueError("Bayesian context prepared IRF is missing from model assumption")
+            _verify_prepared_irf(connection, assumption[3], context.prepared_irf)
+        elif assumption[3] is not None:
+            _verify_irf_source(connection, measurement[7], context.irf_source)
+            kernel_hash = connection.execute(
+                "SELECT kernel_sha256 FROM prepared_irfs WHERE prepared_irf_id = ?",
+                (assumption[3],),
+            ).fetchone()[0]
+            if _hash_prepared_kernel(context.irf_kernel) != kernel_hash:
+                raise ValueError("Bayesian attached kernel conflicts with assumed prepared IRF")
+        _, context_bins, context_start, context_step, context_hash = _uniform_grid(
+            context.time_ns,
+        )
+        if tuple(measurement[1:5]) != (
+            context_bins, context_hash, context_start, context_step,
+        ):
+            raise ValueError("Bayesian context measurement grid differs from stored measurement")
+        if _hash_raw_counts(context.counts) != measurement[5]:
+            raise ValueError("Bayesian context counts differ from stored measurement")
+        if context.measurement.sample_id != measurement[8] or any(
+            not _same_payload_value(column, stored, _mapping_json(supplied, column))
+            for column, stored, supplied in (
+                ("metadata_json", measurement[9], context.measurement.metadata),
+                ("provenance_json", measurement[10], context.measurement.provenance),
+            )
+        ):
+            raise ValueError("Bayesian context measurement identity/provenance differs from stored measurement")
+    return configuration, {"prior_policy_id": model[3], "assumption": assumption}, measurement
+
+
+def _bayesian_artifact(
+    connection: sqlite3.Connection, artifact_id: int | None, *, run_id: int,
+    role: Literal["posterior", "predictive"],
+) -> int | None:
+    selected = _optional_integer(artifact_id, f"{role}_artifact_id", minimum=1)
+    if selected is None:
+        return None
+    row = connection.execute(
+        "SELECT artifact_kind, producing_run_id FROM artifacts WHERE artifact_id = ?",
+        (selected,),
+    ).fetchone()
+    allowed = (
+        {"posterior_chain", "posterior_samples"} if role == "posterior"
+        else {"posterior_predictive_samples"}
+    )
+    if row is None or row[0] not in allowed or row[1] not in (None, run_id):
+        raise ValueError(f"{role} artifact role or producing run conflicts with Bayesian result")
+    return selected
+
+
+def _bayesian_predictive_payload(
+    predictive: Any | None, *, ppc_seed: int | str | None,
+    nonfinite: dict[str, str],
+) -> dict[str, Any]:
+    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchPredictiveSummary
+    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+
+    if predictive is None:
+        if ppc_seed is not None:
+            raise ValueError("unused posterior-predictive seed must not be invented")
+        return {
+            "ppc_status": "not_requested", "ppc_n_draws": None,
+            "ppc_runtime_seconds": None, "ppc_deviance_tail_probability": None,
+            "ppc_discrepancies_json": "{}",
+        }
+    if isinstance(predictive, BayesianPosteriorPredictiveResult):
+        if ppc_seed is not None and _decimal_seed(ppc_seed, "ppc_seed") != str(predictive.random_seed):
+            raise ValueError("posterior-predictive seed conflicts with source result")
+        ppc_seed = predictive.random_seed
+        diagnostics = predictive.diagnostics
+        named = [
+            ("poisson_deviance", diagnostics.poisson_deviance),
+            ("residual_rms", diagnostics.rms_signed_deviance_residual),
+            ("maximum_absolute_residual", diagnostics.maximum_absolute_signed_deviance_residual),
+            ("total_counts", diagnostics.total_counts),
+            ("peak_counts", diagnostics.peak_counts),
+            ("peak_time_ns", diagnostics.peak_time_ns),
+        ] + [(window.name.removesuffix("_window_ns") + "_window_counts", window.total_counts)
+             for window in diagnostics.windows]
+        summaries = {}
+        window_bounds = {
+            window.name.removesuffix("_window_ns") + "_window_counts": [
+                window.lower_ns, window.upper_ns,
+            ] for window in diagnostics.windows
+        }
+        for name, discrepancy in named:
+            summaries[name] = {
+                "observed_mean": _result_number(
+                    np.mean(discrepancy.observed), f"ppc.{name}.observed_mean", nonfinite,
+                ),
+                "replicated_median": _result_number(
+                    np.median(discrepancy.replicated), f"ppc.{name}.replicated_median", nonfinite,
+                ),
+                "tail_probability": _bayesian_probability(
+                    discrepancy.posterior_predictive_tail_probability,
+                    f"ppc.{name}.tail_probability", nonfinite,
+                ),
+            }
+        status, reason = "success", None
+        n_draws = int(predictive.replicated_counts.shape[0])
+        runtime = predictive.runtime_seconds
+        interval_level = _finite_scalar(predictive.interval_level, "predictive interval_level")
+        if not 0 < interval_level < 1:
+            raise ValueError("predictive interval_level must lie between zero and one")
+        selection = {
+            "interval_level": interval_level,
+            "selection_with_replacement": bool(_result_flag(
+                predictive.selection_with_replacement, "selection_with_replacement",
+            )),
+            "retained_posterior_sample_count": _integer(
+                predictive.retained_posterior_sample_count, "retained_posterior_sample_count",
+                minimum=1,
+            ),
+            "window_bounds_ns": window_bounds,
+        }
+    elif isinstance(predictive, MismatchPredictiveSummary):
+        status, reason = predictive.status, predictive.reason
+        n_draws, runtime = predictive.n_draws, predictive.runtime_seconds
+        summaries = {}
+        selection = {}
+        for name, observed, replicated, tail in predictive.discrepancy_summaries:
+            key = _required_text(name, "PPC discrepancy name")
+            if key in summaries:
+                raise ValueError("duplicate PPC discrepancy name")
+            summaries[key] = {
+                "observed_mean": _result_number(observed, f"ppc.{key}.observed_mean", nonfinite),
+                "replicated_median": _result_number(replicated, f"ppc.{key}.replicated_median", nonfinite),
+                "tail_probability": _bayesian_probability(tail, f"ppc.{key}.tail_probability", nonfinite),
+            }
+    else:
+        raise TypeError("posterior_predictive must be a current Bayesian PPC result")
+    if status not in ("success", "not_available", "failed"):
+        raise ValueError("unsupported posterior-predictive status")
+    draws = _integer(n_draws, "ppc_n_draws")
+    if status == "success" and draws == 0:
+        raise ValueError("successful posterior prediction requires draws")
+    deviance = summaries.get("poisson_deviance", {}).get("tail_probability")
+    return {
+        "ppc_status": status, "ppc_n_draws": draws,
+        "ppc_runtime_seconds": _result_number(
+            runtime, "ppc_runtime_seconds", nonfinite, nonnegative=True,
+        ),
+        "ppc_deviance_tail_probability": deviance,
+        "ppc_discrepancies_json": _canonical_json({
+            "discrepancies": summaries,
+            "failure_reason": _optional_diagnostic_text(reason, "PPC failure_reason"),
+            "random_seed_decimal": _decimal_seed(ppc_seed, "ppc_seed"),
+            "selection": selection,
+        }),
+    }
+
+
+def _bayesian_payloads(
+    source: Any, *, run_id: int, measurement_id: int, model_id: int,
+    assumption_id: int, analysis_key: str, configuration: dict[str, Any],
+    relation: str, posterior_predictive: Any | None,
+    ppc_seed: int | str | None, posterior_artifact_id: int | None,
+    predictive_artifact_id: int | None, call_seconds: float | None,
+    valid_retained_samples: int | None, execution: Mapping[str, Any] | None,
+    sampling_seed: int | str, assumption: sqlite3.Row | tuple,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    from tcspc_toolkit.bayesian_evaluation import Issue4Bayesian
+    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingStatus
+
+    if not isinstance(source, (BayesianReconvolutionResult, Issue4Bayesian)):
+        raise TypeError("Bayesian source must be a full sampler result or Issue4Bayesian")
+    status = source.status
+    if not isinstance(status, BayesianSamplingStatus):
+        raise ValueError("Bayesian sampling status must use the source enum")
+    compact = isinstance(source, Issue4Bayesian)
+    diagnostic = source if compact else source.diagnostics
+    accepted = _result_flag(
+        source.diagnostics_accepted if compact else diagnostic.accepted,
+        "diagnostics_accepted",
+    )
+    reasons = tuple(source.diagnostic_failure_reasons if compact else diagnostic.failure_reasons)
+    if any(not isinstance(reason, str) for reason in reasons):
+        raise ValueError("diagnostic failure reasons must be strings")
+    if accepted and (status is not BayesianSamplingStatus.SUCCESS or reasons):
+        raise ValueError("accepted diagnostics require successful sampling and no failures")
+    nonfinite: dict[str, str] = {}
+    credible_probability = _finite_scalar(
+        configuration["sampler"].get("credible_interval_level"),
+        "credible_interval_level",
+    )
+    if not 0.0 < credible_probability < 1.0:
+        raise ValueError("credible_interval_level must lie between zero and one")
+    if compact:
+        raw_median = source.lifetime_median_ns
+        median = _result_number(source.lifetime_median_ns, "lifetime_median_ns", nonfinite)
+        mean = _result_number(source.lifetime_mean_ns, "lifetime_mean_ns", nonfinite)
+        parameter_summaries = [{
+            "name": "lifetime_ns", "unit": "ns", "mean": mean, "median": median,
+            "standard_deviation": _result_number(
+                source.posterior_lifetime_std_ns, "lifetime.standard_deviation", nonfinite,
+                nonnegative=True,
+            ),
+            "credible_lower": _result_number(
+                source.credible_lower_ns, "lifetime.credible_lower", nonfinite,
+            ),
+            "credible_upper": _result_number(
+                source.credible_upper_ns, "lifetime.credible_upper", nonfinite,
+            ),
+        }]
+        correlations = [
+            {"first": "lifetime_ns", "second": "background_per_bin",
+             "correlation": _bayesian_correlation(
+                 source.lifetime_background_correlation,
+                 "correlation.lifetime_background", nonfinite,
+             )},
+            {"first": "lifetime_ns", "second": "temporal_shift_ns",
+             "correlation": _bayesian_correlation(
+                 source.lifetime_shift_correlation, "correlation.lifetime_shift", nonfinite,
+             )},
+        ]
+        diagnostic_arrays: dict[str, Any] = {}
+        diagnostic_parameter_order = None
+        runtime = source.inference_total_seconds
+        actual_call_seconds = source.call_seconds
+        source_type = "tcspc_toolkit.bayesian_evaluation.Issue4Bayesian"
+    else:
+        names = tuple(source.inferred_parameter_names)
+        if len(set(names)) != len(names) or (
+            source.parameter_summaries
+            and (names != tuple(item.name for item in source.parameter_summaries)
+                 or tuple(source.inferred_parameter_units) != tuple(
+                     item.unit for item in source.parameter_summaries
+                 ))
+        ):
+            raise ValueError("posterior parameter summaries conflict with inferred names")
+        expected_names = {"amplitude", "lifetime_ns", "background_per_bin"}
+        if source.priors.infer_temporal_shift:
+            expected_names.add("temporal_shift_ns")
+        if set(names) != expected_names:
+            raise ValueError("Bayesian inferred parameters conflict with the prior shift mode")
+        if not np.allclose(source.correlation_matrix, source.correlation_matrix.T,
+                           rtol=1e-7, atol=1e-12, equal_nan=True):
+            raise ValueError("Bayesian correlation matrix must be symmetric")
+        diagnostic_parameter_order = names
+        n_ensembles = configuration["sampler"]["n_ensembles"]
+        n_walkers = configuration["sampler"]["n_walkers"]
+        for field, shape in (
+            ("acceptance_fraction", (n_ensembles, n_walkers)),
+            ("autocorrelation_time_steps", (n_ensembles, len(names))),
+            ("autocorrelation_relative_change", (n_ensembles, len(names))),
+            ("approximate_effective_samples", (len(names),)),
+        ):
+            if np.shape(getattr(diagnostic, field)) != shape:
+                raise ValueError(f"{field} shape conflicts with sampler/parameter axes")
+        parameter_summaries = []
+        for item in source.parameter_summaries:
+            name = _required_text(item.name, "parameter name")
+            parameter_summaries.append({
+                "name": name, "unit": _required_text(item.unit, "parameter unit"),
+                **{field: _result_number(
+                    getattr(item, field), f"parameter.{name}.{field}", nonfinite,
+                    nonnegative=(field == "standard_deviation"),
+                ) for field in (
+                    "mean", "median", "standard_deviation", "credible_lower", "credible_upper",
+                )},
+            })
+        lifetime = next((item for item in parameter_summaries if item["name"] == "lifetime_ns"), None)
+        raw_median = next((item.median for item in source.parameter_summaries
+                           if item.name == "lifetime_ns"), None)
+        median = None if lifetime is None else lifetime["median"]
+        mean = None if lifetime is None else lifetime["mean"]
+        correlations = []
+        for left in range(len(names)):
+            for right in range(left, len(names)):
+                correlations.append({
+                    "first": names[left], "second": names[right],
+                    "correlation": _bayesian_correlation(
+                        source.correlation_matrix[left, right],
+                        f"correlation.{names[left]}.{names[right]}", nonfinite,
+                    ),
+                })
+        diagnostic_arrays = {
+            "acceptance_fraction_by_ensemble_walker": _bayesian_array_summary(
+                diagnostic.acceptance_fraction, "acceptance_fraction", nonfinite,
+            ),
+            "autocorrelation_time_steps_by_ensemble_parameter": _bayesian_array_summary(
+                diagnostic.autocorrelation_time_steps, "autocorrelation_time_steps", nonfinite,
+            ),
+            "autocorrelation_relative_change_by_ensemble_parameter": _bayesian_array_summary(
+                diagnostic.autocorrelation_relative_change, "autocorrelation_relative_change", nonfinite,
+            ),
+            "approximate_effective_samples_by_parameter": _bayesian_array_summary(
+                diagnostic.approximate_effective_samples, "approximate_effective_samples", nonfinite,
+            ),
+        }
+        if any(value is not None and not 0.0 <= value <= 1.0
+               for row in diagnostic_arrays["acceptance_fraction_by_ensemble_walker"]
+               for value in row):
+            raise ValueError("walker acceptance fractions must lie between zero and one")
+        runtime = source.runtime.total_seconds
+        actual_call_seconds = call_seconds
+        source_type = "tcspc_toolkit.bayesian_sampling.BayesianReconvolutionResult"
+    if accepted and (median is None or median <= 0):
+        raise ValueError("accepted Bayesian diagnostics require a positive finite posterior median")
+    if accepted and parameter_summaries:
+        lifetime = next(item for item in parameter_summaries if item["name"] == "lifetime_ns")
+        low, high = lifetime["credible_lower"], lifetime["credible_upper"]
+        if low is None or high is None or low > high:
+            raise ValueError("accepted Bayesian summary requires ordered finite credible bounds")
+    estimator_status = (
+        "available" if median is not None and status in (
+            BayesianSamplingStatus.SUCCESS, BayesianSamplingStatus.INSUFFICIENT_SAMPLING,
+        ) else "failed"
+    )
+    point = _estimator_payload(
+        run_id=run_id, measurement_id=measurement_id, model_id=model_id,
+        assumption_id=assumption_id, analysis_key=analysis_key,
+        point_summary="posterior_median", status=estimator_status,
+        is_valid=bool(accepted), source_result_type=source_type,
+        irf_model_relation=relation, lifetime_estimate_ns=raw_median,
+        failure_reason=source.failure_reason if not compact else None,
+        runtime_seconds=runtime, runtime_scope="bayesian_inference_total",
+        random_seed=sampling_seed, execution=execution,
+    )
+    if accepted:
+        shift = next((item for item in parameter_summaries
+                      if item["name"] == "temporal_shift_ns"), None)
+        if shift is not None:
+            for field in ("mean", "median", "credible_lower", "credible_upper"):
+                if shift[field] is None:
+                    raise ValueError("accepted Bayesian shift summary must be finite")
+                _validate_assumed_temporal_shift(
+                    shift[field], context_completeness=assumption[2], fixed_shift=assumption[4],
+                    lower_shift=assumption[5], upper_shift=assumption[6],
+                    label=f"posterior {field}",
+                )
+    if compact:
+        minimum_ess = source.minimum_effective_samples
+        minimum_multiples = source.minimum_autocorrelation_multiples
+        maximum_change = source.maximum_autocorrelation_relative_change
+    else:
+        effective = np.asarray(diagnostic.approximate_effective_samples, dtype=float)
+        finite_ess = effective[np.isfinite(effective)]
+        minimum_ess = np.min(finite_ess) if finite_ess.size else math.nan
+        tau = np.asarray(diagnostic.autocorrelation_time_steps, dtype=float)
+        finite_tau = tau[np.isfinite(tau) & (tau > 0)]
+        minimum_multiples = (
+            diagnostic.production_steps / np.max(finite_tau) if finite_tau.size else math.nan
+        )
+        change = np.asarray(diagnostic.autocorrelation_relative_change, dtype=float)
+        finite_change = change[np.isfinite(change)]
+        maximum_change = np.max(finite_change) if finite_change.size else math.nan
+    parameter_json = {
+        "credible_probability": credible_probability,
+        "parameters": parameter_summaries,
+        "diagnostic_parameter_order": diagnostic_parameter_order,
+        "sampling_counts": {
+            "n_walkers": _integer(configuration["sampler"].get("n_walkers"), "n_walkers", minimum=1),
+            "n_ensembles": _integer(configuration["sampler"].get("n_ensembles"), "n_ensembles", minimum=1),
+            "requested_warmup_steps": _integer(
+                configuration["sampler"].get("warmup_steps"), "warmup_steps", minimum=1,
+            ),
+            "actual_warmup_steps": None,
+            "requested_production_steps": _integer(
+                configuration["sampler"].get("production_steps"), "requested production_steps", minimum=1,
+            ),
+            "valid_retained_samples": _optional_integer(
+                valid_retained_samples, "valid_retained_samples",
+            ),
+        },
+        "diagnostic_arrays": diagnostic_arrays,
+    }
+    predictive_payload = _bayesian_predictive_payload(
+        posterior_predictive, ppc_seed=ppc_seed, nonfinite=nonfinite,
+    )
+    summary = {
+        "result_id": 0,
+        "posterior_artifact_id": posterior_artifact_id,
+        "predictive_artifact_id": predictive_artifact_id,
+        "sampling_status": status.value,
+        "diagnostics_accepted": accepted,
+        "lifetime_mean_ns": mean,
+        "mean_acceptance_fraction": _bayesian_probability(
+            diagnostic.mean_acceptance_fraction, "mean_acceptance_fraction", nonfinite,
+        ),
+        "minimum_effective_samples": _result_number(
+            minimum_ess,
+            "minimum_effective_samples", nonfinite, nonnegative=True,
+        ),
+        "production_steps": _integer(diagnostic.production_steps, "production_steps"),
+        "retained_samples": _integer(diagnostic.retained_samples, "retained_samples"),
+        "extension_count": _integer(diagnostic.extension_count, "extension_count"),
+        "minimum_autocorrelation_multiples": _result_number(
+            minimum_multiples, "minimum_autocorrelation_multiples", nonfinite,
+            nonnegative=True,
+        ),
+        "maximum_autocorrelation_relative_change": _result_number(
+            maximum_change, "maximum_autocorrelation_relative_change", nonfinite,
+            nonnegative=True,
+        ),
+        "maximum_ensemble_mean_difference_sd": _result_number(
+            diagnostic.maximum_ensemble_mean_difference_sd,
+            "maximum_ensemble_mean_difference_sd", nonfinite, nonnegative=True,
+        ),
+        "maximum_ensemble_median_difference_sd": _result_number(
+            diagnostic.maximum_ensemble_median_difference_sd,
+            "maximum_ensemble_median_difference_sd", nonfinite, nonnegative=True,
+        ),
+        "lifetime_background_correlation": _bayesian_correlation(
+            source.lifetime_background_correlation if compact else
+            source.correlation_matrix[source.inferred_parameter_names.index("lifetime_ns"),
+                                      source.inferred_parameter_names.index("background_per_bin")],
+            "lifetime_background_correlation", nonfinite,
+        ),
+        "lifetime_shift_correlation": _bayesian_correlation(
+            source.lifetime_shift_correlation if compact else (
+                source.correlation_matrix[source.inferred_parameter_names.index("lifetime_ns"),
+                                          source.inferred_parameter_names.index("temporal_shift_ns")]
+                if "temporal_shift_ns" in source.inferred_parameter_names else None
+            ), "lifetime_shift_correlation", nonfinite,
+        ),
+        "initialization_seconds": _result_number(
+            source.initialization_seconds if compact else source.runtime.initialization_seconds,
+            "initialization_seconds", nonfinite, nonnegative=True,
+        ),
+        "sampling_seconds": _result_number(
+            source.sampling_seconds if compact else source.runtime.sampling_seconds,
+            "sampling_seconds", nonfinite, nonnegative=True,
+        ),
+        "diagnostic_seconds": _result_number(
+            source.diagnostic_seconds if compact else source.runtime.diagnostic_seconds,
+            "diagnostic_seconds", nonfinite, nonnegative=True,
+        ),
+        "inference_total_seconds": _result_number(
+            runtime, "inference_total_seconds", nonfinite, nonnegative=True,
+        ),
+        "call_seconds": _result_number(
+            actual_call_seconds, "call_seconds", nonfinite, nonnegative=True,
+        ),
+        "diagnostic_failure_reasons_json": _canonical_json(reasons),
+        "parameter_summaries_json": _canonical_json(parameter_json),
+        "correlation_json": _canonical_json(correlations),
+        **predictive_payload,
+        "nonfinite_fields_json": _canonical_json(nonfinite),
+    }
+    counts = parameter_json["sampling_counts"]
+    if summary["retained_samples"] != (
+        counts["n_walkers"] * counts["n_ensembles"] * summary["production_steps"]
+    ):
+        raise ValueError("retained samples conflict with production steps and ensemble/walker counts")
+    if valid_retained_samples is not None and valid_retained_samples > summary["retained_samples"]:
+        raise ValueError("finite retained samples exceed retained samples")
+    return point, summary
+
+
+def _record_bayesian_composed(
+    connection: sqlite3.Connection, source: Any, *, run_id: int,
+    measurement_id: int, model_id: int, assumption_id: int,
+    analysis_key: str, relation: str, posterior_predictive: Any | None,
+    ppc_seed: int | str | None, posterior_artifact_id: int | None,
+    predictive_artifact_id: int | None, call_seconds: float | None,
+    valid_retained_samples: int | None, execution: Mapping[str, Any] | None,
+    context: Any | None, sampling_seed: int | str, on_duplicate: DuplicatePolicy,
+) -> int:
+    run = _integer(run_id, "run_id", minimum=1)
+    measured = _integer(measurement_id, "measurement_id", minimum=1)
+    model = _integer(model_id, "model_id", minimum=1)
+    assumed = _integer(assumption_id, "assumption_id", minimum=1)
+    if connection.execute(
+        "SELECT 1 FROM run_measurements WHERE run_id = ? AND measurement_id = ?",
+        (run, measured),
+    ).fetchone() is None:
+        raise ValueError("run_measurements membership is required for a result")
+    model_config, model_context, _ = _bayesian_model_context(
+        connection, model_id=model, assumption_id=assumed,
+        measurement_id=measured, source=source, context=context, sampling_seed=sampling_seed,
+    )
+    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+
+    if isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
+        _bayesian_model_context(
+            connection, model_id=model, assumption_id=assumed,
+            measurement_id=measured, source=source,
+            context=posterior_predictive.model_context, sampling_seed=sampling_seed,
+        )
+    posterior_artifact = _bayesian_artifact(
+        connection, posterior_artifact_id, run_id=run, role="posterior",
+    )
+    predictive_artifact = _bayesian_artifact(
+        connection, predictive_artifact_id, run_id=run, role="predictive",
+    )
+    if predictive_artifact is not None and posterior_predictive is None:
+        raise ValueError("predictive artifact requires a posterior-predictive result")
+    point, summary = _bayesian_payloads(
+        source, run_id=run, measurement_id=measured, model_id=model,
+        assumption_id=assumed, analysis_key=analysis_key,
+        configuration=model_config, relation=relation,
+        posterior_predictive=posterior_predictive, ppc_seed=ppc_seed,
+        posterior_artifact_id=posterior_artifact,
+        predictive_artifact_id=predictive_artifact, call_seconds=call_seconds,
+        valid_retained_samples=valid_retained_samples, execution=execution,
+        sampling_seed=sampling_seed, assumption=model_context["assumption"],
+    )
+    if predictive_artifact is not None and not summary["ppc_n_draws"]:
+        raise ValueError("predictive-sample artifact requires retained predictive draws")
+    with transaction(connection):
+        result_id, inserted = _record_estimator_row(
+            connection, point, on_duplicate=on_duplicate,
+        )
+        summary["result_id"] = result_id
+        if inserted:
+            _record_row(
+                connection, table="bayesian_summaries", key_columns=("result_id",),
+                payload=summary, return_column=None, on_duplicate="raise",
+            )
+        else:
+            cursor = connection.execute(
+                "SELECT * FROM bayesian_summaries WHERE result_id = ?", (result_id,),
+            )
+            found = cursor.fetchone()
+            if found is None:
+                _record_row(
+                    connection, table="bayesian_summaries", key_columns=("result_id",),
+                    payload=summary, return_column=None, on_duplicate="raise",
+                )
+            else:
+                existing = dict(zip((item[0] for item in cursor.description), found))
+                if not all(_same_payload_value(column, existing[column], value)
+                           for column, value in summary.items()):
+                    raise PersistenceConflictError("conflicting Bayesian summary for reused result")
+        return result_id
+
+
+def record_bayesian_result(
+    connection: sqlite3.Connection, result: Any, *, run_id: int,
+    measurement_id: int, model_id: int, assumption_id: int,
+    analysis_key: str = "default", posterior_predictive: Any | None = None,
+    posterior_artifact_id: int | None = None,
+    predictive_artifact_id: int | None = None,
+    call_seconds: float | None = None,
+    execution: Mapping[str, Any] | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Record one completed Bayesian sampler result and optional PPC summary."""
+    from tcspc_toolkit.bayesian_sampling import BayesianInferenceRun, BayesianReconvolutionResult
+
+    if isinstance(result, BayesianInferenceRun):
+        source, context = result.result, result.context
+        samples = result.samples
+        finite = np.isfinite(samples.log_probability) & np.all(
+            np.isfinite(samples.physical), axis=-1,
+        ) & np.all(np.isfinite(samples.transformed), axis=-1)
+        valid_retained_samples = int(np.count_nonzero(finite))
+        if source.diagnostics.retained_samples != samples.physical.shape[0] * \
+                samples.physical.shape[1] * samples.physical.shape[2]:
+            raise ValueError("retained-sample count conflicts with source sample shape")
+    elif isinstance(result, BayesianReconvolutionResult):
+        source, context, valid_retained_samples = result, None, None
+    else:
+        raise TypeError("result must be BayesianReconvolutionResult or BayesianInferenceRun")
+    if posterior_predictive is not None:
+        from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+        if not isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
+            raise TypeError("posterior_predictive must be BayesianPosteriorPredictiveResult")
+        if posterior_predictive.inference_sampling_status is not source.status or (
+            _canonical_json(posterior_predictive.priors) != _canonical_json(source.priors)
+            or _canonical_json(posterior_predictive.sampling_config)
+            != _canonical_json(source.sampling_config)
+            or posterior_predictive.retained_posterior_sample_count != source.diagnostics.retained_samples
+        ):
+            raise ValueError("posterior prediction conflicts with Bayesian sampler result")
+    return _record_bayesian_composed(
+        connection, source, run_id=run_id, measurement_id=measurement_id,
+        model_id=model_id, assumption_id=assumption_id, analysis_key=analysis_key,
+        relation=source.model_context.irf_model_relation.value,
+        posterior_predictive=posterior_predictive, ppc_seed=None,
+        posterior_artifact_id=posterior_artifact_id,
+        predictive_artifact_id=predictive_artifact_id,
+        call_seconds=call_seconds, valid_retained_samples=valid_retained_samples,
+        execution=execution, context=context, sampling_seed=source.sampling_config.random_seed,
+        on_duplicate=on_duplicate,
+    )
+
+
+def record_issue4_bayesian_result(
+    connection: sqlite3.Connection, record: Any, *, run_id: int,
+    measurement_id: int, model_id: int, assumption_id: int,
+    analysis_key: str = "default", pseudo_true_reference_id: int | None = None,
+    irf_model_relation: str = "unspecified",
+    posterior_artifact_id: int | None = None,
+    predictive_artifact_id: int | None = None,
+    on_duplicate: DuplicatePolicy = "raise",
+) -> int:
+    """Record the compact matched or mismatch Issue-4 Bayesian realization."""
+    from tcspc_toolkit.bayesian_evaluation import BayesianClassicalRealizationResult
+    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchInferenceRecord
+
+    if not isinstance(record, (BayesianClassicalRealizationResult, MismatchInferenceRecord)):
+        raise TypeError("record must be an Issue-4 Bayesian evaluation realization")
+    mismatch = isinstance(record, MismatchInferenceRecord)
+    if mismatch != (pseudo_true_reference_id is not None):
+        raise ValueError("mismatch records require a selected pseudo-true reference")
+    measurement = connection.execute(
+        "SELECT m.condition_pk, m.values_sha256, c.condition_id, c.generating_model, "
+        "c.mono_lifetime_ns, c.primary_lifetime_ns, c.secondary_lifetime_ns, "
+        "c.secondary_detected_fraction, c.signal_photon_count, c.background_per_bin, "
+        "c.true_temporal_shift_ns, m.observed_total_counts, m.observation_seed_decimal "
+        "FROM measurements AS m LEFT JOIN simulation_conditions AS c "
+        "ON c.condition_pk = m.condition_pk WHERE m.measurement_id = ?",
+        (_integer(measurement_id, "measurement_id", minimum=1),),
+    ).fetchone()
+    if measurement is None or measurement[0] is None or measurement[2] != record.condition_id \
+            or measurement[1] != record.observed_counts_sha256:
+        raise ValueError("Issue-4 record conflicts with generating condition or observation")
+    if measurement[8] != record.signal_photon_count or measurement[11] != record.observed_total_counts:
+        raise ValueError("Issue-4 photon counts conflict with stored condition/measurement")
+    physical_values = [(measurement[9], record.background_per_bin),
+                       (measurement[10], record.true_temporal_shift_ns)]
+    if mismatch:
+        physical_values.extend([
+            (measurement[4], record.mono_generating_lifetime_ns),
+            (measurement[5] if record.generating_model == "biexponential" else measurement[4],
+             record.primary_lifetime_ns),
+            (measurement[6], record.secondary_lifetime_ns),
+            (measurement[7], record.secondary_detected_fraction),
+        ])
+    else:
+        if measurement[3] != "monoexponential":
+            raise ValueError("matched Issue-4 record requires monoexponential generation")
+        physical_values.append((measurement[4], record.true_lifetime_ns))
+    for stored, supplied in physical_values:
+        if (stored is None) != (supplied is None) or stored is not None and not math.isclose(
+            stored, _finite_scalar(supplied, "Issue-4 generating parameter"),
+            rel_tol=1e-7, abs_tol=1e-12,
+        ):
+            raise ValueError("Issue-4 generating parameters conflict with stored condition")
+    if measurement[12] is not None and measurement[12] != _decimal_seed(
+        record.seeds.observation, "observation seed",
+    ):
+        raise ValueError("Issue-4 observation seed conflicts with stored measurement")
+    run = connection.execute("SELECT profile FROM experiment_runs WHERE run_id = ?", (run_id,)).fetchone()
+    if run is not None and run[0] is not None and run[0] != record.profile:
+        raise ValueError("Issue-4 source profile conflicts with stored run")
+    assumption = connection.execute(
+        "SELECT source_assumption_id FROM model_assumptions WHERE assumption_id = ?",
+        (_integer(assumption_id, "assumption_id", minimum=1),),
+    ).fetchone()
+    if mismatch:
+        if assumption is None or assumption[0] != record.assumption_id \
+                or measurement[3] != record.generating_model \
+                or record.assumed_decay_model != "monoexponential":
+            raise ValueError("mismatch source context conflicts with stored assumption or condition")
+        reference = connection.execute(
+            "SELECT reference_kind, condition_pk, assumption_id FROM lifetime_references "
+            "WHERE reference_id = ?",
+            (_integer(pseudo_true_reference_id, "pseudo_true_reference_id", minimum=1),),
+        ).fetchone()
+        if reference is None or tuple(reference) != (
+            "pseudo_true_mono", measurement[0], assumption_id,
+        ):
+            raise ValueError("pseudo-true reference conflicts with mismatch condition/assumption")
+    model = connection.execute(
+        "SELECT prior_policy_id FROM model_versions WHERE model_id = ?", (model_id,),
+    ).fetchone()
+    if not mismatch and (model is None or model[0] != record.prior_policy_id):
+        raise ValueError("matched Issue-4 prior policy conflicts with model")
+    if mismatch and irf_model_relation == "unspecified":
+        raise ValueError("mismatch IRF relation must be caller-declared")
+    if not mismatch and irf_model_relation != "matched":
+        raise ValueError("matched Issue-4 evaluation requires declared matched IRF relation")
+    execution = {
+        "source_profile": record.profile,
+        "realization_index": record.realization_index,
+    }
+    if mismatch:
+        # Frozen Issue-4 f8 hashes retain signed zero, unlike schema-v1 canonical
+        # float hashes. Preserve their role; never compare the two conventions.
+        execution["source_issue4_float64_hashes"] = {
+            field: _sha256(getattr(record, field), field) for field in (
+                "expected_counts_sha256", "time_grid_sha256",
+                "generating_irf_sha256", "assumed_irf_sha256",
+            )
+        }
+        execution["mismatch_mechanism"] = _required_text(record.mechanism, "mismatch mechanism")
+        execution["source_generating_irf_id"] = _required_text(record.generating_irf_id, "generating IRF label")
+        execution["source_assumed_irf_id"] = _required_text(record.assumed_irf_id, "assumed IRF label")
+    predictive = record.posterior_predictive if mismatch else None
+    ppc_seed = record.seeds.posterior_predictive if mismatch and predictive.status != "not_available" else None
+    return _record_bayesian_composed(
+        connection, record.bayesian, run_id=run_id, measurement_id=measurement_id,
+        model_id=model_id, assumption_id=assumption_id, analysis_key=analysis_key,
+        relation=irf_model_relation, posterior_predictive=predictive,
+        ppc_seed=ppc_seed, posterior_artifact_id=posterior_artifact_id,
+        predictive_artifact_id=predictive_artifact_id,
+        call_seconds=None, valid_retained_samples=None, execution=execution,
+        context=None, sampling_seed=record.seeds.bayesian, on_duplicate=on_duplicate,
+    )
+
+
 def _prediction_vector(predictions: ArrayLike) -> np.ndarray:
     source = _numeric_vector(predictions, name="predictions")
     try:
