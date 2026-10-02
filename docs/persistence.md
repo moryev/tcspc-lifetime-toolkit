@@ -6,6 +6,8 @@ hashing. Stage 2 records scientific identities and provenance. Stage 3 records
 classical point fits and ML/baseline predictions. Stage 4 records per-observation
 uncertainty and aggregate benchmark metrics. Stage 5 records Bayesian point
 results with posterior, sampler and posterior-predictive summaries.
+Stage 6 retrieves these stored facts through read-only queries and an explicit
+DataFrame conversion, without scientific recomputation.
 
 ## Scientific entities
 
@@ -772,18 +774,173 @@ values remain distinguishable from known non-finite failures. Finite rejected
 diagnostics and crossed failed credible bounds remain unchanged. Invalid results
 are not repaired or replaced with zero.
 
-## Query and compatibility boundaries
+## Stage-6 read-only queries
+
+All helpers remain under `tcspc_toolkit.persistence`. They accept an existing
+compatible SQLite connection or an existing database path. Paths are opened
+through `connect_database(path, readonly=True)` and closed after retrieval;
+missing databases are not created. Caller connections, whether writable or
+read-only, keep their settings, row factory, transaction and ownership. The
+helpers execute toolkit-defined SELECT statements only; they do not write,
+create views, alter metadata or start transactions. There is no generic SQL
+escape hatch or external-artifact loading.
+
+Each query returns `QueryResult(columns, rows)`: column names and ordered tuple
+rows, with column names retained even for an empty result. The row grains are:
+
+| Helper | One row represents | Explicit join options |
+|---|---|---|
+| `query_runs` | One experiment run | None |
+| `query_artifacts` | One external artifact registration | None; files are not opened |
+| `query_measurements` | One measurement | `include_generating`; `include_membership` explicitly expands memberships |
+| `query_irf_sources` | One original source, including unprepared sources | None |
+| `query_prepared_irfs` | One prepared kernel | `include_source` |
+| `query_results` | One estimator result | `include_context`; `include_fit_details` (zero/one extension) |
+| `query_uncertainty` | One uncertainty output plus its owning point | `include_context` |
+| `query_bayesian` | One Bayesian summary plus its owning point | `include_context` |
+| `query_references` | One stored reference version | None; all matching versions remain visible |
+| `query_metrics` | One benchmark metric fact | None; scope stays as stored |
+
+`include_generating=True` uses a LEFT JOIN, retaining experimental rows with
+NULL generating columns. Lifetimes, photon budget, background and shift are
+named `generating_mono_lifetime_ns`, `generating_primary_lifetime_ns`,
+`generating_secondary_lifetime_ns`, `generating_secondary_detected_fraction`,
+`generating_signal_photon_count`, `generating_background_per_bin` and
+`generating_shift_ns`. These are not generic truth or reference fields.
+Measurement identity, origin-run ID, attached-source ID and histogram-artifact
+ID remain distinct; use the corresponding narrow query to inspect linked rows.
+
+Measurement membership filters normally use EXISTS, retaining one row per
+measurement and requiring all membership filters to match the same membership.
+`include_membership=True` instead returns one row per matching membership,
+with `membership_run_id`/`membership_run_key` separate from the origin run.
+Without membership filters, unlinked measurements receive a NULL membership
+placeholder. With membership filters, only actual matching memberships qualify.
+
+Result context joins are to-one: measurement, run, model, nullable assumption,
+and the result's exact run–measurement membership. They cannot multiply results.
+Model configuration and assumed prepared-IRF/shift context keep separate names.
+Optional fit columns are prefixed `fit_`, including `fit_result_id` and
+`fit_nonfinite_fields_json`. Uncertainty/Bayesian queries retain their extension
+fields and expose point status, validity, runtime, execution seed and non-finite
+metadata with a `result_` prefix where necessary to avoid ambiguity. Bayesian
+credible bounds, parameter-labelled diagnostics, configured counts and PPC seed
+remain in their existing JSON structures.
+
+Filters use `filters={"field": value, ...}`. All entries are ANDed exact
+equalities with bound values; an explicitly supplied `None` means SQL IS NULL,
+while an omitted key imposes no filter. Values are strings, integers, finite
+floats or None. Coverage filtering is exact, not tolerance-based. `%` and `_`
+are literal characters, not LIKE wildcards. Unknown filter/sort names are
+rejected; SQL fragments and multi-value/inequality filters are not accepted.
+
+Supported filters by family:
+
+- Runs: `run_id`, `run_key`, `run_type`, `status`, `origin`, `protocol_id`,
+  `protocol_version`, `profile`, `source_run_id`.
+- Artifacts: `artifact_id`, `artifact_key`, `producing_run_id`, `artifact_kind`,
+  `format`, `sha256`.
+- Measurements: `measurement_id`, `measurement_key`, `sample_id`, `source_type`,
+  `data_kind`, `origin_run_id`, `condition_pk`, `attached_irf_source_id`,
+  `histogram_artifact_id`; membership filters `run_id`, `test_id`, `regime_id`,
+  `dataset_key`, `data_role`, `pair_id`, `realization_index`.
+- IRF sources: `irf_source_id`, `source_key`, `source_kind`,
+  `source_representation`, `derived_from_measurement_id`, `source_artifact_id`.
+- Prepared IRFs: `prepared_irf_id`, `preparation_key`, `irf_source_id`,
+  `preparation_kind`, `time_grid_sha256`, `kernel_sha256`, `source_kind`, `source_key`.
+- Results: `result_id`, `run_id`, `measurement_id`, `model_id`, `assumption_id`,
+  `analysis_key`, `status`, `is_valid`, `point_summary`, `irf_model_relation`,
+  `test_id`, `regime_id`, `dataset_key`, `data_role`, `pair_id`, `run_key`,
+  `measurement_key`, `sample_id`, `condition_pk`, `model_key`, `model_family`,
+  `estimator_name`, `assumption_key`. Context filters work without selecting
+  context columns.
+- Uncertainty: result filters, with point status/validity named `result_status`
+  and `result_is_valid`, plus `uncertainty_id`, `method_id`, `output_kind`,
+  `nominal_coverage`, uncertainty `is_valid`, `calibration_run_id`,
+  `calibration_scope`, `method_config_sha256`, `samples_artifact_id`.
+- Bayesian: result filters with `result_status`/`result_is_valid`, plus
+  `sampling_status`, `diagnostics_accepted`, `ppc_status`, `posterior_artifact_id`,
+  `predictive_artifact_id`.
+- References: `reference_id`, `reference_key`, `reference_kind`,
+  `reference_version`, `measurement_id`, `condition_pk`, `assumption_id`,
+  `supersedes_reference_id`, `source_artifact_id`.
+- Metrics: `metric_id`, `run_id`, `model_id`, `assumption_id`, `condition_pk`,
+  `reference_id`, `source_artifact_id`, `metric_name`, `metric_unit`,
+  `scope_sha256`, `value_status`, `denominator_kind`, `test_id`, `regime_id`,
+  `method_id`, `nominal_coverage`, `reference_kind`, `reference_version`,
+  `signal_photon_count`, `background_per_bin`. `dataset_key`, `population_key`,
+  `reference_semantics`, `method_config_sha256`, `protocol_id`, `protocol_version`
+  and `profile` filter stored named scope fields using SQLite JSON extraction;
+  they do not rebuild scope identity. `reference_id` filters the scalar FK,
+  not membership in the separate `reference_ids` array inside scope JSON.
+
+Default ordering is ascending primary key (measurement ID then membership run
+ID for membership expansion), not scientific chronology. `order_by` accepts only:
+
+| Family | Allowed order names |
+|---|---|
+| Runs | `run_id`, `run_key`, `recorded_at_utc` |
+| Artifacts | `artifact_id`, `artifact_key` |
+| Measurements | `measurement_id`, `measurement_key`, `sample_id`; `membership_run_id` only with expansion |
+| Sources | `irf_source_id`, `source_key` |
+| Prepared IRFs | `prepared_irf_id`, `preparation_key`, `irf_source_id` |
+| Results | `result_id`, `run_id`, `measurement_id`, `model_id`, `assumption_id`, `lifetime_estimate_ns` |
+| Uncertainty | `uncertainty_id`, `result_id`, `method_id`, `nominal_coverage` |
+| Bayesian | `result_id`, `run_id`, `measurement_id` |
+| References | `reference_id`, `reference_key`, `reference_version` |
+| Metrics | `metric_id`, `run_id`, `metric_name`, `test_id`, `regime_id` |
+
+`descending=True` reverses the selected ordering field; ties always use ascending
+grain keys. SQLite's normal NULL ordering applies. No helper silently collapses
+multiple results, uncertainty products, reference versions or metric scopes.
+There is no singular reference chooser and no automatic supersession traversal.
+A reference query's `measurement_id` means the stored measurement FK only; it
+does not discover condition-specific pseudo-true references for that observation.
+
+By default every `_json` column remains raw text. `decode_json=True` decodes all
+non-NULL JSON columns consistently, retaining their column names and nested
+structure. No diagnostics are flattened or interpreted. SQL NULL stays None;
+original NaN/+infinity/-infinity categories remain accessible in non-finite
+metadata. Undefined metrics keep `value_status="undefined"`, a NULL value and
+their stored counts/denominator. No non-finite reconstruction or zero replacement
+occurs. Generating values, assumptions, references and posterior estimates never
+coalesce into a generic truth column; errors, coverage and other metrics are
+not calculated during retrieval.
+
+`query_to_dataframe(result)` lazily imports pandas, which is already a mandatory
+package dependency. Plain queries do not import pandas. The converter uses
+object columns deliberately: Python integers (including nullable IDs above
+`2**53`), real-valued floats, strings, None and raw/decoded JSON survive without
+dtype inference. None remains pandas-missing; rows, ordering and even empty
+result columns are preserved. Callers can explicitly choose numerical dtypes
+for subsequent analysis.
+
+```python
+from tcspc_toolkit import persistence as store
+
+points = store.query_results(
+    database_path, filters={"run_id": run_id, "model_id": model_id},
+    include_context=True, include_fit_details=True,
+)
+frame = store.query_to_dataframe(points)
+references = store.query_references(
+    database_path, filters={"condition_pk": condition_pk, "assumption_id": assumption_id},
+)  # All matching versions, not an automatically selected reference.
+```
+
+## Compatibility boundaries
 
 The first schema supports joins across observations, generating conditions,
 model specifications, assumptions, IRF source/preparation, per-observation
-results, uncertainty outputs and aggregate metrics. Queries must select a
-declared target and reference version. Coverage should report attempted,
-valid and covering denominators separately. Importing numerical modules
+results, uncertainty outputs and aggregate metrics. Scientific evaluations must
+select their target and reference version explicitly. Queries report existing
+denominator/count fields without reconstructing missing counts. Importing numerical modules
 must not import persistence or initialize a database.
 
 Version 1 detects incompatible databases and stops. Migrations, database
 merging, automatic external artifact storage, broad public API exports and
 full dataclass reconstruction are future work. A focused SQLite example will
 be fast and deterministic. Bayesian persistence is verified with deterministic
-result fixtures, without live MCMC or an emcee dependency. SQL/query convenience
-APIs remain outside the implemented recording boundary.
+result fixtures, without live MCMC or an emcee dependency. Full examples/demos,
+arbitrary SQL execution, automatic reference selection and scientific
+reconstruction remain outside Stage 6.

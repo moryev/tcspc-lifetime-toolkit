@@ -5130,3 +5130,425 @@ def record_week9_score_only_scorecard_row(
     return _record_metric_facts(
         connection, scope, n_attempted=attempted, facts=facts, on_duplicate=on_duplicate,
     )
+
+
+# Stage-6 retrieval. SQL identifiers/expressions below are toolkit-owned; callers
+# supply only allowlisted filter/sort names and bound scalar values.
+@dataclass(frozen=True)
+class QueryResult:
+    """Column names and ordered tuple rows, including columns for an empty query.
+
+    SQL NULL stays None. JSON is text unless decoding was explicitly requested.
+    No scientific values, validity decisions or non-finite values are reconstructed.
+    """
+
+    columns: tuple[str, ...]
+    rows: tuple[tuple[Any, ...], ...]
+
+
+def _query_equalities(
+    filters: Mapping[str, Any] | None, allowed: Mapping[str, str],
+) -> tuple[list[str], list[Any]]:
+    if filters is None:
+        return [], []
+    if not isinstance(filters, Mapping):
+        raise TypeError("filters must be a mapping of supported names to scalar values")
+    clauses, values = [], []
+    for name, value in filters.items():
+        if name not in allowed:
+            raise ValueError(f"unsupported query filter: {name!r}; choose from {tuple(allowed)}")
+        if value is None:
+            clauses.append(f"{allowed[name]} IS NULL")
+        else:
+            if not isinstance(value, (str, int, float)) or (
+                isinstance(value, float) and not math.isfinite(value)
+            ):
+                raise TypeError("query filter values must be strings, integers, finite floats or None")
+            clauses.append(f"{allowed[name]} = ?")
+            values.append(value)
+    return clauses, values
+
+
+def _query_read(
+    connection: sqlite3.Connection | str | Path, *, select: str, from_sql: str,
+    filters: Mapping[str, Any] | None, allowed_filters: Mapping[str, str],
+    order_by: str, allowed_order: Mapping[str, str], grain_order: tuple[str, ...],
+    descending: bool, decode_json: bool,
+    extra_where: Sequence[str] = (), extra_values: Sequence[Any] = (),
+) -> QueryResult:
+    if order_by not in allowed_order:
+        raise ValueError(f"unsupported query order: {order_by!r}; choose from {tuple(allowed_order)}")
+    if not isinstance(descending, bool) or not isinstance(decode_json, bool):
+        raise TypeError("descending and decode_json must be bool")
+    clauses, values = _query_equalities(filters, allowed_filters)
+    clauses.extend(extra_where)
+    values.extend(extra_values)
+    selected_order = allowed_order[order_by]
+    ordering = [selected_order + (" DESC" if descending else " ASC")]
+    ordering.extend(column + " ASC" for column in grain_order if column != selected_order)
+    sql = f"SELECT {select} FROM {from_sql}"
+    if clauses:
+        sql += " WHERE " + " AND ".join(clauses)
+    sql += " ORDER BY " + ", ".join(ordering)
+    owned = not isinstance(connection, sqlite3.Connection)
+    db = connect_database(connection, readonly=True) if owned else connection
+    try:
+        cursor = db.cursor()
+        try:
+            # Do not alter the caller's connection-wide factory or transaction.
+            cursor.row_factory = None
+            cursor.execute(sql, values)
+            columns = tuple(item[0] for item in cursor.description)
+            if len(set(columns)) != len(columns):
+                raise PersistenceSchemaError("query has ambiguous duplicate column names")
+            rows = tuple(cursor.fetchall())
+        finally:
+            cursor.close()
+    finally:
+        if owned:
+            db.close()
+    if decode_json:
+        rows = tuple(tuple(
+            json.loads(value) if column.endswith("_json") and value is not None else value
+            for column, value in zip(columns, row)
+        ) for row in rows)
+    return QueryResult(columns, rows)
+
+
+def query_to_dataframe(result: QueryResult) -> Any:
+    """Present a QueryResult without dtype inference or scientific transformations.
+
+    Object columns preserve exact Python integers (including nullable IDs above
+    2**53), None, strings and JSON. Callers may explicitly choose analytical dtypes.
+    Pandas is a package dependency, but is imported only for this conversion.
+    """
+    if not isinstance(result, QueryResult):
+        raise TypeError("result must be a QueryResult")
+    try:
+        import pandas as pd
+    except ImportError as exc:
+        raise ImportError("query_to_dataframe requires the toolkit's pandas dependency") from exc
+    return pd.DataFrame(result.rows, columns=result.columns, dtype=object)
+
+
+def query_runs(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    order_by: str = "run_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per experiment run; exact filters, no joined child populations."""
+    allowed = {name: f"r.{name}" for name in (
+        "run_id", "run_key", "run_type", "status", "origin", "protocol_id",
+        "protocol_version", "profile", "source_run_id",
+    )}
+    return _query_read(
+        connection, select="r.*", from_sql="experiment_runs AS r",
+        filters=filters, allowed_filters=allowed, order_by=order_by,
+        allowed_order={name: f"r.{name}" for name in ("run_id", "run_key", "recorded_at_utc")},
+        grain_order=("r.run_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def query_artifacts(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    order_by: str = "artifact_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per artifact registration; never opens or hashes the external file."""
+    return _query_read(
+        connection, select="a.*", from_sql="artifacts AS a", filters=filters,
+        allowed_filters={name: f"a.{name}" for name in (
+            "artifact_id", "artifact_key", "producing_run_id", "artifact_kind", "format", "sha256",
+        )}, order_by=order_by,
+        allowed_order={name: f"a.{name}" for name in ("artifact_id", "artifact_key")},
+        grain_order=("a.artifact_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+_MEMBERSHIP_QUERY_FILTERS = {name: f"rm.{name}" for name in (
+    "run_id", "test_id", "regime_id", "dataset_key", "data_role", "pair_id", "realization_index",
+)}
+_GENERATING_QUERY_COLUMNS = """
+    c.condition_key, c.condition_id, c.generating_model, c.generating_irf_id,
+    c.mono_lifetime_ns AS generating_mono_lifetime_ns,
+    c.primary_lifetime_ns AS generating_primary_lifetime_ns,
+    c.secondary_lifetime_ns AS generating_secondary_lifetime_ns,
+    c.secondary_detected_fraction AS generating_secondary_detected_fraction,
+    c.signal_photon_count AS generating_signal_photon_count,
+    c.background_per_bin AS generating_background_per_bin,
+    c.true_temporal_shift_ns AS generating_shift_ns,
+    c.true_reconvolution_amplitude AS generating_reconvolution_amplitude,
+    c.expected_counts_sha256 AS generating_expected_counts_sha256,
+    c.expected_counts_artifact_id AS generating_expected_counts_artifact_id,
+    c.generating_parameters_json
+"""
+
+
+def query_measurements(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    include_generating: bool = False, include_membership: bool = False,
+    order_by: str = "measurement_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per measurement, or explicitly one row per measurement/membership.
+
+    Membership filters use one EXISTS row unless include_membership=True. That
+    option expands all matching memberships; unlinked measurements have a NULL
+    membership row when no membership filter excludes them. Generating context
+    is an optional LEFT JOIN, never a reference or inferred truth selection.
+    """
+    allowed = {name: f"m.{name}" for name in (
+        "measurement_id", "measurement_key", "sample_id", "source_type", "data_kind",
+        "origin_run_id", "condition_pk", "attached_irf_source_id", "histogram_artifact_id",
+    )}
+    _query_equalities(filters, {**allowed, **_MEMBERSHIP_QUERY_FILTERS})
+    selected = {} if filters is None else dict(filters)
+    membership = {key: selected.pop(key) for key in tuple(selected) if key in _MEMBERSHIP_QUERY_FILTERS}
+    select, from_sql = "m.*", "measurements AS m"
+    if include_generating:
+        select += ", " + _GENERATING_QUERY_COLUMNS
+        from_sql += " LEFT JOIN simulation_conditions AS c ON c.condition_pk = m.condition_pk"
+    extra_where, extra_values = [], []
+    grain_order = ("m.measurement_id",)
+    ordering = {name: f"m.{name}" for name in ("measurement_id", "measurement_key", "sample_id")}
+    if include_membership:
+        select += """, rm.run_id AS membership_run_id, r.run_key AS membership_run_key,
+            rm.data_role, rm.test_id, rm.regime_id, rm.dataset_key, rm.pair_id,
+            rm.realization_index, rm.membership_json"""
+        from_sql += " LEFT JOIN run_measurements AS rm ON rm.measurement_id = m.measurement_id"
+        from_sql += " LEFT JOIN experiment_runs AS r ON r.run_id = rm.run_id"
+        extra_where, extra_values = _query_equalities(membership, _MEMBERSHIP_QUERY_FILTERS)
+        if membership:
+            extra_where.append("rm.run_id IS NOT NULL")
+        grain_order += ("rm.run_id",)
+        ordering["membership_run_id"] = "rm.run_id"
+    elif membership:
+        clauses, extra_values = _query_equalities(membership, _MEMBERSHIP_QUERY_FILTERS)
+        extra_where = ["EXISTS (SELECT 1 FROM run_measurements AS rm "
+                       "WHERE rm.measurement_id = m.measurement_id AND " + " AND ".join(clauses) + ")"]
+    return _query_read(
+        connection, select=select, from_sql=from_sql, filters=selected, allowed_filters=allowed,
+        order_by=order_by, allowed_order=ordering, grain_order=grain_order,
+        descending=descending, decode_json=decode_json,
+        extra_where=extra_where, extra_values=extra_values,
+    )
+
+
+def query_irf_sources(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    order_by: str = "irf_source_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per original IRF source, including sources with no preparation."""
+    return _query_read(
+        connection, select="s.*", from_sql="irf_sources AS s", filters=filters,
+        allowed_filters={name: f"s.{name}" for name in (
+            "irf_source_id", "source_key", "source_kind", "source_representation",
+            "derived_from_measurement_id", "source_artifact_id",
+        )}, order_by=order_by,
+        allowed_order={name: f"s.{name}" for name in ("irf_source_id", "source_key")},
+        grain_order=("s.irf_source_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def query_prepared_irfs(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    include_source: bool = False, order_by: str = "prepared_irf_id",
+    descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per prepared IRF; optional source context never changes this grain."""
+    select = "p.*"
+    if include_source:
+        select += """, s.source_key, s.source_kind, s.source_representation,
+            s.n_bins AS source_n_bins, s.source_grid_sha256, s.source_values_sha256,
+            s.source_artifact_id, s.derived_from_measurement_id, s.source_parameters_json,
+            s.metadata_json AS source_metadata_json, s.provenance_json AS source_provenance_json"""
+    return _query_read(
+        connection, select=select,
+        from_sql="prepared_irfs AS p LEFT JOIN irf_sources AS s ON s.irf_source_id = p.irf_source_id",
+        filters=filters, allowed_filters={
+            **{name: f"p.{name}" for name in (
+                "prepared_irf_id", "preparation_key", "irf_source_id", "preparation_kind",
+                "time_grid_sha256", "kernel_sha256",
+            )}, "source_kind": "s.source_kind", "source_key": "s.source_key",
+        }, order_by=order_by,
+        allowed_order={name: f"p.{name}" for name in ("prepared_irf_id", "preparation_key", "irf_source_id")},
+        grain_order=("p.prepared_irf_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+_RESULT_QUERY_JOINS = """
+    JOIN measurements AS m ON m.measurement_id = e.measurement_id
+    JOIN experiment_runs AS r ON r.run_id = e.run_id
+    JOIN model_versions AS v ON v.model_id = e.model_id
+    LEFT JOIN model_assumptions AS a ON a.assumption_id = e.assumption_id
+    JOIN run_measurements AS rm ON rm.run_id = e.run_id AND rm.measurement_id = e.measurement_id
+"""
+_RESULT_QUERY_FILTERS = {
+    **{name: f"e.{name}" for name in (
+        "result_id", "run_id", "measurement_id", "model_id", "assumption_id", "analysis_key",
+        "status", "is_valid", "point_summary", "irf_model_relation",
+    )},
+    **{name: f"rm.{name}" for name in ("test_id", "regime_id", "dataset_key", "data_role", "pair_id")},
+    "run_key": "r.run_key", "measurement_key": "m.measurement_key", "sample_id": "m.sample_id",
+    "condition_pk": "m.condition_pk", "model_key": "v.model_key", "model_family": "v.family",
+    "estimator_name": "v.estimator_name", "assumption_key": "a.assumption_key",
+}
+_RESULT_CONTEXT_COLUMNS = """
+    r.run_key, m.measurement_key, m.sample_id, m.data_kind, m.source_type, m.condition_pk,
+    v.model_key, v.estimator_name, v.family AS model_family, v.representation_id, v.prior_policy_id,
+    v.configuration_json AS model_configuration_json, v.configuration_sha256 AS model_configuration_sha256,
+    a.assumption_key, a.source_assumption_id, a.assumed_decay_model, a.observation_model,
+    a.background_convention, a.prepared_irf_id AS assumed_prepared_irf_id, a.context_completeness,
+    a.fixed_temporal_shift_ns AS assumed_fixed_temporal_shift_ns,
+    a.temporal_shift_lower_ns AS assumed_temporal_shift_lower_ns,
+    a.temporal_shift_upper_ns AS assumed_temporal_shift_upper_ns,
+    a.configuration_json AS assumption_configuration_json,
+    rm.data_role, rm.test_id, rm.regime_id, rm.dataset_key, rm.pair_id,
+    rm.realization_index, rm.membership_json
+"""
+_OWNING_RESULT_COLUMNS = """
+    e.run_id, e.measurement_id, e.model_id, e.assumption_id, e.analysis_key,
+    e.point_summary, e.lifetime_estimate_ns, e.status AS result_status, e.is_valid AS result_is_valid,
+    e.irf_model_relation, e.source_result_type,
+    e.failure_reason AS result_failure_reason, e.runtime_seconds AS result_runtime_seconds,
+    e.runtime_scope AS result_runtime_scope, e.random_seed_decimal AS result_random_seed_decimal,
+    e.execution_json AS result_execution_json, e.nonfinite_fields_json AS result_nonfinite_fields_json
+"""
+_FIT_QUERY_FIELDS = (
+    "result_id", "source_success", "optimizer_reported_success", "valid_fit",
+    "numerical_validation_passed", "recovery_attempted", "boundary_hit", "fitted_amplitude",
+    "fitted_background_per_bin", "fitted_temporal_shift_ns", "initial_amplitude",
+    "initial_lifetime_ns", "initial_background_per_bin", "initial_temporal_shift_ns",
+    "poisson_nll", "poisson_deviance", "max_coordinate_descent_nll", "optimizer_status",
+    "optimizer_message", "optimizer_nfev", "optimizer_njev", "optimizer_seconds", "call_seconds",
+    "exception_message", "diagnostics_json", "nonfinite_fields_json",
+)
+
+
+def query_results(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    include_context: bool = False, include_fit_details: bool = False,
+    order_by: str = "result_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One row per estimator result; optional context and fit joins are to-one only.
+
+    No uncertainty/reference expansion or error calculation. Fit columns have a
+    fit_ prefix, including fit_result_id (NULL when no fit extension exists).
+    """
+    select, from_sql = "e.*", "estimator_results AS e " + _RESULT_QUERY_JOINS
+    if include_context:
+        select += ", " + _RESULT_CONTEXT_COLUMNS
+    if include_fit_details:
+        select += ", " + ", ".join(f"f.{name} AS fit_{name}" for name in _FIT_QUERY_FIELDS)
+        from_sql += " LEFT JOIN fit_details AS f ON f.result_id = e.result_id"
+    return _query_read(
+        connection, select=select, from_sql=from_sql, filters=filters,
+        allowed_filters=_RESULT_QUERY_FILTERS, order_by=order_by,
+        allowed_order={name: f"e.{name}" for name in (
+            "result_id", "run_id", "measurement_id", "model_id", "assumption_id", "lifetime_estimate_ns",
+        )}, grain_order=("e.result_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def _query_extension_filters(alias: str, fields: Sequence[str]) -> dict[str, str]:
+    # Extension is_valid/runtime/etc. retain their own meaning; point validity
+    # and status are separate, explicitly named filters.
+    allowed = {key: value for key, value in _RESULT_QUERY_FILTERS.items()
+               if key not in ("status", "is_valid")}
+    allowed.update(result_status="e.status", result_is_valid="e.is_valid")
+    allowed.update({name: f"{alias}.{name}" for name in fields})
+    return allowed
+
+
+def query_uncertainty(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    include_context: bool = False, order_by: str = "uncertainty_id",
+    descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One uncertainty row with its owning point fields; never evaluate coverage."""
+    select = "u.*, " + _OWNING_RESULT_COLUMNS
+    if include_context:
+        select += ", " + _RESULT_CONTEXT_COLUMNS
+    return _query_read(
+        connection, select=select,
+        from_sql="uncertainty_results AS u JOIN estimator_results AS e ON e.result_id = u.result_id "
+                 + _RESULT_QUERY_JOINS,
+        filters=filters, allowed_filters=_query_extension_filters("u", (
+            "uncertainty_id", "method_id", "output_kind", "nominal_coverage", "is_valid",
+            "calibration_run_id", "calibration_scope", "method_config_sha256", "samples_artifact_id",
+        )), order_by=order_by,
+        allowed_order={name: f"u.{name}" for name in ("uncertainty_id", "result_id", "method_id", "nominal_coverage")},
+        grain_order=("u.uncertainty_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def query_bayesian(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    include_context: bool = False, order_by: str = "result_id",
+    descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One Bayesian summary joined to its point; no chain loading or re-diagnosis.
+
+    Parameter-specific diagnostics, credible bounds, configured counts and PPC
+    seed stay in their existing JSON structures; unavailable facts remain NULL.
+    """
+    select = "b.*, " + _OWNING_RESULT_COLUMNS
+    if include_context:
+        select += ", " + _RESULT_CONTEXT_COLUMNS
+    return _query_read(
+        connection, select=select,
+        from_sql="bayesian_summaries AS b JOIN estimator_results AS e ON e.result_id = b.result_id "
+                 + _RESULT_QUERY_JOINS,
+        filters=filters, allowed_filters=_query_extension_filters("b", (
+            "sampling_status", "diagnostics_accepted", "ppc_status", "posterior_artifact_id",
+            "predictive_artifact_id",
+        )), order_by=order_by,
+        allowed_order={"result_id": "b.result_id", "run_id": "e.run_id", "measurement_id": "e.measurement_id"},
+        grain_order=("b.result_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def query_references(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    order_by: str = "reference_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One explicitly scoped lifetime-reference row; return all matching versions.
+
+    measurement_id matches only the stored measurement FK, not a condition-derived
+    lookup. No supersession traversal or implicit choice of an evaluation target.
+    """
+    return _query_read(
+        connection, select="l.*", from_sql="lifetime_references AS l", filters=filters,
+        allowed_filters={name: f"l.{name}" for name in (
+            "reference_id", "reference_key", "reference_kind", "reference_version",
+            "measurement_id", "condition_pk", "assumption_id", "supersedes_reference_id",
+            "source_artifact_id",
+        )}, order_by=order_by,
+        allowed_order={name: f"l.{name}" for name in ("reference_id", "reference_key", "reference_version")},
+        grain_order=("l.reference_id",), descending=descending, decode_json=decode_json,
+    )
+
+
+def query_metrics(
+    connection: sqlite3.Connection | str | Path, *, filters: Mapping[str, Any] | None = None,
+    order_by: str = "metric_id", descending: bool = False, decode_json: bool = False,
+) -> QueryResult:
+    """One stored benchmark fact with its original scope, counts and value status.
+
+    Dataset/population/protocol/method-config filters read named scope JSON fields;
+    they never rebuild the scope/hash. reference_id filters the scalar FK only,
+    not membership in the explicit reference_ids set inside scope_json.
+    """
+    allowed = {name: f"b.{name}" for name in (
+        "metric_id", "run_id", "model_id", "assumption_id", "condition_pk", "reference_id",
+        "source_artifact_id", "metric_name", "metric_unit", "scope_sha256", "value_status",
+        "denominator_kind", "test_id", "regime_id", "method_id", "nominal_coverage",
+        "reference_kind", "reference_version", "signal_photon_count", "background_per_bin",
+    )}
+    allowed.update({name: f"json_extract(b.scope_json, '$.{name}')" for name in (
+        "dataset_key", "population_key", "reference_semantics", "method_config_sha256",
+        "protocol_id", "protocol_version", "profile",
+    )})
+    return _query_read(
+        connection, select="b.*", from_sql="benchmark_metrics AS b", filters=filters,
+        allowed_filters=allowed, order_by=order_by,
+        allowed_order={name: f"b.{name}" for name in ("metric_id", "run_id", "metric_name", "test_id", "regime_id")},
+        grain_order=("b.metric_id",), descending=descending, decode_json=decode_json,
+    )
