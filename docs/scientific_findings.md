@@ -1586,9 +1586,8 @@ prior robustness, formal convergence, or physical validity. The controlled
 2/4 ns mixtures and specified EMG/Gaussian mismatch do not represent every
 experimental model error, and measured runtimes depend on hardware and
 configuration. PPC sensitivity depends on mismatch magnitude and the chosen
-discrepancy; weak mismatch remains difficult to identify. Issue #4 remains
-open pending final documentation/API consistency and regression/closure
-review. The completed
+discrepancy; weak mismatch remains difficult to identify. Issue #4 is complete
+and closed. The completed
 [Bayesian notebook](../notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
 demonstrates the library workflow and these audited findings without rerunning
 the multi-hour scientific profiles.

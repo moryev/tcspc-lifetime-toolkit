@@ -22,6 +22,13 @@ decay-model and IRF-model mismatch evaluation. These integrations are present
 on the current development branch while the package version remains 0.7.0
 pending the later API, package-architecture, and release-stabilization stages.
 
+SQLite-backed persistence now records measurements, IRF provenance, estimator
+results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
+query/DataFrame helpers. See the [persistence contract](docs/persistence.md) and
+the [small end-to-end roundtrip example](examples/persistence_roundtrip.py)
+for structured read-only retrieval, direct parameterized SQL aggregation and
+DataFrame conversion (deterministic Bayesian fixtures; no MCMC required).
+
 ## Scientific motivation
 
 Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
@@ -561,7 +568,7 @@ establish physical-model correctness. The verified findings, including the
 corrected deterministic reference analysis, are in
 [`docs/scientific_findings.md`](docs/scientific_findings.md#post-week-9--issue-4-bayesian-poisson-inference-and-model-conditional-uncertainty).
 [Notebook 17](notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
-demonstrates the complete workflow; Issue-#4 closure review remains pending.
+demonstrates the complete workflow; Issue #4 is complete and closed.
 
 ## Current implementation status
 
@@ -591,7 +598,7 @@ The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
 measurements. Post-release integration adds the Issue-#6 single-curve import
 boundary, Issue-#8 generalized IRF/proxy workflows, and Issue-#4 Bayesian
 inference with completed calibration and mismatch experiments. The final
-Bayesian notebook is available; Issue-#4 closure review is pending.
+Bayesian notebook is available; Issue #4 is complete and closed.
 Synthetic-to-real validation, broader inverse decay models, and package/API
 hardening remain future development stages.
 
@@ -1374,9 +1381,10 @@ The planned integration and release path is:
    Notebook 17 implemented, final acceptance review completed, and issue closed;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
-   uncertainty outputs, Bayesian summaries, and benchmark metrics;
+   uncertainty outputs, Bayesian summaries, and benchmark metrics — implemented;
+   final merge and issue closure pending;
 5. [Issue #1](https://github.com/moryev/tcspc-lifetime-toolkit/issues/1) —
-   standardization of array input type annotations;
+   standardization of array input type annotations — next after Issue #9, not started;
 6. [Issue #2](https://github.com/moryev/tcspc-lifetime-toolkit/issues/2) —
    public-API stabilization and package hardening;
 7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —

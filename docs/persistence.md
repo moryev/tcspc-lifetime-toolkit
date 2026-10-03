@@ -1,0 +1,1058 @@
+# SQLite persistence contract (Issue #9, schema v1)
+
+The persistence module is an optional boundary around scientific results.
+Stage 1 provides schema v1, validated connections, transactions and canonical
+hashing. Stage 2 records scientific identities and provenance. Stage 3 records
+classical point fits and ML/baseline predictions. Stage 4 records per-observation
+uncertainty and aggregate benchmark metrics. Stage 5 records Bayesian point
+results with posterior, sampler and posterior-predictive summaries.
+Stage 6 retrieves these stored facts through read-only queries and an explicit
+DataFrame conversion, without scientific recomputation.
+
+## Scientific entities
+
+The database has sixteen tables, each with a specific role:
+
+| Table | Meaning |
+|---|---|
+| schema_metadata | Singleton schema and serialization versions plus DDL fingerprint |
+| experiment_runs | One recorded workflow, its producing-version evidence and protocol |
+| artifacts | References and byte hashes for external files |
+| irf_sources | Original IRF trace, source kind, parameters and provenance |
+| prepared_irfs | Derived or supplied kernel and explicit preparation history |
+| simulation_conditions | Generating physics, separate from any observation |
+| measurements | One observed histogram and its declared data kind |
+| run_measurements | Membership and train/calibration/test role of an observation |
+| model_versions | Reusable estimator/model specification and optional training artifact |
+| model_assumptions | Assumed physical decay, observation model and fixed IRF kernel |
+| lifetime_references | Trusted experimental references or prior-free pseudo-true projections |
+| estimator_results | Shared per-observation point-result and execution identity |
+| fit_details | Classical parameters, optimizer and numerical validation |
+| uncertainty_results | Intervals, scores, covariance summaries and their validity |
+| bayesian_summaries | Posterior, sampler and predictive summaries |
+| benchmark_metrics | Aggregate metric facts with explicit grouping and denominators |
+
+model_versions describes a reusable specification. Classical reconvolution
+and Bayesian inference need no trained-model artifact. A trained artifact,
+representation artifact or training run may be linked for an ML model. Each
+actual observation-level execution belongs in estimator_results and may link
+to classical, uncertainty and Bayesian detail records.
+
+A synthetic observation may link to simulation_conditions. That table holds
+finite-window signal photon budget, detector background per bin, generating
+decay components and generating IRF. It never serves as a measurement's
+intrinsic truth field. Experimental measurements have no generating-condition
+link. Trusted experimental references and pseudo-true likelihood projections
+have distinct lifetime_references kinds and foreign-key scopes. Corrected
+pseudo-true references receive new versions; historical reference rows remain.
+A bi-exponential generating condition has no unique mono-exponential physical
+truth. A recorded bi-exponential condition must have both positive component
+lifetimes and a secondary detected fraction strictly between zero and one;
+missing component truth is not a complete generating condition. The Stage-6.5
+projection remains prior-free and model-conditional.
+
+irf_sources records source identity; prepared_irfs records registration,
+resampling, normalization and kernel identity. The measurement's attached IRF
+is a separate relationship from the generating IRF and the IRF assumed by an
+estimator. An imported sampled source is not automatically an independently
+measured physical IRF. IRF model relation is declared on each result, since
+the same assumption can be matched for one observation and misspecified for
+another. The Stage-3 adapter records this relation only when the caller
+declares it; equal kernels do not establish a match. Neither a valid kernel
+nor good sampling diagnostics establishes
+physical model correctness.
+The bare_array source representation and supplied_kernel preparation kind
+make incomplete historical kernel-only evidence explicit; neither assigns a
+measured or generating source kind that the record does not establish.
+
+Raw counts and processed intensity have different measurement data kinds.
+Only raw counts have observed_total_counts. Persistence does not apply a
+Poisson method to processed values. Generating photon budget, observed total
+counts, fitted reconvolution amplitude and background per bin use different
+columns and units. Time and lifetime columns are nanoseconds; stored runtimes
+are seconds and retain a named measurement scope.
+Counts and cardinalities such as bin counts, photon budgets, observed totals,
+artifact byte sizes, realization indices, optimizer evaluations, resamples,
+Bayesian steps/draws and benchmark denominators must have SQLite integer
+storage after affinity conversion. Nullable count fields accept NULL where
+their scientific row contract permits it. Continuous background, amplitude,
+fraction, probability, coverage, lifetime and runtime fields remain real-valued.
+
+Complete Poisson reconvolution assumptions require a prepared IRF and exactly
+one explicit temporal-shift mode: a fixed shift with no bounds, or a lower and
+upper bound with no fixed shift and lower < upper. Historical contexts marked
+`historical_incomplete` may retain missing or partial shift evidence.
+
+No array, posterior chain, fitted curve, residual profile, model binary or
+fitted PCA object is stored as a SQLite BLOB by default. Their rows may link
+to external artifacts with path, path base, format, byte hash and locator
+metadata. A path alone does not guarantee the file is still available.
+
+## Identity and provenance
+
+Integer primary keys are local database handles. Stable external keys identify
+runs, observations, source/prepared IRFs, generating conditions, model
+specifications, assumptions and references. Existing sample_id,
+condition_id, pair_id, test/regime IDs, prior_policy_id, estimator names and
+method IDs remain scoped scientific labels. A result is unique for its run,
+measurement, model, nullable assumption and analysis_key. The uniqueness index
+normalizes a NULL assumption for this purpose. Hashes validate content; they
+do not silently deduplicate distinct observations.
+
+Every new run must declare origin=new, version_state=known and its actual,
+nonempty producing_package_version. A released installed package can be
+recorded without a Git checkout or source digest; producing_code_revision and
+producing_git_commit are optional, but should be recorded when genuinely
+available. For editable or otherwise mutable source, the run adapter requires
+an actual Git revision or source digest when `editable_source=True` to distinguish code
+states that share a package version. It must not substitute the current
+importing checkout when importing historical results. Optional revision and
+Git fields, when supplied, must be nonblank. Here version_state=known means
+the producing package version is known; it does not claim a Git revision exists.
+For genuinely incomplete historical evidence only, origin=historical and
+version_state=unknown are allowed with an explicit reason; package, code and
+Git version fields must then be NULL. Historical runs
+with known producing versions must provide them. The schema enforces these
+states; callers must supply truthful producing evidence. Full configuration
+and dependency version snapshots remain
+separate from these version fields.
+
+Issue-4 derives four named, independent random streams from unsigned 64-bit
+SHA-256 prefixes. A SQLite INTEGER can store only signed 64-bit values.
+The exact nonnegative seed is therefore stored as canonical decimal TEXT
+without a leading plus sign or leading zeros, except for "0". This applies
+to run, observation, result and uncertainty seed columns. Stream names and
+derivation policy remain in run/execution provenance.
+
+Scientific rows are immutable through the recording adapters. Insert is the
+default. An explicit `on_duplicate="reuse_identical"` accepts an identical existing
+record; a conflicting payload must raise. No silent replacement or default
+upsert is planned. Scientific failures are records: fit validity, optimizer
+success, numerical validation, interval validity, sampling status and
+diagnostic acceptance remain separate fields.
+For a shared estimator result, `is_valid=1` requires `status='available'` and a
+non-NULL numeric lifetime estimate. It does not require a positive estimate:
+finite zero or negative ML predictions remain valid outputs under the current
+ML evaluation contract. Estimator-specific physical constraints belong at the
+scientific adapter boundary. Invalid results may retain a finite estimate.
+
+## Canonical array hashes
+
+All new array fingerprints use SHA-256 over the canonical byte sequence of a
+nonempty, one-dimensional numerical array. Hashes do not depend on native
+byte order, array strides, memory order or an incidental narrower dtype.
+Shape is separately stored as n_bins (including IRF sources) or grid metadata.
+A caller must also compare the array's scientific role and grid; a digest by
+itself is not an IRF or observation identity.
+
+The private helpers in persistence.py define these byte representations:
+
+| Array role | Canonical bytes and validation |
+|---|---|
+| Time grid in ns | C-contiguous little-endian IEEE-754 binary64 (<f8); finite, strictly increasing |
+| Raw histogram counts | C-contiguous little-endian signed 64-bit integers (<i8); nonnegative, exactly integral, within int64 range |
+| Continuous/processed histogram values | C-contiguous <f8; finite, negative values permitted |
+| IRF source samples | C-contiguous <f8; finite and nonnegative; source time grid is hashed separately as a time grid |
+| Prepared IRF kernel | C-contiguous <f8; finite and nonnegative; target time grid is hashed separately |
+
+For new floating-array hashes, both signed-zero encodings become positive
+zero before hashing. Values that are exactly equal after conversion to
+binary64 hash identically. A float32 approximation of a nonrepresentable
+decimal and a distinct float64 approximation are not numerically equal at
+binary64 precision and need not share a digest. No rounding, smoothing,
+resampling, clipping or unit conversion happens inside the hash helpers.
+The caller converts physical time units to nanoseconds before hashing.
+NaN and infinities are rejected for these source arrays.
+
+Integer count arrays of different signed integer widths or byte order hash
+identically if their values agree. Floating count inputs are accepted only
+when every value is an exact integer below 2**53, matching
+TCSPCMeasurement's raw-count boundary. Values exceeding signed int64 or
+fractional counts are rejected. No conversion to floating point precedes
+raw-count hashing.
+
+Frozen Issue-4 fingerprints used SHA-256 directly on contiguous little-endian
+<i8 observed counts and <f8 expected counts, time grids and IRF kernels.
+The raw-count helper retains exactly that rule. A separate legacy float
+helper retains the original <f8 byte rule, including any historical
+signed-zero bits, for comparison with already saved Issue-4 fingerprints.
+Never rewrite a frozen hash with the new signed-zero-normalized hash or
+replace historical files to make a hash match. Store a legacy fingerprint in
+explicit provenance alongside a new canonical fingerprint when both are
+needed. The existing Stage-5/6 files and Stage-6.5 correction remain frozen.
+
+An artifact's sha256 is the hash of the whole external file, not the hash of
+an in-memory array extracted from it. These hashes have different meanings.
+
+## Scalar and JSON serialization
+
+Frequently grouped or filtered quantities have relational columns: lifetime,
+photon budget, background, test/regime, estimator and prior policy identity,
+IRF source kind, status, uncertainty method, nominal level and failure
+denominators. benchmark_metrics is a metric fact table with those explicit
+dimensions; it is not a general entity-attribute-value database.
+
+Flexible configuration, provenance and small auxiliary diagnostics use
+canonical JSON: sorted string keys, UTF-8, compact separators and no JSON
+NaN/Infinity tokens. Stage-2 adapters convert supported dataclasses, enums,
+tuples, mappings and NumPy scalars. They reject unsupported objects
+and unapproved arrays instead of stringifying or pickling them. Configuration
+hashes are SHA-256 of those canonical UTF-8 JSON bytes, with the documented
+serialization version.
+
+For result scalar fields, Python None maps to SQL NULL. A known source NaN
+or infinity maps to NULL and is named in nonfinite_fields_json so it remains
+distinguishable from None. Finite values from rejected or invalid results are
+retained. Required identity/configuration values reject nonfinite inputs.
+SQLite CHECK constraints enforce structural relationships and ordinary range
+rules; Stage-3 result adapters enforce finite scientific scalars and
+cross-table type consistency. pandas may display SQL NULL as NaN.
+
+## Connection and transaction behavior
+
+initialize_database(path) creates or validates the entire schema-v1 state.
+For an in-memory database, pass an existing sqlite3.Connection to
+initialize_database(connection) and keep it open. The function refuses an
+unrelated or incomplete database and does not perform migrations.
+Successful initialization sets both the singleton metadata row and SQLite
+user_version=1. It checks each toolkit-owned table, named index, metadata
+entry and DDL fingerprint. Additional user tables, views and non-unique query
+indexes are allowed and excluded from the v1 fingerprint. A user-created
+UNIQUE index on a toolkit table is rejected because it adds a write constraint.
+Any trigger defined on a toolkit table is rejected because it can change
+persistence behavior; triggers on user tables or views are allowed. Missing or
+altered toolkit-owned objects still make the database incompatible.
+Reopening a compatible database does not rewrite it.
+The four constraint corrections in this document amend the unreleased schema
+v1 definition. They are not a migration or schema v2: a database made from the
+earlier provisional Stage-1 v1 DDL has a different toolkit definition and must
+be recreated before use with this version.
+
+Schema creation runs in a transaction. On a DDL, metadata or validation
+failure, no partially initialized schema is committed. SQLite may already
+have created an empty file for a path-based attempt; atomic schema state
+does not promise filesystem-level removal of that file.
+
+connect_database(path, readonly=False) opens only an existing compatible
+database, using SQLite mode=rw or mode=ro, and never creates one. A read-only
+connection also sets query_only. Every connection enables and verifies
+PRAGMA foreign_keys=ON before transaction work. Connections have a
+five-second lock timeout and autocommit at the SQLite level, leaving the
+explicit transaction helper in charge of write units.
+
+transaction(connection) uses BEGIN IMMEDIATE and commits at the top level.
+Within an active transaction, it creates a uniquely named SAVEPOINT;
+failure rolls back only that savepoint before propagating the exception.
+Commit failure rolls back the top-level transaction. Callers close their
+connections. It is an error to pass a connection already in a transaction
+to initialize_database, since foreign-key activation must happen first.
+
+No transaction encloses numerical fitting, training or sampling. Recording
+multi-row adapters use the transaction/savepoint helper for short, atomic inserts.
+Parameterized SQL will bind all user-supplied values. Scientific failures
+are valid data; SQL and serialization errors cause rollback.
+
+## Stage-2 recording boundary
+
+Stage 2 exposes narrowly named record functions in `tcspc_toolkit.persistence`:
+`record_run`, `record_artifact`, `record_simulation_condition`,
+`record_issue4_condition`, `record_measurement`, `record_synthetic_observation`,
+`record_benchmark_observation`, `link_run_measurement`, `record_irf_source`,
+`record_legacy_irf_source`, `record_prepared_irf`, `record_supplied_kernel`,
+`record_model_version`, `record_model_assumption`,
+`record_trusted_lifetime_reference`, `record_pseudo_true_reference` and
+`record_issue4_pseudo_true_reference`.
+`bayesian_model_configuration` serializes reusable prior/sampler settings
+without the per-observation random seed. These functions return local SQLite
+IDs, not reconstructed scientific objects. They do not alter numerical modules.
+
+Stable keys (`run_key`, `measurement_key`, source/preparation/condition/model/
+assumption/reference keys and `artifact_key`) are explicit, caller-supplied
+identities. A key should include a stable project/dataset/session namespace
+when local labels can collide. `sample_id`, `condition_id`, `pair_id`,
+`test_id`, `prior_policy_id` and estimator names are scoped descriptive labels,
+not globally unique keys. In particular, an observation keeps one
+`measurement_key` across later estimator, IRF-assumption, prior and uncertainty
+analyses. Independent Poisson realizations need distinct measurement keys even
+when their condition and local `sample_id` agree. No key is inferred from a
+histogram hash, local label or hidden counter, and no retry suffix is invented.
+
+`record_run` takes the producing package version explicitly. Git or code
+revision is optional for a released package without `.git`; mutable editable
+source requires an actual revision when declared. Genuinely unknown historical
+producers require an explicit reason and retain NULL version fields. The
+adapter never substitutes the importing checkout's version. Configurations
+are canonical JSON with SHA-256 of the UTF-8 bytes; unsigned seeds remain
+canonical decimal TEXT, including values above SQLite's signed int64 range.
+
+`record_artifact` registers an external path, format/kind, file-byte SHA-256,
+optional byte size and small locator metadata (for example shape/dtype). If
+the byte hash is omitted, the function reads the existing file to compute it;
+it never copies or embeds the file. A relative `database_directory` path is
+resolved against the database file's directory; in-memory databases require
+absolute artifact paths. An explicit byte hash can document an unavailable
+historical file. File-byte, array-content and configuration hashes are
+different evidence.
+
+`record_simulation_condition` accepts explicit mono-, bi- or other generating
+physics, including photon budget, background, shift and generating prepared
+IRF. `record_issue4_condition` consumes the existing matched/mismatch Issue-4
+condition objects after verifying the linked source and full prepared-IRF
+identity, not merely an equal generating kernel. Additional
+generating parameters remain in canonical JSON. No generating lifetime is
+read from a measurement's metadata or its `sample_id`; a synthetic observation
+may have no condition. Bi-exponential components stay in
+`simulation_conditions`, never as a fabricated mono-exponential truth.
+
+`record_measurement` consumes `TCSPCMeasurement`; the two synthetic observation
+functions consume explicit arrays or one documented raw row from
+`BenchmarkMeasurements`/`GeneralizationTestMeasurements`. They do not infer
+raw counts from `BenchmarkDataset`, whose histograms may be processed. Raw
+counts pass the scientific count guard, retain the unmodified histogram hash
+and get an observed total. Processed intensity may contain fractional or
+negative values, has a distinct hash role and has no observed photon total.
+Full time/histogram arrays remain external. An experimental observation cannot
+acquire a generating condition. `link_run_measurement` stores the caller's
+data role and local test/regime/pair/dataset labels without rewriting their
+training, calibration, frozen-evaluation or demo meaning.
+
+`record_irf_source` accepts `SampledIRF`, `IRFProfile` and successful
+`LeadingEdgeIRFResult`. Imported sampled, synthetic Gaussian/EMG and
+leading-edge proxy sources keep distinct source kinds; a failed proxy does
+not create a source. An estimated proxy requires the measurement from which
+it was derived. A bare legacy array can be recorded only as an explicitly
+unknown source kind. `record_prepared_irf` consumes `PreparedIRF`, preserves
+its diagnostic and operation history, and can atomically register its source
+when given a source key. One source may have multiple preparations on distinct
+target grids. `record_supplied_kernel` is the explicit incomplete-provenance
+path for a historical unit-area kernel. Generating IRF (`simulation_conditions`),
+measurement-attached IRF (`measurements`) and inference-assumed prepared IRF
+(`model_assumptions`) are independent relationships. Registration/resampling
+is not a fitted temporal shift. Deliberate IRF misspecification is the relation
+between generating/attached and assumed IRFs, not a fabricated source kind;
+per-result relation labels are recorded by the Stage-3 result adapters.
+When an existing IRF ID is supplied or an IRF key is reused, matching grid and
+sample hashes are necessary but not sufficient. The adapter also checks source
+kind, parameters, metadata and provenance, or the linked source and available
+preparation operations/diagnostics, respectively. The equivalent
+`SampledIRF`-to-imported-`IRFProfile` representation conversion remains valid;
+missing estimation-result-only diagnostics are not fabricated from a source
+profile.
+
+`record_model_version` registers a reusable classical, baseline, ML or
+Bayesian estimator specification. ML may link a training run and external
+trained/representation artifacts; classical and Bayesian specifications need
+no such artifacts. Prior policy labels alone are insufficient: Bayesian
+configuration should contain the actual prior and reusable sampler settings.
+At the `record_model_version` boundary, the direct Bayesian
+`sampler.random_seed` field (or the seed of a directly supplied
+`BayesianSamplingConfig`) is removed before configuration hashing and storage.
+That recognized sampling seed identifies an execution, not reusable
+prior/sampler policy. Other sampler settings remain, as do seed-named fields
+at unknown or nested paths; they are not silently classified as execution
+seeds. ML training seeds remain part of ML model configuration and may
+identify distinct trained reusable models.
+`record_model_assumption` records physical decay/observation/background and
+shift policy with the assumed prepared IRF separately. Complete Poisson
+reconvolution contexts require one fixed or bounded shift mode; incomplete
+historical contexts may lack evidence. If given a Bayesian prior object, the
+adapter checks a matching fixed shift or Bayesian bounded-prior support within
+the physical assumption's bounds. A narrower prior remains distinct from the
+physical shift range; prior identity is not physical IRF provenance.
+
+`record_trusted_lifetime_reference` requires an experimental measurement and
+cannot create synthetic truth. `record_pseudo_true_reference` requires a
+generating condition and mono-exponential Poisson model assumption; it stores
+a prior-free model-conditional projection and optional diagnostics. Corrections
+use a new stable key/version and may point to the same-scope prior reference
+with `supersedes_reference_id`; the older row is not overwritten. The Issue-4
+wrapper accepts `PseudoTrueReference`, verifies its local condition/assumption
+labels against the linked rows, and retains its numerical audit in validation
+JSON; non-finite optional diagnostics become JSON null with named fields. Ordinary
+known mono truth and bi-exponential component lifetimes remain in generating
+conditions. Every Stage-2 duplicate key raises by default; identical reuse
+compares the complete normalized payload, including parsed canonical JSON.
+Changed content under a stable key raises rather than upserts.
+When a pseudo-true projection provides a temporal shift, a complete fixed-shift
+assumption requires agreement within `math.isclose` tolerances (`rtol=1e-7`,
+`atol=1e-12` ns); a complete bounded/free-shift assumption requires an inclusive
+in-bounds value. Explicitly incomplete historical assumptions do not invent a
+missing shift policy. This check also applies to the direct Issue-4 wrapper and
+precedes duplicate reuse; the projection shift is not generating truth.
+
+## Stage-3 point-result boundary
+
+One `estimator_results` row identifies one point analysis by
+`(run_id, measurement_id, model_id, assumption_id or NULL, analysis_key)`.
+The schema's `COALESCE(assumption_id, 0)` uniqueness index makes the NULL case
+unique too. The run must already contain the measurement in `run_measurements`.
+The model ID names a reusable specification, not a fitted observation; the
+analysis key distinguishes intentional repeat analyses, not automatic retries.
+Neither local `sample_id`, truth/reference lifetime, DataFrame index nor fitted
+curve determines this identity. An IRF relation is `unspecified`, `matched` or
+`deliberately_misspecified`; a non-unspecified relation requires an explicit
+assumption. Proxy/estimated is an IRF source kind, not a fourth relation value.
+
+`record_reconvolution_fit` accepts `ReconvolutionFitResult` or
+`ReconvolutionCurveResult`, requires a classical model specification with an
+explicit `configuration_json["objective"]` of `poisson` or `least_squares` and an
+explicit mono-exponential physical assumption, and atomically writes the point
+row plus one `fit_details` extension. The point summary is
+`fitted_lifetime_ns`. The lower
+result's `success` supplies its overall valid/source-success state; its
+optimizer-reported success and numerical validation remain separate. The
+curve result supplies `valid_fit`, optimizer success, boundary and recovery
+flags, starting/fitted parameters, Poisson NLL/deviance and failure/exception
+details. An invalid fit may retain a finite lifetime and diagnostics with
+`status='failed'` and `is_valid=0`. Unavailable lower-level initial guesses,
+Poisson metrics, boundary assessment and runtime stay NULL rather than being
+recomputed. Valid classical fits must retain finite physical fitted parameters
+and a positive lifetime, consistent with their source fit contract. The fitted
+curve is not stored as a BLOB.
+
+The optimization objective belongs to the reusable `model_versions`
+configuration; `model_assumptions` separately records the physical observation
+and forward-model assumptions. An explicit `poisson_reconvolution` or
+`least_squares_reconvolution` observation model must agree with the model
+objective. A Poisson objective requires a raw-count measurement; least squares
+accepts raw counts or processed intensity. Complete reconvolution assumptions
+require a prepared IRF. When an assumption links one, its prepared **target**
+grid must match the measurement's bin count, canonical time-grid hash, start,
+and step; the IRF source may have a different original grid. A valid classical
+fit's temporal shift must agree with a complete fixed-shift assumption within
+`math.isclose(rtol=1e-7, atol=1e-12 ns)` or lie within inclusive bounded-shift
+limits. Failed fits retain their diagnostic shift even when outside those
+limits. Explicitly incomplete historical assumptions do not supply a missing
+shift policy. These context checks precede duplicate reuse.
+
+The curve result's `runtime_ms` is converted to seconds with scope
+`curve_fit_phase_after_initialization`: the source timer begins after initial
+guess construction and includes more than just optimizer work. It is neither
+an exact optimizer-only time nor a whole-call time, so `optimizer_seconds` and
+`call_seconds` remain NULL. The lower result carries no runtime. Benchmark-wide
+timing is not divided among observations. Classical and batch prediction rows
+have no invented execution seed.
+
+`record_regression_predictions` accepts `RegressionBenchmarkResult` plus an
+explicit ordered `measurement_ids` sequence and a matching ML or baseline
+model specification. `record_baseline_predictions` accepts the actual
+constant-mean or mean-arrival prediction array with its named baseline model.
+Both create only `estimator_results` rows, with summary
+`predicted_lifetime_ns` and zero-based `prediction_index` in each row's
+execution JSON. The ordered sequence must match prediction count, contain no
+duplicate measurement ID, and refer to existing run memberships; unordered
+containers such as sets are rejected. No DataFrame-index, `sample_id`, truth or
+representation inference occurs. Representation identity comes from
+`model_versions`. Aggregate errors, relative errors
+and benchmark metrics are not copied into point rows. Official benchmark and
+baseline outputs require finite predictions, but zero and negative finite
+predictions remain valid under current ML evaluation semantics. Batch rows
+have no invented per-sample runtime or seed.
+
+`record_scalar_prediction` is the explicit already-fitted single-output path
+for an ML or baseline model, including experimental measurements without
+generating truth. Its caller supplies the source type, status/validity, and
+any genuinely measured runtime scope or execution seed. A valid generic point
+requires an available finite estimate, but not positivity; an invalid row may
+retain a finite estimate or record a nonfinite one as NULL. Source NaN,
+positive infinity and negative infinity in result scalars become SQL NULL
+with `"nan"`, `"+inf"` and `"-inf"` entries, respectively, in the owning row's
+`nonfinite_fields_json`. A missing source value is NULL without such an entry.
+
+All Stage-3 writes use the Stage-2 duplicate spelling: default
+`on_duplicate="raise"`; `reuse_identical` compares the complete normalized
+persisted payload. Classical reuse checks both the point row and its required
+`fit_details` row. A conflict or failure at any point in a batch or composed
+classical write rolls back that write unit, including within an outer
+savepoint. No row is silently updated or suffixed.
+
+## Stage-4 uncertainty and aggregate evaluation
+
+`uncertainty_results` attaches **one output to one existing**
+`estimator_results.result_id`. It is not a measurement, run, truth, or model
+property. One point result can carry multiple methods or configurations.
+`record_prediction_intervals` consumes the repository's ordered
+`PredictionIntervalResult`, a matching `UncertaintyMethodDefinition`, method
+configuration and an explicit, same-length ordered `result_ids` sequence.
+It stores one `prediction_interval` row per point. The q05/q50/q95 convenience
+adapter `record_quantile_intervals` uses the current quantile method and
+preserves lower, central and upper roles: the central prediction must match the
+existing Stage-3 point row, and no second median point is created. Quantile
+crossing is diagnosed without sorting bounds. A finite median-order crossing
+with ordered outer bounds retains the source interval-valid state; crossed
+outer bounds remain invalid. Current classical
+covariance- or bootstrap-derived `PredictionIntervalResult` arrays can use the
+same ordered interval adapter with their registered method definition and
+their classical point IDs. Truth is not needed to store any interval.
+
+`record_conformal_intervals` is the current conformalized-quantile path. It
+requires the genuinely separate calibration run ID and records its finite
+correction and calibration-score count. The calibration run is not inferred
+from test labels. Ordinary quantile, RF spread, local covariance and ordinary
+bootstrap rows have no calibration run. Method configuration is canonical JSON
+and SHA-256; it contains procedure settings such as quantile levels, interval
+kind, coverage, calibration policy, spread definition, covariance policy and
+bootstrap replicate count as applicable. A conformalized method also includes
+its calibration identity. An execution-specific bootstrap seed stays in
+`random_seed_decimal`, not method configuration. Unknown seed-like configuration
+keys are not silently stripped. Equal JSON content in a different key order
+has the same identity.
+
+`record_uncertainty_scores` writes `uncertainty_score` rows for current RF
+per-tree and ML training-bootstrap spread. They have a nonnegative score, not
+an interval, nominal coverage or standard-error claim. Member count is kept
+in method configuration when known. The typed score adapter fixes RF tree
+spread to population standard deviation (`ddof=0`) and ML training-bootstrap
+spread to sample standard deviation (`ddof=1`); contradictory caller settings
+are rejected before duplicate reuse. `record_classical_covariance_uncertainty`
+writes a `covariance_summary` row for a single Poisson/Fisher local result:
+lifetime standard deviation is relational, while its small parameter matrix,
+condition/rank/boundary diagnostics stay JSON. Classical covariance,
+bootstrap and their interval arrays require a linked raw-count Poisson fit.
+`record_parametric_bootstrap_uncertainty`
+writes **one** `prediction_interval` row containing both percentile bounds and
+bootstrap lifetime standard deviation/median, requested/valid refits, failure
+rate, seed and optional external sample artifact. It does not create a second
+score row or store replicate arrays as a BLOB. These methods remain distinct
+from empirical variability across independently repeated measurements.
+
+Valid intervals require finite ordered bounds (`lower == upper` is allowed),
+and coverage strictly between zero and one. Failed/invalid intervals may keep
+finite crossed bounds; they are never repaired. Failed covariance and
+bootstrap summaries may keep partial diagnostics and zero valid refits.
+Non-finite source scalars become SQL NULL plus `nan`, `+inf` or `-inf` in
+`nonfinite_fields_json`, not fabricated zeros. Explicit `result_ids` are the
+only batch alignment; sets, mismatched lengths, duplicate IDs, DataFrame
+indices and local sample IDs are not accepted as positional mappings.
+
+`benchmark_metrics` is a separate aggregate fact table: one named metric,
+value/status, complete scope and source denominator per row. Public adapters
+map current `IntervalEvaluationMetrics`, `QuantileIntervalEvaluationMetrics`,
+`UncertaintyScoreMetrics`, `SelectivePredictionMetrics`,
+`RepeatedPoissonUncertaintyResult`, `RegressionMetrics`, `RobustnessMetrics`
+and `ReconvolutionBenchmarkSummary` into facts. Their public names are
+`record_interval_metrics`, `record_quantile_interval_metrics`,
+`record_uncertainty_score_metrics`, `record_selective_prediction_metrics`,
+`record_repeated_poisson_metrics`, `record_regression_metrics`,
+`record_robustness_metrics` and `record_reconvolution_benchmark_metrics`.
+The frozen Week-9 ML A–F interval and score-only DataFrame rows also have
+`record_week9_interval_scorecard_row` and
+`record_week9_score_only_scorecard_row` adapters. These require the missing
+attempted/valid counts explicitly; they verify row method, test, reference
+and nominal coverage against the caller's scope, not against hard-coded A–F
+definitions. The supported ML interval rows calculate median MAE as an
+unmasked mean over all attempted predictions. Its metric row therefore uses
+`attempted_observations` as denominator, retains the caller's finite-prediction
+count as `n_valid`, and records all attempts as `n_contributing`. A non-finite
+prediction can make that MAE undefined while a subset of intervals remains
+valid. Valid intervals cannot exceed finite predictions, and a finite ML MAE
+requires all attempted predictions to be finite. Counts are never recovered
+from rounded failure or coverage rates.
+
+The scope is a `BenchmarkMetricScope` supplied by the caller; it includes the
+run/protocol/profile, exact population and dataset keys, optional stored
+measurement membership, Test A–F or condition/regime labels, model and
+assumption, method plus canonical configuration and coverage, and reference
+kind/version/semantics. A local A–F label is not a global population ID.
+Stored measurement IDs, if supplied, must belong to the run and agree with
+declared dataset/test/regime/condition; external evaluations instead supply
+stable population/dataset/selection identity. Scope JSON and its SHA-256 are
+canonical across JSON key order. A linked trusted or pseudo-true reference must
+agree in kind/version (and any declared pseudo-true condition/assumption).
+With an explicit measurement population, pseudo-true reference conditions
+must equal the selected generating-condition set; measurements lacking a
+generating condition cannot acquire a pseudo-true projection. Trusted
+experimental references instead remain tied to their own selected measurement.
+One reference can use the relational `reference_id`; an aggregate over several
+stored references supplies `reference_ids`, which are validated and retained
+in canonical scope JSON because schema v1 has only one reference FK column.
+Generating mono truth and primary bi-exponential components use simulation conditions, not
+invented lifetime-reference rows. Repeated-Poisson scope describes both known
+generating mono truth and the empirical reference distribution, without
+pretending the latter is one point's uncertainty result.
+
+Stable metric names for interval objects are `empirical_coverage`,
+`coverage_error` (signed), `mean_interval_width_ns`,
+`median_interval_width_ns`, `mean_interval_score_ns`, and
+`interval_failure_rate`. Quantile objects add `lower_pinball_loss_ns`,
+`median_pinball_loss_ns`, `upper_pinball_loss_ns`, `mean_pinball_loss_ns`,
+and `quantile_crossing_rate`. Score objects map to `score_failure_rate`,
+`mean_absolute_error_ns`, `spearman_error_correlation`,
+`low_uncertainty_mae_ns`, `high_uncertainty_mae_ns`, and `tail_fraction`;
+when the matching score array is also supplied, they add
+`mean_uncertainty_score`. Selective rejection maps retained fraction and
+all/retained/improvement MAE. General regression, robustness and classical
+benchmark adapters retain their source field names with `_ns` or `_ms` units.
+The repeated-Poisson adapter maps empirical bias/std/RMSE and failure/boundary
+rates, mean covariance/bootstrap std, their ratios to empirical std,
+covariance/bootstrap interval coverage/failure rates, and mean bootstrap refit
+failure rate, along with the source covariance/bootstrap interval width,
+score and signed coverage error. The source IRF FWHM and shift enter its
+canonical selection scope. It creates **only** benchmark rows.
+
+Repeated-Poisson facts require a classical model specification with the
+canonical `poisson` objective. Classical reconvolution benchmark summaries
+also require a classical model specification, with either supported
+reconvolution objective (`poisson` or `least_squares`). An explicitly supplied
+physical assumption must not contradict that objective. These checks precede
+insertion and duplicate reuse.
+
+For interval coverage/width/score, `n_attempted` is the source sample count
+and `n_valid = n_contributing` is the source valid-interval count; interval
+failure rate uses attempted observations as denominator. Signed coverage error
+is `empirical_coverage - nominal_coverage`; finite source values must agree
+with the scope's nominal coverage within `1e-12` absolute tolerance. With zero
+valid intervals, source coverage and coverage error remain undefined rather
+than supplying a new nominal level. Quantile losses and crossing use finite
+triplets. Score correlations and mean score use valid
+scores; failure uses attempted observations. The source score metric does not
+expose the exact low/high tail subset sizes, so those rows leave
+`n_contributing` NULL rather than guessing. Repeated-Poisson rows retain the
+realization count and distinguish successful fits, valid intervals, finite
+method summaries and attempted-realization denominators; boundary-hit rate
+uses successful fits, not all attempts. Classical benchmark
+timing does not expose its exact finite-runtime count, so that contributing
+count stays NULL. `value_status='undefined'` plus SQL NULL and non-finite
+metadata represents a NaN/undefined source metric; a true numerical zero is
+`value_status='finite'`, `metric_value=0.0`.
+
+Selective prediction uses score-only uncertainty and cannot claim nominal
+interval coverage; its rejection fraction remains part of scope selection.
+
+Uncertainty and metric duplicates default to `on_duplicate="raise"`.
+`reuse_identical` compares the full normalized payload, including calibration,
+validity, diagnostics, counts, reference and denominator semantics; it never
+updates a changed metric under a stable key. Each ordered uncertainty batch
+and each multi-fact metric object is one transaction/savepoint: a late invalid
+row or duplicate conflict rolls back the earlier rows of that logical write.
+Stage 4 does not persist posterior, sampler or PPC summaries.
+
+## Stage-5 Bayesian recording boundary
+
+`record_bayesian_result` accepts `BayesianReconvolutionResult` or
+`BayesianInferenceRun`, optionally with a completed
+`BayesianPosteriorPredictiveResult`. `record_issue4_bayesian_result` accepts
+`BayesianClassicalRealizationResult` or `MismatchInferenceRecord` and translates
+its compact `Issue4Bayesian` and, for mismatch, `MismatchPredictiveSummary`.
+Both adapters return the one canonical `estimator_results.result_id` and insert
+its `bayesian_summaries` extension atomically. Persistence does not run MCMC or
+PPC generation and does not require importing `emcee`.
+
+The point convention is always `point_summary="posterior_median"`:
+`estimator_results.lifetime_estimate_ns` contains the posterior lifetime median.
+The posterior mean is separate in `bayesian_summaries.lifetime_mean_ns`.
+Parameter-summary JSON retains available mean, median, standard deviation,
+equal-tailed credible bounds, parameter names/units and requested posterior
+credible probability. Keeping the lifetime median in the source-complete
+parameter summary does not create a second point identity. A contradictory
+existing point estimate cannot be reused.
+
+Bayesian credible bounds remain in `bayesian_summaries`; Stage 5 does not create
+duplicate `uncertainty_results` rows. These are posterior credible intervals
+conditional on the specified prior, mono-exponential forward model and fixed
+assumed IRF. They are not stored as empirical coverage or frequentist confidence
+intervals.
+
+The reusable model must have `family="bayesian"` and the complete canonical
+`priors`/`sampler` configuration produced by `bayesian_model_configuration`.
+Estimator names remain caller-owned labels. A full sampler result must match
+that configuration, excluding its execution seed. Compact records do not contain
+the original policy objects; the caller must select the corresponding reusable
+model. Matched Issue-4 records additionally check their `prior_policy_id`.
+Prior/sampler policy is not copied into each result or changed by achieved ESS,
+acceptance fraction, runtime or sampling outcome.
+
+Before insertion or reuse, the adapter checks run–measurement membership,
+Bayesian model configuration, a mono-exponential Poisson physical assumption,
+raw-count measurement semantics, and the assumed prepared IRF's complete target
+grid identity (bin count, canonical time-grid hash, start and step). The original
+IRF source grid need not equal the target grid. A full inference/PPC context also
+checks measurement counts, sample identity, metadata/provenance and prepared-IRF
+source/preparation identity against the linked records. Equal arrays alone do
+not override conflicting observation or IRF provenance.
+The attached-sampled-IRF fallback keeps its source relationship and, when the
+full context is present, its kernel identity.
+
+A complete fixed-shift assumption requires a fixed prior at that shift, using
+the existing `rtol=1e-7`, `atol=1e-12` ns comparison. A complete bounded/free-shift
+assumption requires bounded prior support within its inclusive physical bounds.
+The shared shift helper also checks available accepted posterior shift means,
+medians and credible bounds. Rejected/failed results retain out-of-policy
+diagnostic summaries; an explicitly incomplete historical assumption does not
+acquire a missing physical shift policy.
+
+Sampling status is preserved exactly as `success`, `insufficient_sampling`,
+`initialization_failed` or `numerical_failure`. Diagnostic acceptance is a
+separate source decision: acceptance requires `success` and no declared
+diagnostic failure reasons. Success with rejected diagnostics remains storable.
+The adapter does not rerun the diagnostic decision algorithm or claim that
+acceptance establishes physical-model correctness. A finite median from success
+or insufficient sampling is an available point, with `is_valid` reflecting
+diagnostic acceptance; failure statuses retain their diagnostic median, if any,
+as an invalid failed point.
+
+The extension preserves actual production steps, retained draws, extension
+count, mean walker acceptance fraction, minimum approximate effective samples,
+minimum autocorrelation multiples, maximum half-chain autocorrelation change,
+ensemble-location differences, and available parameter correlations. The full
+source's small acceptance/autocorrelation/ESS diagnostic arrays are retained in
+the structured parameter-summary JSON with explicit parameter order; compact
+records retain only their available scalar summaries and two correlation pairs.
+Correlation coefficients must be in `[-1, 1]`, and acceptance fractions and tail
+probabilities in `[0, 1]`. Discrepancy statistics do not receive probability
+bounds. No R-hat or other absent diagnostic is invented.
+
+The parameter-summary JSON also distinguishes configured walker/ensemble counts,
+requested warmup and initial production steps from achieved production steps
+and retained samples. Actual warmup count is unavailable from these result
+objects and remains JSON null. For `BayesianInferenceRun`, a finite-retained-draw
+count checks the supplied physical coordinates, transformed coordinates and log
+probabilities for finiteness; it does not filter or recalculate the posterior
+summaries. For summary-only/compact records this count is unavailable and remains
+null. Initialization, sampling, diagnostic, inference-total and optional measured
+call runtimes retain separate fields. The point runtime is explicitly scoped as
+`bayesian_inference_total`.
+
+Per-observation PPC belongs in this same Bayesian extension. The full PPC result
+uses the existing Issue-4 compact convention: observed discrepancy mean,
+replicated discrepancy median and the source's descriptive `>=` tail fraction
+for Poisson deviance, residual RMS/maximum absolute residual, total counts, peak
+counts/time and caller-defined windows. Draw count, runtime, selection policy,
+predictive-band level and available window bounds are preserved. Compact PPC
+records preserve their supplied scalar tuples, status and failure reason, with
+missing selection/window details left unavailable. Failed PPC may retain partial
+or non-finite diagnostics. No combined model-validity score or generic p-value
+is invented. A full PPC result must match the stored observation, assumed IRF,
+prior, sampling execution and retained-sample count. Aggregate PPC performance
+is not copied into any per-observation row.
+
+The sampling seed is canonical decimal TEXT in
+`estimator_results.random_seed_decimal`, including frozen unsigned Issue-4
+values above signed int64 range. The distinct PPC seed is canonical decimal text
+inside PPC summary JSON when the procedure was attempted. A reserved, unused
+predictive seed is not presented as an executed PPC stream. Observation and
+bootstrap streams keep their existing owners. A changed sampling seed requires
+an explicit new `analysis_key` under the same reusable model/assumption context.
+
+Mismatch records validate their linked generating condition and parameters,
+observed count/hash, available observation seed and run profile, local assumption
+identity and selected pseudo-true reference's condition/assumption scope.
+IRF relation is caller-declared and never inferred
+from numerical equality. Bi-exponential components and generating IRF remain in
+the existing condition; another assumption creates another result for the same
+measurement. A corrected/superseding Stage-6.5 reference can be selected without
+overwriting its predecessor or changing the posterior. The wrapper validates
+that reference but does not bind the posterior identity to an evaluation target:
+the reference ID/version for error or coverage evaluation belongs in the
+Stage-4 metric scope. Historical embedded projection values, per-reference
+deviations/inclusions and aggregate comparisons are not copied into the Bayesian
+summary. Frozen Issue-4 float-array hashes are retained as explicitly labelled
+execution provenance; their signed-zero-preserving convention is not silently
+equated with the schema's canonical float hashes.
+
+Optional `posterior_artifact_id` accepts artifact kind `posterior_chain` or
+`posterior_samples`; optional `predictive_artifact_id` accepts
+`posterior_predictive_samples`. An artifact must exist and its producing run,
+when specified, must match. Its file-byte hash and locator keep the Stage-2
+meaning; paths do not define Bayesian result identity. Summary-only recording
+needs no artifact. Chains, flattened samples, predictive sample matrices,
+predictive bands and residual curves are not embedded as BLOBs or summary JSON.
+Diagnostic plots can be registered separately through `record_artifact`; there
+is no dedicated plot-link column in this extension.
+
+Both adapters default to `on_duplicate="raise"`. `reuse_identical` compares the
+complete normalized point and extension payloads, including seeds, runtimes,
+diagnostics, PPC and artifact IDs. An exactly matching existing point without
+an extension can acquire its extension under this explicit reuse policy; neither
+row is silently updated. Validation precedes reuse, and the composed write uses
+the existing transaction/savepoint infrastructure so an extension failure leaves
+no new point row behind.
+
+Known NaN and positive/negative infinity values become SQL/JSON null with their
+original category and scalar/array path in `nonfinite_fields_json`. Missing
+values remain distinguishable from known non-finite failures. Finite rejected
+diagnostics and crossed failed credible bounds remain unchanged. Invalid results
+are not repaired or replaced with zero.
+
+## Stage-6 read-only queries
+
+All helpers remain under `tcspc_toolkit.persistence`. They accept an existing
+compatible SQLite connection or an existing database path. Paths are opened
+through `connect_database(path, readonly=True)` and closed after retrieval;
+missing databases are not created. Caller connections, whether writable or
+read-only, keep their settings, row factory, transaction and ownership. The
+helpers execute toolkit-defined SELECT statements only; they do not write,
+create views, alter metadata or start transactions. There is no generic SQL
+escape hatch or external-artifact loading.
+
+Each query returns `QueryResult(columns, rows)`: column names and ordered tuple
+rows, with column names retained even for an empty result. The row grains are:
+
+| Helper | One row represents | Explicit join options |
+|---|---|---|
+| `query_runs` | One experiment run | None |
+| `query_artifacts` | One external artifact registration | None; files are not opened |
+| `query_measurements` | One measurement | `include_generating`; `include_membership` explicitly expands memberships |
+| `query_irf_sources` | One original source, including unprepared sources | None |
+| `query_prepared_irfs` | One prepared kernel | `include_source` |
+| `query_results` | One estimator result | `include_context`; `include_fit_details` (zero/one extension) |
+| `query_uncertainty` | One uncertainty output plus its owning point | `include_context` |
+| `query_bayesian` | One Bayesian summary plus its owning point | `include_context` |
+| `query_references` | One stored reference version | None; all matching versions remain visible |
+| `query_metrics` | One benchmark metric fact | None; scope stays as stored |
+
+`include_generating=True` uses a LEFT JOIN, retaining experimental rows with
+NULL generating columns. Lifetimes, photon budget, background and shift are
+named `generating_mono_lifetime_ns`, `generating_primary_lifetime_ns`,
+`generating_secondary_lifetime_ns`, `generating_secondary_detected_fraction`,
+`generating_signal_photon_count`, `generating_background_per_bin` and
+`generating_shift_ns`. These are not generic truth or reference fields.
+Measurement identity, origin-run ID, attached-source ID and histogram-artifact
+ID remain distinct; use the corresponding narrow query to inspect linked rows.
+
+Measurement membership filters normally use EXISTS, retaining one row per
+measurement and requiring all membership filters to match the same membership.
+`include_membership=True` instead returns one row per matching membership,
+with `membership_run_id`/`membership_run_key` separate from the origin run.
+Without membership filters, unlinked measurements receive a NULL membership
+placeholder. With membership filters, only actual matching memberships qualify.
+
+Result context joins are to-one: measurement, run, model, nullable assumption,
+and the result's exact run–measurement membership. They cannot multiply results.
+Model configuration and assumed prepared-IRF/shift context keep separate names.
+Optional fit columns are prefixed `fit_`, including `fit_result_id` and
+`fit_nonfinite_fields_json`. Uncertainty/Bayesian queries retain their extension
+fields and expose point status, validity, runtime, execution seed and non-finite
+metadata with a `result_` prefix where necessary to avoid ambiguity. Bayesian
+credible bounds, parameter-labelled diagnostics, configured counts and PPC seed
+remain in their existing JSON structures.
+
+Filters use `filters={"field": value, ...}`. All entries are ANDed exact
+equalities with bound values; an explicitly supplied `None` means SQL IS NULL,
+while an omitted key imposes no filter. Values are strings, integers, finite
+floats or None. Coverage filtering is exact, not tolerance-based. `%` and `_`
+are literal characters, not LIKE wildcards. Unknown filter/sort names are
+rejected; SQL fragments and multi-value/inequality filters are not accepted.
+
+Supported filters by family:
+
+- Runs: `run_id`, `run_key`, `run_type`, `status`, `origin`, `protocol_id`,
+  `protocol_version`, `profile`, `source_run_id`.
+- Artifacts: `artifact_id`, `artifact_key`, `producing_run_id`, `artifact_kind`,
+  `format`, `sha256`.
+- Measurements: `measurement_id`, `measurement_key`, `sample_id`, `source_type`,
+  `data_kind`, `origin_run_id`, `condition_pk`, `attached_irf_source_id`,
+  `histogram_artifact_id`; membership filters `run_id`, `test_id`, `regime_id`,
+  `dataset_key`, `data_role`, `pair_id`, `realization_index`.
+- IRF sources: `irf_source_id`, `source_key`, `source_kind`,
+  `source_representation`, `derived_from_measurement_id`, `source_artifact_id`.
+- Prepared IRFs: `prepared_irf_id`, `preparation_key`, `irf_source_id`,
+  `preparation_kind`, `time_grid_sha256`, `kernel_sha256`, `source_kind`, `source_key`.
+- Results: `result_id`, `run_id`, `measurement_id`, `model_id`, `assumption_id`,
+  `analysis_key`, `status`, `is_valid`, `point_summary`, `irf_model_relation`,
+  `test_id`, `regime_id`, `dataset_key`, `data_role`, `pair_id`, `run_key`,
+  `measurement_key`, `sample_id`, `condition_pk`, `model_key`, `model_family`,
+  `estimator_name`, `assumption_key`. Context filters work without selecting
+  context columns.
+- Uncertainty: result filters, with point status/validity named `result_status`
+  and `result_is_valid`, plus `uncertainty_id`, `method_id`, `output_kind`,
+  `nominal_coverage`, uncertainty `is_valid`, `calibration_run_id`,
+  `calibration_scope`, `method_config_sha256`, `samples_artifact_id`.
+- Bayesian: result filters with `result_status`/`result_is_valid`, plus
+  `sampling_status`, `diagnostics_accepted`, `ppc_status`, `posterior_artifact_id`,
+  `predictive_artifact_id`.
+- References: `reference_id`, `reference_key`, `reference_kind`,
+  `reference_version`, `measurement_id`, `condition_pk`, `assumption_id`,
+  `supersedes_reference_id`, `source_artifact_id`.
+- Metrics: `metric_id`, `run_id`, `model_id`, `assumption_id`, `condition_pk`,
+  `reference_id`, `source_artifact_id`, `metric_name`, `metric_unit`,
+  `scope_sha256`, `value_status`, `denominator_kind`, `test_id`, `regime_id`,
+  `method_id`, `nominal_coverage`, `reference_kind`, `reference_version`,
+  `signal_photon_count`, `background_per_bin`. `dataset_key`, `population_key`,
+  `reference_semantics`, `method_config_sha256`, `protocol_id`, `protocol_version`
+  and `profile` filter stored named scope fields using SQLite JSON extraction;
+  they do not rebuild scope identity. `reference_id` filters the scalar FK,
+  not membership in the separate `reference_ids` array inside scope JSON.
+
+Default ordering is ascending primary key (measurement ID then membership run
+ID for membership expansion), not scientific chronology. `order_by` accepts only:
+
+| Family | Allowed order names |
+|---|---|
+| Runs | `run_id`, `run_key`, `recorded_at_utc` |
+| Artifacts | `artifact_id`, `artifact_key` |
+| Measurements | `measurement_id`, `measurement_key`, `sample_id`; `membership_run_id` only with expansion |
+| Sources | `irf_source_id`, `source_key` |
+| Prepared IRFs | `prepared_irf_id`, `preparation_key`, `irf_source_id` |
+| Results | `result_id`, `run_id`, `measurement_id`, `model_id`, `assumption_id`, `lifetime_estimate_ns` |
+| Uncertainty | `uncertainty_id`, `result_id`, `method_id`, `nominal_coverage` |
+| Bayesian | `result_id`, `run_id`, `measurement_id` |
+| References | `reference_id`, `reference_key`, `reference_version` |
+| Metrics | `metric_id`, `run_id`, `metric_name`, `test_id`, `regime_id` |
+
+`descending=True` reverses the selected ordering field; ties always use ascending
+grain keys. SQLite's normal NULL ordering applies. No helper silently collapses
+multiple results, uncertainty products, reference versions or metric scopes.
+There is no singular reference chooser and no automatic supersession traversal.
+A reference query's `measurement_id` means the stored measurement FK only; it
+does not discover condition-specific pseudo-true references for that observation.
+
+By default every `_json` column remains raw text. `decode_json=True` decodes all
+non-NULL JSON columns consistently, retaining their column names and nested
+structure. No diagnostics are flattened or interpreted. SQL NULL stays None;
+original NaN/+infinity/-infinity categories remain accessible in non-finite
+metadata. Undefined metrics keep `value_status="undefined"`, a NULL value and
+their stored counts/denominator. No non-finite reconstruction or zero replacement
+occurs. Generating values, assumptions, references and posterior estimates never
+coalesce into a generic truth column; errors, coverage and other metrics are
+not calculated during retrieval.
+
+`query_to_dataframe(result)` lazily imports pandas, which is already a mandatory
+package dependency. Plain queries do not import pandas. The converter uses
+object columns deliberately: Python integers (including nullable IDs above
+`2**53`), real-valued floats, strings, None and raw/decoded JSON survive without
+dtype inference. None remains pandas-missing; rows, ordering and even empty
+result columns are preserved. Callers can explicitly choose numerical dtypes
+for subsequent analysis.
+
+```python
+from tcspc_toolkit import persistence as store
+
+points = store.query_results(
+    database_path, filters={"run_id": run_id, "model_id": model_id},
+    include_context=True, include_fit_details=True,
+)
+frame = store.query_to_dataframe(points)
+references = store.query_references(
+    database_path, filters={"condition_pk": condition_pk, "assumption_id": assumption_id},
+)  # All matching versions, not an automatically selected reference.
+```
+
+## End-to-end roundtrip example (Stage 7)
+
+Run [examples/persistence_roundtrip.py](../examples/persistence_roundtrip.py)
+from the checkout with the project installed in its environment (including the
+mandatory pandas dependency):
+
+```bash
+python examples/persistence_roundtrip.py --output data/generated/roundtrip.sqlite
+```
+
+Choose a new output path in an existing directory. The script refuses to replace
+**any** existing file, including an earlier example database; there is no implicit
+overwrite or cleanup. Tests use temporary paths. The observation and predictive
+replicates use fixed seeds; run/database timestamps record the actual invocation,
+so repeatability concerns the scientific payload, not byte-identical database files.
+
+This is a persistence integration example, not a benchmark or an inference
+validation. It uses one 48-bin synthetic raw-count measurement, a mono-exponential
+generating lifetime of 2 ns, a 5000-photon expected signal budget and background of
+2 counts/bin. The observed count total is a separate measurement fact; the
+forward-model amplitude (and fitted amplitude) is not the signal-photon budget.
+A Gaussian source and its same-grid preparation have separate persisted identities.
+
+The callable `run_persistence_roundtrip(database_path)` performs this sequence:
+
+1. Construct the measurement, IRF source/preparation, small Poisson reconvolution
+   fit and Poisson/Fisher local covariance using existing scientific APIs.
+2. Construct explicitly illustrative `BayesianReconvolutionResult` and
+   `BayesianPosteriorPredictiveResult` fixtures. **No MCMC runs.** Posterior
+   parameters, sampler diagnostics/counts and zero timings are hand-constructed
+   examples, not measured inference results. Three fixed fixture parameter draws
+   and seeded Poisson replicates feed the existing PPC diagnostic function.
+3. Initialize SQLite; record the run, generating condition, measurement and run
+   membership, IRF source/preparation, classical/Bayesian model specifications and
+   shared complete mono-exponential Poisson assumption with bounded shift support.
+4. Record the classical point/fit details and its covariance uncertainty; record
+   the Bayesian posterior-median point and summary/PPC extension. The run and
+   Bayesian execution metadata explicitly mark the Bayesian fixture.
+5. Record the six facts from one actual `RobustnessMetrics` evaluation: `mae_ns`,
+   `median_absolute_error_ns`, `rmse_ns`, `bias_ns`, `p90_absolute_error_ns` and
+   `p95_absolute_error_ns`. Its explicit singleton population selects the classical
+   measurement/model/assumption/condition and known `generating_mono` reference
+   semantics. Counts are one, with denominator `evaluated_predictions`. These are
+   demonstration facts, not evidence of benchmark performance. No redundant
+   `lifetime_references` row is created for known generating truth.
+6. Commit the transaction and **close the writer**. Reopen through
+   `connect_database(path, readonly=True)`; retrieve saved facts with the public
+   query helpers, run one direct parameterized SQL aggregation, and convert both
+   using `query_to_dataframe`. No fitting or scientific evaluation occurs in this
+   phase; the aggregation only counts stored results and validity flags.
+
+The function returns `(queries, frames)`, dictionaries keyed by the names below.
+Its assertions demonstrate these row grains without a universal flattened table:
+
+| Dictionary key / query family | Returned rows |
+|---|---|
+| `runs` / `query_runs` | 1 run |
+| `measurements` / `query_measurements` | 1 measurement, explicit generating join |
+| `irf_sources` / `query_irf_sources` | 1 source |
+| `prepared_irfs` / `query_prepared_irfs` | 1 preparation, explicit source join |
+| `results` / `query_results` | 2 point results for the same measurement, only 1 fit extension |
+| `uncertainty` / `query_uncertainty` | 1 covariance summary owned by the classical result |
+| `bayesian` / `query_bayesian` | 1 summary/PPC extension owned by the Bayesian result |
+| `metrics` / `query_metrics` | 6 aggregate metric facts sharing one explicit scope |
+| `result_counts_by_family` / example-local SQL | 2 family groups with result counts; not additional stored rows |
+
+Generating lifetime remains in generating context, not in the point-result
+columns. Bayesian posterior mean remains separate from its canonical median.
+Credible bounds and requested posterior probability stay in Bayesian parameter
+summary JSON; they do not create another Stage-4 uncertainty row. Covariance SD
+alone has no nominal interval coverage. The Bayesian and metric queries explicitly
+request decoded JSON; other queries retain canonical JSON text. DataFrames retain
+the same row grain, ordering, NULLs and scientific meanings as the plain results.
+
+Large posterior chains and predictive arrays may be stored externally and
+referenced through the artifact table; this compact example persists summaries
+only. Experimental/trusted references, mismatch/pseudo-true references, alternate
+assumptions, ML and interval calibration are deliberately outside this small demo.
+
+### Direct read-only SQL aggregation
+
+The structured `query_*` helpers cover common retrieval. `connect_database`
+still returns a standard `sqlite3.Connection`, so advanced callers can also
+execute their own parameterized SQL on a read-only connection. The toolkit does
+not wrap or validate arbitrary SQL through a generic query helper.
+
+The example asks: **How many point results, and how many with the stored
+`is_valid=1` flag, were recorded per estimator family for this run?** Its
+example-local `_query_result_counts_by_family` executes this exact aggregation
+on the already reopened read-only connection, binding `(run_id,)` to `?`:
+
+```sql
+SELECT mv.family AS model_family,
+       COUNT(*) AS n_results,
+       SUM(CASE WHEN er.is_valid = 1 THEN 1 ELSE 0 END) AS n_valid_results
+FROM estimator_results AS er
+JOIN model_versions AS mv ON mv.model_id = er.model_id
+WHERE er.run_id = ?
+GROUP BY mv.family
+ORDER BY mv.family
+```
+
+The grain is one family represented in the explicitly selected run, ordered by
+family: `bayesian, 1, 1` then `classical, 1, 1`. These are counts of point-result
+rows, not distinct observations or newly persisted benchmark metrics. Counting
+the stored validity flag does not reassess diagnostics or establish accuracy or
+physical-model correctness; the Bayesian result is still an illustrative fixture.
+No truth/reference is joined or selected. The helper returns a `QueryResult`
+under `result_counts_by_family`, also converted to a DataFrame and printed as a
+separate labelled table. This demonstrates raw SQLite access alongside, not in
+place of, structured retrieval.
+
+## Compatibility boundaries
+
+The first schema supports joins across observations, generating conditions,
+model specifications, assumptions, IRF source/preparation, per-observation
+results, uncertainty outputs and aggregate metrics. Scientific evaluations must
+select their target and reference version explicitly. Queries report existing
+denominator/count fields without reconstructing missing counts. Importing numerical modules
+must not import persistence or initialize a database.
+
+Version 1 detects incompatible databases and stops. Migrations, database
+merging, automatic external artifact storage, broad public API exports and
+full dataclass reconstruction are future work. The focused roundtrip example and
+Bayesian persistence tests use deterministic fixtures without live MCMC or an
+emcee dependency. Arbitrary SQL execution, automatic reference selection and
+scientific reconstruction remain outside the persistence access layer. This
+example does not mark Issue #9 final acceptance or release work complete.

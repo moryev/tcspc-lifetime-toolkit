@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete, and post-v0.7.0 Issues #6, #8, and #4 have also been implemented and closed. The repository is now in the post-Week-9 integration phase described in GitHub Issue #5, with Issue #9 (SQLite persistence) next in the planned sequence.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete, and post-v0.7.0 Issues #6, #8, and #4 have also been implemented and closed. Issue #9 (SQLite persistence) is implemented, with final merge and issue closure pending. In the GitHub Issue #5 orchestration sequence, Issue #1 (array input annotations) is next after Issue #9 and has not started.
 
 ## Repository map
 
@@ -296,8 +296,8 @@ Current integration status:
 2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
 3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **complete and closed**;
 4. **#4** — Bayesian Poisson inference — **complete and closed**, including matched-model calibration, model-mismatch evaluation, numerical audits, documentation, and Notebook 17;
-5. **#9** — SQLite persistence for experiments and benchmark results — **next active integration target**;
-6. **#1** — standardize array input type annotations;
+5. **#9** — SQLite persistence for experiments and benchmark results — **implemented; final merge and issue closure pending**;
+6. **#1** — standardize array input type annotations — **next after Issue #9; not started**;
 7. **#2** — API stabilization and package hardening;
 8. **#11** — consolidate Week 7–9 evaluation architecture;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages;
@@ -306,7 +306,7 @@ Current integration status:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-**Issue #4: Bayesian Poisson inference** is complete and closed. Preserve the generalized-IRF and Bayesian contracts when implementing Issue #9 and during later API/package work.
+**Issue #4: Bayesian Poisson inference** is complete and closed. Preserve the generalized-IRF, Bayesian and implemented persistence contracts during later API/package work.
 
 ## Codex working protocol
 
@@ -328,9 +328,10 @@ For each substantial issue:
 Issues #6, #8, and #4 are complete. Do not reopen or redesign their scientific
 contracts merely because a later issue needs to consume their outputs.
 
-For Issue #9, begin with read-only orientation across the actual measurement,
-IRF, classical, ML, uncertainty, and Bayesian result objects before designing
-the SQLite schema. In particular:
+Issue #9 provides schema-v1 persistence, scientific recording adapters, read-only
+query/DataFrame helpers and an end-to-end example with direct SQL aggregation.
+Final merge and issue closure remain pending. Consult `docs/persistence.md` and
+the existing implementation before changing these established contracts:
 
 - keep persistence optional and separate from numerical computation;
 - preserve the distinction between measurements, generating truth, trusted
@@ -349,5 +350,5 @@ the SQLite schema. In particular:
   scientific result semantics.
 
 Consult Issues #5 and #9 plus the current README, scientific findings, and the
-completed Issue-6/8/4 implementations. Begin Issue #9 with a repository recap
-and schema/API plan before making broad multi-file changes.
+completed Issue-6/8/4 implementations. Issue #1 follows Issue #9; do not begin it
+as part of persistence cleanup or redesign schema v1 opportunistically.
