@@ -11,15 +11,19 @@ from tcspc_toolkit.irf import (
 )
 
 
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
 def test_generate_gaussian_irf_preserves_time_shape(
     time_axis: NDArray[np.float64],
+    as_input,
 ) -> None:
     irf = generate_gaussian_irf(
-        time=time_axis,
+        time=as_input(time_axis),
         centre=2.0,
         fwhm=0.4,
     )
 
+    assert isinstance(irf, np.ndarray)
+    assert irf.dtype == np.float64
     assert irf.shape == time_axis.shape
 
 
@@ -254,8 +258,10 @@ def test_generate_gaussian_irf_has_requested_fwhm() -> None:
     )
 
 
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
 def test_normalized_irf_has_unit_area(
     time_axis: NDArray[np.float64],
+    as_input,
 ) -> None:
     irf = generate_gaussian_irf(
         time=time_axis,
@@ -265,10 +271,12 @@ def test_normalized_irf_has_unit_area(
     )
 
     normalized_irf = normalize_irf(
-        time=time_axis,
-        irf=irf,
+        time=as_input(time_axis),
+        irf=as_input(irf),
     )
 
+    assert isinstance(normalized_irf, np.ndarray)
+    assert normalized_irf.dtype == np.float64
     area = np.trapezoid(
         normalized_irf,
         x=time_axis,
@@ -736,7 +744,8 @@ def test_shift_irf_approximately_preserves_shape() -> None:
     )
 
 
-def test_shift_irf_supports_sub_bin_shift() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_shift_irf_supports_sub_bin_shift(as_input) -> None:
     time = np.linspace(0.0, 10.0, 101)
     irf = generate_gaussian_irf(
         time=time,
@@ -749,11 +758,13 @@ def test_shift_irf_supports_sub_bin_shift() -> None:
     shift = 0.5 * bin_width
 
     shifted_irf = shift_irf(
-        time=time,
-        irf=irf,
+        time=as_input(time),
+        irf=as_input(irf),
         shift=shift,
     )
 
+    assert isinstance(shifted_irf, np.ndarray)
+    assert shifted_irf.dtype == np.float64
     expected_peak_time = 4.0 + shift
     shifted_peak_time = time[np.argmax(shifted_irf)]
 

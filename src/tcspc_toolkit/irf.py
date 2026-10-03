@@ -14,7 +14,7 @@ from scipy.stats import exponnorm
 
 
 def generate_gaussian_irf(
-    time: NDArray[np.float64],
+    time: ArrayLike,
     centre: float,
     fwhm: float,
     amplitude: float = 1.0,
@@ -24,7 +24,7 @@ def generate_gaussian_irf(
     Parameters
     ----------
     time
-        One-dimensional array containing the time-bin coordinates.
+        One-dimensional array-like containing the time-bin coordinates.
     centre
         Temporal centre of the Gaussian IRF.
     fwhm
@@ -90,8 +90,8 @@ def generate_gaussian_irf(
 
 
 def normalize_irf(
-    time: NDArray[np.float64],
-    irf: NDArray[np.float64],
+    time: ArrayLike,
+    irf: ArrayLike,
 ) -> NDArray[np.float64]:
     """Normalize an instrument response function to unit integrated area.
 
@@ -105,9 +105,9 @@ def normalize_irf(
     Parameters
     ----------
     time
-        One-dimensional, strictly increasing time axis.
+        One-dimensional, strictly increasing array-like time axis.
     irf
-        One-dimensional array containing non-negative IRF values.
+        One-dimensional array-like containing non-negative IRF values.
 
     Returns
     -------
@@ -159,8 +159,8 @@ import numpy as np
 
 
 def shift_irf(
-    time: NDArray[np.float64],
-    irf: NDArray[np.float64],
+    time: ArrayLike,
+    irf: ArrayLike,
     shift: float,
 ) -> NDArray[np.float64]:
     """Shift an instrument response function along its time axis.
@@ -182,9 +182,9 @@ def shift_irf(
     Parameters
     ----------
     time
-        One-dimensional, strictly increasing time axis.
+        One-dimensional, strictly increasing array-like time axis.
     irf
-        One-dimensional instrument response function evaluated at `time`.
+        One-dimensional array-like instrument response evaluated at `time`.
     shift
         Temporal shift in the same units as `time`.
 
@@ -306,7 +306,7 @@ class IRFProfile:
 
 
 def generate_emg_irf(
-    time: NDArray[np.float64],
+    time: ArrayLike,
     gaussian_centre_ns: float,
     gaussian_fwhm_ns: float,
     tail_time_ns: float,
@@ -314,6 +314,7 @@ def generate_emg_irf(
 ) -> NDArray[np.float64]:
     """Sample a Gaussian convolved with a unit-area causal exponential.
 
+    ``time`` accepts one-dimensional array-like time coordinates.
     The Gaussian component has the given centre, FWHM, and peak amplitude.
     Its component centre/FWHM are generally not the EMG peak/full FWHM.
     The exponential tail time is in ns. This function does not normalize the

@@ -580,16 +580,19 @@ def test_reconvolution_fit_rejects_invalid_temporal_shift_bounds(
         )
 
 
-def test_poisson_negative_log_likelihood_is_finite_for_valid_counts() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_poisson_negative_log_likelihood_is_finite_for_valid_counts(as_input) -> None:
     observed = np.array([10, 20, 15, 5])
     expected = np.array([9.0, 21.0, 14.0, 6.0])
 
     nll = poisson_negative_log_likelihood(
-        observed=observed,
-        expected=expected,
+        observed=as_input(observed),
+        expected=as_input(expected),
     )
 
+    assert isinstance(nll, float)
     assert np.isfinite(nll)
+    assert nll == pytest.approx(np.sum(expected - observed * np.log(expected)))
 
 
 def test_poisson_negative_log_likelihood_handles_zero_observed_counts() -> None:

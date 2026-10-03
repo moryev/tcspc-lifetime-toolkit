@@ -165,7 +165,8 @@ def test_zero_background_signal_remains_non_negative() -> None:
     assert np.all(signal >= 0.0)
 
 
-def test_biexponential_decay_matches_manual_calculation() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_biexponential_decay_matches_manual_calculation(as_input) -> None:
     time = np.array(
         [0.0, 1.0, 2.0],
         dtype=np.float64,
@@ -178,7 +179,7 @@ def test_biexponential_decay_matches_manual_calculation() -> None:
     background = 5.0
 
     signal = biexponential_decay(
-        time=time,
+        time=as_input(time),
         amplitude_1=amplitude_1,
         lifetime_1=lifetime_1,
         amplitude_2=amplitude_2,
@@ -192,13 +193,16 @@ def test_biexponential_decay_matches_manual_calculation() -> None:
         + background
     )
 
+    assert isinstance(signal, np.ndarray)
+    assert signal.dtype == np.float64
     np.testing.assert_allclose(
         signal,
         expected,
     )
 
 
-def test_multiexponential_decay_matches_manual_calculation() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_multiexponential_decay_matches_manual_calculation(as_input) -> None:
     time = np.array(
         [0.0, 1.0, 2.0],
         dtype=np.float64,
@@ -215,9 +219,9 @@ def test_multiexponential_decay_matches_manual_calculation() -> None:
     background = 5.0
 
     signal = multiexponential_decay(
-        time=time,
-        amplitudes=amplitudes,
-        lifetimes=lifetimes,
+        time=as_input(time),
+        amplitudes=as_input(amplitudes),
+        lifetimes=as_input(lifetimes),
         background=background,
     )
 
@@ -228,6 +232,8 @@ def test_multiexponential_decay_matches_manual_calculation() -> None:
         + background
     )
 
+    assert isinstance(signal, np.ndarray)
+    assert signal.dtype == np.float64
     np.testing.assert_allclose(
         signal,
         expected,
