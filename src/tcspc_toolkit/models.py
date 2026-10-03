@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 def monoexponential_decay(
@@ -19,7 +19,7 @@ def monoexponential_decay(
 
 
 def biexponential_decay(
-    time: NDArray[np.float64],
+    time: ArrayLike,
     amplitude_1: float,
     lifetime_1: float,
     amplitude_2: float,
@@ -38,7 +38,7 @@ def biexponential_decay(
     Parameters
     ----------
     time:
-        Time axis.
+        One-dimensional array-like time axis.
     amplitude_1:
         Amplitude of the first exponential component.
     lifetime_1:
@@ -73,9 +73,9 @@ def biexponential_decay(
 
 
 def multiexponential_decay(
-    time: NDArray[np.float64],
-    amplitudes: NDArray[np.float64],
-    lifetimes: NDArray[np.float64],
+    time: ArrayLike,
+    amplitudes: ArrayLike,
+    lifetimes: ArrayLike,
     background: float = 0.0,
 ) -> NDArray[np.float64]:
     """
@@ -88,12 +88,12 @@ def multiexponential_decay(
     Parameters
     ----------
     time:
-        One-dimensional time axis with shape ``(n_time_bins,)``.
+        One-dimensional array-like time axis with shape ``(n_time_bins,)``.
     amplitudes:
-        One-dimensional array of component amplitudes with shape
+        One-dimensional array-like of component amplitudes with shape
         ``(n_components,)``.
     lifetimes:
-        One-dimensional array of component lifetimes with shape
+        One-dimensional array-like of component lifetimes with shape
         ``(n_components,)``.
     background:
         Constant background level.

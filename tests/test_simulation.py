@@ -329,7 +329,8 @@ def test_simulate_biexponential_decay_returns_correct_shapes() -> None:
     )
 
 
-def test_simulate_multiexponential_decay_is_reproducible() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_simulate_multiexponential_decay_is_reproducible(as_input) -> None:
     time = np.linspace(
         start=0.0,
         stop=20.0,
@@ -358,14 +359,18 @@ def test_simulate_multiexponential_decay_is_reproducible() -> None:
 
     expected_2, measured_2 = (
         simulate_multiexponential_decay(
-            time=time,
-            amplitudes=amplitudes,
-            lifetimes=lifetimes,
+            time=as_input(time),
+            amplitudes=as_input(amplitudes),
+            lifetimes=as_input(lifetimes),
             background=5.0,
             random_seed=42,
         )
     )
 
+    assert isinstance(expected_2, np.ndarray)
+    assert isinstance(measured_2, np.ndarray)
+    assert expected_2.dtype == np.float64
+    assert np.issubdtype(measured_2.dtype, np.integer)
     np.testing.assert_array_equal(
         expected_1,
         expected_2,
@@ -376,7 +381,8 @@ def test_simulate_multiexponential_decay_is_reproducible() -> None:
     )
 
 
-def test_biexponential_and_multiexponential_simulations_match() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_biexponential_and_multiexponential_simulations_match(as_input) -> None:
     time = np.linspace(
         start=0.0,
         stop=20.0,
@@ -386,7 +392,7 @@ def test_biexponential_and_multiexponential_simulations_match() -> None:
 
     expected_bi, measured_bi = (
         simulate_biexponential_decay(
-            time=time,
+            time=as_input(time),
             amplitude_1=8_000.0,
             lifetime_1=0.8,
             amplitude_2=2_000.0,
@@ -412,6 +418,10 @@ def test_biexponential_and_multiexponential_simulations_match() -> None:
         )
     )
 
+    assert isinstance(expected_bi, np.ndarray)
+    assert isinstance(measured_bi, np.ndarray)
+    assert expected_bi.dtype == np.float64
+    assert np.issubdtype(measured_bi.dtype, np.integer)
     np.testing.assert_allclose(
         expected_bi,
         expected_multi,
@@ -517,7 +527,8 @@ def test_irf_convolved_simulation_preserves_expected_count_budget() -> None:
     )
 
 
-def test_irf_convolved_simulation_is_reproducible() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_irf_convolved_simulation_is_reproducible(as_input) -> None:
     time = np.arange(
         0.0,
         20.0,
@@ -543,7 +554,7 @@ def test_irf_convolved_simulation_is_reproducible() -> None:
 
     measured_b, metadata_b = (
         simulate_irf_convolved_histogram(
-            time=time,
+            time=as_input(time),
             lifetime_ns=2.5,
             signal_photon_count=5_000,
             background_per_bin=0.5,
@@ -554,6 +565,8 @@ def test_irf_convolved_simulation_is_reproducible() -> None:
         )
     )
 
+    assert isinstance(measured_b, np.ndarray)
+    assert np.issubdtype(measured_b.dtype, np.integer)
     np.testing.assert_array_equal(
         measured_a,
         measured_b,
@@ -608,7 +621,8 @@ def test_irf_convolved_biexponential_histogram_returns_expected_outputs() -> Non
     ] == pytest.approx(10_000.0)
 
 
-def test_irf_convolved_biexponential_histogram_is_reproducible() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_irf_convolved_biexponential_histogram_is_reproducible(as_input) -> None:
     time = np.linspace(
         0.0,
         20.0,
@@ -628,24 +642,28 @@ def test_irf_convolved_biexponential_histogram_is_reproducible() -> None:
         "irf_shift_ns": 0.05,
     }
 
-    counts_1, _ = (
+    counts_1, metadata_1 = (
         simulate_irf_convolved_biexponential_histogram(
             **kwargs,
             rng=np.random.default_rng(42),
         )
     )
 
-    counts_2, _ = (
+    kwargs["time"] = as_input(time)
+    counts_2, metadata_2 = (
         simulate_irf_convolved_biexponential_histogram(
             **kwargs,
             rng=np.random.default_rng(42),
         )
     )
 
+    assert isinstance(counts_2, np.ndarray)
+    assert np.issubdtype(counts_2.dtype, np.integer)
     np.testing.assert_array_equal(
         counts_1,
         counts_2,
     )
+    assert metadata_1 == metadata_2
 
 
 @pytest.mark.parametrize(

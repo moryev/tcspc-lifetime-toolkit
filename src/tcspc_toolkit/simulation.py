@@ -86,7 +86,7 @@ def build_expected_counts_from_irf(
 
 def simulate_irf_convolved_histogram(
     *,
-    time: NDArray[np.float64],
+    time: ArrayLike,
     lifetime_ns: float,
     signal_photon_count: int,
     background_per_bin: float,
@@ -103,7 +103,7 @@ def simulate_irf_convolved_histogram(
     Parameters
     ----------
     time:
-        Shared time-bin coordinates.
+        One-dimensional array-like of shared time-bin coordinates.
     lifetime_ns:
         True mono-exponential fluorescence lifetime.
     signal_photon_count:
@@ -277,7 +277,7 @@ def simulate_irf_convolved_histogram(
 
 def simulate_irf_convolved_biexponential_histogram(
     *,
-    time: NDArray[np.float64],
+    time: ArrayLike,
     primary_lifetime_ns: float,
     secondary_lifetime_ns: float,
     secondary_fraction: float,
@@ -293,6 +293,7 @@ def simulate_irf_convolved_biexponential_histogram(
 ]:
     """Simulate a weakly bi-exponential IRF-convolved TCSPC histogram.
 
+    ``time`` accepts one-dimensional array-like time-bin coordinates.
     ``secondary_fraction`` specifies the fraction of expected detected
     signal photons contributed by the secondary lifetime component
     within the simulated measurement window.
@@ -537,7 +538,7 @@ def simulate_monoexponential_decay(
 
 
 def simulate_biexponential_decay(
-    time: NDArray[np.float64],
+    time: ArrayLike,
     amplitude_1: float,
     lifetime_1: float,
     amplitude_2: float,
@@ -551,7 +552,7 @@ def simulate_biexponential_decay(
     Parameters
     ----------
     time:
-        Time axis.
+        One-dimensional array-like time axis.
     amplitude_1:
         Amplitude of the first exponential component.
     lifetime_1:
@@ -590,9 +591,9 @@ def simulate_biexponential_decay(
 
 
 def simulate_multiexponential_decay(
-    time: NDArray[np.float64],
-    amplitudes: NDArray[np.float64],
-    lifetimes: NDArray[np.float64],
+    time: ArrayLike,
+    amplitudes: ArrayLike,
+    lifetimes: ArrayLike,
     background: float = 0.0,
     random_seed: int | None = None,
 ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
@@ -602,12 +603,12 @@ def simulate_multiexponential_decay(
     Parameters
     ----------
     time:
-        One-dimensional time axis with shape ``(n_time_bins,)``.
+        One-dimensional array-like time axis with shape ``(n_time_bins,)``.
     amplitudes:
-        One-dimensional array of component amplitudes with shape
+        One-dimensional array-like of component amplitudes with shape
         ``(n_components,)``.
     lifetimes:
-        One-dimensional array of component lifetimes with shape
+        One-dimensional array-like of component lifetimes with shape
         ``(n_components,)``.
     background:
         Constant background level.

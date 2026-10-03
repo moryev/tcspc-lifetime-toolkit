@@ -110,21 +110,27 @@ def test_sampled_irf_adapter_requires_imported_carrier() -> None:
         irf_profile_from_sampled_irf(object())
 
 
-def test_emg_zero_tail_is_exact_existing_gaussian() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_emg_zero_tail_is_exact_existing_gaussian(as_input) -> None:
     time = np.linspace(-2.0, 5.0, 701)
     expected = generate_gaussian_irf(time, centre=1.0, fwhm=0.4, amplitude=2.5)
     actual = generate_emg_irf(
-        time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.4,
+        as_input(time), gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.4,
         tail_time_ns=0.0, amplitude=2.5,
     )
+    assert isinstance(actual, np.ndarray)
+    assert actual.dtype == np.float64
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_positive_emg_tail_has_positive_skew_and_preserves_source_scale() -> None:
+@pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
+def test_positive_emg_tail_has_positive_skew_and_preserves_source_scale(as_input) -> None:
     time = np.linspace(-5.0, 12.0, 3401)
     centre_ns = 1.0
     tail_ns = 0.6
-    values = generate_emg_irf(time, centre_ns, 0.5, tail_ns, amplitude=2.0)
+    values = generate_emg_irf(as_input(time), centre_ns, 0.5, tail_ns, amplitude=2.0)
+    assert isinstance(values, np.ndarray)
+    assert values.dtype == np.float64
     area = float(np.trapezoid(values, x=time))
     mean = float(np.trapezoid(time * values, x=time) / area)
     third_moment = float(np.trapezoid((time - mean) ** 3 * values, x=time) / area)

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — Post-Week-9 integration
 
+### Changed — Issue #1
+
+- Use `ArrayLike` for IRF, simulation, and Poisson-likelihood inputs already
+  normalized at runtime, including the bi-/multi-exponential model inputs
+  forwarded by simulation wrappers. Array-only inputs and concrete array
+  return annotations are preserved; numerical behavior is unchanged.
+
 ### Added — Issue #8
 
 - Generalized `IRFProfile` sources and source-kind provenance, preserving the

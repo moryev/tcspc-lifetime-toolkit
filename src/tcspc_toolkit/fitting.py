@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import curve_fit, least_squares, minimize
 
 from tcspc_toolkit.forward_model import (
@@ -133,9 +133,10 @@ def _reconvolution_model(
 
 # Poisson (reduced) NLL
 def poisson_negative_log_likelihood(
-    observed: np.ndarray,
-    expected: np.ndarray,
+    observed: ArrayLike,
+    expected: ArrayLike,
 ) -> float:
+    """Return the reduced Poisson NLL for matching array-like count inputs."""
     observed = np.asarray(observed, dtype=float)
     expected = np.asarray(expected, dtype=float)
 
