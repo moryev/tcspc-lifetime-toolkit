@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete, and post-v0.7.0 Issues #6, #8, and #4 have also been implemented and closed. Issue #9 (SQLite persistence) is implemented, with final merge and issue closure pending. In the GitHub Issue #5 orchestration sequence, Issue #1 (array input annotations) is next after Issue #9 and has not started.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, and #1 have been implemented, merged, and closed. Issue #2 (API stabilization and package hardening) is now the active integration target, followed by Issue #11 (evaluation-architecture consolidation), Issue #3 (package restructuring), and Issue #12 (full integration/regression verification).
 
 ## Repository map
 
@@ -92,7 +92,7 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - convenience wrappers may compose lower-level functions rather than duplicate their logic;
 - preprocessing is analysis-dependent: there is no universally correct TCSPC preprocessing pipeline.
 
-Issues #2 and #3 will later stabilize the public API and reorganize the package. Until then, do not perform broad architectural cleanup opportunistically while implementing another issue.
+Issue #2 is now the active public-API stabilization phase. Issue #11 follows it for deliberate evaluation-architecture consolidation, and Issue #3 then performs the physical package/subpackage reorganization. During Issue #2, clarify public names, extension points, exports, compatibility policy, and generic-versus-frozen benchmark boundaries without prematurely performing the full Issue-#11 evaluation consolidation or Issue-#3 file/package movement.
 
 ## Scientific guardrails
 
@@ -276,6 +276,8 @@ Before finishing, review the diff for:
 
 For substantive implementation work, prefer a dedicated feature branch and a focused pull request rather than mixing unrelated changes.
 
+Repository-aware coding agents should normally stop after implementation, validation, and final diff review. Do not commit, push, merge, delete branches, or close GitHub issues unless the user explicitly requests that action. The default workflow is for the user to review and perform Git history operations manually.
+
 The PR/commit description should summarize:
 
 - what changed;
@@ -293,12 +295,12 @@ Issue #5 is the orchestration issue and should be consulted for the full rationa
 Current integration status:
 
 1. **#10** — repository/Codex transition — **complete**;
-2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete**;
+2. **#6** — experimental TCSPC data ingestion, processing, and evaluation — **complete and closed**;
 3. **#8** — generalized IRF models, sampled-IRF preparation, and leading-edge/failure-awareness evaluation — **complete and closed**;
 4. **#4** — Bayesian Poisson inference — **complete and closed**, including matched-model calibration, model-mismatch evaluation, numerical audits, documentation, and Notebook 17;
-5. **#9** — SQLite persistence for experiments and benchmark results — **implemented; final merge and issue closure pending**;
-6. **#1** — standardize array input type annotations — **next after Issue #9; not started**;
-7. **#2** — API stabilization and package hardening;
+5. **#9** — SQLite persistence for experiments and benchmark results — **complete, merged, and closed**;
+6. **#1** — standardize array input type annotations — **complete, merged, and closed**;
+7. **#2** — API stabilization and package hardening — **current active integration target**;
 8. **#11** — consolidate Week 7–9 evaluation architecture;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages;
 10. **#12** — full integration and regression verification;
@@ -306,7 +308,9 @@ Current integration status:
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
 
-**Issue #4: Bayesian Poisson inference** is complete and closed. Preserve the generalized-IRF, Bayesian and implemented persistence contracts during later API/package work.
+The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
+
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, and frozen-benchmark scientific contracts during the remaining architectural work.
 
 ## Codex working protocol
 
@@ -322,33 +326,36 @@ For each substantial issue:
 8. Run the full relevant/full repository test suite before completion.
 9. Review the final diff against the issue scope and scientific guardrails.
 10. Summarize changes, tests, scientific implications, and remaining limitations.
+11. Stop with a tested, reviewed, uncommitted diff unless the user explicitly requests Git history operations.
 
 ## Current integration orientation
 
-Issues #6, #8, and #4 are complete. Do not reopen or redesign their scientific
-contracts merely because a later issue needs to consume their outputs.
+Issues #6, #8, #4, #9, and #1 are complete. Do not reopen or redesign their established scientific contracts merely because later architectural work consumes their outputs.
 
-Issue #9 provides schema-v1 persistence, scientific recording adapters, read-only
-query/DataFrame helpers and an end-to-end example with direct SQL aggregation.
-Final merge and issue closure remain pending. Consult `docs/persistence.md` and
-the existing implementation before changing these established contracts:
+Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
 - keep persistence optional and separate from numerical computation;
-- preserve the distinction between measurements, generating truth, trusted
-  experimental references, assumed models/IRFs, and pseudo-true projections;
-- preserve estimator/method identity, configuration, random seeds, validity
-  states, and provenance needed to reproduce a stored result;
+- preserve the distinction between measurements, generating truth, trusted experimental references, assumed models/IRFs, and pseudo-true projections;
+- preserve estimator/method identity, configuration, random seeds, validity states, and provenance needed to reproduce a stored result;
 - store scientifically queryable scalar fields relationally where useful;
 - do not hide all benchmark variables in opaque JSON solely for convenience;
-- do not store large histograms, posterior chains, or model binaries as SQLite
-  BLOBs by default; prefer explicit external artifact references when needed;
-- use parameterized SQL, foreign-key enforcement, schema-version metadata, and
-  explicit transaction/duplicate semantics;
-- prefer Python's standard `sqlite3` module unless the active issue reveals a
-  concrete need for additional infrastructure;
-- do not let persistence requirements force changes to the established
-  scientific result semantics.
+- do not store large histograms, posterior chains, or model binaries as SQLite BLOBs by default;
+- use parameterized SQL, foreign-key enforcement, schema-version metadata, and explicit transaction/duplicate semantics;
+- do not let API refactoring change established persistence semantics merely for naming convenience.
 
-Consult Issues #5 and #9 plus the current README, scientific findings, and the
-completed Issue-6/8/4 implementations. Issue #1 follows Issue #9; do not begin it
-as part of persistence cleanup or redesign schema v1 opportunistically.
+Issue #1 established truthful public array-input contracts without changing numerical behavior. Preserve concrete NumPy-array return and stored-field contracts where they remain appropriate.
+
+Issue #2 is now the active architectural task. Its purpose is to stabilize the external API and extension boundaries before Issue #11 consolidates the evaluation architecture and Issue #3 reorganizes modules into subpackages.
+
+For Issue #2:
+
+- prefer scientific/domain terminology over roadmap Day/Week terminology in reusable APIs;
+- separate generic/extensible machinery from frozen reproducibility configurations;
+- review package-level exports and the intended high-level public API;
+- define extension points for user-supplied estimators and representations without coupling generic infrastructure to the canonical benchmark estimator set;
+- preserve compatibility deliberately where needed rather than silently breaking notebooks, tests, examples, or persisted method identity;
+- distinguish API stabilization from the broader evaluation consolidation reserved for Issue #11;
+- do not perform broad physical module/subpackage moves reserved for Issue #3;
+- preserve frozen Week-8 A–F and Week-9 scientific results, seeds, protocol roles, and metric semantics.
+
+Consult Issues #2, #5, #11, #3, and #12 together when deciding architectural boundaries, but implement only the active issue.
