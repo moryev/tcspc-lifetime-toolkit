@@ -12,6 +12,7 @@ Large arrays are not retained. An existing output is never overwritten.
 from __future__ import annotations
 
 import argparse
+import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from importlib.metadata import version
@@ -55,6 +56,31 @@ SAMPLING_SEED = 2**64 - 1  # Fixture execution seed, not reusable model identity
 PPC_SEED = 7302
 SHIFT_BOUNDS = (-0.2, 0.2)
 DATASET_KEY = "roundtrip:singleton"
+
+
+def _query_result_counts_by_family(
+    connection: sqlite3.Connection, *, run_id: int,
+) -> store.QueryResult:
+    """One row per family in this run: point-result count and stored valid count.
+
+    Called on the example's read-only connection. This counts stored is_valid
+    flags, not accuracy, physical-model correctness or recomputed diagnostics.
+    """
+    with closing(connection.cursor()) as cursor:
+        cursor.execute("""
+            SELECT mv.family AS model_family,
+                   COUNT(*) AS n_results,
+                   SUM(CASE WHEN er.is_valid = 1 THEN 1 ELSE 0 END) AS n_valid_results
+            FROM estimator_results AS er
+            JOIN model_versions AS mv ON mv.model_id = er.model_id
+            WHERE er.run_id = ?
+            GROUP BY mv.family
+            ORDER BY mv.family
+        """, (run_id,))
+        return store.QueryResult(
+            columns=tuple(column[0] for column in cursor.description),
+            rows=tuple(tuple(row) for row in cursor.fetchall()),
+        )
 
 
 def _bayesian_fixture(
@@ -133,7 +159,8 @@ def run_persistence_roundtrip(
 
     The parent directory must exist. FileExistsError protects any existing file.
     Scientific payloads use fixed seeds; database/run creation timestamps record
-    the actual invocation time. Returned rows/frames contain persisted facts only.
+    the actual invocation time. Returned rows/frames contain persisted facts and
+    descriptive counts of those facts, without scientific recomputation.
     """
     database_path = Path(database_path)
     # Exclusive creation also guards against a concurrent creator; no unlink/overwrite.
@@ -266,6 +293,7 @@ def run_persistence_roundtrip(
             "uncertainty": store.query_uncertainty(reader, include_context=True),
             "bayesian": store.query_bayesian(reader, include_context=True, decode_json=True),
             "metrics": store.query_metrics(reader, decode_json=True),
+            "result_counts_by_family": _query_result_counts_by_family(reader, run_id=run_id),
         }
         frames = {name: store.query_to_dataframe(rows) for name, rows in queries.items()}
 
@@ -273,7 +301,9 @@ def run_persistence_roundtrip(
     assert {name: len(rows.rows) for name, rows in queries.items()} == {
         "runs": 1, "measurements": 1, "irf_sources": 1, "prepared_irfs": 1,
         "results": 2, "uncertainty": 1, "bayesian": 1, "metrics": 6,
+        "result_counts_by_family": 2,
     }
+    assert queries["result_counts_by_family"].rows == (("bayesian", 1, 1), ("classical", 1, 1))
     points, observed = frames["results"], frames["measurements"].iloc[0]
     assert set(points["measurement_id"]) == {observed["measurement_id"]}
     assert points["result_id"].nunique() == 2
@@ -317,6 +347,8 @@ def main() -> None:
     for name, selected in columns.items():
         print(f"\n{name}:")
         print(frames[name][selected].to_string(index=False))
+    print("\nSQL aggregation - estimator results by model family (this run):")
+    print(frames["result_counts_by_family"].to_string(index=False))
     print("\nOwnership assertions passed. Chains/predictive arrays are optional external artifacts; none retained.")
 
 

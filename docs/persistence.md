@@ -975,13 +975,14 @@ The callable `run_persistence_roundtrip(database_path)` performs this sequence:
    `lifetime_references` row is created for known generating truth.
 6. Commit the transaction and **close the writer**. Reopen through
    `connect_database(path, readonly=True)`; retrieve saved facts with the public
-   query helpers and convert them using `query_to_dataframe`. No fitting or
-   scientific evaluation occurs in this phase.
+   query helpers, run one direct parameterized SQL aggregation, and convert both
+   using `query_to_dataframe`. No fitting or scientific evaluation occurs in this
+   phase; the aggregation only counts stored results and validity flags.
 
 The function returns `(queries, frames)`, dictionaries keyed by the names below.
 Its assertions demonstrate these row grains without a universal flattened table:
 
-| Dictionary key / query family | Saved rows |
+| Dictionary key / query family | Returned rows |
 |---|---|
 | `runs` / `query_runs` | 1 run |
 | `measurements` / `query_measurements` | 1 measurement, explicit generating join |
@@ -991,6 +992,7 @@ Its assertions demonstrate these row grains without a universal flattened table:
 | `uncertainty` / `query_uncertainty` | 1 covariance summary owned by the classical result |
 | `bayesian` / `query_bayesian` | 1 summary/PPC extension owned by the Bayesian result |
 | `metrics` / `query_metrics` | 6 aggregate metric facts sharing one explicit scope |
+| `result_counts_by_family` / example-local SQL | 2 family groups with result counts; not additional stored rows |
 
 Generating lifetime remains in generating context, not in the point-result
 columns. Bayesian posterior mean remains separate from its canonical median.
@@ -1004,6 +1006,39 @@ Large posterior chains and predictive arrays may be stored externally and
 referenced through the artifact table; this compact example persists summaries
 only. Experimental/trusted references, mismatch/pseudo-true references, alternate
 assumptions, ML and interval calibration are deliberately outside this small demo.
+
+### Direct read-only SQL aggregation
+
+The structured `query_*` helpers cover common retrieval. `connect_database`
+still returns a standard `sqlite3.Connection`, so advanced callers can also
+execute their own parameterized SQL on a read-only connection. The toolkit does
+not wrap or validate arbitrary SQL through a generic query helper.
+
+The example asks: **How many point results, and how many with the stored
+`is_valid=1` flag, were recorded per estimator family for this run?** Its
+example-local `_query_result_counts_by_family` executes this exact aggregation
+on the already reopened read-only connection, binding `(run_id,)` to `?`:
+
+```sql
+SELECT mv.family AS model_family,
+       COUNT(*) AS n_results,
+       SUM(CASE WHEN er.is_valid = 1 THEN 1 ELSE 0 END) AS n_valid_results
+FROM estimator_results AS er
+JOIN model_versions AS mv ON mv.model_id = er.model_id
+WHERE er.run_id = ?
+GROUP BY mv.family
+ORDER BY mv.family
+```
+
+The grain is one family represented in the explicitly selected run, ordered by
+family: `bayesian, 1, 1` then `classical, 1, 1`. These are counts of point-result
+rows, not distinct observations or newly persisted benchmark metrics. Counting
+the stored validity flag does not reassess diagnostics or establish accuracy or
+physical-model correctness; the Bayesian result is still an illustrative fixture.
+No truth/reference is joined or selected. The helper returns a `QueryResult`
+under `result_counts_by_family`, also converted to a DataFrame and printed as a
+separate labelled table. This demonstrates raw SQLite access alongside, not in
+place of, structured retrieval.
 
 ## Compatibility boundaries
 

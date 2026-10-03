@@ -26,7 +26,8 @@ SQLite-backed persistence now records measurements, IRF provenance, estimator
 results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
 query/DataFrame helpers. See the [persistence contract](docs/persistence.md) and
 the [small end-to-end roundtrip example](examples/persistence_roundtrip.py)
-(deterministic Bayesian fixtures; no MCMC required).
+for structured read-only retrieval, direct parameterized SQL aggregation and
+DataFrame conversion (deterministic Bayesian fixtures; no MCMC required).
 
 ## Scientific motivation
 
@@ -1380,9 +1381,10 @@ The planned integration and release path is:
    Notebook 17 implemented, final acceptance review completed, and issue closed;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
-   uncertainty outputs, Bayesian summaries, and benchmark metrics;
+   uncertainty outputs, Bayesian summaries, and benchmark metrics — implemented;
+   final merge and issue closure pending;
 5. [Issue #1](https://github.com/moryev/tcspc-lifetime-toolkit/issues/1) —
-   standardization of array input type annotations;
+   standardization of array input type annotations — next after Issue #9, not started;
 6. [Issue #2](https://github.com/moryev/tcspc-lifetime-toolkit/issues/2) —
    public-API stabilization and package hardening;
 7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —

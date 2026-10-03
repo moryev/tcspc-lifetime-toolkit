@@ -52,6 +52,17 @@ def test_roundtrip_closes_writer_then_reads_all_layers(example, tmp_path, monkey
 
     monkeypatch.setattr(store, "connect_database", track_connection)
 
+    original_aggregation = example._query_result_counts_by_family
+    aggregation_calls = []
+
+    def checked_aggregation(connection, *, run_id):
+        assert read_started and connection is connections[1]
+        assert connection.execute("PRAGMA query_only").fetchone()[0] == 1
+        aggregation_calls.append(run_id)
+        return original_aggregation(connection, run_id=run_id)
+
+    monkeypatch.setattr(example, "_query_result_counts_by_family", checked_aggregation)
+
     def write_phase_only(function):
         def checked(*args, **kwargs):
             assert not read_started, "Scientific computation occurred after read-only reopen"
@@ -75,7 +86,10 @@ def test_roundtrip_closes_writer_then_reads_all_layers(example, tmp_path, monkey
     assert {name: len(result.rows) for name, result in queries.items()} == {
         "runs": 1, "measurements": 1, "irf_sources": 1, "prepared_irfs": 1,
         "results": 2, "uncertainty": 1, "bayesian": 1, "metrics": 6,
+        "result_counts_by_family": 2,
     }
+    assert aggregation_calls == [frames["runs"].iloc[0]["run_id"]]
+    assert queries["result_counts_by_family"].rows == (("bayesian", 1, 1), ("classical", 1, 1))
     for name, query in queries.items():
         assert isinstance(query, store.QueryResult)
         assert tuple(frames[name].columns) == query.columns
@@ -143,6 +157,28 @@ def test_roundtrip_closes_writer_then_reads_all_layers(example, tmp_path, monkey
         assert store.query_results(db, include_context=True, include_fit_details=True) == queries["results"]
         assert not store.query_references(db).rows
         assert not store.query_artifacts(db).rows
+
+
+def test_sql_aggregation_counts_stored_results_readonly(example, tmp_path):
+    path = tmp_path / "aggregation.sqlite"
+    queries, frames = example.run_persistence_roundtrip(path)
+    run_id = frames["runs"].iloc[0]["run_id"]
+    before = path.read_bytes()
+    with closing(store.connect_database(path, readonly=True)) as db:
+        assert db.execute("PRAGMA query_only").fetchone()[0] == 1
+        statements = []
+        db.set_trace_callback(statements.append)
+        grouped = example._query_result_counts_by_family(db, run_id=run_id)
+        assert grouped.columns == ("model_family", "n_results", "n_valid_results")
+        # Alphabetical family order, not classical-then-Bayesian insertion order.
+        assert grouped.rows == (("bayesian", 1, 1), ("classical", 1, 1))
+        assert grouped == queries["result_counts_by_family"]
+        assert not example._query_result_counts_by_family(db, run_id=run_id + 1).rows
+        assert len(statements) == 2
+        assert all(sql.lstrip().startswith("SELECT ") and "GROUP BY mv.family" in sql
+                   for sql in statements)
+        assert db.total_changes == 0 and not db.in_transaction
+    assert path.read_bytes() == before
 
 
 def test_example_repeats_scientific_payloads_not_wall_clock_metadata(example, tmp_path):
