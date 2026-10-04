@@ -244,7 +244,7 @@ def build_generalization_development_measurements(
     definition: GeneralizationSuiteDefinition | None = None,
     random_seed: int = DEFAULT_DEVELOPMENT_RANDOM_SEED,
 ) -> BenchmarkMeasurements:
-    """Generate the compact development pool for Week 8.
+    """Generate the compact development pool for generalization evaluation.
 
     The development measurements are drawn exclusively from the
     familiar physical domain frozen by the Week 8 generalization
@@ -2358,22 +2358,22 @@ def summarize_test_b_photon_count_ood(
 
 
 @dataclass(frozen=True)
-class Day53ABReport:
-    """Complete reporting tables for the Day-53 A/B experiment."""
+class PhotonCountShiftReport:
+    """Familiar versus photon-count-shift reporting tables for Tests A/B."""
 
     principal_comparison: pd.DataFrame
     representation_comparison: pd.DataFrame
     photon_count_ood_summary: pd.DataFrame
 
 
-def build_day53_ab_report(
+def build_photon_count_shift_report(
     *,
     principal_result: PrincipalABBenchmarkResult,
     representation_result: RepresentationABBenchmarkResult,
     familiar_min_photons: int,
     familiar_max_photons: int,
-) -> Day53ABReport:
-    """Build final Day-53 familiar-vs-photon-OOD report tables."""
+) -> PhotonCountShiftReport:
+    """Build familiar versus photon-count-shift report tables for Tests A/B."""
 
     principal_comparison = (
         build_ab_comparison_table(
@@ -2409,7 +2409,7 @@ def build_day53_ab_report(
         )
     )
 
-    return Day53ABReport(
+    return PhotonCountShiftReport(
         principal_comparison=(
             principal_comparison
         ),
@@ -4354,7 +4354,7 @@ def summarize_test_e_temporal_shift_recovery(
 
 @dataclass(frozen=True)
 class InstrumentAcquisitionDiagnostics:
-    """Analysis-ready diagnostics for Day 54."""
+    """Representation, IRF, and timing diagnostics for acquisition shifts."""
 
     representation_comparison: pd.DataFrame
 
@@ -5534,7 +5534,7 @@ def build_af_comparison_table(
     return comparison
 
 
-def build_day55_severity_comparison(
+def build_model_mismatch_severity_comparison(
     *,
     nonclassical_summary: pd.DataFrame,
     classical_summary: pd.DataFrame,
@@ -5748,8 +5748,8 @@ def build_classical_model_mismatch_gof_summary(
 
 
 @dataclass(frozen=True)
-class Day55ModelMismatchReport:
-    """Reporting tables for the Day-55 Test-F experiment."""
+class DecayModelMismatchReport:
+    """Mono-exponential inference under bi-exponential decay mismatch (A/F)."""
 
     nonclassical_comparison: pd.DataFrame
     classical_comparison: pd.DataFrame
@@ -5760,12 +5760,12 @@ class Day55ModelMismatchReport:
     classical_paired_diagnostics: pd.DataFrame
 
 
-def build_day55_model_mismatch_report(
+def build_decay_model_mismatch_report(
     *,
     nonclassical_result: ModelMismatchBenchmarkResult,
     classical_result: ClassicalModelMismatchBenchmarkResult,
-) -> Day55ModelMismatchReport:
-    """Build the final reporting tables for Day 55."""
+) -> DecayModelMismatchReport:
+    """Build Test-A/F decay-model mismatch and severity reporting tables."""
 
     nonclassical_comparison = (
         build_af_comparison_table(
@@ -5790,7 +5790,7 @@ def build_day55_model_mismatch_report(
     )
 
     severity_comparison = (
-        build_day55_severity_comparison(
+        build_model_mismatch_severity_comparison(
             nonclassical_summary=(
                 nonclassical_result
                 .severity_summary
@@ -5817,7 +5817,7 @@ def build_day55_model_mismatch_report(
         )
     )
 
-    return Day55ModelMismatchReport(
+    return DecayModelMismatchReport(
         nonclassical_comparison=(
             nonclassical_comparison
         ),
@@ -6078,8 +6078,8 @@ def evaluate_classical_generalization_suite_benchmark(
 
 
 @dataclass(frozen=True)
-class Week8RobustnessReport:
-    """Compact final Week-8 robustness synthesis."""
+class GeneralizationRobustnessReport:
+    """Principal-estimator robustness synthesis across Tests A-F."""
 
     principal_summary: pd.DataFrame
 
@@ -6089,7 +6089,7 @@ class Week8RobustnessReport:
     classical_failure_rate_matrix: pd.DataFrame
 
 
-def build_week8_robustness_report(
+def build_generalization_robustness_report(
     *,
     nonclassical_result: (
         GeneralizationSuiteBenchmarkResult
@@ -6097,12 +6097,12 @@ def build_week8_robustness_report(
     classical_result: (
         ClassicalGeneralizationSuiteBenchmarkResult
     ),
-) -> Week8RobustnessReport:
-    """Build compact A-F robustness tables.
+) -> GeneralizationRobustnessReport:
+    """Build compact A-F robustness tables for the canonical principal estimators.
 
     Test F is scored against the dominant-component lifetime
     tau_1. The alternative signal-photon-weighted lifetime
-    remains a separate descriptive Day-55 diagnostic.
+    remains a separate descriptive decay-model mismatch diagnostic.
     """
 
     principal_estimators = (
@@ -6301,7 +6301,7 @@ def build_week8_robustness_report(
         "estimator"
     )
 
-    return Week8RobustnessReport(
+    return GeneralizationRobustnessReport(
         principal_summary=(
             principal_summary
         ),
@@ -6313,3 +6313,13 @@ def build_week8_robustness_report(
             classical_failure_rate_matrix
         ),
     )
+
+
+# Legacy public names: direct aliases retained at least through Issue #12.
+Day53ABReport = PhotonCountShiftReport
+build_day53_ab_report = build_photon_count_shift_report
+Day55ModelMismatchReport = DecayModelMismatchReport
+build_day55_model_mismatch_report = build_decay_model_mismatch_report
+build_day55_severity_comparison = build_model_mismatch_severity_comparison
+Week8RobustnessReport = GeneralizationRobustnessReport
+build_week8_robustness_report = build_generalization_robustness_report

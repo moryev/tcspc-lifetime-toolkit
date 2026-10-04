@@ -20,7 +20,7 @@ from tcspc_toolkit.generalization_evaluation import (
     fit_generalization_ml_estimators,
     prepare_generalization_data,
     evaluate_classical_model_mismatch_benchmark,
-    build_day55_model_mismatch_report,
+    build_decay_model_mismatch_report,
 )
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
@@ -298,7 +298,7 @@ def day55_model_mismatch_report(
     classical_model_mismatch_result,
 ):
     return (
-        build_day55_model_mismatch_report(
+        build_decay_model_mismatch_report(
             nonclassical_result=(
                 model_mismatch_benchmark
             ),

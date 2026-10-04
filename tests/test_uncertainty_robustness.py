@@ -4,7 +4,7 @@ import pandas as pd
 from tcspc_toolkit.uncertainty_robustness import (
     _finite_sample_conformal_quantile,
     _summarize_signed_residual_profile,
-    build_week9_classical_uncertainty_scorecard,
+    build_classical_uncertainty_scorecard,
 )
 
 
@@ -181,7 +181,7 @@ def test_classical_uncertainty_scorecard_contains_both_methods_for_a_to_f(
     )
 
     scorecard = (
-        build_week9_classical_uncertainty_scorecard(
+        build_classical_uncertainty_scorecard(
             per_curve,
             nominal_coverage=0.90,
         )
@@ -219,7 +219,7 @@ def test_classical_uncertainty_scorecard_marks_test_f_primary_target(
     )
 
     scorecard = (
-        build_week9_classical_uncertainty_scorecard(
+        build_classical_uncertainty_scorecard(
             per_curve,
             nominal_coverage=0.90,
         )
@@ -261,7 +261,7 @@ def test_classical_uncertainty_scorecard_exposes_error_to_uncertainty_ratio(
     )
 
     scorecard = (
-        build_week9_classical_uncertainty_scorecard(
+        build_classical_uncertainty_scorecard(
             per_curve,
             nominal_coverage=0.90,
         )

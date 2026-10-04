@@ -1,6 +1,6 @@
 # Public API and estimator extensions
 
-This inventory accompanies Issue #2, Stages 0-2, starting from version 0.7.0
+This inventory accompanies Issue #2, Stages 0-3, starting from version 0.7.0
 at `74b4cd0b14d52348bd5f0136fb059f41af4821f0`. It is not a declaration that
 API stabilization or the later evaluation/package refactors are complete.
 
@@ -8,6 +8,7 @@ API stabilization or the later evaluation/package refactors are complete.
 | --- | --- |
 | New supported Issue-#2 API | The four module-qualified symbols in `estimator_api` documented below; root promotion is not part of Stage 1. |
 | Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
+| Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Deferred architecture | Issue #11 evaluation consolidation and Issue #3 physical package movement are plans, not established interfaces. |
@@ -15,7 +16,7 @@ API stabilization or the later evaluation/package refactors are complete.
 ## Existing public API inventory
 
 The explicit `tcspc_toolkit.__all__` remains the curated package-root contract.
-Stage 1 does not change root imports or exports. Module-qualified workflows
+Stages 1-3 do not change root imports or exports. Module-qualified workflows
 are also public where documented; absence from the root does not make them
 private. Internal names beginning with `_` are not extension points.
 
@@ -60,11 +61,12 @@ study-specific orchestration are not generic extension hooks.
 
 ## Compatibility principles
 
-- Existing imports, call signatures, return types, numerical behavior, and
-  benchmark defaults remain unchanged in this additive pass. There are no
-  compatibility aliases or deprecation warnings to add yet.
-- Any later public rename needs a reviewed old-to-new mapping and caller
-  audit. Use scientific terminology, not a blanket `Frozen...` prefix.
+- Existing imports, argument signatures, result fields, numerical behavior,
+  and benchmark defaults remain compatible. Stage-3 names use direct aliases,
+  with no wrappers or runtime deprecation warnings. Old names remain supported
+  at least through Issue #12; removal requires a future explicit decision.
+- Public renames use the reviewed old-to-new mapping and caller audit below.
+  Use scientific terminology, not a blanket `Frozen...` prefix.
   Preserve Day/Week provenance where historically meaningful, and preserve
   A-F identifiers, protocol labels, seeds, and scientific reference outputs.
 - Root exports will be reviewed together in Stage 4, not expanded automatically
@@ -85,7 +87,7 @@ and shared final-test ML prediction boundary to it, as described below.
 The dependency direction is canonical specification -> generic contract;
 generic execution must not know Ridge/RF/HGB or canonical representation names.
 
-- Later Issue-#2 stages: separately approve scientific renames and root exports.
+- Later Issue-#2 stage: separately approve the curated root exports.
 - Issue #11: consolidate A/B, A/C/D/E, and A-F evaluation paths, duplicated
   prediction/summary/degradation machinery, overlapping result/report types,
   and reporting integration across classical/ML/uncertainty/Bayesian/experimental
@@ -318,3 +320,92 @@ Stage-1 estimator API. Broader method-identity/reporting design remains Issue #1
 and degradation tables against the former ordered execution loop, plus custom
 estimator/representation selection and integration failures. It adds no numeric
 snapshot, new frozen protocol, representation framework, or reporting object.
+
+
+## Scientific API names (Stage 3)
+
+Use these canonical names from their existing flat modules; none is newly
+exported at the package root. Each legacy name is the **same object** as its
+canonical counterpart, not a subclass or forwarding wrapper.
+
+### `generalization_evaluation`
+
+| Legacy compatibility name | Canonical name |
+| --- | --- |
+| `Day53ABReport` | `PhotonCountShiftReport` |
+| `build_day53_ab_report` | `build_photon_count_shift_report` |
+| `Day55ModelMismatchReport` | `DecayModelMismatchReport` |
+| `build_day55_model_mismatch_report` | `build_decay_model_mismatch_report` |
+| `build_day55_severity_comparison` | `build_model_mismatch_severity_comparison` |
+| `Week8RobustnessReport` | `GeneralizationRobustnessReport` |
+| `build_week8_robustness_report` | `build_generalization_robustness_report` |
+
+### `ml_uncertainty`
+
+| Legacy compatibility name | Canonical name |
+| --- | --- |
+| `evaluate_week9_quantile_robustness_conditions` | `evaluate_quantile_interval_robustness` |
+| `evaluate_week9_paired_quantile_response` | `evaluate_paired_quantile_interval_response` |
+| `evaluate_week9_paired_ml_uncertainty_response` | `evaluate_paired_uncertainty_score_response` |
+
+### `uncertainty_robustness`
+
+| Legacy compatibility name | Canonical name |
+| --- | --- |
+| `DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED` | `DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED` |
+| `build_week9_interval_scorecard` | `build_ml_interval_scorecard` |
+| `build_week9_score_only_scorecard` | `build_ml_uncertainty_scorecard` |
+| `Week9MLUncertaintyRobustnessReport` | `MLUncertaintyRobustnessReport` |
+| `build_week9_ml_uncertainty_robustness_report` | `build_ml_uncertainty_robustness_report` |
+| `build_week9_classical_uncertainty_scorecard` | `build_classical_uncertainty_scorecard` |
+| `build_week9_classical_conditional_scorecard` | `build_classical_conditional_uncertainty_scorecard` |
+| `Week9ClassicalUncertaintyRobustnessReport` | `ClassicalUncertaintyRobustnessReport` |
+| `evaluate_week9_classical_uncertainty_robustness` | `evaluate_classical_uncertainty_robustness` |
+| `Week9ResidualMismatchReport` | `ResidualMismatchReport` |
+| `evaluate_week9_residual_mismatch_diagnostics` | `evaluate_residual_mismatch_diagnostics` |
+
+### `persistence`
+
+| Legacy compatibility name | Canonical name |
+| --- | --- |
+| `record_week9_interval_scorecard_row` | `record_ml_interval_scorecard_row` |
+| `record_week9_score_only_scorecard_row` | `record_ml_uncertainty_scorecard_row` |
+
+These are naming changes, not newly generic scientific protocols:
+
+- Photon-count shift reporting still consumes the established A/B results.
+- Decay-model mismatch reporting still compares mono-exponential reference
+  Test A with bi-exponential Test F, including its severity and residual
+  diagnostics. The primary component and signal-photon-weighted references
+  remain distinct.
+- Generalization robustness synthesis still selects the canonical principal
+  estimators across A-F. It is not the generic estimator execution interface.
+- Quantile-interval robustness evaluates the five B/D/F conditional regimes;
+  paired response functions use the existing matched Test-A references.
+- ML interval and uncertainty-score scorecards retain their different meanings.
+  Classical covariance/bootstrap and residual reports keep their established
+  model-conditional interpretation. Renaming does not broaden calibration claims.
+- The classical robustness bootstrap seed remains exactly `62_001`.
+- Persistence aliases write the same schema-v1 rows, metric/method identities,
+  scope hashes, source-result identities, and duplicate behavior.
+
+Report field names, constructors, and frozen dataclass behavior are unchanged.
+New objects use the canonical class name in introspection, repr, and new pickle
+references. Old module-qualified pickle references remain resolvable through
+the aliases; compatibility tests cover legacy report payloads and new round
+trips. This does not promise that older toolkit installations can read newly
+written canonical-name pickles. No custom serialization layer is introduced.
+
+### Retained history and deferred boundaries
+
+The Day/Week audit classifies the remaining occurrences as follows:
+
+| Category | Retained surface and reason |
+| --- | --- |
+| Frozen protocol/reproducibility identity | `WEEK9_HYPOTHESES` is the historical study hypothesis set, not a generic API configuration. Protocol strings such as `week8-day55-v2`, A-F IDs, stored method/model/source identities, random streams, and numerical seeds stay unchanged. |
+| Historical documentation/notebook narrative | Week/Day prose, scientific findings, historical test and artifact filenames, notebook-local report variables, and saved-output/cache labels remain valid provenance. Notebook 13-14 executable API imports/calls use canonical names without regenerating outputs. |
+| Deferred/internal scientific boundaries | A/B preparation/result carriers and report consolidation remain Issue #11. Private `_week9_scorecard_row` and `_validate_week9_scorecard_scope` still validate the existing scorecard format; they are not public extension points. Explicit `Issue4*` study records remain unchanged. |
+| Legacy public imports | All 23 aliases above remain supported at least through Issue #12, without warnings. Removal is a separate future compatibility decision. |
+
+Issue #11 will address evaluation/report consolidation; Issue #3 will address
+physical package movement. Neither is implemented by these naming changes.

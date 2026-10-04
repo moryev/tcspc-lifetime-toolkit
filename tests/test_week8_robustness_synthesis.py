@@ -6,7 +6,7 @@ from tcspc_toolkit.generalization_evaluation import (
     ClassicalGeneralizationSuiteBenchmarkResult,
     GeneralizationSuiteBenchmarkResult,
     build_reference_mae_degradation_table,
-    build_week8_robustness_report,
+    build_generalization_robustness_report,
 )
 
 
@@ -263,7 +263,7 @@ def week8_report(
 ):
     """Build the synthetic final Week-8 report."""
 
-    return build_week8_robustness_report(
+    return build_generalization_robustness_report(
         nonclassical_result=(
             synthetic_nonclassical_result
         ),

@@ -1,7 +1,7 @@
-"""Week 9 uncertainty robustness evaluation across frozen Tests A-F.
+"""Uncertainty robustness evaluation across frozen Tests A-F.
 
-This module provides the final uncertainty-calibration analogue of the
-Week 8 robustness scorecard.
+This module provides the uncertainty-calibration analogue of the
+generalization robustness scorecard.
 
 All estimators and calibration corrections must be frozen before Tests
 A-F are evaluated. Final robustness tests are external evaluation data
@@ -66,7 +66,7 @@ from tcspc_toolkit.uncertainty_evaluation import (
 )
 
 
-DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED = 62_001
+DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED = 62_001
 
 
 CONFORMALIZED_QUANTILE_METHOD_ID = (
@@ -425,7 +425,7 @@ def evaluate_frozen_conformalized_quantile(
     )
 
 
-def build_week9_interval_scorecard(
+def build_ml_interval_scorecard(
     *,
     prepared: GeneralizationPreparedData,
     quantile_calibration: (
@@ -435,7 +435,7 @@ def build_week9_interval_scorecard(
         ConformalizedQuantileCalibrationResult
     ),
 ) -> pd.DataFrame:
-    """Build the final A-F interval-calibration scorecard.
+    """Build the A-F ML quantile and conformal interval-calibration scorecard.
 
     Test F is evaluated against the primary dominant-component
     lifetime tau_1 stored in the frozen Week-8 target vector.
@@ -566,7 +566,7 @@ def build_week9_interval_scorecard(
     )
 
 
-def build_week9_score_only_scorecard(
+def build_ml_uncertainty_scorecard(
     *,
     prepared: GeneralizationPreparedData,
     calibration_results: dict[
@@ -574,7 +574,7 @@ def build_week9_score_only_scorecard(
         MLUncertaintyScoreCalibrationResult,
     ],
 ) -> pd.DataFrame:
-    """Evaluate frozen score-only uncertainty methods across Tests A-F."""
+    """Evaluate ML uncertainty scores, not nominal intervals, across Tests A-F."""
 
     if not calibration_results:
         raise ValueError(
@@ -682,7 +682,7 @@ def build_week9_score_only_scorecard(
 
 
 @dataclass(frozen=True)
-class Week9MLUncertaintyRobustnessReport:
+class MLUncertaintyRobustnessReport:
     """Final frozen ML uncertainty evaluation across Tests A-F."""
 
     interval_scorecard: pd.DataFrame
@@ -692,7 +692,7 @@ class Week9MLUncertaintyRobustnessReport:
     conformal_correction_ns: float
 
 
-def build_week9_ml_uncertainty_robustness_report(
+def build_ml_uncertainty_robustness_report(
     *,
     prepared: GeneralizationPreparedData,
     quantile_calibration: (
@@ -705,11 +705,11 @@ def build_week9_ml_uncertainty_robustness_report(
         str,
         MLUncertaintyScoreCalibrationResult,
     ],
-) -> Week9MLUncertaintyRobustnessReport:
+) -> MLUncertaintyRobustnessReport:
     """Build the final frozen ML uncertainty scorecards."""
 
     interval_scorecard = (
-        build_week9_interval_scorecard(
+        build_ml_interval_scorecard(
             prepared=prepared,
             quantile_calibration=(
                 quantile_calibration
@@ -721,7 +721,7 @@ def build_week9_ml_uncertainty_robustness_report(
     )
 
     score_only_scorecard = (
-        build_week9_score_only_scorecard(
+        build_ml_uncertainty_scorecard(
             prepared=prepared,
             calibration_results=(
                 score_calibrations
@@ -730,7 +730,7 @@ def build_week9_ml_uncertainty_robustness_report(
     )
 
     return (
-        Week9MLUncertaintyRobustnessReport(
+        MLUncertaintyRobustnessReport(
             interval_scorecard=(
                 interval_scorecard
             ),
@@ -1335,7 +1335,7 @@ def _summarize_classical_interval_method(
     }
 
 
-def build_week9_classical_uncertainty_scorecard(
+def build_classical_uncertainty_scorecard(
     per_curve: pd.DataFrame,
     *,
     nominal_coverage: float,
@@ -1522,7 +1522,7 @@ def build_week9_classical_uncertainty_scorecard(
     )
 
 
-def build_week9_classical_conditional_scorecard(
+def build_classical_conditional_uncertainty_scorecard(
     per_curve: pd.DataFrame,
     *,
     definition: GeneralizationSuiteDefinition,
@@ -1766,7 +1766,7 @@ def build_week9_classical_conditional_scorecard(
 
 
 @dataclass(frozen=True)
-class Week9ClassicalUncertaintyRobustnessReport:
+class ClassicalUncertaintyRobustnessReport:
     """Final classical uncertainty evaluation across frozen Tests A-F."""
 
     per_curve: pd.DataFrame
@@ -1780,7 +1780,7 @@ class Week9ClassicalUncertaintyRobustnessReport:
     n_bootstrap_resamples: int
 
 
-def evaluate_week9_classical_uncertainty_robustness(
+def evaluate_classical_uncertainty_robustness(
     *,
     prepared: GeneralizationPreparedData,
     definition: GeneralizationSuiteDefinition,
@@ -1795,10 +1795,10 @@ def evaluate_week9_classical_uncertainty_robustness(
         DEFAULT_CLASSICAL_NOMINAL_COVERAGE
     ),
     bootstrap_random_seed: int = (
-        DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED
+        DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED
     ),
     background_fraction: float = 0.10,
-) -> Week9ClassicalUncertaintyRobustnessReport:
+) -> ClassicalUncertaintyRobustnessReport:
     """Run frozen classical uncertainty evaluation across Tests A-F.
 
     Every histogram is fitted with the same Poisson reconvolution
@@ -1914,7 +1914,7 @@ def evaluate_week9_classical_uncertainty_robustness(
     )
 
     scorecard = (
-        build_week9_classical_uncertainty_scorecard(
+        build_classical_uncertainty_scorecard(
             per_curve,
             nominal_coverage=(
                 nominal_coverage
@@ -1923,7 +1923,7 @@ def evaluate_week9_classical_uncertainty_robustness(
     )
 
     conditional_scorecard = (
-        build_week9_classical_conditional_scorecard(
+        build_classical_conditional_uncertainty_scorecard(
             per_curve,
             definition=definition,
             nominal_coverage=(
@@ -1933,7 +1933,7 @@ def evaluate_week9_classical_uncertainty_robustness(
     )
 
     return (
-        Week9ClassicalUncertaintyRobustnessReport(
+        ClassicalUncertaintyRobustnessReport(
             per_curve=per_curve,
             scorecard=scorecard,
             conditional_scorecard=(
@@ -2300,7 +2300,7 @@ def _summarize_signed_residual_profile(
 
 
 @dataclass(frozen=True)
-class Week9ResidualMismatchReport:
+class ResidualMismatchReport:
     """Residual-structure diagnostics for Test A versus Test F."""
 
     profile_table: pd.DataFrame
@@ -2310,7 +2310,7 @@ class Week9ResidualMismatchReport:
     paired_profile_table: pd.DataFrame
 
 
-def evaluate_week9_residual_mismatch_diagnostics(
+def evaluate_residual_mismatch_diagnostics(
     *,
     prepared: GeneralizationPreparedData,
     definition: GeneralizationSuiteDefinition,
@@ -2319,7 +2319,7 @@ def evaluate_week9_residual_mismatch_diagnostics(
         float,
     ] = (-0.5, 0.5),
     background_fraction: float = 0.10,
-) -> Week9ResidualMismatchReport:
+) -> ResidualMismatchReport:
     """Compare signed residual structure for A, weak F, and moderate F."""
 
     if "A" not in prepared.tests:
@@ -2764,7 +2764,7 @@ def evaluate_week9_residual_mismatch_diagnostics(
     )
 
     return (
-        Week9ResidualMismatchReport(
+        ResidualMismatchReport(
             profile_table=(
                 profile_table
             ),
@@ -2776,3 +2776,15 @@ def evaluate_week9_residual_mismatch_diagnostics(
     )
 
 
+# Legacy public names: direct aliases retained at least through Issue #12.
+DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED = DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED
+build_week9_interval_scorecard = build_ml_interval_scorecard
+build_week9_score_only_scorecard = build_ml_uncertainty_scorecard
+Week9MLUncertaintyRobustnessReport = MLUncertaintyRobustnessReport
+build_week9_ml_uncertainty_robustness_report = build_ml_uncertainty_robustness_report
+build_week9_classical_uncertainty_scorecard = build_classical_uncertainty_scorecard
+build_week9_classical_conditional_scorecard = build_classical_conditional_uncertainty_scorecard
+Week9ClassicalUncertaintyRobustnessReport = ClassicalUncertaintyRobustnessReport
+evaluate_week9_classical_uncertainty_robustness = evaluate_classical_uncertainty_robustness
+Week9ResidualMismatchReport = ResidualMismatchReport
+evaluate_week9_residual_mismatch_diagnostics = evaluate_residual_mismatch_diagnostics

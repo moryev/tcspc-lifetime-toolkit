@@ -1,4 +1,4 @@
-"""Shared protocol and metrics for Week 9 uncertainty evaluation.
+"""Shared protocol and metrics for uncertainty evaluation.
 
 The module deliberately separates calibrated prediction intervals from
 uncertainty scores and empirical reference variability. The frozen Week 8
@@ -36,7 +36,7 @@ class UncertaintyOutputKind(str, Enum):
 
 
 class UncertaintyDataRole(str, Enum):
-    """Allowed roles for data used during Week 9."""
+    """Distinct training, calibration, and external uncertainty-evaluation roles."""
 
     TRAINING = "uncertainty_training"
     CALIBRATION = "uncertainty_calibration"
@@ -63,7 +63,7 @@ class UncertaintyMethodDefinition:
 
 @dataclass(frozen=True)
 class UncertaintyDataProvenance:
-    """Record the role of one named data source in Week 9.
+    """Record the training, calibration, or evaluation role of a data source.
 
     Tests A-F are frozen external evaluation sources. Constructing a training
     or calibration provenance record for one of those identifiers raises
