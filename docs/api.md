@@ -1,12 +1,13 @@
 # Public API and estimator extensions
 
-This inventory accompanies Issue #2, Stages 0-1, starting from version 0.7.0
+This inventory accompanies Issue #2, Stages 0-2, starting from version 0.7.0
 at `74b4cd0b14d52348bd5f0136fb059f41af4821f0`. It is not a declaration that
 API stabilization or the later evaluation/package refactors are complete.
 
 | Status | Surface |
 | --- | --- |
 | New supported Issue-#2 API | The four module-qualified symbols in `estimator_api` documented below; root promotion is not part of Stage 1. |
+| Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Deferred architecture | Issue #11 evaluation consolidation and Issue #3 physical package movement are plans, not established interfaces. |
@@ -78,13 +79,13 @@ study-specific orchestration are not generic extension hooks.
 
 ## Boundaries and deferred work
 
-Stage 1 adds a generic estimator execution interface and a separate canonical
-specification factory. It does not redirect any existing evaluation wrapper.
+Stage 1 established a generic estimator execution interface and a separate
+canonical specification factory. Stage 2 connects the generalization fitting
+and shared final-test ML prediction boundary to it, as described below.
 The dependency direction is canonical specification -> generic contract;
 generic execution must not know Ridge/RF/HGB or canonical representation names.
 
-- Later Issue-#2 stages: review whether/how the generalization path consumes
-  this interface; separately approve scientific renames and root exports.
+- Later Issue-#2 stages: separately approve scientific renames and root exports.
 - Issue #11: consolidate A/B, A/C/D/E, and A-F evaluation paths, duplicated
   prediction/summary/degradation machinery, overlapping result/report types,
   and reporting integration across classical/ML/uncertainty/Bayesian/experimental
@@ -225,6 +226,95 @@ All other sklearn defaults remain as before; this pass does not pin or tune
 hyperparameters. The factory does not prepare features, normalize histograms,
 or fit PCA. It describes the existing three-by-three point-estimator matrix,
 not quantile/uncertainty estimators or every existing benchmark variant.
-Generic execution imports none of this configuration. Existing A/B, A-F,
-instrument/acquisition, mismatch, timing, uncertainty, and persistence wrappers
-continue using their established paths until separately reviewed.
+Generic execution imports none of this configuration. A/B, timing, uncertainty,
+persistence, and historical report-building paths remain unchanged. The shared
+generalization ML execution path is integrated in Stage 2, not consolidated
+with those other paths.
+
+## Generalization point-estimator integration (Stage 2)
+
+The existing `tcspc_toolkit.generalization_evaluation` entry points now accept:
+
+```python
+def fit_generalization_ml_estimators(
+    prepared: GeneralizationABPreparedData | GeneralizationPreparedData,
+    *,
+    estimator_specs: Sequence[EstimatorSpec] | None = None,
+    X_development_by_representation: Mapping[str, Any] | None = None,
+) -> dict[str, dict[str, RegressorProtocol]]: ...
+
+def evaluate_generalization_suite_benchmark(
+    *,
+    prepared: GeneralizationPreparedData,
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    X_by_test_and_representation: Mapping[str, Mapping[str, Any]] | None = None,
+) -> GeneralizationSuiteBenchmarkResult: ...
+```
+
+The fitting defaults come from `make_canonical_ml_estimator_specs()` and the
+three existing development matrices in `prepared`. With no new arguments,
+canonical keys, order, predictions, seeds, and benchmark tables are preserved.
+Both existing prepared-data carriers remain supported, not merged.
+
+Custom specs may select any subset of the canonical representations without
+supplying another mapping. For custom representations, provide the matrices
+explicitly. A supplied mapping **replaces** the canonical mapping: omitted
+required keys fail rather than falling back silently. Test mappings are nested
+as `{test_id: {representation_name: matrix}}`, using uppercase A-F test IDs.
+Every selected representation must be present for every evaluated test.
+
+For example, given an existing `GeneralizationPreparedData` named `prepared`:
+
+```python
+from sklearn.linear_model import LinearRegression
+from tcspc_toolkit.estimator_api import EstimatorSpec
+from tcspc_toolkit.generalization_evaluation import (
+    fit_generalization_ml_estimators, evaluate_generalization_suite_benchmark,
+)
+
+columns = ["mean_arrival_time_ns", "peak_time_ns"]
+fitted = fit_generalization_ml_estimators(
+    prepared,
+    estimator_specs=(EstimatorSpec("my-ols", LinearRegression, ("arrival-pair",)),),
+    X_development_by_representation={
+        "arrival-pair": prepared.development.X_features[columns],
+    },
+)
+result = evaluate_generalization_suite_benchmark(
+    prepared=prepared,
+    fitted_estimators=fitted,
+    X_by_test_and_representation={
+        test_id: {"arrival-pair": prepared.X_features[test_id][columns]}
+        for test_id in prepared.tests
+    },
+)
+```
+
+This selects already-prepared columns, not a newly fitted representation.
+Matrices pass through unchanged and `prepared` is not mutated. Development
+rows must match `prepared.development.y`; test rows must match the corresponding
+prepared observation batch. Sample ordering and matching feature meanings remain
+the caller's responsibility. No training, PCA fitting, or calibration happens
+during prediction.
+
+The shared internal ML loop calls `predict_regressors` and iterates its nested
+mapping; it knows no Ridge/RF/HGB identities or mandatory representation set.
+Baseline calculations still use the original prepared data, even if custom ML
+inputs override a canonical representation key. Predictions still feed the
+existing prediction/summary/degradation builders, with unchanged table schemas.
+
+The instrument/acquisition and A/F mismatch entry points also use that shared
+loop but gain no new arguments: they retain their fixed test selections and
+canonical prepared matrices. A/B execution and historical report builders keep
+their existing canonical selections. Custom estimator results are not a claim
+to reproduce the canonical benchmark and need not satisfy those report builders.
+
+Existing reporting distinguishes baselines and classical methods by name.
+At this boundary, `constant_mean`, `mean_arrival_time`, and names starting with
+`classical_reconvolution` are therefore reserved, unlike the unrestricted generic
+Stage-1 estimator API. Broader method-identity/reporting design remains Issue #11.
+
+`tests/test_generalization_estimator_api.py` checks default prediction, summary,
+and degradation tables against the former ordered execution loop, plus custom
+estimator/representation selection and integration failures. It adds no numeric
+snapshot, new frozen protocol, representation framework, or reporting object.

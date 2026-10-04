@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
-from collections.abc import Callable
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sklearn.decomposition import PCA
@@ -24,6 +24,12 @@ from tcspc_toolkit.classical_evaluation import (
 from tcspc_toolkit.config import (
     CountNormalization,
     FeatureConfig,
+)
+from tcspc_toolkit.estimator_api import (
+    EstimatorSpec,
+    RegressorProtocol,
+    fit_regressors,
+    predict_regressors,
 )
 from tcspc_toolkit.features import (
     extract_feature_table,
@@ -49,9 +55,7 @@ from tcspc_toolkit.ml_evaluation import (
 )
 from tcspc_toolkit.ml_models import (
     DEFAULT_PCA_COMPONENTS,
-    make_hist_gradient_boosting_pipeline,
-    make_random_forest_pipeline,
-    make_ridge_pipeline,
+    make_canonical_ml_estimator_specs,
 )
 from tcspc_toolkit.representations import (
     fit_pca_representation,
@@ -675,72 +679,37 @@ def prepare_generalization_data(
 
 
 def fit_generalization_ml_estimators(
-    prepared: GeneralizationPreparedData,
-) -> dict[str, dict[str, Any]]:
-    """Fit Week-8 ML estimators exclusively on development data."""
+    prepared: GeneralizationABPreparedData | GeneralizationPreparedData,
+    *,
+    estimator_specs: Sequence[EstimatorSpec] | None = None,
+    X_development_by_representation: Mapping[str, Any] | None = None,
+) -> dict[str, dict[str, RegressorProtocol]]:
+    """Fit point estimators exclusively on already-prepared development data.
 
-    X_development_by_representation = {
-        "engineered_features": (
-            prepared.development.X_features
-        ),
-        "normalized_histogram": (
-            prepared.X_normalized_development
-        ),
-        "pca_histogram": (
-            prepared.X_pca_development
-        ),
-    }
+    With ``None`` defaults, use the existing canonical specifications and
+    engineered-feature, normalized-histogram, and PCA matrices from ``prepared``.
+    Custom specs may select a subset of these or explicitly supplied matrix-like
+    representations. A supplied mapping replaces, rather than augments, the
+    canonical mapping; it must contain every selected representation.
 
-    model_factories: dict[
-        str,
-        Callable[[], Any],
-    ] = {
-        "ridge": make_ridge_pipeline,
-        "random_forest": (
-            make_random_forest_pipeline
-        ),
-        "hist_gradient_boosting": (
-            make_hist_gradient_boosting_pipeline
-        ),
-    }
-
-    fitted_estimators: dict[
-        str,
-        dict[str, Any],
-    ] = {}
-
-    for (
-        model_name,
-        make_estimator,
-    ) in model_factories.items():
-
-        representation_estimators: dict[
-            str,
-            Any,
-        ] = {}
-
-        for (
-            representation_name,
-            X_development,
-        ) in (
-            X_development_by_representation.items()
-        ):
-            estimator = make_estimator()
-
-            estimator.fit(
-                X_development,
-                prepared.development.y,
-            )
-
-            representation_estimators[
-                representation_name
-            ] = estimator
-
-        fitted_estimators[
-            model_name
-        ] = representation_estimators
-
-    return fitted_estimators
+    Row order must match ``prepared.development.y``. Matrices pass through
+    unchanged; no features/transforms are fitted and ``prepared`` is not mutated.
+    Validation and independent estimator construction delegate to
+    ``fit_regressors``. Both existing prepared-data carriers remain supported.
+    """
+    if estimator_specs is None:
+        estimator_specs = make_canonical_ml_estimator_specs()
+    if X_development_by_representation is None:
+        X_development_by_representation = {
+            "engineered_features": prepared.development.X_features,
+            "normalized_histogram": prepared.X_normalized_development,
+            "pca_histogram": prepared.X_pca_development,
+        }
+    return fit_regressors(
+        estimator_specs=estimator_specs,
+        X_train_by_representation=X_development_by_representation,
+        y_train=prepared.development.y,
+    )
 
 
 @dataclass(frozen=True)
@@ -1327,13 +1296,16 @@ def _get_generalization_test_representations(
 def _evaluate_nonclassical_generalization_tests(
     *,
     prepared: GeneralizationPreparedData,
-    fitted_estimators: dict[
-        str,
-        dict[str, Any],
-    ],
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
     test_ids: tuple[str, ...],
+    X_by_test_and_representation: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[pd.DataFrame]:
-    """Evaluate baselines and ML estimators on selected final tests."""
+    """Evaluate unchanged baselines and supplied point estimators on final tests.
+
+    Explicit per-test mappings affect ML inputs only. The baselines always use
+    the existing prepared data; prediction-table and summary semantics remain
+    those of the current generalization reporting layer.
+    """
 
     if not test_ids:
         raise ValueError(
@@ -1352,39 +1324,15 @@ def _evaluate_nonclassical_generalization_tests(
             "test_ids must not contain duplicates."
         )
 
-    expected_models = {
-        "ridge",
-        "random_forest",
-        "hist_gradient_boosting",
-    }
-
-    expected_representations = {
-        "engineered_features",
-        "normalized_histogram",
-        "pca_histogram",
-    }
-
-    if set(
-        fitted_estimators
-    ) != expected_models:
-        raise ValueError(
-            "fitted_estimators must contain exactly "
-            "Ridge, Random Forest, and "
-            "HistGradientBoosting."
-        )
-
-    for model_name in expected_models:
-        if (
-            set(
-                fitted_estimators[
-                    model_name
-                ]
-            )
-            != expected_representations
+    # These identities have scientific meaning in the existing reporting layer.
+    # Do not let a custom ML estimator merge with a baseline or appear classical.
+    for model_name in fitted_estimators:
+        if model_name in {"constant_mean", "mean_arrival_time"} or (
+            isinstance(model_name, str)
+            and model_name.startswith("classical_reconvolution")
         ):
             raise ValueError(
-                f"{model_name!r} must contain exactly "
-                "the three canonical representations."
+                f"Estimator name {model_name!r} is reserved by generalization reporting."
             )
 
     prediction_tables: list[
@@ -1402,12 +1350,15 @@ def _evaluate_nonclassical_generalization_tests(
             test_id
         ]
 
-        representations = (
-            _get_generalization_test_representations(
+        if X_by_test_and_representation is None:
+            representations = _get_generalization_test_representations(
                 prepared=prepared,
                 test_id=test_id,
             )
-        )
+        else:
+            if test_id not in X_by_test_and_representation:
+                raise ValueError(f"Missing representation mapping for Test {test_id!r}.")
+            representations = X_by_test_and_representation[test_id]
 
         #
         # Constant development-mean baseline.
@@ -1437,9 +1388,7 @@ def _evaluate_nonclassical_generalization_tests(
         #
         # Mean-arrival-time baseline.
         #
-        X_features = representations[
-            "engineered_features"
-        ]
+        X_features = prepared.X_features[test_id]
 
         mean_arrival_predictions = (
             estimate_lifetime_from_mean_arrival(
@@ -1476,37 +1425,14 @@ def _evaluate_nonclassical_generalization_tests(
         )
 
         #
-        # Three ML models × three representations.
+        # Point-estimator execution is independent of estimator/representation IDs.
         #
-        for model_name in (
-            "ridge",
-            "random_forest",
-            "hist_gradient_boosting",
-        ):
-            for representation_name in (
-                "engineered_features",
-                "normalized_histogram",
-                "pca_histogram",
-            ):
-                estimator = (
-                    fitted_estimators[
-                        model_name
-                    ][
-                        representation_name
-                    ]
-                )
-
-                X_test = representations[
-                    representation_name
-                ]
-
-                predictions = np.asarray(
-                    estimator.predict(
-                        X_test
-                    ),
-                    dtype=np.float64,
-                )
-
+        model_predictions = predict_regressors(
+            fitted_estimators=fitted_estimators,
+            X_by_representation=representations,
+        )
+        for model_name, representation_predictions in model_predictions.items():
+            for representation_name, predictions in representation_predictions.items():
                 prediction_tables.append(
                     _build_generalization_prediction_table(
                         estimator_name=(
@@ -5929,12 +5855,22 @@ class GeneralizationSuiteBenchmarkResult:
 def evaluate_generalization_suite_benchmark(
     *,
     prepared: GeneralizationPreparedData,
-    fitted_estimators: dict[
-        str,
-        dict[str, Any],
-    ],
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    X_by_test_and_representation: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> GeneralizationSuiteBenchmarkResult:
-    """Evaluate non-classical estimators on final Tests A-F."""
+    """Evaluate baselines and supplied point estimators on final Tests A-F.
+
+    ``None`` uses canonical test matrices from ``prepared``. To evaluate custom
+    representations, supply an explicit mapping from uppercase test ID to
+    representation name to matrix. Each A-F test needs all representations
+    selected by its fitted estimators; no implicit merging or transformation
+    occurs. Rows must match the corresponding prepared test in count and order.
+
+    The frozen test definitions, baseline inputs, and result/table schemas are
+    unchanged. Custom estimator results do not redefine the canonical benchmark
+    and are not necessarily accepted by canonical historical report builders.
+    Baseline names and the ``classical_reconvolution`` prefix are reserved here.
+    """
 
     missing_test_ids = (
         set(FINAL_ROBUSTNESS_TEST_IDS)
@@ -5954,6 +5890,7 @@ def evaluate_generalization_suite_benchmark(
             prepared=prepared,
             fitted_estimators=fitted_estimators,
             test_ids=FINAL_ROBUSTNESS_TEST_IDS,
+            X_by_test_and_representation=X_by_test_and_representation,
         )
     )
 
