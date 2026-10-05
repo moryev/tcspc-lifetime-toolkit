@@ -1,7 +1,8 @@
 """Small factual builders and explicit-mask metric primitives.
 
-No existing benchmark path consumes this additive layer yet. Method execution,
-representation preparation, grouped reporting and uncertainty are out of scope.
+Generalization baseline/ML execution consumes these facts through a legacy table
+projection. Execution, preparation, grouped reporting and uncertainty stay outside
+this module.
 """
 
 from collections.abc import Sequence

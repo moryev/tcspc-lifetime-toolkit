@@ -31,6 +31,16 @@ from tcspc_toolkit.estimator_api import (
     fit_regressors,
     predict_regressors,
 )
+from tcspc_toolkit.evaluation_core import (
+    build_point_evaluation,
+    combine_point_evaluations,
+)
+from tcspc_toolkit.evaluation_results import (
+    EvaluationBatch,
+    LifetimeReference,
+    MethodDescriptor,
+    PointEvaluationResult,
+)
 from tcspc_toolkit.features import (
     extract_feature_table,
 )
@@ -1244,6 +1254,144 @@ def _get_generalization_test_representations(
     }
 
 
+def _build_generalization_evaluation_batch(
+    *,
+    test: GeneralizationTestMeasurements,
+    representations: Mapping[str, Any],
+) -> EvaluationBatch:
+    """View prepared matrices with the frozen test's explicit reference.
+
+    Matrix objects pass through unchanged. Sample identity comes from metadata,
+    or positional row numbers for legacy carriers without a sample_id column.
+    Test F uses its primary component, never a weighted or pseudo-true lifetime.
+    """
+    reference_kind = "primary_component" if test.test_id == "F" else "generating_mono"
+    reference = LifetimeReference(
+        reference_id=reference_kind,
+        kind=reference_kind,
+        values_ns=test.y,
+        available=np.ones(test.y.size, dtype=bool),
+    )
+    return EvaluationBatch(
+        evaluation_id=test.test_id,
+        sample_ids=test.metadata["sample_id"].tolist()
+        if "sample_id" in test.metadata else range(test.y.size),
+        representations=representations,
+        metadata=test.metadata,
+        references={reference.reference_id: reference},
+    )
+
+
+def _generalization_baseline_predictions(
+    *, y_development: ArrayLike, X_features: pd.DataFrame,
+) -> tuple[tuple[MethodDescriptor, ArrayLike], ...]:
+    """Keep the two frozen baseline algorithms and their input ownership."""
+    return (
+        (
+            MethodDescriptor("constant_mean", "baseline"),
+            predict_constant_mean_baseline(
+                y_train=y_development, n_predictions=len(X_features),
+            ),
+        ),
+        (
+            MethodDescriptor("mean_arrival_time", "baseline", "engineered_features"),
+            estimate_lifetime_from_mean_arrival(
+                mean_arrival_time_ns=X_features["mean_arrival_time_ns"].to_numpy(dtype=np.float64),
+                peak_time_ns=X_features["peak_time_ns"].to_numpy(dtype=np.float64),
+            ),
+        ),
+    )
+
+
+def _evaluate_nonclassical_batch(
+    *,
+    batch: EvaluationBatch,
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    baseline_predictions: Sequence[tuple[MethodDescriptor, ArrayLike]] = (),
+) -> PointEvaluationResult:
+    """Execute prepared regressors and combine explicit baseline/ML facts.
+
+    This boundary knows no test, estimator or representation identities. Baseline
+    algorithms stay outside it. Ordinary finite estimates are valid, including
+    zero/negative values; predict_regressors rejects nonfinite ML outputs.
+    """
+    estimates = list(baseline_predictions)
+    predictions = predict_regressors(
+        fitted_estimators=fitted_estimators,
+        X_by_representation=batch.representations,
+    )
+    for method_id, representations in predictions.items():
+        for representation_id, values in representations.items():
+            estimates.append((MethodDescriptor(method_id, "ml", representation_id), values))
+    return combine_point_evaluations([
+        build_point_evaluation(
+            batch=batch, method=method, lifetime_estimates_ns=values,
+            is_valid=np.ones(len(batch.sample_ids), dtype=bool),
+        )
+        for method, values in estimates
+    ])
+
+
+def _project_generalization_predictions(
+    *, batch: EvaluationBatch, result: PointEvaluationResult, reference_id: str,
+) -> pd.DataFrame:
+    """Project one batch's facts to the legacy schema, masking invalid errors.
+
+    Canonical facts retain finite invalid errors. This projection selects the
+    frozen reference explicitly and preserves point order and metadata columns,
+    resetting the metadata index exactly as the historical builder does.
+    """
+    points = result.points
+    comparisons = result.reference_comparisons
+    key = ["evaluation_id", "sample_id", "method_id", "representation_id"]
+    rows = points.merge(
+        comparisons.loc[comparisons["reference_id"] == reference_id,
+                        key + ["reference_available", "reference_value_ns",
+                               "error_ns", "absolute_error_ns"]],
+        on=key, how="left", sort=False, validate="one_to_one",
+    )
+    positions = pd.Index(batch.sample_ids).get_indexer(rows["sample_id"])
+    if (
+        not rows["evaluation_id"].eq(batch.evaluation_id).all()
+        or np.any(positions < 0)
+        or not rows["reference_available"].eq(True).all()
+    ):
+        raise ValueError("Legacy generalization projection requires aligned, fully referenced points.")
+    table = batch.metadata.iloc[positions].reset_index(drop=True)
+    table["estimator"] = rows["method_id"].to_numpy()
+    table["representation"] = rows["representation_id"].fillna("none").to_numpy()
+    table["true_lifetime_ns"] = rows["reference_value_ns"].to_numpy()
+    table["predicted_lifetime_ns"] = rows["lifetime_estimate_ns"].to_numpy()
+    table["valid_prediction"] = rows["is_valid"].to_numpy()
+    table["error_ns"] = rows["error_ns"].where(rows["is_valid"]).to_numpy()
+    table["absolute_error_ns"] = rows["absolute_error_ns"].where(rows["is_valid"]).to_numpy()
+    return table
+
+
+def _evaluate_generalization_test(
+    *,
+    test: GeneralizationTestMeasurements,
+    representations: Mapping[str, Any],
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    baseline_predictions: Sequence[tuple[MethodDescriptor, ArrayLike]] = (),
+) -> pd.DataFrame:
+    """Adapt a frozen test to factual execution and its legacy table view."""
+    # Unselected user mapping entries are ignored, as in predict_regressors.
+    selected = {
+        name: representations[name]
+        for group in fitted_estimators.values() for name in group
+        if name in representations
+    }
+    batch = _build_generalization_evaluation_batch(test=test, representations=selected)
+    result = _evaluate_nonclassical_batch(
+        batch=batch, fitted_estimators=fitted_estimators,
+        baseline_predictions=baseline_predictions,
+    )
+    return _project_generalization_predictions(
+        batch=batch, result=result, reference_id=next(iter(batch.references)),
+    )
+
+
 def _evaluate_nonclassical_generalization_tests(
     *,
     prepared: GeneralizationPreparedData,
@@ -1275,8 +1423,8 @@ def _evaluate_nonclassical_generalization_tests(
             "test_ids must not contain duplicates."
         )
 
-    # These identities have scientific meaning in the existing reporting layer.
-    # Do not let a custom ML estimator merge with a baseline or appear classical.
+    # Legacy reporting still infers classical failure rates from names. Keep its
+    # reservation at this compatibility boundary, not in factual batch execution.
     for model_name in fitted_estimators:
         if model_name in {"constant_mean", "mean_arrival_time"} or (
             isinstance(model_name, str)
@@ -1311,91 +1459,14 @@ def _evaluate_nonclassical_generalization_tests(
                 raise ValueError(f"Missing representation mapping for Test {test_id!r}.")
             representations = X_by_test_and_representation[test_id]
 
-        #
-        # Constant development-mean baseline.
-        #
-        constant_predictions = (
-            predict_constant_mean_baseline(
-                y_train=(
-                    prepared.development.y
-                ),
-                n_predictions=(
-                    test.y.size
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "constant_mean"
-                ),
-                representation_name="none",
-                test=test,
-                y_pred=constant_predictions,
-            )
-        )
-
-        #
-        # Mean-arrival-time baseline.
-        #
-        X_features = prepared.X_features[test_id]
-
-        mean_arrival_predictions = (
-            estimate_lifetime_from_mean_arrival(
-                mean_arrival_time_ns=(
-                    X_features[
-                        "mean_arrival_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-                peak_time_ns=(
-                    X_features[
-                        "peak_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "mean_arrival_time"
-                ),
-                representation_name=(
-                    "engineered_features"
-                ),
-                test=test,
-                y_pred=(
-                    mean_arrival_predictions
-                ),
-            )
-        )
-
-        #
-        # Point-estimator execution is independent of estimator/representation IDs.
-        #
-        model_predictions = predict_regressors(
+        prediction_tables.append(_evaluate_generalization_test(
+            test=test, representations=representations,
             fitted_estimators=fitted_estimators,
-            X_by_representation=representations,
-        )
-        for model_name, representation_predictions in model_predictions.items():
-            for representation_name, predictions in representation_predictions.items():
-                prediction_tables.append(
-                    _build_generalization_prediction_table(
-                        estimator_name=(
-                            model_name
-                        ),
-                        representation_name=(
-                            representation_name
-                        ),
-                        test=test,
-                        y_pred=predictions,
-                    )
-                )
+            baseline_predictions=_generalization_baseline_predictions(
+                y_development=prepared.development.y,
+                X_features=prepared.X_features[test_id],
+            ),
+        ))
 
     return prediction_tables
 
@@ -1408,131 +1479,31 @@ def _evaluate_principal_nonclassical_estimators(
         dict[str, Any],
     ],
 ) -> list[pd.DataFrame]:
-    """Evaluate baselines and primary ML estimators on Tests A/B."""
-
-    prediction_tables: list[
-        pd.DataFrame
-    ] = []
-
-    test_inputs = (
-        (
-            prepared.test_a,
-            prepared.X_features_a,
-        ),
-        (
-            prepared.test_b,
-            prepared.X_features_b,
-        ),
-    )
-
-    for (
-            test,
-            X_features,
-    ) in test_inputs:
-
-        # Constant baseline:
-        # training/development target mean only.
-        constant_predictions = (
-            predict_constant_mean_baseline(
-                y_train=(
-                    prepared.development.y
-                ),
-                n_predictions=(
-                    test.y.size
-                ),
-            )
+    """Evaluate the frozen principal selection through shared factual execution."""
+    selected = {}
+    for model_name in ("ridge", "random_forest", "hist_gradient_boosting"):
+        try:
+            selected[model_name] = {
+                "engineered_features": fitted_estimators[model_name]["engineered_features"],
+            }
+        except KeyError as exc:
+            raise KeyError(
+                "Missing fitted engineered-feature "
+                f"estimator for {model_name!r}."
+            ) from exc
+    return [
+        _evaluate_generalization_test(
+            test=test, representations={"engineered_features": features},
+            fitted_estimators=selected,
+            baseline_predictions=_generalization_baseline_predictions(
+                y_development=prepared.development.y, X_features=features,
+            ),
         )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "constant_mean"
-                ),
-                representation_name=(
-                    "none"
-                ),
-                test=test,
-                y_pred=constant_predictions,
-            )
+        for test, features in (
+            (prepared.test_a, prepared.X_features_a),
+            (prepared.test_b, prepared.X_features_b),
         )
-
-        # Physics-inspired mean-arrival-time baseline.
-        mean_arrival_predictions = (
-            estimate_lifetime_from_mean_arrival(
-                mean_arrival_time_ns=(
-                    X_features[
-                        "mean_arrival_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-                peak_time_ns=(
-                    X_features[
-                        "peak_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "mean_arrival_time"
-                ),
-                representation_name=(
-                    "engineered_features"
-                ),
-                test=test,
-                y_pred=(
-                    mean_arrival_predictions
-                ),
-            )
-        )
-
-        # Principal ML estimator set.
-        for model_name in (
-            "ridge",
-            "random_forest",
-            "hist_gradient_boosting",
-        ):
-            try:
-                estimator = (
-                    fitted_estimators[
-                        model_name
-                    ][
-                        "engineered_features"
-                    ]
-                )
-
-            except KeyError as exc:
-                raise KeyError(
-                    "Missing fitted engineered-feature "
-                    f"estimator for {model_name!r}."
-                ) from exc
-
-            predictions = np.asarray(
-                estimator.predict(
-                    X_features
-                ),
-                dtype=np.float64,
-            )
-
-            prediction_tables.append(
-                _build_generalization_prediction_table(
-                    estimator_name=(
-                        model_name
-                    ),
-                    representation_name=(
-                        "engineered_features"
-                    ),
-                    test=test,
-                    y_pred=predictions,
-                )
-            )
-
-    return prediction_tables
+    ]
 
 
 def _evaluate_classical_ab(
@@ -1994,52 +1965,18 @@ def evaluate_ml_representation_ab_benchmark(
         ),
     )
 
-    for (
-        test,
-        representations,
-    ) in test_definitions:
-
-        for model_name in (
-            "ridge",
-            "random_forest",
-            "hist_gradient_boosting",
-        ):
-            for representation_name in (
-                "engineered_features",
-                "normalized_histogram",
-                "pca_histogram",
-            ):
-                estimator = (
-                    fitted_estimators[
-                        model_name
-                    ][
-                        representation_name
-                    ]
-                )
-
-                X_test = representations[
-                    representation_name
-                ]
-
-                predictions = np.asarray(
-                    estimator.predict(
-                        X_test
-                    ),
-                    dtype=np.float64,
-                )
-
-                prediction_tables.append(
-                    _build_generalization_prediction_table(
-                        estimator_name=(
-                            model_name
-                        ),
-                        representation_name=(
-                            representation_name
-                        ),
-                        test=test,
-                        y_pred=predictions,
-                    )
-                )
+    # Frozen selection/order belongs to this wrapper, not the executor.
+    selected = {
+        model_name: {
+            name: fitted_estimators[model_name][name]
+            for name in ("engineered_features", "normalized_histogram", "pca_histogram")
+        }
+        for model_name in ("ridge", "random_forest", "hist_gradient_boosting")
+    }
+    for test, representations in test_definitions:
+        prediction_tables.append(_evaluate_generalization_test(
+            test=test, representations=representations, fitted_estimators=selected,
+        ))
 
     predictions = pd.concat(
         prediction_tables,

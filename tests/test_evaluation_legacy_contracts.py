@@ -9,15 +9,19 @@ import pandas as pd
 import pytest
 
 from tcspc_toolkit.conditional_evaluation import build_prediction_diagnostics
+from tcspc_toolkit.evaluation_core import build_point_evaluation
+from tcspc_toolkit.evaluation_results import MethodDescriptor
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.generalization_evaluation import (
     _build_generalization_prediction_table, build_mae_degradation_table,
+    _build_generalization_evaluation_batch, _project_generalization_predictions,
     build_reference_mae_degradation_table, summarize_generalization_predictions,
 )
 
 
 @pytest.mark.parametrize("test_ids", [("A", "B"), ("A", "C", "B")])
-def test_legacy_ab_and_multitest_tables_have_independent_expectations(test_ids):
+@pytest.mark.parametrize("factual_projection", [False, True])
+def test_legacy_ab_and_multitest_tables_have_independent_expectations(test_ids, factual_projection):
     facts = {
         "A": ([2.0, 1.0], [True, True], [1.0, -2.0]),
         "B": ([3.0, 13.0], [True, False], [2.0, np.nan]),
@@ -32,10 +36,23 @@ def test_legacy_ab_and_multitest_tables_have_independent_expectations(test_ids):
             test_id, np.array([0.0, 1.0]), np.ones((2, 2), dtype=np.int64),
             np.array([1.0, 3.0]), metadata,
         )
-        tables.append(_build_generalization_prediction_table(
-            estimator_name=name, representation_name="raw_histogram", test=test,
-            y_pred=predictions, valid_mask=valid,
-        ))
+        if factual_projection:
+            batch = _build_generalization_evaluation_batch(test=test, representations={})
+            result = build_point_evaluation(
+                batch=batch, method=MethodDescriptor(name, "classical", "raw_histogram"),
+                lifetime_estimates_ns=predictions, is_valid=valid,
+            )
+            if test_id == "B":
+                # Raw facts retain the finite invalid error; the legacy view masks it.
+                assert result.reference_comparisons.error_ns.tolist() == [2.0, 10.0]
+            tables.append(_project_generalization_predictions(
+                batch=batch, result=result, reference_id="generating_mono",
+            ))
+        else:
+            tables.append(_build_generalization_prediction_table(
+                estimator_name=name, representation_name="raw_histogram", test=test,
+                y_pred=predictions, valid_mask=valid,
+            ))
         expected_tables.append(pd.DataFrame({
             "sample_id": [7, 3], "test_id": [test_id] * 2,
             "estimator": [name] * 2, "representation": ["raw_histogram"] * 2,

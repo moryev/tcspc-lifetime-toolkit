@@ -14,12 +14,17 @@ from tcspc_toolkit.estimator_api import EstimatorSpec
 from tcspc_toolkit.generalization import FINAL_ROBUSTNESS_TEST_IDS
 from tcspc_toolkit.generalization_datasets import generate_generalization_test_suite
 from tcspc_toolkit.generalization_evaluation import (
+    GeneralizationABPreparedData,
+    _evaluate_principal_nonclassical_estimators,
     _build_generalization_prediction_table,
+    build_ab_comparison_table,
     build_generalization_development_measurements,
+    build_mae_degradation_table,
     build_reference_mae_degradation_table,
     evaluate_generalization_suite_benchmark,
     evaluate_instrument_acquisition_benchmark,
     evaluate_model_mismatch_benchmark,
+    evaluate_ml_representation_ab_benchmark,
     fit_generalization_ml_estimators,
     prepare_generalization_data,
     summarize_generalization_predictions,
@@ -137,6 +142,45 @@ def test_canonical_predictions_and_tables_match_legacy_execution(
     )
 
 
+@pytest.mark.parametrize("principal", [True, False])
+def test_ab_paths_match_independent_legacy_execution(prepared, canonical_fits, principal):
+    legacy, current = canonical_fits
+    ab = GeneralizationABPreparedData(
+        development=prepared.development,
+        test_a=prepared.tests["A"], test_b=prepared.tests["B"],
+        X_features_a=prepared.X_features["A"], X_features_b=prepared.X_features["B"],
+        X_normalized_development=prepared.X_normalized_development,
+        X_normalized_a=prepared.X_normalized["A"], X_normalized_b=prepared.X_normalized["B"],
+        X_pca_development=prepared.X_pca_development,
+        X_pca_a=prepared.X_pca["A"], X_pca_b=prepared.X_pca["B"], pca=prepared.pca,
+    )
+    expected = legacy_prediction_tables(prepared, legacy, ("A", "B"))
+    baselines = expected.estimator.isin(["constant_mean", "mean_arrival_time"])
+    selected = (baselines | expected.representation.eq("engineered_features")) if principal else ~baselines
+    expected = expected.loc[selected].reset_index(drop=True)
+    # Frozen wrappers own selection/order, not the caller's dictionary order.
+    reversed_fits = {name: dict(reversed(tuple(group.items())))
+                     for name, group in reversed(tuple(current.items()))}
+    if principal:
+        actual = pd.concat(_evaluate_principal_nonclassical_estimators(
+            prepared=ab, fitted_estimators=reversed_fits,
+        ), ignore_index=True)
+        summary = summarize_generalization_predictions(actual)
+        degradation = build_mae_degradation_table(summary)
+    else:
+        result = evaluate_ml_representation_ab_benchmark(prepared=ab, fitted_estimators=reversed_fits)
+        actual, summary, degradation = result.predictions, result.summary, result.degradation
+    expected_summary = summarize_generalization_predictions(expected)
+    expected_degradation = build_mae_degradation_table(expected_summary)
+    pd.testing.assert_frame_equal(actual, expected, check_exact=True)
+    pd.testing.assert_frame_equal(summary, expected_summary, check_exact=True)
+    pd.testing.assert_frame_equal(degradation, expected_degradation, check_exact=True)
+    if not principal:
+        pd.testing.assert_frame_equal(result.comparison, build_ab_comparison_table(
+            summary=expected_summary, degradation=expected_degradation,
+        ), check_exact=True)
+
+
 def test_custom_estimator_selects_one_prepared_representation(prepared):
     fitted = fit_generalization_ml_estimators(
         prepared,
@@ -238,7 +282,7 @@ def test_test_mapping_failures(prepared, custom_inputs, failure):
         tests["A"] = {}
     else:
         tests["A"]["arrival-pair"] = tests["A"]["arrival-pair"].iloc[:-1]
-    with pytest.raises(ValueError, match="Missing representation|one value per robustness-test sample"):
+    with pytest.raises(ValueError, match="Missing representation|row-aligned"):
         evaluate_generalization_suite_benchmark(
             prepared=prepared, fitted_estimators=fitted,
             X_by_test_and_representation=tests,

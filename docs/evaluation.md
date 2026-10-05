@@ -1,11 +1,11 @@
-# Evaluation architecture: Issue #11, Stages 0–2
+# Evaluation architecture: Issue #11, Stages 0–3
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
-existing A/B and multi-test carriers. **Prediction and reporting have not migrated
-to the factual result core.** Multi-test orchestration, classical/uncertainty
-integration and notebook migration remain later reviewed stages. The 66-name root
-API is unchanged.
+existing A/B and multi-test carriers. Stage 3 routes nonclassical generalization
+point evaluation through those facts and projects back to unchanged legacy tables.
+Classical, conditional and uncertainty integration, report consolidation and
+notebook migration remain later reviewed stages. The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
 
@@ -43,7 +43,7 @@ shared representation-preparation mechanics
                   ↓
 unchanged A/B and multi-test prepared-data carriers
                   ↓
-existing prediction/report paths (generic result adaptation remains later work)
+baseline/ML factual evaluation and legacy table projection (Stage 3)
 ```
 
 `prepare_generalization_ab_data` and `prepare_generalization_data` delegate to
@@ -70,13 +70,83 @@ strip/uppercase normalization, uniqueness/key-match checks and caller ordering.
 `GeneralizationTestMeasurements` and `GeneralizationTestSuite` remain frozen A–F
 carriers; arbitrary evaluation IDs still belong to `EvaluationBatch`.
 
-No `EvaluationBatch` views were needed for deduplication; their integration is
-deferred. PCA is not hidden in a batch. Test-F targets and descriptive weighted
-lifetimes remain untouched; preparation invents no new reference semantics.
+No `EvaluationBatch` views were needed for preparation deduplication; Stage 3
+constructs them at the execution boundary below. PCA is not hidden in a batch.
+Test-F targets and descriptive weighted lifetimes remain untouched; preparation
+invents no new reference semantics.
 Portable preparation tests were run before and after the refactor against direct
 TOTAL division, unchanged single-histogram features and an independently fitted
 full-SVD PCA. Separate changes to test counts or targets/metadata leave the fitted
 development state unchanged. Stage-0 legacy table expectations remain in use.
+
+## Nonclassical point execution and compatibility projection (Stage 3)
+
+```text
+prepared representations
+          ↓
+baseline / ML execution
+          ↓
+PointEvaluationResult
+          ↓
+legacy generalization table projection
+          ↓
+existing summaries / frozen reports
+```
+
+Private adapters in `generalization_evaluation` now share this path for principal
+A/B, representation A/B, A/C/D/E instrument/acquisition, A/F model mismatch and
+the full A–F suite. Public signatures and result dataclasses are unchanged.
+Principal A/B still selects the three canonical engineered-feature estimators;
+representation A/B still selects their three canonical representations. Frozen
+wrappers own those selections and ordering, not the factual executor.
+
+`_build_generalization_evaluation_batch` views already-prepared matrices without
+copying or refitting them. It snapshots metadata and uses its `sample_id` column,
+or positional row numbers for legacy carriers without that column. A–E expose
+their existing targets as `generating_mono`; F exposes its existing primary-component
+target as `primary_component`. These kinds also provide distinct reference IDs.
+No weighted-mixture or pseudo-true reference is created. Metadata indices do not
+define sample identity, and source metadata/targets remain unchanged.
+
+`_evaluate_nonclassical_batch` accepts arbitrary named batches and selected
+representations, invokes `predict_regressors`, and combines baseline and ML facts
+in one `PointEvaluationResult`. Baseline algorithms are supplied from the unchanged
+development-mean and mean-arrival functions. Families are explicit: `baseline`
+for those two methods, `ml` for regressors. Constant mean has no canonical
+representation (`None`); mean arrival uses `engineered_features`. No family is
+inferred from a name. An ML `classical_reconvolution_custom` remains ML and can
+coexist with a distinct actual classical method ID. Canonical identity validation
+rejects duplicate points or conflicting reuse of one method ID across families.
+
+Custom ML representations affect only selected regressor inputs; unselected
+mapping entries are ignored. Baselines retain their original prepared inputs.
+Ordinary finite baseline/ML estimates are valid, including zero and negative
+values. No clipping occurs. Shape/finiteness checks for ML outputs belong to
+`predict_regressors`; selected matrix row counts are also checked against the
+batch before execution. A/B now uses that same prediction validation contract.
+Generic execution also supports no-reference batches, without inventing targets.
+
+`_project_generalization_predictions` explicitly selects the frozen reference,
+preserves metadata column placement and point order, and resets the legacy table
+index. It projects `method_id` to `estimator`, absent representation to `"none"`,
+and `lifetime_estimate_ns` to `predicted_lifetime_ns`; `test_id` remains the frozen
+metadata column. `true_lifetime_ns` retains the legacy target semantics, including
+F's primary component. Signed/absolute errors come from canonical comparisons,
+but invalid-row errors are masked to NaN in this view only. Finite invalid values
+and their errors remain inspectable in canonical facts.
+
+Legacy generalization summaries/degradation remain unchanged: valid-only errors,
+attempted/valid counts, reference A and near-zero safeguards retain their policies.
+Those summaries still infer classical failure-rate applicability from the
+`classical_reconvolution` prefix. Consequently the existing multi-test legacy
+reporting boundary still reserves that prefix and `constant_mean` /
+`mean_arrival_time` for compatibility. The factual executor has no such reserved
+names. Removing reporting inference awaits classical/report migration; this stage
+does not claim to make the whole reporting layer generic.
+
+Classical execution and its existing table builders have not migrated. Conditional
+evaluation still retains finite-invalid errors and its metadata index. Uncertainty,
+persistence, report/result dataclasses, notebooks and root exports are unchanged.
 
 ## Implemented factual contracts
 
@@ -266,8 +336,8 @@ summaries/PPC and scientific provenance remain in existing domain objects.
 Intervals, heuristic scores, local covariance and empirical repeated-Poisson
 variability remain distinct. No uncertainty attachment class exists at this stage.
 
-Later Issue-#11 stages will review generic multi-test execution, method-specific
-result adapters and thin frozen report projections. No combined
+Later Issue-#11 stages will review classical/conditional execution, method-specific
+result adapters and frozen report consolidation. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
