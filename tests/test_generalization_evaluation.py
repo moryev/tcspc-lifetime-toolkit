@@ -28,7 +28,7 @@ from tcspc_toolkit.generalization_evaluation import (
     build_ab_comparison_table,
     evaluate_ml_representation_ab_benchmark,
     add_test_b_photon_count_regime,
-    build_day53_ab_report,
+    build_photon_count_shift_report,
     build_generalization_plot_diagnostics,
     summarize_test_b_photon_count_ood,
 )

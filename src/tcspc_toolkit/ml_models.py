@@ -17,6 +17,7 @@ from sklearn.preprocessing import (
 )
 
 from tcspc_toolkit.config import CountNormalization
+from tcspc_toolkit.estimator_api import EstimatorSpec
 from tcspc_toolkit.representations import (
     normalize_histogram_batch,
 )
@@ -125,6 +126,34 @@ def make_hist_gradient_boosting_pipeline(
                 ),
             ),
         ]
+    )
+
+
+def make_canonical_ml_estimator_specs() -> tuple[EstimatorSpec, ...]:
+    """Describe the existing canonical point-regression benchmark matrix.
+
+    Each estimator selects engineered features, TOTAL-normalized histograms,
+    and development-fitted PCA histograms, in the established order. Callers
+    prepare those representations explicitly. The existing factories retain
+    every pipeline step, sklearn default, and random state (42 for RF/HGB).
+
+    This is frozen benchmark configuration, not a registry or a restriction
+    on generic execution. Custom workflows supply their own ``EstimatorSpec``
+    objects. Existing specialized benchmark wrappers remain unchanged.
+    """
+    representations = (
+        "engineered_features",
+        "normalized_histogram",
+        "pca_histogram",
+    )
+    return (
+        EstimatorSpec("ridge", make_ridge_pipeline, representations),
+        EstimatorSpec("random_forest", make_random_forest_pipeline, representations),
+        EstimatorSpec(
+            "hist_gradient_boosting",
+            make_hist_gradient_boosting_pipeline,
+            representations,
+        ),
     )
 
 

@@ -5052,13 +5052,13 @@ def _validate_week9_scorecard_scope(
         raise ValueError("score-only Week-9 metrics cannot claim nominal coverage")
 
 
-def record_week9_interval_scorecard_row(
+def record_ml_interval_scorecard_row(
     connection: sqlite3.Connection, row: Any, *,
     scope: BenchmarkMetricScope, n_attempted: int, n_valid_intervals: int,
     n_valid_predictions: int,
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
-    """Record one frozen A-F interval row with caller-supplied missing counts."""
+    """Record one ML interval scorecard row with explicit attempted/valid counts."""
     source = _week9_scorecard_row(row, required={
         "method", "test_id", "target_reference", "mae_ns", "nominal_coverage",
         "empirical_coverage", "coverage_gap", "mean_width_ns",
@@ -5095,12 +5095,12 @@ def record_week9_interval_scorecard_row(
     )
 
 
-def record_week9_score_only_scorecard_row(
+def record_ml_uncertainty_scorecard_row(
     connection: sqlite3.Connection, row: Any, *,
     scope: BenchmarkMetricScope, n_attempted: int, n_valid_scores: int,
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
-    """Record one frozen A-F score row without guessing absent tail counts."""
+    """Record one ML uncertainty-score row without guessing absent tail counts."""
     source = _week9_scorecard_row(row, required={
         "method", "test_id", "target_reference", "mae_ns",
         "mean_uncertainty_score", "error_score_spearman",
@@ -5552,3 +5552,8 @@ def query_metrics(
         allowed_order={name: f"b.{name}" for name in ("metric_id", "run_id", "metric_name", "test_id", "regime_id")},
         grain_order=("b.metric_id",), descending=descending, decode_json=decode_json,
     )
+
+
+# Legacy public names: direct aliases retained at least through Issue #12.
+record_week9_interval_scorecard_row = record_ml_interval_scorecard_row
+record_week9_score_only_scorecard_row = record_ml_uncertainty_scorecard_row

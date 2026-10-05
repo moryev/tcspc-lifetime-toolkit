@@ -1,4 +1,8 @@
-"""Public package interface for the TCSPC Lifetime Toolkit."""
+"""Curated convenience API; specialized workflows remain module-qualified.
+
+The explicit ``__all__`` is the supported package-root surface. See
+``docs/api.md`` for the supported advanced APIs and compatibility policy.
+"""
 
 from tcspc_toolkit.models import (
     monoexponential_decay,
@@ -109,8 +113,16 @@ from tcspc_toolkit.representations import (
     transform_pca_representation,
 )
 
+from tcspc_toolkit.estimator_api import (
+    RegressorProtocol,
+    EstimatorSpec,
+    fit_regressors,
+    predict_regressors,
+)
+
 __all__ = [
     "monoexponential_decay",
+    "build_expected_counts_from_irf",
     "sample_photon_counts",
     "SyntheticDataset",
     "generate_monoexponential_dataset",
@@ -171,4 +183,8 @@ __all__ = [
     "fit_pca_representation",
     "normalize_histogram_batch",
     "transform_pca_representation",
+    "RegressorProtocol",
+    "EstimatorSpec",
+    "fit_regressors",
+    "predict_regressors",
 ]

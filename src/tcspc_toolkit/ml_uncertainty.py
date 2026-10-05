@@ -623,7 +623,7 @@ class QuantileGradientBoostingExternalResult:
 
 @dataclass(frozen=True)
 class QuantileGradientBoostingRobustnessResult:
-    """Conditional external uncertainty evaluation for Day 58.
+    """Quantile-interval evaluation under photon, background, and decay shifts.
 
     The five external conditions are evaluated using the same
     frozen q05/q50/q95 estimator produced by the development
@@ -658,7 +658,7 @@ class QuantileGradientBoostingPairedConditionResult:
 
 @dataclass(frozen=True)
 class QuantileGradientBoostingPairedRobustnessResult:
-    """Paired Day-58 uncertainty-response analysis."""
+    """Paired reference-to-shift quantile-interval response analysis."""
 
     condition_results: dict[
         str,
@@ -998,13 +998,13 @@ def evaluate_frozen_quantile_gradient_boosting(
     )
 
 
-def evaluate_week9_quantile_robustness_conditions(
+def evaluate_quantile_interval_robustness(
     calibration_result: QuantileGradientBoostingCalibrationResult,
     prepared: GeneralizationPreparedData,
     *,
     definition: GeneralizationSuiteDefinition,
 ) -> QuantileGradientBoostingRobustnessResult:
-    """Evaluate the frozen quantile estimator on Day-58 OOD conditions.
+    """Evaluate quantile intervals in five photon/background/decay-shift regimes.
 
     The evaluation is restricted to the five conditional regimes
     frozen by the Week 9 protocol:
@@ -1375,13 +1375,13 @@ def evaluate_week9_quantile_robustness_conditions(
     )
 
 
-def evaluate_week9_paired_quantile_response(
+def evaluate_paired_quantile_interval_response(
     calibration_result: QuantileGradientBoostingCalibrationResult,
     prepared: GeneralizationPreparedData,
     *,
     definition: GeneralizationSuiteDefinition,
 ) -> QuantileGradientBoostingPairedRobustnessResult:
-    """Compare each Day-58 shifted curve with its matched Test-A curve.
+    """Compare shifted Test-B/D/F curves with their matched Test-A curves.
 
     Matching is performed by the frozen Week-8 ``pair_id``.
 
@@ -1794,7 +1794,7 @@ class MLUncertaintyScorePairedRobustnessResult:
     summary: pd.DataFrame
 
 
-def evaluate_week9_paired_ml_uncertainty_response(
+def evaluate_paired_uncertainty_score_response(
     calibration_result: MLUncertaintyScoreCalibrationResult,
     prepared: GeneralizationPreparedData,
     *,
@@ -3498,3 +3498,7 @@ def _build_paired_ml_uncertainty_summary(
     )
 
 
+# Legacy public names: direct aliases retained at least through Issue #12.
+evaluate_week9_quantile_robustness_conditions = evaluate_quantile_interval_robustness
+evaluate_week9_paired_quantile_response = evaluate_paired_quantile_interval_response
+evaluate_week9_paired_ml_uncertainty_response = evaluate_paired_uncertainty_score_response

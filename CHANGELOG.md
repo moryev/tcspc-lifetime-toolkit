@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — Post-Week-9 integration
 
+### Changed — Issue #2
+
+- Establish generic estimator execution with `RegressorProtocol`, immutable
+  `EstimatorSpec`, `fit_regressors`, and `predict_regressors`.
+- Support user-supplied estimators and prepared representation mappings in
+  the generalization ML boundary while preserving canonical benchmark
+  configurations, seeds, and default behavior.
+- Replace reusable Day/Week API names with scientific names, retaining direct
+  legacy aliases without deprecation warnings at least through Issue #12.
+- Stabilize the curated root API with the four generic extension symbols and
+  the missing `build_expected_counts_from_irf` export; document supported
+  module-qualified workflows and add a runnable custom-estimator example.
+
 ### Changed — Issue #1
 
 - Use `ArrayLike` for IRF, simulation, and Poisson-likelihood inputs already

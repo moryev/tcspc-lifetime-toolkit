@@ -535,9 +535,9 @@ and `ReconvolutionBenchmarkSummary` into facts. Their public names are
 `record_uncertainty_score_metrics`, `record_selective_prediction_metrics`,
 `record_repeated_poisson_metrics`, `record_regression_metrics`,
 `record_robustness_metrics` and `record_reconvolution_benchmark_metrics`.
-The frozen Week-9 ML A–F interval and score-only DataFrame rows also have
-`record_week9_interval_scorecard_row` and
-`record_week9_score_only_scorecard_row` adapters. These require the missing
+The ML A–F interval and score-only DataFrame rows also have
+`record_ml_interval_scorecard_row` and
+`record_ml_uncertainty_scorecard_row` adapters. These require the missing
 attempted/valid counts explicitly; they verify row method, test, reference
 and nominal coverage against the caller's scope, not against hard-coded A–F
 definitions. The supported ML interval rows calculate median MAE as an
@@ -548,6 +548,12 @@ prediction can make that MAE undefined while a subset of intervals remains
 valid. Valid intervals cannot exceed finite predictions, and a finite ML MAE
 requires all attempted predictions to be finite. Counts are never recovered
 from rounded failure or coverage rates.
+
+The legacy Python names `record_week9_interval_scorecard_row` and
+`record_week9_score_only_scorecard_row` are direct aliases retained at least
+through Issue #12, without deprecation warnings. Renaming these callables
+does not change schema v1, method/metric identifiers, source-result identities,
+scope hashes, or duplicate handling; see the [API naming map](api.md#scientific-api-names-stage-3).
 
 The scope is a `BenchmarkMetricScope` supplied by the caller; it includes the
 run/protocol/profile, exact population and dataset keys, optional stored

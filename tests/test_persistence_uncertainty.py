@@ -693,7 +693,7 @@ def test_scope_selection_is_validated_against_stored_population(context):
         )
 
 
-def test_week9_scorecard_rows_require_explicit_denominators(context):
+def test_ml_scorecard_rows_require_explicit_denominators_and_preserve_legacy_identity(context):
     db, run, _, model, _, _ = context
     interval_row = pd.Series({
         "method": "quantile_gradient_boosting", "test_id": "A",
@@ -704,7 +704,8 @@ def test_week9_scorecard_rows_require_explicit_denominators(context):
         "interval_failure_rate": 0.1,
     })
     scope = _scope(run, model)
-    ids = store.record_week9_interval_scorecard_row(
+    db.execute("SAVEPOINT scorecard_aliases")
+    ids = store.record_ml_interval_scorecard_row(
         db, interval_row, scope=scope, n_attempted=10,
         n_valid_intervals=9, n_valid_predictions=10,
     )
@@ -716,13 +717,13 @@ def test_week9_scorecard_rows_require_explicit_denominators(context):
     )
     assert (coverage["n_contributing"], coverage["denominator_kind"]) == (9, "valid_intervals")
     with pytest.raises(ValueError, match="method/test"):
-        store.record_week9_interval_scorecard_row(
+        store.record_ml_interval_scorecard_row(
             db, interval_row, scope=replace(scope, test_id="F"),
             n_attempted=10, n_valid_intervals=9, n_valid_predictions=10,
             on_duplicate="reuse_identical",
         )
     with pytest.raises(ValueError, match="counts"):
-        store.record_week9_interval_scorecard_row(
+        store.record_ml_interval_scorecard_row(
             db, interval_row, scope=scope, n_attempted=10,
             n_valid_intervals=11, n_valid_predictions=10,
         )
@@ -738,7 +739,7 @@ def test_week9_scorecard_rows_require_explicit_denominators(context):
         run, model, method="random_forest_tree_spread", coverage=None,
         selection={"tail_fraction": 0.2},
     )
-    score_ids = store.record_week9_score_only_scorecard_row(
+    score_ids = store.record_ml_uncertainty_scorecard_row(
         db, score_row, scope=score_scope, n_attempted=10, n_valid_scores=10,
     )
     assert len(score_ids) == 6
@@ -747,6 +748,29 @@ def test_week9_scorecard_rows_require_explicit_denominators(context):
     ).fetchone()
     assert correlation["value_status"] == "undefined"
     assert correlation["metric_value"] is None
+
+    # Both legacy entry points must resolve to identical scientific rows and
+    # stable keys, including scope hashes, methods, metrics, and denominators.
+    query = "SELECT * FROM benchmark_metrics ORDER BY metric_id"
+    before = [dict(row) for row in db.execute(query)]
+    # Replay from the same database state through the old names, not just reuse
+    # rows already inserted by the new names.
+    db.execute("ROLLBACK TO scorecard_aliases")
+    for legacy, row, metric_scope, counts, expected_ids in (
+        (store.record_week9_interval_scorecard_row, interval_row, scope,
+         {"n_valid_intervals": 9, "n_valid_predictions": 10}, ids),
+        (store.record_week9_score_only_scorecard_row, score_row, score_scope,
+         {"n_valid_scores": 10}, score_ids),
+    ):
+        assert legacy(db, row, scope=metric_scope, n_attempted=10, **counts) == expected_ids
+        with pytest.raises(store.PersistenceConflictError, match="duplicate"):
+            legacy(db, row, scope=metric_scope, n_attempted=10, **counts)
+        assert legacy(
+            db, row, scope=metric_scope, n_attempted=10, **counts,
+            on_duplicate="reuse_identical",
+        ) == expected_ids
+    assert [dict(row) for row in db.execute(query)] == before
+    db.execute("RELEASE scorecard_aliases")
 
 
 def test_pseudo_true_references_match_selected_measurement_conditions(context):
@@ -1064,7 +1088,7 @@ def test_week9_interval_scorecard_uses_attempted_prediction_mae(context):
         "interval_score": source.interval_metrics.mean_interval_score,
         "interval_failure_rate": source.interval_metrics.interval_failure_rate,
     }
-    ids = store.record_week9_interval_scorecard_row(
+    ids = store.record_ml_interval_scorecard_row(
         db, row, scope=scope, n_attempted=2,
         n_valid_intervals=1, n_valid_predictions=1,
     )
@@ -1078,14 +1102,14 @@ def test_week9_interval_scorecard_uses_attempted_prediction_mae(context):
         1, 1, 1.0,
     )
     with pytest.raises(ValueError, match="prediction/interval counts"):
-        store.record_week9_interval_scorecard_row(
+        store.record_ml_interval_scorecard_row(
             db, row, scope=scope, n_attempted=2,
             n_valid_intervals=1, n_valid_predictions=0,
             on_duplicate="reuse_identical",
         )
     finite_row = dict(row, mae_ns=0.1)
     with pytest.raises(ValueError, match="finite ML scorecard MAE"):
-        store.record_week9_interval_scorecard_row(
+        store.record_ml_interval_scorecard_row(
             db, finite_row, scope=scope, n_attempted=2,
             n_valid_intervals=1, n_valid_predictions=1,
             on_duplicate="reuse_identical",
@@ -1096,7 +1120,7 @@ def test_week9_interval_scorecard_uses_attempted_prediction_mae(context):
         interval_score=float("nan"), interval_failure_rate=1.0, mae_ns=0.0,
     )
     with pytest.raises(ValueError, match="finite ML scorecard MAE"):
-        store.record_week9_interval_scorecard_row(
+        store.record_ml_interval_scorecard_row(
             db, empty_row, scope=replace(scope, population_key="empty-but-finite-mae"),
             n_attempted=2, n_valid_intervals=0, n_valid_predictions=0,
         )

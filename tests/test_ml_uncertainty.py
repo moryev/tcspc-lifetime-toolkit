@@ -40,11 +40,11 @@ from tcspc_toolkit.ml_uncertainty import (
     fit_and_evaluate_random_forest_tree_spread,
     fit_and_evaluate_ridge_bootstrap_spread,
     QuantileGradientBoostingRobustnessResult,
-    evaluate_week9_quantile_robustness_conditions,
+    evaluate_quantile_interval_robustness,
     QuantileGradientBoostingPairedRobustnessResult,
-    evaluate_week9_paired_quantile_response,
+    evaluate_paired_quantile_interval_response,
     MLUncertaintyScorePairedRobustnessResult,
-    evaluate_week9_paired_ml_uncertainty_response,
+    evaluate_paired_uncertainty_score_response,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult,
@@ -888,7 +888,7 @@ def test_week9_quantile_robustness_uses_five_frozen_conditions() -> None:
     )
 
     result = (
-        evaluate_week9_quantile_robustness_conditions(
+        evaluate_quantile_interval_robustness(
             calibration_result,
             prepared,
             definition=(
@@ -960,7 +960,7 @@ def test_week9_quantile_robustness_summary_contains_response_ratios() -> None:
     )
 
     result = (
-        evaluate_week9_quantile_robustness_conditions(
+        evaluate_quantile_interval_robustness(
             calibration_result,
             prepared,
             definition=(
@@ -1009,7 +1009,7 @@ def test_week9_paired_quantile_response_uses_test_a_pair_ids() -> None:
     )
 
     result = (
-        evaluate_week9_paired_quantile_response(
+        evaluate_paired_quantile_interval_response(
             calibration_result,
             prepared,
             definition=(
@@ -1072,7 +1072,7 @@ def test_week9_paired_quantile_summary_reports_response_metrics() -> None:
     )
 
     result = (
-        evaluate_week9_paired_quantile_response(
+        evaluate_paired_quantile_interval_response(
             calibration_result,
             prepared,
             definition=(
@@ -1127,7 +1127,7 @@ def test_week9_paired_quantile_response_requires_pair_ids() -> None:
         ValueError,
         match="pair_id",
     ):
-        evaluate_week9_paired_quantile_response(
+        evaluate_paired_quantile_interval_response(
             calibration_result,
             prepared,
             definition=(
@@ -1415,7 +1415,7 @@ def test_paired_random_forest_uncertainty_response_covers_day59_conditions() -> 
     )
 
     result = (
-        evaluate_week9_paired_ml_uncertainty_response(
+        evaluate_paired_uncertainty_score_response(
             calibration,
             prepared,
             definition=(
@@ -1472,7 +1472,7 @@ def test_paired_ridge_bootstrap_uncertainty_response_covers_day59_conditions() -
     )
 
     result = (
-        evaluate_week9_paired_ml_uncertainty_response(
+        evaluate_paired_uncertainty_score_response(
             calibration,
             prepared,
             definition=(
@@ -1513,7 +1513,7 @@ def test_paired_ml_uncertainty_diagnostics_preserve_matching_pair_ids() -> None:
     )
 
     result = (
-        evaluate_week9_paired_ml_uncertainty_response(
+        evaluate_paired_uncertainty_score_response(
             calibration,
             prepared,
             definition=(
