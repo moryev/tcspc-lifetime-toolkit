@@ -16,6 +16,32 @@
 11. A sampled measured IRF retains its imported values and provenance separately from the decay histogram. Reconvolution normalizes a compatible IRF for forward modelling without changing the imported trace.
 12. Experimental estimation does not imply known ground truth. Truth-based error metrics require an explicitly supplied trusted reference; synthetic generating parameters and experimental reference values have different meanings.
 
+## Estimator extension boundary — Issue #2
+
+The dependency direction is explicit (arrows mean "depends on"):
+
+```text
+benchmark orchestration
+        ↓
+canonical benchmark estimator specifications
+        ↓
+generic estimator execution
+```
+
+`estimator_api.py` defines the structural `RegressorProtocol`, immutable
+`EstimatorSpec`, and generic fitting/prediction functions. It does not know
+canonical estimator identities or representation names. `ml_models.py`
+constructs canonical specifications from the existing factories, preserving
+hyperparameters and seeds; generalization orchestration uses them by default.
+User-defined specifications can also call generic execution directly.
+
+Callers own prepared representations, feature meanings, positional sample
+alignment, and train/calibration/test roles. Generic execution neither fits
+representations nor computes benchmark metrics. The curated root API and
+supported module-qualified workflows are documented in [the API contract](../api.md).
+This boundary does not consolidate evaluation/report types (#11) or move
+package files (#3).
+
 ## Generalized IRFs — Issue #8
 
 IRF origin is independent of the numerical forward model:
@@ -125,4 +151,5 @@ Notebook 16 is presentation and orchestration of these library APIs. Its
 plain JSON manifest, `configs/issue8_irf_workflow.json`, fixes the audited
 demonstration settings without adding a configuration framework. Detailed
 results and fixture limitations belong in `docs/scientific_findings.md`.
-API stabilization and evaluation consolidation remain later issues.
+Issue #2 stabilizes the API and extension contracts described above;
+evaluation consolidation remains Issue #11.

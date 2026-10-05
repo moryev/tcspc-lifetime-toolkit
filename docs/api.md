@@ -1,28 +1,32 @@
 # Public API and estimator extensions
 
-This inventory accompanies Issue #2, Stages 0-3, starting from version 0.7.0
-at `74b4cd0b14d52348bd5f0136fb059f41af4821f0`. It is not a declaration that
-API stabilization or the later evaluation/package refactors are complete.
+This document defines the Issue-#2 public API contract for version 0.7.0:
+a curated package-root convenience API, supported module-qualified workflows,
+and a generic estimator extension boundary separate from frozen benchmark
+configuration. Evaluation consolidation (#11) and package movement (#3)
+remain separate work, not implemented interfaces.
 
 | Status | Surface |
 | --- | --- |
-| New supported Issue-#2 API | The four module-qualified symbols in `estimator_api` documented below; root promotion is not part of Stage 1. |
+| Generic extension API | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, and `predict_regressors` are root exports; their `estimator_api` imports resolve to the same objects. |
 | Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
 | Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Deferred architecture | Issue #11 evaluation consolidation and Issue #3 physical package movement are plans, not established interfaces. |
 
-## Existing public API inventory
+## Curated root API and supported module-qualified workflows
 
 The explicit `tcspc_toolkit.__all__` remains the curated package-root contract.
-Stages 1-3 do not change root imports or exports. Module-qualified workflows
-are also public where documented; absence from the root does not make them
-private. Internal names beginning with `_` are not extension points.
+All pre-Issue-#2 root exports are preserved. Stage 4 adds only the four generic
+extension symbols and the missing `build_expected_counts_from_irf` entry.
+Module-qualified workflows are also public where documented; absence from
+the root does not make them private. Internal names beginning with `_` are
+not extension points.
 
 | Area | Current package-root names |
 | --- | --- |
-| Models and simulation | `monoexponential_decay`, `sample_photon_counts`, `SyntheticDataset`, `generate_monoexponential_dataset` |
+| Models and simulation | `monoexponential_decay`, `build_expected_counts_from_irf`, `sample_photon_counts`, `SyntheticDataset`, `generate_monoexponential_dataset` |
 | IRF sources | `IRFSourceKind`, `IRFProfile`, `generate_gaussian_irf`, `generate_emg_irf`, `generate_gaussian_irf_profile`, `generate_emg_irf_profile`, `normalize_irf`, `shift_irf` |
 | IRF preparation and estimation | `IRFPreparationDiagnostics`, `PreparedIRF`, `irf_profile_from_sampled_irf`, `prepare_irf`, `LeadingEdgeIRFDiagnostics`, `LeadingEdgeIRFResult`, `estimate_irf_from_leading_edge` |
 | Classical inference | `convolve_decay_with_irf`, `LifetimeFitResult`, `ReconvolutionFitResult`, `fit_monoexponential_decay`, `fit_monoexponential_reconvolution` |
@@ -31,20 +35,26 @@ private. Internal names beginning with `_` are not extension points.
 | Preprocessing | `align_to_irf`, `crop_time_window`, `detect_peak`, `estimate_background`, `normalize_counts`, `rebin_histogram`, `subtract_background`, `validate_histogram` |
 | Configuration | `CountNormalization`, `FeatureConfig`, `PreprocessingConfig`, `SimulationConfig`, `load_config`, `save_config` |
 | Features and representations | `FEATURE_NAMES`, `extract_feature_table`, `extract_features`, `cumulative_explained_variance`, `fit_pca_representation`, `normalize_histogram_batch`, `transform_pca_representation` |
+| Generic estimator execution | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, `predict_regressors` |
 | Errors | `TCSPCError`, `InvalidHistogramError`, `InvalidMeasurementError`, `FeatureExtractionError` |
 
-`build_expected_counts_from_irf` is currently imported at the root but omitted
-from `__all__`. This known discrepancy is deliberately reserved for the later
-public-export review; prefer its documented `tcspc_toolkit.simulation` path.
+Importing the root does not initialize persistence, open a SQLite database,
+or require the optional `emcee` sampler. Bayesian sampling remains an explicit
+module-qualified operation requiring the `bayesian` extra; deterministic
+Bayesian APIs also remain module-qualified.
 
 Important module-qualified workflows remain in their existing flat modules:
 
 - `ml_models`, `ml_evaluation`, `cross_validation`, and `representations`:
-  estimator factories, point-estimate evaluation, repeated CV, and transforms.
+  estimator factories (including `make_canonical_ml_estimator_specs()`),
+  point-estimate evaluation, repeated CV and its configuration/result types,
+  and transforms.
 - `generalization`, `generalization_datasets`, `generalization_evaluation`,
   `classical_evaluation`, `conditional_evaluation`, `irf_evaluation`,
   `mismatch_evaluation`, and `timing_evaluation`: scientific protocols and
-  specialized evaluation/reporting paths, not a unified generic interface.
+  specialized evaluation/reporting paths and report/result classes, not a
+  unified generic interface. Prepared-data carriers remain workflow-specific,
+  not package-root abstractions.
 - `classical_uncertainty`, `ml_uncertainty`, `uncertainty_evaluation`, and
   `uncertainty_robustness`: distinct model-conditional intervals, calibration,
   sensitivity, and disagreement-score workflows.
@@ -69,8 +79,9 @@ study-specific orchestration are not generic extension hooks.
   Use scientific terminology, not a blanket `Frozen...` prefix.
   Preserve Day/Week provenance where historically meaningful, and preserve
   A-F identifiers, protocol labels, seeds, and scientific reference outputs.
-- Root exports will be reviewed together in Stage 4, not expanded automatically
-  to every Bayesian, CV, classical-benchmark, or evaluation result object.
+- Root exports are deliberate stability commitments, not an inventory of all
+  implemented capabilities. Bayesian, CV, benchmark, evaluation, and persistence
+  types remain supported through their documented module-qualified paths.
 - Issue #3 should preserve approved stable imports when implementations move;
   compatibility shims must be deliberate, not created speculatively now.
 - Python naming changes must not reinterpret SQLite schema-v1 method/model
@@ -87,7 +98,6 @@ and shared final-test ML prediction boundary to it, as described below.
 The dependency direction is canonical specification -> generic contract;
 generic execution must not know Ridge/RF/HGB or canonical representation names.
 
-- Later Issue-#2 stage: separately approve the curated root exports.
 - Issue #11: consolidate A/B, A/C/D/E, and A-F evaluation paths, duplicated
   prediction/summary/degradation machinery, overlapping result/report types,
   and reporting integration across classical/ML/uncertainty/Bayesian/experimental
@@ -113,10 +123,18 @@ snapshot regeneration after an upgrade. This establishes execution equivalence,
 not identical numerical results across arbitrary dependency versions. Existing
 scientific reference artifacts remain unchanged.
 
-## Supported Issue-#2 extension API (Stage 1)
+## Generic estimator extension API
 
-Import the new interface from `tcspc_toolkit.estimator_api`, not the package
-root. Its four public symbols are:
+Use the curated root imports for generic estimator execution:
+
+```python
+from tcspc_toolkit import (
+    RegressorProtocol, EstimatorSpec, fit_regressors, predict_regressors,
+)
+```
+
+Imports from `tcspc_toolkit.estimator_api` remain supported and resolve to the
+same canonical objects. Their signatures are:
 
 ```python
 class RegressorProtocol(Protocol):
@@ -190,12 +208,14 @@ calibrates. Interval and multioutput predictions are outside this interface.
 
 This small example uses a noncanonical sklearn estimator, custom identifiers,
 and caller-owned representations. It demonstrates the API, not a scientific
-performance claim. Behavioral tests cover the same extension contract.
+performance claim. A runnable version is available in
+[`examples/custom_estimator.py`](../examples/custom_estimator.py): run
+`python examples/custom_estimator.py` from an installed checkout.
 
 ```python
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from tcspc_toolkit.estimator_api import (
+from tcspc_toolkit import (
     EstimatorSpec, fit_regressors, predict_regressors,
 )
 
@@ -213,6 +233,10 @@ np.testing.assert_allclose(predictions["my-linear-model"]["my-features"], [1.5, 
 ```
 
 ### Canonical specifications are separate configuration
+
+Canonical benchmark configuration is deliberately module-qualified, not a
+root convenience export. User-defined specifications can use the generic
+execution API directly without importing canonical experiment definitions.
 
 `tcspc_toolkit.ml_models.make_canonical_ml_estimator_specs()` returns an ordered
 tuple with these definitions, all selecting

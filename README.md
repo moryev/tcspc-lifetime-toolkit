@@ -661,6 +661,68 @@ For Jupyter, pytest, and Bayesian support needed by Notebook 17 and the full tes
 python -m pip install -e ".[dev,bayesian]"
 ```
 
+## Public API and estimator extensions
+
+### High-level root imports
+
+The package root is a deliberately curated convenience API for common
+modelling, simulation, measurement import, IRF preparation, preprocessing,
+fitting, and generic estimator execution. For example:
+
+```python
+from tcspc_toolkit import (
+    TCSPCMeasurement,
+    load_tcspc_measurement_csv,
+    fit_experimental_reconvolution,
+    EstimatorSpec,
+    RegressorProtocol,
+    fit_regressors,
+    predict_regressors,
+)
+```
+
+The extension contract accepts caller-supplied estimator specifications and
+already-prepared representation mappings. A factory creates fresh model state;
+the caller owns feature construction, sample ordering, and train/test roles.
+The generic helpers fit/predict estimators, not representations or benchmark
+metrics. Structural `fit(X, y)` / `predict(X)` adapters need no sklearn base
+class, cloning support, or registry.
+
+Run the small deterministic [custom estimator example](examples/custom_estimator.py):
+
+```bash
+python examples/custom_estimator.py
+```
+
+It uses `LinearRegression` on prepared toy features and returns the prediction
+array `[1.5, 2.5]` ns; it is an API demonstration, not a TCSPC benchmark.
+
+### Module-qualified advanced APIs
+
+Module-qualified does **not** mean unsupported or private. Use explicit modules
+for benchmark/generalization orchestration (`generalization_evaluation`),
+cross-validation (`cross_validation`), uncertainty (`ml_uncertainty`,
+`classical_uncertainty`, `uncertainty_robustness`), Bayesian inference
+(`bayesian`, `bayesian_sampling`, `bayesian_predictive`), persistence
+(`persistence`), and specialized scientific evaluation modules.
+
+Canonical experiment configuration stays separate from generic execution:
+
+```python
+from tcspc_toolkit.ml_models import make_canonical_ml_estimator_specs
+```
+
+User specifications extend the generic API; the canonical factory describes
+the toolkit's reproducible benchmark estimators and representations. Generic
+execution does not know their identities or redefine frozen A–F experiments.
+
+The explicit `tcspc_toolkit.__all__` defines the curated root contract, intended
+to remain stable through later evaluation consolidation (#11) and package
+reorganization (#3). Specialized APIs remain supported while that architecture
+evolves, with compatibility handled explicitly. Importing the root neither
+initializes persistence nor requires the optional `emcee` sampler.
+See the [API contract and legacy-name mapping](docs/api.md) for details.
+
 ## Minimal example
 
 The following example generates an idealized TCSPC decay with Poisson photon-counting statistics:
