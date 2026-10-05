@@ -415,109 +415,34 @@ def prepare_generalization_ab_data(
             "lifetime targets."
         )
 
-    development = build_benchmark_dataset(
-        development_measurements,
+    prepared = _prepare_generalization_representations(
+        development_measurements=development_measurements,
+        tests={"A": test_a, "B": test_b},
         feature_config=feature_config,
-    )
-
-    X_features_a = extract_feature_table(
-        histograms=test_a.X_histograms,
-        time=test_a.time,
-        config=feature_config,
-    )
-
-    X_features_b = extract_feature_table(
-        histograms=test_b.X_histograms,
-        time=test_b.time,
-        config=feature_config,
-    )
-
-    if tuple(
-        development.X_features.columns
-    ) != tuple(
-        X_features_a.columns
-    ):
-        raise RuntimeError(
-            "Development and Test-A engineered "
+        n_pca_components=n_pca_components,
+        feature_schema_error=(
+            "Development and Test-{test_id} engineered "
             "feature schemas do not match."
-        )
-
-    if tuple(
-        development.X_features.columns
-    ) != tuple(
-        X_features_b.columns
-    ):
-        raise RuntimeError(
-            "Development and Test-B engineered "
-            "feature schemas do not match."
-        )
-
-    X_normalized_development = (
-        normalize_histogram_batch(
-            histograms=(
-                development.X_histograms
-            ),
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    X_normalized_a = (
-        normalize_histogram_batch(
-            histograms=test_a.X_histograms,
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    X_normalized_b = (
-        normalize_histogram_batch(
-            histograms=test_b.X_histograms,
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    pca = fit_pca_representation(
-        X_train=X_normalized_development,
-        n_components=n_pca_components,
-    )
-
-    X_pca_development = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_development,
-        )
-    )
-
-    X_pca_a = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_a,
-        )
-    )
-
-    X_pca_b = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_b,
-        )
+        ),
     )
 
     return GeneralizationABPreparedData(
-        development=development,
+        development=prepared.development,
         test_a=test_a,
         test_b=test_b,
-        X_features_a=X_features_a,
-        X_features_b=X_features_b,
+        X_features_a=prepared.X_features["A"],
+        X_features_b=prepared.X_features["B"],
         X_normalized_development=(
-            X_normalized_development
+            prepared.X_normalized_development
         ),
-        X_normalized_a=X_normalized_a,
-        X_normalized_b=X_normalized_b,
+        X_normalized_a=prepared.X_normalized["A"],
+        X_normalized_b=prepared.X_normalized["B"],
         X_pca_development=(
-            X_pca_development
+            prepared.X_pca_development
         ),
-        X_pca_a=X_pca_a,
-        X_pca_b=X_pca_b,
-        pca=pca,
+        X_pca_a=prepared.X_pca["A"],
+        X_pca_b=prepared.X_pca["B"],
+        pca=prepared.pca,
     )
 
 
@@ -535,6 +460,33 @@ def prepare_generalization_data(
 
     PCA is fitted exclusively on normalized development
     histograms. Final test sets are never used for fitting.
+    """
+
+    return _prepare_generalization_representations(
+        development_measurements=development_measurements,
+        tests=tests,
+        feature_config=feature_config,
+        n_pca_components=n_pca_components,
+    )
+
+
+def _prepare_generalization_representations(
+    *,
+    development_measurements: BenchmarkMeasurements,
+    tests: dict[str, GeneralizationTestMeasurements],
+    feature_config: FeatureConfig,
+    n_pca_components: int,
+    feature_schema_error: str = (
+        "Development and final-test feature schemas do not match."
+    ),
+) -> GeneralizationPreparedData:
+    """Shared frozen-test mechanics beneath both public preparation carriers.
+
+    Feature extraction and TOTAL normalization are stateless. Fit PCA once on
+    development only, then transform development and tests in insertion order.
+    Reuse the existing multi-test carrier internally; the A/B wrapper projects
+    its fields without copying matrices or hiding the learned PCA artifact.
+    The error template preserves each wrapper's legacy schema diagnostic only.
     """
 
     if not tests:
@@ -605,8 +557,7 @@ def prepare_generalization_data(
             features.columns
         ):
             raise RuntimeError(
-                "Development and final-test "
-                "feature schemas do not match."
+                feature_schema_error.format(test_id=normalized_id)
             )
 
         X_features[normalized_id] = (

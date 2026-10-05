@@ -1,9 +1,11 @@
-# Evaluation architecture: Issue #11, Stage 0–1
+# Evaluation architecture: Issue #11, Stages 0–2
 
-This checkpoint adds module-qualified factual result contracts and small metric
-primitives. **No existing benchmark execution path has migrated.** Preparation,
-multi-test orchestration, classical/uncertainty integration and notebook migration
-remain later reviewed stages. The 66-name root API is unchanged.
+Stages 0–1 added module-qualified factual result contracts and small metric
+primitives. Stage 2 shares representation-preparation mechanics beneath the
+existing A/B and multi-test carriers. **Prediction and reporting have not migrated
+to the factual result core.** Multi-test orchestration, classical/uncertainty
+integration and notebook migration remain later reviewed stages. The 66-name root
+API is unchanged.
 
 ## Responsibilities and existing inventory
 
@@ -11,7 +13,7 @@ remain later reviewed stages. The 66-name root API is unchanged.
 |---|---|---|
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
 | `generalization`, `generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
-| `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Duplicate feature/normalization/PCA mechanics. A/B additionally validates identities and paired targets. Learned artifacts stay outside the new factual result core. |
+| `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
 | `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Array predictions and reference-based metrics; overlapping validation/error construction with differing exception contracts. |
 | `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
 | `conditional_evaluation` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
@@ -31,6 +33,50 @@ remain later reviewed stages. The 66-name root API is unchanged.
 The reusable estimator boundary remains `estimator_api`: structural `fit`/`predict`,
 factory-created state and caller-prepared matrices. Canonical specifications remain
 in `ml_models`. Neither new evaluation module imports those canonical definitions.
+
+## Shared preparation mechanics (Stage 2)
+
+```text
+frozen measurement/configuration carriers
+                  ↓
+shared representation-preparation mechanics
+                  ↓
+unchanged A/B and multi-test prepared-data carriers
+                  ↓
+existing prediction/report paths (generic result adaptation remains later work)
+```
+
+`prepare_generalization_ab_data` and `prepare_generalization_data` delegate to
+the private `_prepare_generalization_representations` helper in
+`generalization_evaluation`. It reuses `GeneralizationPreparedData` internally;
+no new public carrier, preparation framework or `PreparedEvaluationData` exists.
+
+The common mechanics build the development dataset, extract ordered test features,
+check feature schemas, TOTAL-normalize each histogram, fit one full-SVD PCA on
+normalized development histograms only, and transform development and each final
+test with that same artifact. Test targets and metadata never enter PCA fitting.
+Feature configuration, PCA defaults, float64 representations and insertion order
+are unchanged. Feature tables keep their positional RangeIndex; metadata keeps
+its original index. The development dataset retains its existing copies of raw
+histograms, targets and metadata; final-test carriers remain the original objects.
+Preparation does not mutate either source. The A/B projection only assigns matrix
+references, without extra matrix copies. Both public carriers still expose `pca`.
+
+The A/B wrapper retains exact A/B identities, equal time axes and paired lifetime
+targets, including its existing schema-error messages. Pair-ID/protocol-metadata
+validation belongs to `GeneralizationTestSuite`; preparation neither weakens that
+validation nor adds a new membership policy. Multi-test dictionary keys retain
+strip/uppercase normalization, uniqueness/key-match checks and caller ordering.
+`GeneralizationTestMeasurements` and `GeneralizationTestSuite` remain frozen A–F
+carriers; arbitrary evaluation IDs still belong to `EvaluationBatch`.
+
+No `EvaluationBatch` views were needed for deduplication; their integration is
+deferred. PCA is not hidden in a batch. Test-F targets and descriptive weighted
+lifetimes remain untouched; preparation invents no new reference semantics.
+Portable preparation tests were run before and after the refactor against direct
+TOTAL division, unchanged single-histogram features and an independently fitted
+full-SVD PCA. Separate changes to test counts or targets/metadata leave the fitted
+development state unchanged. Stage-0 legacy table expectations remain in use.
 
 ## Implemented factual contracts
 
@@ -220,8 +266,8 @@ summaries/PPC and scientific provenance remain in existing domain objects.
 Intervals, heuristic scores, local covariance and empirical repeated-Poisson
 variability remain distinct. No uncertainty attachment class exists at this stage.
 
-Later Issue-#11 stages will review preparation sharing, multi-test execution,
-method-specific result adapters and thin frozen report projections. No combined
+Later Issue-#11 stages will review generic multi-test execution, method-specific
+result adapters and thin frozen report projections. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
