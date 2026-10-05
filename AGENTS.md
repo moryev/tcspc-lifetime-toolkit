@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, and #1 have been implemented, merged, and closed. Issue #2 (API stabilization and package hardening) is now the active integration target, followed by Issue #11 (evaluation-architecture consolidation), Issue #3 (package restructuring), and Issue #12 (full integration/regression verification).
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, and #2 have been implemented, merged, and closed. Issue #11 (evaluation-architecture consolidation) is now the active integration target, followed by Issue #3 (package restructuring) and Issue #12 (full integration/regression verification).
 
 ## Repository map
 
@@ -92,7 +92,7 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - convenience wrappers may compose lower-level functions rather than duplicate their logic;
 - preprocessing is analysis-dependent: there is no universally correct TCSPC preprocessing pipeline.
 
-Issue #2 is now the active public-API stabilization phase. Issue #11 follows it for deliberate evaluation-architecture consolidation, and Issue #3 then performs the physical package/subpackage reorganization. During Issue #2, clarify public names, extension points, exports, compatibility policy, and generic-versus-frozen benchmark boundaries without prematurely performing the full Issue-#11 evaluation consolidation or Issue-#3 file/package movement.
+Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 is now the active phase for deliberate evaluation-architecture consolidation. Issue #3 then performs the physical package/subpackage reorganization. During Issue #11, consolidate evaluation structures and method identity without prematurely performing the Issue-#3 file/package movement.
 
 ## Scientific guardrails
 
@@ -300,8 +300,8 @@ Current integration status:
 4. **#4** — Bayesian Poisson inference — **complete and closed**, including matched-model calibration, model-mismatch evaluation, numerical audits, documentation, and Notebook 17;
 5. **#9** — SQLite persistence for experiments and benchmark results — **complete, merged, and closed**;
 6. **#1** — standardize array input type annotations — **complete, merged, and closed**;
-7. **#2** — API stabilization and package hardening — **current active integration target**;
-8. **#11** — consolidate Week 7–9 evaluation architecture;
+7. **#2** — API stabilization and package hardening — **complete, merged, and closed**;
+8. **#11** — consolidate Week 7–9 evaluation architecture — **current active integration target**;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages;
 10. **#12** — full integration and regression verification;
 11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
@@ -310,7 +310,16 @@ Current integration status:
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, and frozen-benchmark scientific contracts during the remaining architectural work.
+Issue #2 established the current API-stability boundary:
+
+- `tcspc_toolkit.__all__` is a curated high-level convenience contract; specialized advanced APIs may remain supported through module-qualified imports.
+- The generic estimator extension layer is `estimator_api.py`: `RegressorProtocol`, `EstimatorSpec`, `fit_regressors()`, and `predict_regressors()`.
+- Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml_models.py`.
+- Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
+- Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical names remain compatibility aliases through at least Issue #12; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
+- Do not broaden the root export surface opportunistically during #11/#3; preserve the reviewed public import contract unless an active issue explicitly changes it.
+
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the remaining architectural work.
 
 ## Codex working protocol
 
@@ -330,7 +339,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, and #1 are complete. Do not reopen or redesign their established scientific contracts merely because later architectural work consumes their outputs.
+Issues #6, #8, #4, #9, #1, and #2 are complete. Do not reopen or redesign their established scientific or public-API contracts merely because later architectural work consumes their outputs.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -341,21 +350,38 @@ Issue #9 established schema-v1 persistence, scientific recording adapters, read-
 - do not hide all benchmark variables in opaque JSON solely for convenience;
 - do not store large histograms, posterior chains, or model binaries as SQLite BLOBs by default;
 - use parameterized SQL, foreign-key enforcement, schema-version metadata, and explicit transaction/duplicate semantics;
-- do not let API refactoring change established persistence semantics merely for naming convenience.
+- do not let evaluation consolidation change established persistence semantics merely for naming or table-unification convenience.
 
 Issue #1 established truthful public array-input contracts without changing numerical behavior. Preserve concrete NumPy-array return and stored-field contracts where they remain appropriate.
 
-Issue #2 is now the active architectural task. Its purpose is to stabilize the external API and extension boundaries before Issue #11 consolidates the evaluation architecture and Issue #3 reorganizes modules into subpackages.
+Issue #2 established the public API and estimator-extension boundary:
 
-For Issue #2:
+- preserve the curated root API and reviewed `__all__` contract;
+- preserve the generic estimator execution layer as independent from canonical benchmark configuration;
+- preserve user-supplied estimator/representation support without estimator-name dispatch or a scikit-learn inheritance/cloning requirement;
+- preserve scientific canonical names and the legacy Day/Week compatibility aliases introduced for existing callers;
+- preserve frozen benchmark defaults, stored method identities, and protocol strings despite Python-level naming cleanup.
 
-- prefer scientific/domain terminology over roadmap Day/Week terminology in reusable APIs;
-- separate generic/extensible machinery from frozen reproducibility configurations;
-- review package-level exports and the intended high-level public API;
-- define extension points for user-supplied estimators and representations without coupling generic infrastructure to the canonical benchmark estimator set;
-- preserve compatibility deliberately where needed rather than silently breaking notebooks, tests, examples, or persisted method identity;
-- distinguish API stabilization from the broader evaluation consolidation reserved for Issue #11;
-- do not perform broad physical module/subpackage moves reserved for Issue #3;
-- preserve frozen Week-8 A–F and Week-9 scientific results, seeds, protocol roles, and metric semantics.
+Issue #11 is now the active architectural task. Its purpose is to consolidate the Week-7–9 evaluation architecture while preserving scientific distinctions and the Issue-#2 public contracts.
 
-Consult Issues #2, #5, #11, #3, and #12 together when deciding architectural boundaries, but implement only the active issue.
+For Issue #11:
+
+- inventory the current A/B, A/C/D/E, A/F, and A–F evaluation entry points, result carriers, prediction builders, summary/degradation builders, and specialized report layers before changing them;
+- reduce duplicated prediction, summary, degradation, and comparison machinery where scientifically equivalent;
+- separate generic evaluation infrastructure from frozen benchmark configuration without changing the frozen A–F definitions or development/calibration/evaluation roles;
+- integrate classical, ML, interval uncertainty, heuristic uncertainty scores, Bayesian outputs, and experimental/reference evaluation without conflating their distinct semantics;
+- replace estimator-name conventions used to infer method family or diagnostics with explicit method/result metadata where appropriate;
+- preserve the standalone generic estimator API from Issue #2; do not reintroduce hard-coded estimator identities into generic execution;
+- preserve current public names and compatibility aliases unless consolidation requires a deliberate, reviewed compatibility change;
+- do not physically reorganize modules into the Issue-#3 target package structure during this issue;
+- do not alter physical models, likelihoods, IRF semantics, uncertainty definitions, persistence schema v1, random seeds, or saved scientific reference artifacts merely to simplify evaluation code.
+
+Known Issue-#11 technical debt inherited from Issue #2 includes:
+
+- separate `GeneralizationABPreparedData` and `GeneralizationPreparedData` carriers;
+- separate principal-A/B, representation-A/B, instrument/acquisition, model-mismatch, and full-suite result/report paths;
+- duplicated nonclassical/classical prediction-table and degradation/comparison helpers;
+- reporting logic that currently reserves `constant_mean`, `mean_arrival_time`, and the `classical_reconvolution...` prefix to infer method semantics;
+- canonical estimator/representation/test assumptions embedded in some specialized reports even though the lower-level estimator execution boundary is now generic.
+
+Consult Issues #11, #5, #3, and #12 together when deciding architectural boundaries, but implement only the active issue.
