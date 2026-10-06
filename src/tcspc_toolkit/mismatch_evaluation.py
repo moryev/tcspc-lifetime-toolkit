@@ -15,11 +15,12 @@ from tcspc_toolkit.classical_evaluation import (
 )
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.features import extract_feature_table
+from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,
     RegressionBenchmarkResult,
-    evaluate_regression,
+    _assemble_regression_benchmark_result,
 )
 from tcspc_toolkit.ml_models import (
     make_hist_gradient_boosting_pipeline,
@@ -272,8 +273,14 @@ def _build_regression_result(
     estimator_name: str,
     y_true: ArrayLike,
     y_pred: ArrayLike,
+    method: MethodDescriptor | None = None,
+    batch: EvaluationBatch | None = None,
 ) -> RegressionBenchmarkResult:
-    """Construct a regression result from already-generated predictions."""
+    """Preserve mismatch validation while sharing factual/result calculations.
+
+    Bare historical calls supply no semantic metadata. The paired experiment
+    explicitly supplies both a method descriptor and a referenced batch.
+    """
     y_true_array = np.asarray(
         y_true,
         dtype=np.float64,
@@ -296,24 +303,9 @@ def _build_regression_result(
             "Predictions must contain only finite values."
         )
 
-    metrics = evaluate_regression(
-        y_true=y_true_array,
-        y_pred=y_pred_array,
-    )
-
-    relative_errors = (
-        np.abs(
-            y_pred_array
-            - y_true_array
-        )
-        / y_true_array
-    )
-
-    return RegressionBenchmarkResult(
-        estimator_name=estimator_name,
-        y_pred=y_pred_array,
-        relative_errors=relative_errors,
-        metrics=metrics,
+    return _assemble_regression_benchmark_result(
+        estimator_name=estimator_name, y_true=y_true_array, y_pred=y_pred_array,
+        method=method, batch=batch,
     )
 
 
@@ -330,6 +322,12 @@ def evaluate_ml_mismatch_benchmark(
     Each estimator is fitted exactly once on the mono-exponential
     training data. The fitted estimator then predicts both the original
     mono-exponential test set and the matched bi-exponential test set.
+
+    This experiment declares family ``ml`` and engineered-feature inputs,
+    with ``generating_mono`` control references and ``primary_component``
+    mismatch references. Distinct evaluation IDs share paired positional sample
+    IDs. These semantics come from the experiment definition, not estimator names
+    or numeric targets. Returned legacy result carriers and metrics are unchanged.
     """
     if mismatch_dataset.y.shape != reference_split.y_test.shape:
         raise ValueError(
@@ -354,6 +352,17 @@ def evaluate_ml_mismatch_benchmark(
             "contain the same number of features."
         )
 
+    batches = {
+        evaluation_id: EvaluationBatch(
+            evaluation_id, range(targets.size),
+            references={kind: LifetimeReference(kind, kind, targets, np.ones(targets.size, dtype=bool))},
+        )
+        for evaluation_id, kind, targets in (
+            ("in_distribution", "generating_mono", reference_split.y_test),
+            ("mismatch", "primary_component", mismatch_dataset.y),
+        )
+    }
+
     model_factories = {
         "ridge": make_ridge_pipeline,
         "random_forest": (
@@ -373,6 +382,7 @@ def evaluate_ml_mismatch_benchmark(
         estimator_name,
         make_estimator,
     ) in model_factories.items():
+        method = MethodDescriptor(estimator_name, "ml", "engineered_features")
         estimator = make_estimator()
 
         estimator.fit(
@@ -397,6 +407,8 @@ def evaluate_ml_mismatch_benchmark(
                 estimator_name=estimator_name,
                 y_true=reference_split.y_test,
                 y_pred=in_distribution_predictions,
+                method=method,
+                batch=batches["in_distribution"],
             )
         )
 
@@ -405,6 +417,8 @@ def evaluate_ml_mismatch_benchmark(
                 estimator_name=estimator_name,
                 y_true=mismatch_dataset.y,
                 y_pred=mismatch_predictions,
+                method=method,
+                batch=batches["mismatch"],
             )
         )
 

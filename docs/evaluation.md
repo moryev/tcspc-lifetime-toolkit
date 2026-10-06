@@ -1,4 +1,4 @@
-# Evaluation architecture: Issue #11, Stages 0–5
+# Evaluation architecture: Issue #11, Stages 0–6
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
@@ -7,8 +7,10 @@ point evaluation through those facts and projects back to unchanged legacy table
 Stage 4 adapts classical generalization fits into the same point/reference facts
 and supplies explicit method families to internal summaries. Stage 5 adds explicit
 method/reference paths for conditional diagnostics, retaining a compatibility-only
-path for historical callers lacking those semantics. Uncertainty integration,
-report consolidation and notebook migration remain later reviewed stages.
+path for historical callers lacking those semantics. Stage 6 routes ordinary
+paired ML mismatch evaluation through the same facts and shares legacy regression
+result assembly. Uncertainty integration, report consolidation and notebook
+migration remain later reviewed stages.
 The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
@@ -18,7 +20,7 @@ The 66-name root API is unchanged.
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
 | `generalization`, `generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
 | `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
-| `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Array predictions and reference-based metrics; overlapping validation/error construction with differing exception contracts. |
+| `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
 | `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
 | `conditional_evaluation` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
@@ -296,6 +298,79 @@ retained canonically with NaN comparison errors; the array-table projection alon
 restores historical signed-infinite/absolute-infinite/relative-infinite display.
 Classical tables keep their existing NaN errors for nonfinite fits. None of these
 presentation policies changes core validation or summary eligibility.
+
+## Ordinary paired mismatch point evaluation (Stage 6)
+
+Generalization, explicitly described conditional diagnostics, and ordinary paired
+ML mismatch evaluation now consume the same factual point/reference core. The
+Week-7 entry point is `evaluate_ml_mismatch_benchmark` (there is no current
+`evaluate_estimator_under_mismatch` symbol).
+
+```text
+existing paired mono / bi-exponential mismatch experiment
+                          ↓
+explicit evaluation batches + ML method descriptors
+                          ↓
+               PointEvaluationResult
+                          ↓
+      legacy RegressionBenchmarkResult pairs
+                          ↓
+            unchanged mismatch summary
+```
+
+The experiment explicitly declares family `ml` and representation
+`engineered_features`, never inferring either from estimator names. Its
+`in_distribution` evaluation uses `generating_mono` references; its `mismatch`
+evaluation uses `primary_component` references. These semantics follow the
+documented mono-control / matched bi-exponential experiment definition, not
+numeric inference. Callers must supply datasets with those scientific roles.
+No weighted-mixture or pseudo-true reference is introduced.
+
+The two evaluation IDs share ordered positional sample IDs within one experiment.
+The original shape/`np.allclose` target-pairing checks and feature-count check are
+unchanged. Each side retains its own exact target vector, even when targets differ
+within the historical pairing tolerance. Metadata indexes do not redefine pairing;
+there is no new sample-ID matching/reordering policy. These IDs are experiment-local,
+not a new persistent run identity. Representations, histograms and metadata are not
+mutated, and the original estimator factories, fit calls and prediction order remain.
+
+`ml_evaluation._build_regression_benchmark_result` and
+`mismatch_evaluation._build_regression_result` retain their historical validation:
+prediction shape/nonfinite errors are `RuntimeError` in ordinary ML and `ValueError`
+in mismatch, with the same messages and check order. Both delegate to the private
+`ml_evaluation._assemble_regression_benchmark_result`. This keeps existing
+`evaluate_regression` metrics/target validation and uses `evaluation_core`'s
+shared error calculation. The generic core has no reverse dependency on ML,
+mismatch, frozen model definitions, or sklearn.
+
+Explicit method/batch inputs produce point/reference facts and then project
+prediction and relative-error arrays into the unchanged `RegressionBenchmarkResult`.
+Those legacy output arrays remain writable copies, separate from canonical facts.
+The batch must supply one fully available reference exactly matching its target
+vector. Zero/negative finite predictions remain valid and unmodified. Bare-array
+calls cannot identify a family or reference kind: they use the numerical error
+kernel without manufacturing semantic facts. Their historical array shapes,
+including column-vector/multioutput compatibility, are retained. Missing parts
+of an explicit semantic request raise rather than silently selecting fallback.
+
+`RegressionMetrics`, `RegressionBenchmarkResult`, `EstimatorMismatchResult` and
+`ClassicalMismatchResult` constructors/fields are unchanged. Existing metric
+formulas (including sklearn R²), summary columns/order, biases and degradation
+policies stay separate from factual construction. In particular, zero-reference
+ML MAE ratios remain infinity; unusable classical reference MAEs yield NaN.
+No generic degradation policy replaces either convention.
+
+The classical mismatch wrapper already composes two authoritative
+`ReconvolutionBenchmarkResult` objects and has no parallel regression-result
+builder to remove. It remains unchanged, including fitting/validity, diagnostic
+columns and timing. Stage-5 conditional compatibility calls and Notebook 12 remain
+unchanged as well; the timing benchmark measures its original batch/per-fit scopes.
+
+The Week-7 paired experiment is **not** Week-8 frozen Test F. The latter remains
+an external generalization condition with its own definitions. Issue-4 Bayesian
+mismatch analysis remains a third, model/prior/IRF-conditional workflow with
+explicit pseudo-true projections. Sharing scalar facts does not merge these
+scientific identities. No uncertainty migration is included in Stage 6.
 
 ## Implemented factual contracts
 

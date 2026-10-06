@@ -24,6 +24,8 @@ from tcspc_toolkit.config import (
     CountNormalization,
 )
 from tcspc_toolkit.features import extract_feature_table
+from tcspc_toolkit.evaluation_core import build_point_evaluation, calculate_reference_errors
+from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.ml_models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
@@ -929,21 +931,54 @@ def _build_regression_benchmark_result(
             "Benchmark predictions must be finite."
         )
 
-    metrics = evaluate_regression(
-        y_true=y_true_array,
-        y_pred=y_pred_array,
+    return _assemble_regression_benchmark_result(
+        estimator_name=estimator_name, y_true=y_true_array, y_pred=y_pred_array,
     )
 
-    relative_errors = (
-        np.abs(
-            y_pred_array - y_true_array
+
+def _assemble_regression_benchmark_result(
+    *, estimator_name: str, y_true: FloatArray, y_pred: FloatArray,
+    method: MethodDescriptor | None = None, batch: EvaluationBatch | None = None,
+) -> RegressionBenchmarkResult:
+    """Shared projection after module-specific prediction checks.
+
+    Keep the existing regression metric/target-validation contract, including
+    sklearn R² and historical column-vector/multioutput compatibility. Bare
+    arrays cannot establish method family or reference kind: that path uses only
+    the shared numerical error kernel, not fabricated point/reference metadata.
+
+    Explicit one-reference batches instead supply canonical facts. They must
+    fully match the targets in positional order. All predictions here have
+    already passed the caller's finite check; zero/negative values stay valid.
+    No estimator is fitted and no metric/degradation policy is selected here.
+    """
+    metrics = evaluate_regression(y_true=y_true, y_pred=y_pred)
+    if (method is None) != (batch is None):
+        raise ValueError("method and batch must be supplied together.")
+    if method is not None and batch is not None:
+        if len(batch.references) != 1:
+            raise ValueError("Regression projection requires exactly one lifetime reference.")
+        reference = next(iter(batch.references.values()))
+        if not reference.available.all() or not np.array_equal(reference.values_ns, y_true):
+            raise ValueError("Regression reference must be fully available and match y_true exactly.")
+        facts = build_point_evaluation(
+            batch=batch, method=method, lifetime_estimates_ns=y_pred,
+            is_valid=np.ones(y_pred.shape, dtype=bool),
         )
-        / y_true_array
-    )
+        estimator_name = method.method_id
+        # Legacy result arrays are writable; do not expose pandas read-only views.
+        y_pred = facts.points.lifetime_estimate_ns.to_numpy(copy=True)
+        relative_errors = facts.reference_comparisons.relative_error.to_numpy(copy=True)
+    else:
+        # Flatten only for the vector kernel; retain the legacy result's shape.
+        _, _, relative_errors = calculate_reference_errors(
+            y_pred.ravel(), y_true.ravel(), reference_available=np.ones(y_true.size, dtype=bool),
+        )
+        relative_errors = relative_errors.reshape(y_true.shape)
 
     return RegressionBenchmarkResult(
         estimator_name=estimator_name,
-        y_pred=y_pred_array,
+        y_pred=y_pred,
         relative_errors=relative_errors,
         metrics=metrics,
     )
