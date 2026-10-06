@@ -11,9 +11,11 @@ from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference,
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.generalization_evaluation import (
     _build_generalization_evaluation_batch,
+    _build_classical_point_evaluation,
     _evaluate_nonclassical_batch,
     _generalization_baseline_predictions,
     _project_generalization_predictions,
+    _summarize_generalization_predictions,
 )
 
 
@@ -64,14 +66,22 @@ def test_explicit_ml_family_custom_representation_and_baselines_share_facts(cust
     assert result.reference_comparisons.reference_kind.eq("trusted_experimental").all()
 
     # A real classical result with a distinct ID coexists without prefix inference.
-    classical = build_point_evaluation(
-        batch=batch, method=MethodDescriptor("classical_reconvolution", "classical"),
-        lifetime_estimates_ns=[1, 2, 3], is_valid=[True] * 3,
+    classical = _build_classical_point_evaluation(
+        batch=batch, method_id="classical_reconvolution",
+        diagnostics=pd.DataFrame({
+            "sample_id": batch.sample_ids, "fitted_lifetime_ns": [1.0, 5.0, np.nan],
+            "valid_fit": [True, False, False], "failure_reason": [None, "boundary_hit", "fit_exception"],
+        }),
     )
     combined = combine_point_evaluations([result, classical])
     families = combined.points.groupby("method_id").method_family.first()
     assert families["classical_reconvolution_custom"] == "ml"
     assert families["classical_reconvolution"] == "classical"
+    table = _project_generalization_predictions(batch=batch, result=combined, reference_id="standard")
+    table["test_id"] = batch.evaluation_id
+    summary = _summarize_generalization_predictions(table, method_families=families.to_dict())
+    assert summary.loc[summary.estimator == "classical_reconvolution_custom", "classical_failure_rate"].isna().all()
+    assert summary.loc[summary.estimator == "classical_reconvolution", "classical_failure_rate"].iloc[0] == 1 - 1 / 3
 
 
 def test_duplicate_baseline_facts_are_rejected_not_overwritten(custom_execution):

@@ -335,10 +335,13 @@ canonical prepared matrices. A/B execution and historical report builders keep
 their existing canonical selections. Custom estimator results are not a claim
 to reproduce the canonical benchmark and need not satisfy those report builders.
 
-Existing reporting distinguishes baselines and classical methods by name.
-At this boundary, `constant_mean`, `mean_arrival_time`, and names starting with
-`classical_reconvolution` are therefore reserved, unlike the unrestricted generic
-Stage-1 estimator API. Broader method-identity/reporting design remains Issue #11.
+Issue #11 Stage 4 supplies explicit families to internal generalization summaries,
+so ML names starting with `classical_reconvolution` are no longer reserved there.
+Reusing `constant_mean` or `mean_arrival_time` for ML in the same result conflicts
+with the actual baseline identities. The standalone table-only
+`summarize_generalization_predictions` retains historical prefix inference for
+compatibility; specialized frozen reports retain canonical selections. See the
+[evaluation contract](evaluation.md) for the factual/projection boundary.
 
 `tests/test_generalization_estimator_api.py` checks default prediction, summary,
 and degradation tables against the former ordered execution loop, plus custom

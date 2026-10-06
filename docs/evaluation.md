@@ -1,11 +1,13 @@
-# Evaluation architecture: Issue #11, Stages 0–3
+# Evaluation architecture: Issue #11, Stages 0–4
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
 existing A/B and multi-test carriers. Stage 3 routes nonclassical generalization
 point evaluation through those facts and projects back to unchanged legacy tables.
-Classical, conditional and uncertainty integration, report consolidation and
-notebook migration remain later reviewed stages. The 66-name root API is unchanged.
+Stage 4 adapts classical generalization fits into the same point/reference facts
+and supplies explicit method families to internal summaries. Conditional and
+uncertainty integration, report consolidation and notebook migration remain later
+reviewed stages. The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
 
@@ -135,16 +137,71 @@ F's primary component. Signed/absolute errors come from canonical comparisons,
 but invalid-row errors are masked to NaN in this view only. Finite invalid values
 and their errors remain inspectable in canonical facts.
 
-Legacy generalization summaries/degradation remain unchanged: valid-only errors,
-attempted/valid counts, reference A and near-zero safeguards retain their policies.
-Those summaries still infer classical failure-rate applicability from the
-`classical_reconvolution` prefix. Consequently the existing multi-test legacy
-reporting boundary still reserves that prefix and `constant_mean` /
-`mean_arrival_time` for compatibility. The factual executor has no such reserved
-names. Removing reporting inference awaits classical/report migration; this stage
-does not claim to make the whole reporting layer generic.
+Stage 4 removes prefix inference from internal generalization summaries as described
+below. Valid-only errors, attempted/valid counts, reference A and near-zero safeguards
+retain their policies. This does not make the whole reporting layer generic.
 
-Classical execution and its existing table builders have not migrated. Conditional
+## Classical point adaptation and explicit-family summaries (Stage 4)
+
+```text
+baseline / ML execution ───┐
+                          ├─> PointEvaluationResult
+classical fit diagnostics ┘             ↓
+                           compatibility table projections
+                                       ↓
+                           existing summaries / frozen reports
+```
+
+`_build_classical_point_evaluation` accepts an already prepared `EvaluationBatch`,
+existing row-aligned classical diagnostics, and the declared method ID. It supplies
+`MethodDescriptor(method_id, "classical", "raw_histogram")`, copies the scalar
+`fitted_lifetime_ns` into canonical lifetime facts, and uses **the original
+`valid_fit` decision and `failure_reason`**. It neither fits nor recomputes acceptance,
+positivity, boundary or optimizer rules. Sample IDs/order and row counts are checked.
+Classical batches need no representation matrix; their references remain
+`generating_mono` for A–E and `primary_component` for F.
+
+A finite rejected fit retains its lifetime and finite reference errors in canonical
+facts. A failed nonfinite fit retains its nonfinite lifetime, invalid state and
+failure reason, with unavailable numerical errors. Nothing is clipped or repaired.
+Distinct IRF/model variants use the existing distinct method IDs; combining duplicate
+point identities is rejected. There is no name-prefix inference in the adapter.
+
+Principal A/B and the A/C/D/E, A/F and A–F classical wrappers now consume this adapter
+and the Stage-3 legacy projection. A/B retains its basic prediction schema and original
+`ReconvolutionBenchmarkResult` objects. The other three paths retain the four appended
+columns, in order: `classical_irf_mode`, `assumed_irf_fwhm_ns`,
+`fitted_temporal_shift_ns`, `temporal_shift_error_ns`. As before, failure reasons and
+the full `valid_fit`/parameter/optimizer/boundary/NLL/deviance/runtime/initialization
+diagnostics live in `per_curve` / `fit_diagnostics`, not additional prediction columns.
+Diagnostics remain authoritative and separate; the core does not duplicate them.
+Legacy invalid-row error masking, metadata placement and index reset are unchanged.
+
+Per-width IRF grouping, condition-specific versus nominal Test-C fits, temporal-shift
+diagnostics, A/F pairing, weighted-mixture descriptive diagnostics and severity
+comparisons remain unchanged. No weighted or pseudo-true reference is introduced.
+Classical degradation still uses its existing denominator policies, including the
+instrument comparison's strictly positive correct-IRF Test-A reference rather than
+silently adopting the generic near-zero threshold.
+
+`_summarize_generalization_predictions` shares the unchanged legacy calculation,
+but requires an explicit method-family mapping. All migrated internal wrappers
+declare families from their execution roles: baseline, regressor, or classical fit.
+Consequently a custom ML `classical_reconvolution_custom` now works through the
+full-suite wrapper and has no classical failure rate. Reusing an actual baseline
+method ID for an ML method in the same result still fails canonical identity checks;
+that is a conflicting identity, not a reserved-prefix rule.
+
+The public `summarize_generalization_predictions(predictions)` signature is unchanged.
+This standalone table-only compatibility wrapper lacks descriptors and still infers
+classical failure-rate applicability from `classical_reconvolution...`. Re-summarizing
+an arbitrary custom method using that legacy wrapper can therefore differ from its
+explicit-family internal summary. Specialized frozen reports still retain their
+canonical method selections; this stage does not generalize those report contracts.
+
+Independent controlled-fit expectations were run before and after migration for
+all four paths, including diagnostic tables, mixed/all-failed groups and table order.
+Real-fit regressions separately cover inference and full-suite projection. Conditional
 evaluation still retains finite-invalid errors and its metadata index. Uncertainty,
 persistence, report/result dataclasses, notebooks and root exports are unchanged.
 
@@ -336,7 +393,7 @@ summaries/PPC and scientific provenance remain in existing domain objects.
 Intervals, heuristic scores, local covariance and empirical repeated-Poisson
 variability remain distinct. No uncertainty attachment class exists at this stage.
 
-Later Issue-#11 stages will review classical/conditional execution, method-specific
+Later Issue-#11 stages will review conditional/uncertainty integration, method-specific
 result adapters and frozen report consolidation. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing

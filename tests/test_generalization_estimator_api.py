@@ -290,10 +290,33 @@ def test_test_mapping_failures(prepared, custom_inputs, failure):
 
 
 @pytest.mark.parametrize(
-    "name", ["constant_mean", "mean_arrival_time", "classical_reconvolution_custom"],
+    "name", ["constant_mean", "mean_arrival_time"],
 )
-def test_reporting_identity_collisions_are_rejected(prepared, name):
-    with pytest.raises(ValueError, match="reserved by generalization reporting"):
+def test_actual_baseline_identity_collisions_are_rejected(prepared, custom_inputs, name):
+    specs, development, tests = custom_inputs
+    fitted = fit_generalization_ml_estimators(
+        prepared, estimator_specs=specs, X_development_by_representation=development,
+    )
+    with pytest.raises(ValueError, match="Conflicting method family"):
         evaluate_generalization_suite_benchmark(
-            prepared=prepared, fitted_estimators={name: {}},
+            prepared=prepared, fitted_estimators={name: fitted[specs[0].name]},
+            X_by_test_and_representation=tests,
         )
+
+
+def test_classical_looking_ml_name_is_not_reserved_or_misclassified(prepared, custom_inputs):
+    specs, development, tests = custom_inputs
+    fitted = fit_generalization_ml_estimators(
+        prepared, estimator_specs=specs, X_development_by_representation=development,
+    )
+    name = "classical_reconvolution_custom"
+    result = evaluate_generalization_suite_benchmark(
+        prepared=prepared, fitted_estimators={name: fitted[specs[0].name]},
+        X_by_test_and_representation=tests,
+    )
+    rows = result.summary.loc[result.summary.estimator == name]
+    assert rows.test_id.tolist() == list(FINAL_ROBUSTNESS_TEST_IDS)
+    assert rows.classical_failure_rate.isna().all()
+    # The standalone table-only API deliberately retains its historical behavior.
+    legacy = summarize_generalization_predictions(result.predictions)
+    assert legacy.loc[legacy.estimator == name, "classical_failure_rate"].eq(0).all()

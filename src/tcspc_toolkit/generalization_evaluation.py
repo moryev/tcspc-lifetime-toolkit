@@ -806,7 +806,25 @@ def _build_generalization_prediction_table(
 def summarize_generalization_predictions(
     predictions: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Summarize robustness predictions by estimator and test."""
+    """Summarize legacy table-only predictions by estimator and test.
+
+    Without descriptors, classical failure-rate applicability retains historical
+    name-prefix inference. Internal benchmark execution supplies explicit families
+    to the shared implementation instead; no metric or denominator policy differs.
+    """
+    families = {
+        str(name): "classical" if str(name).startswith("classical_reconvolution") else "ml"
+        for name in predictions.get("estimator", pd.Series(dtype=object))
+    }
+    return _summarize_generalization_predictions(predictions, method_families=families)
+
+
+def _summarize_generalization_predictions(
+    predictions: pd.DataFrame,
+    *,
+    method_families: Mapping[str, str],
+) -> pd.DataFrame:
+    """Apply the legacy metric policy using explicit method-family declarations."""
 
     required_columns = {
         "estimator",
@@ -912,11 +930,7 @@ def summarize_generalization_predictions(
             p90_absolute_error_ns = np.nan
             p95_absolute_error_ns = np.nan
 
-        if str(
-                estimator_name
-        ).startswith(
-            "classical_reconvolution"
-        ):
+        if method_families[str(estimator_name)] == "classical":
             classical_failure_rate = (
                 1.0
                 - n_valid / n_total
@@ -1392,6 +1406,17 @@ def _evaluate_generalization_test(
     )
 
 
+def _nonclassical_method_families(
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+) -> dict[str, str]:
+    """Declare families from execution roles, never from estimator spelling."""
+    return {
+        **{name: "ml" for name in fitted_estimators},
+        "constant_mean": "baseline",
+        "mean_arrival_time": "baseline",
+    }
+
+
 def _evaluate_nonclassical_generalization_tests(
     *,
     prepared: GeneralizationPreparedData,
@@ -1422,17 +1447,6 @@ def _evaluate_nonclassical_generalization_tests(
         raise ValueError(
             "test_ids must not contain duplicates."
         )
-
-    # Legacy reporting still infers classical failure rates from names. Keep its
-    # reservation at this compatibility boundary, not in factual batch execution.
-    for model_name in fitted_estimators:
-        if model_name in {"constant_mean", "mean_arrival_time"} or (
-            isinstance(model_name, str)
-            and model_name.startswith("classical_reconvolution")
-        ):
-            raise ValueError(
-                f"Estimator name {model_name!r} is reserved by generalization reporting."
-            )
 
     prediction_tables: list[
         pd.DataFrame
@@ -1506,6 +1520,32 @@ def _evaluate_principal_nonclassical_estimators(
     ]
 
 
+def _build_classical_point_evaluation(
+    *,
+    batch: EvaluationBatch,
+    diagnostics: pd.DataFrame,
+    method_id: str,
+) -> PointEvaluationResult:
+    """Adapt existing fit decisions, without fitting or recomputing validity.
+
+    Diagnostics remain authoritative and are not changed. Invalid finite lifetimes
+    and original failure reasons are retained; no IRF/optimizer facts enter points.
+    Distinct IRF/model variants must have distinct declared method IDs.
+    """
+    if len(diagnostics) != len(batch.sample_ids):
+        raise ValueError("Classical diagnostics must contain one row per test sample.")
+    if "sample_id" in diagnostics or "sample_id" in batch.metadata:
+        if tuple(diagnostics["sample_id"]) != batch.sample_ids:
+            raise ValueError("Classical diagnostics are not aligned with the robustness test.")
+    return build_point_evaluation(
+        batch=batch,
+        method=MethodDescriptor(method_id, "classical", "raw_histogram"),
+        lifetime_estimates_ns=diagnostics["fitted_lifetime_ns"].to_numpy(dtype=np.float64),
+        is_valid=diagnostics["valid_fit"].to_numpy(dtype=bool),
+        failure_reasons=diagnostics["failure_reason"].tolist(),
+    )
+
+
 def _evaluate_classical_ab(
     *,
     prepared: GeneralizationABPreparedData,
@@ -1557,35 +1597,13 @@ def _evaluate_classical_ab(
             test.test_id
         ] = result
 
-        fitted_lifetimes = (
-            result.per_curve[
-                "fitted_lifetime_ns"
-            ].to_numpy(
-                dtype=np.float64
-            )
+        batch = _build_generalization_evaluation_batch(test=test, representations={})
+        points = _build_classical_point_evaluation(
+            batch=batch, diagnostics=result.per_curve, method_id="classical_reconvolution",
         )
-
-        valid_mask = (
-            result.per_curve[
-                "valid_fit"
-            ].to_numpy(
-                dtype=bool
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "classical_reconvolution"
-                ),
-                representation_name=(
-                    "raw_histogram"
-                ),
-                test=test,
-                y_pred=fitted_lifetimes,
-                valid_mask=valid_mask,
-            )
-        )
+        prediction_tables.append(_project_generalization_predictions(
+            batch=batch, result=points, reference_id=next(iter(batch.references)),
+        ))
 
     return (
         prediction_tables,
@@ -1640,8 +1658,12 @@ def evaluate_principal_ab_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions,
+            method_families={
+                **_nonclassical_method_families(fitted_estimators),
+                "classical_reconvolution": "classical",
+            },
         )
     )
 
@@ -1984,8 +2006,8 @@ def evaluate_ml_representation_ab_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={name: "ml" for name in fitted_estimators},
         )
     )
 
@@ -2814,8 +2836,8 @@ def evaluate_model_mismatch_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -2910,8 +2932,8 @@ def evaluate_instrument_acquisition_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -3135,61 +3157,13 @@ def _build_classical_generalization_prediction_table(
     diagnostics: pd.DataFrame,
     estimator_name: str,
 ) -> pd.DataFrame:
-    """Convert classical fit diagnostics to robustness predictions."""
-
-    if len(
-        diagnostics
-    ) != test.y.size:
-        raise ValueError(
-            "Classical diagnostics must contain "
-            "one row per test sample."
-        )
-
-    diagnostic_sample_ids = (
-        diagnostics[
-            "sample_id"
-        ].to_numpy()
+    """Project classical point facts and append the unchanged IRF/shift view."""
+    batch = _build_generalization_evaluation_batch(test=test, representations={})
+    points = _build_classical_point_evaluation(
+        batch=batch, diagnostics=diagnostics, method_id=estimator_name,
     )
-
-    test_sample_ids = (
-        test.metadata[
-            "sample_id"
-        ].to_numpy()
-    )
-
-    if not np.array_equal(
-        diagnostic_sample_ids,
-        test_sample_ids,
-    ):
-        raise ValueError(
-            "Classical diagnostics are not aligned "
-            "with the robustness test."
-        )
-
-    predictions = (
-        _build_generalization_prediction_table(
-            estimator_name=(
-                estimator_name
-            ),
-            representation_name=(
-                "raw_histogram"
-            ),
-            test=test,
-            y_pred=(
-                diagnostics[
-                    "fitted_lifetime_ns"
-                ].to_numpy(
-                    dtype=np.float64
-                )
-            ),
-            valid_mask=(
-                diagnostics[
-                    "valid_fit"
-                ].to_numpy(
-                    dtype=bool
-                )
-            ),
-        )
+    predictions = _project_generalization_predictions(
+        batch=batch, result=points, reference_id=next(iter(batch.references)),
     )
 
     predictions[
@@ -3622,8 +3596,8 @@ def evaluate_classical_instrument_acquisition_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={name: "classical" for name in predictions["estimator"].unique()},
         )
     )
 
@@ -5174,8 +5148,8 @@ def evaluate_classical_model_mismatch_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={estimator_name: "classical"},
         )
     )
 
@@ -5757,7 +5731,8 @@ def evaluate_generalization_suite_benchmark(
     The frozen test definitions, baseline inputs, and result/table schemas are
     unchanged. Custom estimator results do not redefine the canonical benchmark
     and are not necessarily accepted by canonical historical report builders.
-    Baseline names and the ``classical_reconvolution`` prefix are reserved here.
+    Families come from execution roles, not name prefixes. Baseline method IDs
+    cannot also identify an ML method in the same factual result.
     """
 
     missing_test_ids = (
@@ -5788,8 +5763,8 @@ def evaluate_generalization_suite_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -5943,8 +5918,8 @@ def evaluate_classical_generalization_suite_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={estimator_name: "classical"},
         )
     )
 
