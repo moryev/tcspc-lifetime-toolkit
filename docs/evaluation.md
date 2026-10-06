@@ -1,4 +1,4 @@
-# Evaluation architecture: Issue #11, Stages 0–6
+# Evaluation architecture: Issue #11, Stages 0–7
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
@@ -9,8 +9,9 @@ and supplies explicit method families to internal summaries. Stage 5 adds explic
 method/reference paths for conditional diagnostics, retaining a compatibility-only
 path for historical callers lacking those semantics. Stage 6 routes ordinary
 paired ML mismatch evaluation through the same facts and shares legacy regression
-result assembly. Uncertainty integration, report consolidation and notebook
-migration remain later reviewed stages.
+result assembly. Stage 7 adds reference-independent interval and score attachment
+snapshots. Week-9 report integration, report consolidation and notebook migration
+remain later reviewed stages.
 The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
@@ -557,8 +558,112 @@ estimator-equivalence tests separately protect canonical fitted predictions.
 
 Classical fit parameters, optimizer facts, IRF assumptions, residuals, posterior
 summaries/PPC and scientific provenance remain in existing domain objects.
-Intervals, heuristic scores, local covariance and empirical repeated-Poisson
-variability remain distinct. No uncertainty attachment class exists at this stage.
+Local covariance matrices, bootstrap replicates, posterior chains and empirical
+repeated-Poisson variability remain in their method-specific result objects.
+
+## Uncertainty attachments (Stage 7)
+
+```text
+PointEvaluationResult
+  ├── IntervalAttachment: quantile, conformal, classical, Bayesian bounds
+  ├── ScoreAttachment: RF tree or training-bootstrap spread, other ranking scores
+  └── separate diagnostics: residuals, PPC, fit and sampler diagnostics
+```
+
+`evaluation_uncertainty` defines two module-qualified, validated DataFrame
+snapshots. Both require a `PointEvaluationResult` when constructed and check
+every attachment against its exact point key:
+`(evaluation_id, sample_id, method_id, representation_id)`. The uncertainty
+method has its own `uncertainty_method_id`; it need not equal the point method.
+No reference is required. Construction copies the small attachment table, and
+the public `intervals`/`scores` properties return editable copies. Neither type
+owns the point result, large method-specific arrays or scientific provenance.
+
+```text
+intervals:
+  evaluation_id, sample_id, method_id, representation_id,
+  uncertainty_method_id, interval_kind, nominal_level,
+  lower_ns, upper_ns, is_valid_interval
+
+scores:
+  evaluation_id, sample_id, method_id, representation_id,
+  uncertainty_method_id, score, is_valid_score
+```
+
+Interval identity adds `(uncertainty_method_id, interval_kind,
+nominal_level)` to the point key, permitting several levels or methods per
+point. An uncertainty method ID retains one interval kind within an attachment.
+Kinds are nonblank scientific labels, not a closed registry. Useful labels
+include `quantile_prediction`, `conformal_prediction`, `classical_covariance`,
+`parametric_bootstrap` and `bayesian_credible`. `nominal_level` is the
+method-declared level, not an observed frequency. Its interpretation depends
+on the kind: a prediction or conformal interval has a nominal coverage target,
+a classical confidence interval has a nominal confidence level, and a Bayesian
+credible interval has a posterior credible probability. A value of `0.90`
+does not itself establish 90% empirical coverage. Empirical coverage requires
+an explicitly selected reference population and separate evaluation.
+
+When a method supplies bounds but makes no probability-level claim, the
+runtime level may be `None`; the attachment never invents one. This also
+permits future method-specific approximation bounds without relabelling them
+as calibrated intervals. `None` and pandas-missing levels normalize to the
+same identity value, so duplicate level-less rows are rejected. A supplied
+level must be finite and strictly between zero and one. Valid intervals require
+finite ordered endpoints; invalid intervals retain their raw
+finite, crossed or nonfinite endpoints. Crossed quantiles are never repaired.
+
+Score identity adds `uncertainty_method_id` to the point key. A valid score must
+be finite. `score` is an opaque scalar: its interpretation, units, scale and
+direction come from the uncertainty-producing method identified by
+`uncertainty_method_id`, independently of the point estimator's method family.
+No name-prefix inference, universal spread meaning, nominal level or
+calibration claim is imposed. Existing RF tree and training-bootstrap
+spread sources additionally require nonnegative scores in their own result
+contracts. Their population versus sample standard-deviation definitions remain
+unchanged. The attachment does not reinterpret them as prediction intervals.
+
+Point validity, interval validity, score validity, reference availability and
+metric eligibility are separate facts. A finite interval may be rejected while
+its point is valid; a valid score or interval may accompany an invalid point.
+Coverage and ranking metrics require explicit reference and eligibility policy
+in later evaluation adapters. The Stage-7 layer computes neither.
+
+`PredictionIntervalResult` and `UncertaintyScoreResult` can project their
+aligned bounds/scores and existing validity masks into these snapshots.
+Classical bootstrap or covariance-derived lifetime bounds can project as
+intervals; the covariance matrix and refit samples stay with the classical
+result. A Bayesian lifetime credible interval can project as
+`bayesian_credible` only as a reporting projection of an existing Bayesian
+result. The authoritative Bayesian result retains the assumed model, prior,
+fixed assumed IRF and accepted inference/sampling context; a future adapter
+must keep that relationship explicit. The attachment makes no frequentist
+calibration claim. Repeated-Poisson empirical variability is an aggregate
+reference quantity, not a per-observation
+attachment. Residual matrices, deviance, PPC and sampler diagnostics stay
+separate. No Week-9 robustness report consumes attachments yet.
+
+Persistence schema v1 independently stores uncertainty rows linked to stored
+estimator results. Its `method_id` maps conceptually to
+`uncertainty_method_id`, while its result link maps to a stored point identity.
+Its `output_kind` distinguishes prediction intervals, scores, covariance
+summaries and credible intervals; `interval_kind` specifies the interval
+subtype. The current recording adapters use `quantile`,
+`conformalized_quantile` and `bootstrap_percentile` for interval kinds; those
+correspond to the runtime examples `quantile_prediction`,
+`conformal_prediction` and `parametric_bootstrap`. The current covariance
+adapter records a `covariance_summary` rather than interval bounds. Schema v1
+permits `credible_interval`, while the existing Bayesian recording adapter
+keeps posterior summaries in its own result structure; neither becomes an
+automatic attachment conversion. Stage-7 kind is a runtime scientific label,
+not a schema change. Runtime `nominal_level` maps to schema-v1
+`nominal_coverage` only for an adapter that establishes the source method's
+semantics. Schema v1 requires that stored interval field, whereas a runtime
+attachment may have no declared level; such a row is not automatically
+persistable. More generally, persistence supports its existing known recording
+contracts, not every arbitrary runtime attachment. A score has no interval
+kind or nominal level in either layer. Source configuration, calibration scope,
+provenance, duplicate policy and nonfinite serialization remain persistence
+concerns; no automatic conversion or schema change is provided here.
 
 Later Issue-#11 stages will review remaining conditional caller migration,
 uncertainty integration, method-specific result adapters and frozen report
