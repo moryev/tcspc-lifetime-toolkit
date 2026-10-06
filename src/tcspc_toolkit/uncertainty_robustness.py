@@ -34,7 +34,10 @@ from tcspc_toolkit.classical_uncertainty import (
     _reconstruct_reconvolution_fit_result,
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
+    project_parametric_poisson_bootstrap_interval,
+    project_poisson_local_covariance_interval,
 )
+from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.generalization import (
     FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
@@ -884,6 +887,10 @@ def _evaluate_classical_uncertainty_test(
         dict[str, object]
     ] = []
 
+    point_method = MethodDescriptor(
+        "classical_reconvolution_mono_model", "classical", "raw_histogram",
+    )
+
     for sample_index in range(
         test.y.size
     ):
@@ -1010,6 +1017,17 @@ def _evaluate_classical_uncertainty_test(
             )
         )
 
+        point_batch = EvaluationBatch(
+            test.test_id, [metadata_row["sample_id"]],
+            metadata=test.metadata.iloc[[sample_index]],
+        )
+        point_facts = build_point_evaluation(
+            batch=point_batch, method=point_method,
+            lifetime_estimates_ns=[curve_result.fitted_lifetime_ns],
+            is_valid=[curve_result.valid_fit],
+            failure_reasons=[curve_result.failure_reason],
+        )
+
         # -----------------------------------------------------
         # Day 60:
         # local Poisson/Fisher covariance
@@ -1024,6 +1042,12 @@ def _evaluate_classical_uncertainty_test(
                     temporal_shift_bounds
                 ),
             )
+        )
+
+        project_poisson_local_covariance_interval(
+            batch=point_batch, points=point_facts, method=point_method,
+            sample_id=metadata_row["sample_id"], curve=curve_result,
+            covariance=covariance_result, nominal_level=nominal_coverage,
         )
 
         row[
@@ -1105,6 +1129,12 @@ def _evaluate_classical_uncertainty_test(
                     background_fraction
                 ),
             )
+        )
+
+        project_parametric_poisson_bootstrap_interval(
+            batch=point_batch, points=point_facts, method=point_method,
+            sample_id=metadata_row["sample_id"], curve=curve_result,
+            bootstrap=bootstrap_result,
         )
 
         row[

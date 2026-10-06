@@ -594,9 +594,10 @@ Interval identity adds `(uncertainty_method_id, interval_kind,
 nominal_level)` to the point key, permitting several levels or methods per
 point. An uncertainty method ID retains one interval kind within an attachment.
 Kinds are nonblank scientific labels, not a closed registry. Useful labels
-include `quantile_prediction`, `conformal_prediction`, `classical_covariance`,
-`parametric_bootstrap` and `bayesian_credible`. `nominal_level` is the
-method-declared level, not an observed frequency. Its interpretation depends
+include `quantile_prediction`, `conformal_prediction`,
+`classical_local_covariance`, `classical_parametric_bootstrap` and
+`bayesian_credible`. `nominal_level` is the method-declared level, not an
+observed frequency. Its interpretation depends
 on the kind: a prediction or conformal interval has a nominal coverage target,
 a classical confidence interval has a nominal confidence level, and a Bayesian
 credible interval has a posterior credible probability. A value of `0.90`
@@ -674,8 +675,53 @@ coverage, interval score and error-ranking metrics still require a reference
 and retain their existing denominator and eligibility policies. Custom score
 methods without an explicit point descriptor remain on the legacy evaluation
 path rather than receiving a guessed point identity. Frozen Week-9 report and
-persistence schemas remain unchanged. Repeated-Poisson, classical and Bayesian
-uncertainty are not migrated here.
+persistence schemas remain unchanged. Stage 8 did not migrate repeated-Poisson,
+classical or Bayesian uncertainty.
+
+### Classical statistical interval projections (Stage 9)
+
+`classical_uncertainty.py` projects one `PoissonLocalCovarianceResult` or
+`ParametricPoissonBootstrapResult` onto the exact Stage-4 classical point key.
+The caller supplies an explicit classical `MethodDescriptor`, evaluation and
+sample identity, and the source reconvolution curve. The adapters reject a
+different fitted lifetime, fit-validity decision or method/representation
+identity; matching row positions alone are insufficient. The frozen A–F
+uncertainty path declares `classical_reconvolution_mono_model` on
+`raw_histogram`, matching its established full-suite classical method identity.
+It constructs no reference merely to store the intervals.
+
+```text
+classical point result
+  |-- covariance-derived IntervalAttachment
+  `-- parametric-bootstrap IntervalAttachment
+
+repeated-Poisson empirical variability
+  `-- aggregate reference / validation quantity, NOT a point attachment
+```
+
+The covariance projection carries only the lifetime bounds derived from the
+source lifetime standard deviation and declared `nominal_level`, with
+`uncertainty_method_id="covariance"` and
+`interval_kind="classical_local_covariance"`. The bootstrap projection carries
+the source percentile bounds and level with
+`uncertainty_method_id="parametric_bootstrap"` and
+`interval_kind="classical_parametric_bootstrap"`. The source result's validity
+decision determines `is_valid_interval`; finite bounds remain visible when a
+source marks its interval invalid. Fit validity and interval validity remain
+separate. The full covariance matrix, conditioning diagnostics, bootstrap
+replicates and refit-failure counts stay in their method-specific objects.
+
+The declared classical `nominal_level` is a confidence level conditional on
+the fitted physical model, not observed coverage. Coverage requires an explicit
+reference and population policy. Existing classical scorecards keep their
+attempted-fit, finite-estimate, valid-interval, positive-standard-deviation and
+successful-refit denominators; they are not rebuilt from attachment validity.
+`RepeatedPoissonUncertaintyResult` summarizes variability across independently
+generated measurements of one physical condition and remains an empirical
+reference, even though it contains per-repeat intervals for evaluating the
+methods. It is not projected as an uncertainty output attached to one curve.
+The classical robustness report is not consolidated by Stage 9; Bayesian
+runtime uncertainty is not migrated.
 
 Persistence schema v1 independently stores uncertainty rows linked to stored
 estimator results. Its `method_id` maps conceptually to
@@ -685,8 +731,9 @@ summaries and credible intervals; `interval_kind` specifies the interval
 subtype. The current recording adapters use `quantile`,
 `conformalized_quantile` and `bootstrap_percentile` for interval kinds; those
 correspond to the runtime examples `quantile_prediction`,
-`conformal_prediction` and `parametric_bootstrap`. The current covariance
-adapter records a `covariance_summary` rather than interval bounds. Schema v1
+`conformal_prediction` and the runtime `classical_parametric_bootstrap`.
+The current covariance adapter records a `covariance_summary` rather than
+interval bounds. Schema v1
 permits `credible_interval`, while the existing Bayesian recording adapter
 keeps posterior summaries in its own result structure; neither becomes an
 automatic attachment conversion. Stage-7 kind is a runtime scientific label,
