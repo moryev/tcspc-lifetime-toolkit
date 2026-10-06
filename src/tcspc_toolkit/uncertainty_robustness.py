@@ -45,6 +45,7 @@ from tcspc_toolkit.generalization_datasets import (
 from tcspc_toolkit.generalization_evaluation import (
     GeneralizationPreparedData,
 )
+from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
@@ -56,6 +57,11 @@ from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScoreCalibrationResult,
     QuantileGradientBoostingCalibrationResult,
     QuantileGradientBoostingExternalResult,
+    _QUANTILE_MEDIAN_POINT_METHOD,
+    _SCORE_POINT_METHODS,
+    _development_calibration_batch,
+    _frozen_ml_uncertainty_batch,
+    _project_ml_interval_source,
     evaluate_frozen_ml_uncertainty_score,
     evaluate_frozen_quantile_gradient_boosting,
 )
@@ -298,6 +304,16 @@ def conformalize_quantile_gradient_boosting(
         )
     )
 
+    _project_ml_interval_source(
+        _development_calibration_batch(
+            development, calibration_indices,
+            development.X_features.iloc[calibration_indices],
+        ),
+        _QUANTILE_MEDIAN_POINT_METHOD,
+        conformal_intervals,
+        "conformal_prediction",
+    )
+
     interval_metrics = (
         evaluate_prediction_intervals(
             y_calibration,
@@ -350,6 +366,8 @@ def evaluate_frozen_conformalized_quantile(
     y_true_ns: NDArray[np.float64],
     *,
     test_id: str,
+    evaluation_batch: EvaluationBatch | None = None,
+    point_method: MethodDescriptor | None = None,
 ) -> ConformalizedQuantileExternalResult:
     """Apply the frozen conformal correction to external data."""
 
@@ -362,6 +380,8 @@ def evaluate_frozen_conformalized_quantile(
             X_features,
             y_true_ns,
             condition_id=test_id,
+            evaluation_batch=evaluation_batch,
+            point_method=point_method,
         )
     )
 
@@ -393,6 +413,11 @@ def evaluate_frozen_conformalized_quantile(
             CONFORMALIZED_QUANTILE_METHOD_ID
         ),
     )
+
+    if evaluation_batch is not None and point_method is not None:
+        _project_ml_interval_source(
+            evaluation_batch, point_method, intervals, "conformal_prediction",
+        )
 
     y = np.asarray(
         y_true_ns,
@@ -471,12 +496,18 @@ def build_ml_interval_scorecard(
             dtype=np.float64,
         )
 
+        evaluation_batch = _frozen_ml_uncertainty_batch(
+            test, X_features, np.arange(y.size, dtype=np.int64),
+        )
+
         quantile_result = (
             evaluate_frozen_quantile_gradient_boosting(
                 quantile_calibration,
                 X_features,
                 y,
                 condition_id=test_id,
+                evaluation_batch=evaluation_batch,
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -486,6 +517,8 @@ def build_ml_interval_scorecard(
                 X_features,
                 y,
                 test_id=test_id,
+                evaluation_batch=evaluation_batch,
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -590,6 +623,10 @@ def build_ml_uncertainty_scorecard(
         calibration_result,
     ) in calibration_results.items():
 
+        point_method = _SCORE_POINT_METHODS.get(
+            calibration_result.calibration_scores.method_id
+        )
+
         for test_id in (
             FINAL_ROBUSTNESS_TEST_IDS
         ):
@@ -612,6 +649,12 @@ def build_ml_uncertainty_scorecard(
                         dtype=np.float64,
                     ),
                     condition_id=test_id,
+                    evaluation_batch=(
+                        _frozen_ml_uncertainty_batch(
+                            test, X_features, np.arange(test.y.size, dtype=np.int64),
+                        ) if point_method is not None else None
+                    ),
+                    point_method=point_method,
                 )
             )
 

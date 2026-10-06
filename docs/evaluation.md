@@ -640,7 +640,42 @@ must keep that relationship explicit. The attachment makes no frequentist
 calibration claim. Repeated-Poisson empirical variability is an aggregate
 reference quantity, not a per-observation
 attachment. Residual matrices, deviance, PPC and sampler diagnostics stay
-separate. No Week-9 robustness report consumes attachments yet.
+separate. Stage-8 projection now validates ML uncertainty outputs against
+canonical point identities; existing Week-9 reports still own their metrics.
+
+### ML uncertainty projections (Stage 8)
+
+`ml_uncertainty.py` projects source `PredictionIntervalResult` and
+`UncertaintyScoreResult` objects onto the attachments. Quantile median, RF
+tree-mean and bootstrap reference predictions are separate point methods. Raw
+quantile and conformal bounds have distinct uncertainty methods and interval
+kinds; RF tree spread and training-bootstrap spread have distinct uncertainty
+method IDs. Adapters require an explicit ML `MethodDescriptor`, an
+`EvaluationBatch`, and exact equality between source predictions and selected
+canonical point facts. Row-count agreement alone cannot join unrelated results.
+
+```text
+canonical ML point facts
+  |-- raw quantile / conformal IntervalAttachment
+  `-- RF-tree / training-bootstrap ScoreAttachment
+             |
+             v
+  existing Week-9 metrics, scorecards and reports
+```
+
+Source objects remain authoritative for prediction, bound and score values,
+validity, calibration artifacts and scientific algorithms. Attachment
+construction does not calibrate an interval or score. Frozen A-F adapters use
+the established test/sample IDs after positional selection; development
+calibration and standalone external calls may use invocation-local sample IDs
+only when their caller supplies the aligned batch. Such IDs do not establish
+identity across unrelated runs. Attachments require no lifetime reference;
+coverage, interval score and error-ranking metrics still require a reference
+and retain their existing denominator and eligibility policies. Custom score
+methods without an explicit point descriptor remain on the legacy evaluation
+path rather than receiving a guessed point identity. Frozen Week-9 report and
+persistence schemas remain unchanged. Repeated-Poisson, classical and Bayesian
+uncertainty are not migrated here.
 
 Persistence schema v1 independently stores uncertainty rows linked to stored
 estimator results. Its `method_id` maps conceptually to

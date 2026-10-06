@@ -16,6 +16,9 @@ from sklearn.base import clone
 
 from scipy.stats import spearmanr
 
+from tcspc_toolkit.evaluation_core import build_point_evaluation
+from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor, PointEvaluationResult
+from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkDataset,
 )
@@ -48,6 +51,7 @@ if TYPE_CHECKING:
     from tcspc_toolkit.generalization_evaluation import (
         GeneralizationPreparedData,
     )
+    from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
 
 
 QUANTILE_GRADIENT_BOOSTING_METHOD_ID = (
@@ -73,6 +77,164 @@ ML_TRAINING_BOOTSTRAP_METHOD_ID = (
 )
 
 DEFAULT_BOOTSTRAP_REPLICATES = 200
+
+_QUANTILE_MEDIAN_POINT_METHOD = MethodDescriptor(
+    "quantile_gradient_boosting_median", "ml", "engineered_features",
+)
+_RF_TREE_MEAN_POINT_METHOD = MethodDescriptor(
+    "random_forest_tree_mean", "ml", "engineered_features",
+)
+_BOOTSTRAP_REFERENCE_POINT_METHOD = MethodDescriptor(
+    "training_bootstrap_reference", "ml", "engineered_features",
+)
+_SCORE_POINT_METHODS = {
+    RANDOM_FOREST_TREE_SPREAD_METHOD_ID: _RF_TREE_MEAN_POINT_METHOD,
+    ML_TRAINING_BOOTSTRAP_METHOD_ID: _BOOTSTRAP_REFERENCE_POINT_METHOD,
+}
+
+
+def _aligned_ml_point_rows(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    point_method: MethodDescriptor, prediction: NDArray[np.float64],
+) -> pd.DataFrame:
+    """Select explicitly identified point facts in the batch's sample order."""
+    if point_method.family != "ml":
+        raise ValueError("ML uncertainty requires an explicit ML point method.")
+    if prediction.shape != (len(batch.sample_ids),):
+        raise ValueError("Uncertainty predictions must align with the evaluation batch.")
+    facts = points.points
+    representation_matches = (
+        facts.representation_id.isna() if point_method.representation_id is None
+        else facts.representation_id.eq(point_method.representation_id)
+    )
+    selected = facts.loc[
+        facts.evaluation_id.eq(batch.evaluation_id)
+        & facts.method_id.eq(point_method.method_id)
+        & representation_matches
+    ]
+    if (
+        len(selected) != len(batch.sample_ids)
+        or set(selected.sample_id) != set(batch.sample_ids)
+        or not selected.method_family.eq("ml").all()
+    ):
+        raise ValueError("Point facts do not match the declared ML method and batch identities.")
+    ordered = selected.set_index("sample_id").loc[list(batch.sample_ids)].reset_index()
+    if not np.array_equal(
+        ordered.lifetime_estimate_ns.to_numpy(dtype=np.float64), prediction,
+        equal_nan=True,
+    ):
+        raise ValueError("Uncertainty source predictions differ from canonical point estimates.")
+    return ordered
+
+
+def project_ml_prediction_intervals(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    point_method: MethodDescriptor, intervals: PredictionIntervalResult,
+    interval_kind: str,
+) -> IntervalAttachment:
+    """Link source interval bounds to exactly matching canonical ML point facts.
+
+    Source validity, raw crossings and nominal level pass through unchanged.
+    The caller supplies ordered sample identity and the scientific interval kind.
+    No reference or interval metric is required.
+    """
+    rows = _aligned_ml_point_rows(
+        batch=batch, points=points, point_method=point_method,
+        prediction=intervals.prediction,
+    )
+    return IntervalAttachment(points, pd.DataFrame({
+        "evaluation_id": rows.evaluation_id,
+        "sample_id": rows.sample_id,
+        "method_id": rows.method_id,
+        "representation_id": rows.representation_id,
+        "uncertainty_method_id": intervals.method_id,
+        "interval_kind": interval_kind,
+        "nominal_level": intervals.nominal_coverage,
+        "lower_ns": intervals.lower,
+        "upper_ns": intervals.upper,
+        "is_valid_interval": intervals.valid_interval_mask,
+    }))
+
+
+def project_ml_uncertainty_scores(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    point_method: MethodDescriptor, scores: UncertaintyScoreResult,
+) -> ScoreAttachment:
+    """Link a source score to its exact point estimates without calibration claims."""
+    rows = _aligned_ml_point_rows(
+        batch=batch, points=points, point_method=point_method,
+        prediction=scores.prediction,
+    )
+    return ScoreAttachment(points, pd.DataFrame({
+        "evaluation_id": rows.evaluation_id,
+        "sample_id": rows.sample_id,
+        "method_id": rows.method_id,
+        "representation_id": rows.representation_id,
+        "uncertainty_method_id": scores.method_id,
+        "score": scores.uncertainty_score,
+        "is_valid_score": scores.valid_score_mask,
+    }))
+
+
+def _ml_uncertainty_points(
+    batch: EvaluationBatch, method: MethodDescriptor, prediction: NDArray[np.float64],
+) -> PointEvaluationResult:
+    return build_point_evaluation(
+        batch=batch, method=method, lifetime_estimates_ns=prediction,
+        is_valid=np.isfinite(prediction),
+    )
+
+
+def _project_ml_interval_source(
+    batch: EvaluationBatch, method: MethodDescriptor,
+    intervals: PredictionIntervalResult, interval_kind: str,
+) -> IntervalAttachment:
+    points = _ml_uncertainty_points(batch, method, intervals.prediction)
+    return project_ml_prediction_intervals(
+        batch=batch, points=points, point_method=method,
+        intervals=intervals, interval_kind=interval_kind,
+    )
+
+
+def _project_ml_score_source(
+    batch: EvaluationBatch, method: MethodDescriptor, scores: UncertaintyScoreResult,
+) -> ScoreAttachment:
+    points = _ml_uncertainty_points(batch, method, scores.prediction)
+    return project_ml_uncertainty_scores(
+        batch=batch, points=points, point_method=method, scores=scores,
+    )
+
+
+def _development_calibration_batch(
+    development: BenchmarkDataset, indices: NDArray[np.int64], features: Any,
+) -> EvaluationBatch:
+    metadata = development.metadata.iloc[indices]
+    sample_ids = metadata["sample_id"].tolist() if "sample_id" in metadata else []
+    if not sample_ids or not pd.Index(sample_ids).is_unique or pd.isna(sample_ids).any():
+        # Calibration has guaranteed positional alignment even when legacy
+        # metadata contains no usable stable sample identity.
+        sample_ids = indices.tolist()
+        metadata = metadata.drop(columns="sample_id", errors="ignore")
+    return EvaluationBatch(
+        "uncertainty_calibration", sample_ids,
+        representations={"engineered_features": features}, metadata=metadata,
+    )
+
+
+def _frozen_ml_uncertainty_batch(
+    test: GeneralizationTestMeasurements, features: pd.DataFrame,
+    indices: NDArray[np.int64],
+) -> EvaluationBatch:
+    """Use the Stage-3 A–F test/sample identities after positional selection."""
+    metadata = test.metadata.iloc[indices]
+    sample_ids = (
+        metadata["sample_id"].tolist() if "sample_id" in metadata
+        else indices.tolist()
+    )
+    return EvaluationBatch(
+        test.test_id, sample_ids,
+        representations={"engineered_features": features}, metadata=metadata,
+    )
 
 
 class QuantileGradientBoostingIntervalEstimator:
@@ -460,6 +622,7 @@ def fit_and_evaluate_random_forest_tree_spread(
         development,
         estimator=estimator,
         split=split,
+        point_method=_RF_TREE_MEAN_POINT_METHOD,
     )
 
 
@@ -482,6 +645,7 @@ def fit_and_evaluate_ridge_bootstrap_spread(
         development,
         estimator=estimator,
         split=split,
+        point_method=_BOOTSTRAP_REFERENCE_POINT_METHOD,
     )
 
 
@@ -490,6 +654,7 @@ def _fit_and_evaluate_ml_uncertainty_score(
     *,
     estimator: Any,
     split: UncertaintyDevelopmentSplit | None,
+    point_method: MethodDescriptor,
 ) -> MLUncertaintyScoreCalibrationResult:
     """Fit one score-producing estimator on the Week-9 split."""
 
@@ -558,6 +723,14 @@ def _fit_and_evaluate_ml_uncertainty_score(
         X[
             calibration_indices
         ]
+    )
+
+    _project_ml_score_source(
+        _development_calibration_batch(
+            development, calibration_indices, X[calibration_indices],
+        ),
+        point_method,
+        calibration_scores,
     )
 
     score_metrics = evaluate_uncertainty_scores(
@@ -806,6 +979,15 @@ def fit_and_evaluate_quantile_gradient_boosting(
         )
     )
 
+    _project_ml_interval_source(
+        _development_calibration_batch(
+            development, calibration_indices, X_calibration,
+        ),
+        _QUANTILE_MEDIAN_POINT_METHOD,
+        calibration_intervals,
+        "quantile_prediction",
+    )
+
     interval_metrics = (
         evaluate_prediction_intervals(
             y_calibration,
@@ -851,6 +1033,8 @@ def evaluate_frozen_quantile_gradient_boosting(
     y_true_ns: NDArray[np.float64],
     *,
     condition_id: str,
+    evaluation_batch: EvaluationBatch | None = None,
+    point_method: MethodDescriptor | None = None,
 ) -> QuantileGradientBoostingExternalResult:
     """Evaluate the frozen quantile estimator on external features.
 
@@ -945,6 +1129,13 @@ def evaluate_frozen_quantile_gradient_boosting(
             X
         )
     )
+
+    if (evaluation_batch is None) != (point_method is None):
+        raise ValueError("evaluation_batch and point_method must be supplied together.")
+    if evaluation_batch is not None and point_method is not None:
+        _project_ml_interval_source(
+            evaluation_batch, point_method, intervals, "quantile_prediction",
+        )
 
     interval_metrics = (
         evaluate_prediction_intervals(
@@ -1348,6 +1539,10 @@ def evaluate_quantile_interval_robustness(
                 condition_features,
                 condition_y,
                 condition_id=condition_id,
+                evaluation_batch=_frozen_ml_uncertainty_batch(
+                    prepared.tests[test_id], condition_features, indices,
+                ),
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -1694,6 +1889,10 @@ def evaluate_paired_quantile_interval_response(
                 condition_id=(
                     f"A_reference_for_{condition_id}"
                 ),
+                evaluation_batch=_frozen_ml_uncertainty_batch(
+                    test_a, reference_features, reference_indices,
+                ),
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -1703,6 +1902,10 @@ def evaluate_paired_quantile_interval_response(
                 condition_features,
                 shifted_y,
                 condition_id=condition_id,
+                evaluation_batch=_frozen_ml_uncertainty_batch(
+                    shifted_test, condition_features, shifted_indices,
+                ),
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -1820,6 +2023,10 @@ def evaluate_paired_uncertainty_score_response(
     Test F continues to use the dominant-component lifetime tau_1
     as the primary scoring reference.
     """
+
+    point_method = _SCORE_POINT_METHODS.get(
+        calibration_result.calibration_scores.method_id
+    )
 
     required_test_ids = {
         "A",
@@ -2198,6 +2405,11 @@ def evaluate_paired_uncertainty_score_response(
                 condition_id=(
                     f"A_reference_for_{condition_id}"
                 ),
+                evaluation_batch=(
+                    _frozen_ml_uncertainty_batch(test_a, reference_features, reference_indices)
+                    if point_method is not None else None
+                ),
+                point_method=point_method,
             )
         )
 
@@ -2207,6 +2419,11 @@ def evaluate_paired_uncertainty_score_response(
                 condition_features,
                 shifted_y,
                 condition_id=condition_id,
+                evaluation_batch=(
+                    _frozen_ml_uncertainty_batch(shifted_test, condition_features, shifted_indices)
+                    if point_method is not None else None
+                ),
+                point_method=point_method,
             )
         )
 
@@ -2263,6 +2480,8 @@ def evaluate_frozen_ml_uncertainty_score(
     y_true_ns: NDArray[np.float64],
     *,
     condition_id: str,
+    evaluation_batch: EvaluationBatch | None = None,
+    point_method: MethodDescriptor | None = None,
 ) -> MLUncertaintyScoreExternalResult:
     """Evaluate a frozen score estimator without refitting."""
 
@@ -2311,6 +2530,11 @@ def evaluate_frozen_ml_uncertainty_score(
         .fitted_estimator
         .predict(X)
     )
+
+    if (evaluation_batch is None) != (point_method is None):
+        raise ValueError("evaluation_batch and point_method must be supplied together.")
+    if evaluation_batch is not None and point_method is not None:
+        _project_ml_score_source(evaluation_batch, point_method, scores)
 
     metrics = evaluate_uncertainty_scores(
         y,
