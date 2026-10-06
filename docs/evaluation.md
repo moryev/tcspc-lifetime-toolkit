@@ -1,13 +1,15 @@
-# Evaluation architecture: Issue #11, Stages 0–4
+# Evaluation architecture: Issue #11, Stages 0–5
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
 existing A/B and multi-test carriers. Stage 3 routes nonclassical generalization
 point evaluation through those facts and projects back to unchanged legacy tables.
 Stage 4 adapts classical generalization fits into the same point/reference facts
-and supplies explicit method families to internal summaries. Conditional and
-uncertainty integration, report consolidation and notebook migration remain later
-reviewed stages. The 66-name root API is unchanged.
+and supplies explicit method families to internal summaries. Stage 5 adds explicit
+method/reference paths for conditional diagnostics, retaining a compatibility-only
+path for historical callers lacking those semantics. Uncertainty integration,
+report consolidation and notebook migration remain later reviewed stages.
+The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
 
@@ -205,6 +207,96 @@ Real-fit regressions separately cover inference and full-suite projection. Condi
 evaluation still retains finite-invalid errors and its metadata index. Uncertainty,
 persistence, report/result dataclasses, notebooks and root exports are unchanged.
 
+## Conditional point adaptation and presentation policy (Stage 5)
+
+```text
+explicit method + reference              ambiguous historical inputs
+             ↓                                       ↓
+   PointEvaluationResult                  compatibility-only conditional path
+             │                                       ↓
+     ┌───────┴───────────┐                unchanged historical diagnostic table
+     ↓                   ↓
+generalization      conditional projection
+projection          retain finite invalid errors
+mask invalid errors      ↓
+     ↓              valid-only grouped summaries
+frozen summaries/reports
+```
+
+`build_prediction_diagnostics` and `build_ml_prediction_diagnostics` accept the
+optional keyword-only pair `method: MethodDescriptor` and `reference:
+LifetimeReference`. Supplying just one raises: neither family nor reference kind
+can be recovered safely from a historical estimator name or numeric target vector.
+With both supplied, the descriptor's method ID determines the displayed
+`estimator_name`; its explicit family and representation ID remain in canonical
+facts without changing the legacy column schema. This supports explicit ML and
+baseline methods, including arbitrary or misleading names, without name dispatch.
+
+The reference must be fully available and exactly equal to the existing target
+vector in positional order. Callers declare `generating_mono` for ordinary mono
+simulations and `primary_component` when the target is a bi-exponential component;
+the adapter does not guess either. The existing `LifetimeReference` carries kind,
+identity and any scope rather than introducing another reference vocabulary.
+Partial/no-reference evaluation remains supported by the factual core, but is not
+the contract of these legacy, fully targeted conditional tables.
+
+For example, given an existing split and regression result:
+
+```python
+from tcspc_toolkit.conditional_evaluation import build_ml_prediction_diagnostics
+from tcspc_toolkit.evaluation_results import LifetimeReference, MethodDescriptor
+
+diagnostics = build_ml_prediction_diagnostics(
+    split=split,
+    result=result,
+    method=MethodDescriptor("user_regressor", "ml", "engineered_features"),
+    reference=LifetimeReference(
+        "simulation_target", "generating_mono", split.y_test,
+        [True] * len(split.y_test),
+    ),
+)
+```
+
+Omitting both semantic arguments preserves the compatibility-only calculation.
+`RegressionBenchmarkResult` has no family or reference-kind fields and is also
+used for baseline and mismatch outputs in Notebook 12. Those unchanged callers
+therefore do **not** create falsely labelled canonical facts. Name/prefix inference
+is not a migration strategy. Migrating callers to explicit semantics remains a
+later reviewed task; no notebooks or result constructors changed in Stage 5.
+
+`build_classical_prediction_diagnostics` accepts only an optional `reference`:
+the adapter already knows family `classical`, retains its supplied/default method
+ID, and declares representation `raw_histogram`. When the reference is supplied,
+the original `valid_fit`, lifetime and failure reason enter the same factual
+builder. Without it, historical calls remain table-only. Existing `per_curve`
+columns, including errors, optimizer/IRF diagnostics, runtime and failure reasons,
+remain authoritative and unchanged. Canonical scalar estimates/validity supply
+the compatibility aliases; no absent diagnostic columns are manufactured.
+
+The private adapter uses one invocation-local `conditional` evaluation ID and
+ordered positional sample IDs. It does not treat a pandas index or arbitrary
+metadata label as identity. Metadata stays alongside facts in the projection;
+duplicate/non-default indexes, repeated metadata sample labels, row ordering and
+existing column positions survive unchanged. These local facts are not a new
+cross-batch public identity contract. No representations are fitted or copied.
+
+Finite invalid estimates retain finite canonical errors with
+`is_valid_comparison=False`. The conditional projection displays these errors;
+the generalization projection masks them. **Error visibility is not metric
+eligibility.** Conditional summaries still select only `valid_estimate` rows,
+count failures over all attempts, preserve all-invalid NaNs and keep the existing
+regime boundaries/order. Signed error remains estimate minus reference; relative
+error remains absolute error divided by reference.
+
+The compatibility-only array path still accepts empty inputs and even an explicit
+validity mask labelling a nonfinite estimate valid (the grouped summary rejects
+unusable selected errors). The explicit factual path instead enforces the core's
+nonempty batch and finite-valid-estimate rules. An invalid infinite estimate is
+retained canonically with NaN comparison errors; the array-table projection alone
+restores historical signed-infinite/absolute-infinite/relative-infinite display.
+Classical tables keep their existing NaN errors for nonfinite fits. None of these
+presentation policies changes core validation or summary eligibility.
+
 ## Implemented factual contracts
 
 ### Identity and batches
@@ -393,8 +485,9 @@ summaries/PPC and scientific provenance remain in existing domain objects.
 Intervals, heuristic scores, local covariance and empirical repeated-Poisson
 variability remain distinct. No uncertainty attachment class exists at this stage.
 
-Later Issue-#11 stages will review conditional/uncertainty integration, method-specific
-result adapters and frozen report consolidation. No combined
+Later Issue-#11 stages will review remaining conditional caller migration,
+uncertainty integration, method-specific result adapters and frozen report
+consolidation. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
