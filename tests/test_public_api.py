@@ -1,13 +1,14 @@
 """Curated package-root exports and import-time optional boundaries."""
 
 import importlib
+import pickle
 import subprocess
 import sys
 
 import pytest
 
 import tcspc_toolkit as toolkit
-from tcspc_toolkit import estimator_api
+from tcspc_toolkit.estimation import api as estimator_api
 from tcspc_toolkit.simulation import build_expected_counts_from_irf
 
 
@@ -87,7 +88,8 @@ def assert_same_export(old_module, canonical_module, name):
     """Reuse for old-flat -> new-canonical cases as each module actually moves.
 
     Compatibility exports are the same objects, not forwarding wrappers. Stage
-    0 exercises existing root/flat paths; it invents no future modules.
+    0 established the root/flat pattern; migrated cases now name their actual
+    canonical modules explicitly.
     """
     old = importlib.import_module(old_module)
     canonical = importlib.import_module(canonical_module)
@@ -107,6 +109,26 @@ def test_all_exports_are_unique_and_accessible():
 def test_extension_exports_are_canonical_objects(name):
     assert name in toolkit.__all__
     assert_same_export("tcspc_toolkit", estimator_api.__name__, name)
+
+
+@pytest.mark.parametrize("old_module, canonical_module, names", [
+    ("tcspc_toolkit.estimator_api", "tcspc_toolkit.estimation.api", (
+        "RegressorProtocol", "EstimatorSpec", "fit_regressors", "predict_regressors",
+    )),
+    ("tcspc_toolkit.baselines", "tcspc_toolkit.estimation.baselines", (
+        "FloatArray", "predict_constant_mean_baseline", "estimate_lifetime_from_mean_arrival",
+    )),
+])
+def test_relocated_exports_keep_direct_identity_and_historical_lookup(old_module, canonical_module, names):
+    canonical = importlib.import_module(canonical_module)
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if name != "FloatArray":
+            obj = getattr(canonical, name)
+            assert obj.__module__ == canonical_module
+            # A trusted protocol-0 GLOBAL lookup exercises the historical path
+            # without pretending that new objects retain old __module__ values.
+            assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is obj
 
 
 def test_expected_counts_builder_is_in_the_root_contract():

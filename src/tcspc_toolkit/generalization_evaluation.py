@@ -13,7 +13,7 @@ from typing import Any
 
 from sklearn.decomposition import PCA
 
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )
@@ -25,7 +25,7 @@ from tcspc_toolkit.config import (
     CountNormalization,
     FeatureConfig,
 )
-from tcspc_toolkit.estimator_api import (
+from tcspc_toolkit.estimation.api import (
     EstimatorSpec,
     RegressorProtocol,
     fit_regressors,

@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from sklearn.linear_model import LinearRegression
 
-from tcspc_toolkit.estimator_api import EstimatorSpec, fit_regressors
+from tcspc_toolkit.estimation.api import EstimatorSpec, fit_regressors
 from tcspc_toolkit.evaluation_core import build_point_evaluation, combine_point_evaluations
 from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements

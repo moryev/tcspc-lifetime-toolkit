@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
 )
 from tcspc_toolkit.classical_evaluation import (

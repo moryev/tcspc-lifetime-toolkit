@@ -4,18 +4,18 @@ This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
-layer beneath the existing scientific reports; physical package movement (#3)
-remains separate work.
+layer beneath the existing scientific reports. Issue #3 has begun structural
+relocation with the estimator API and baselines; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
-| Generic extension API | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, and `predict_regressors` are root exports; their `estimator_api` imports resolve to the same objects. |
+| Generic extension API | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, and `predict_regressors` are root exports; canonical `estimation.api` and compatibility `estimator_api` imports resolve to the same objects. |
 | Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
 | Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Deferred package movement | Issue #3 will move files into subpackages; no physical relocation has occurred. |
+| Package movement | Issue #3 Stage 1 places the estimator API and baselines in `estimation`; further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -45,8 +45,11 @@ or require the optional `emcee` sampler. Bayesian sampling remains an explicit
 module-qualified operation requiring the `bayesian` extra; deterministic
 Bayesian APIs also remain module-qualified.
 
-Important module-qualified workflows remain in their existing flat modules:
+Important supported module-qualified workflows include:
 
+- `estimation.api` and `estimation.baselines`: canonical generic estimator
+  execution and baseline implementations. `estimator_api` and `baselines` remain
+  direct-object compatibility paths through at least Issue #12.
 - `ml_models`, `ml_evaluation`, `cross_validation`, and `representations`:
   estimator factories (including `make_canonical_ml_estimator_specs()`),
   point-estimate evaluation, repeated CV and its configuration/result types,
@@ -99,7 +102,8 @@ study-specific orchestration are not generic extension hooks.
 Package relocation preserves the exact 66-name root `__all__`, including its
 current order. It changes implementation locations, not scientific behavior,
 Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
-No production modules have moved in Stage 0.
+Stage 0 established the structural guards; Stage 1 moves only the generic
+estimator API and baselines.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -132,11 +136,22 @@ distinguishes eager, function-local, and `TYPE_CHECKING` dependencies; fresh
 processes also check real import order and side effects. The intentionally
 deferred Bayesian sampling relationship is not an eager cycle.
 
-The first approved slice is `estimator_api` and `baselines` into
-`estimation.api` and `estimation.baselines`. When it is implemented, extend the
-direct-identity test pattern to both old/new paths and update responsibility
-path sets deliberately; retain baseline numerical and estimator-extension
-tests. Do not create placeholder production packages for Stage-0 tests.
+The first implemented slice has these paths:
+
+| Canonical implementation | Compatibility import |
+| --- | --- |
+| `tcspc_toolkit.estimation.api` | `tcspc_toolkit.estimator_api` |
+| `tcspc_toolkit.estimation.baselines` | `tcspc_toolkit.baselines` |
+
+The `estimation` initializer imports nothing. The generic API has no sklearn or
+package-internal dependency. Baselines retain the existing sklearn
+`DummyRegressor` implementation; this move does not replace its arithmetic.
+A normal dotted import still initializes the existing package root, which
+already imports fitting and sklearn-backed representations. These inherited
+root dependencies are not new dependencies of the `estimation` initializer.
+Direct old/new/root identity, natural canonical `__module__`, historical path
+resolution, and unchanged baseline/estimator behavior are tested. Future
+moves must extend these cases and update responsibility path sets deliberately.
 
 ### Completed evaluation work and later gates
 
@@ -151,7 +166,8 @@ generic execution must not know Ridge/RF/HGB or canonical representation names.
   conditional, mismatch, and Week-9 reporting paths. Specialized Bayesian and
   experimental reports retain their context; no universal report or
   representation framework was introduced. See [evaluation.md](evaluation.md).
-- Issue #3: move files and introduce subpackages. No relocation occurs here.
+- Issue #3: incrementally relocate remaining implementations; only the two
+  `estimation` modules above have moved so far.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
 
@@ -182,8 +198,10 @@ from tcspc_toolkit import (
 )
 ```
 
-Imports from `tcspc_toolkit.estimator_api` remain supported and resolve to the
-same canonical objects. Their signatures are:
+The canonical module-qualified path is `tcspc_toolkit.estimation.api`, for
+example `from tcspc_toolkit.estimation.api import EstimatorSpec`. Imports from
+`tcspc_toolkit.estimator_api` remain supported through at least Issue #12 and
+resolve to the same objects. Their signatures are:
 
 ```python
 class RegressorProtocol(Protocol):
@@ -342,7 +360,7 @@ For example, given an existing `GeneralizationPreparedData` named `prepared`:
 
 ```python
 from sklearn.linear_model import LinearRegression
-from tcspc_toolkit.estimator_api import EstimatorSpec
+from tcspc_toolkit.estimation.api import EstimatorSpec
 from tcspc_toolkit.generalization_evaluation import (
     fit_generalization_ml_estimators, evaluate_generalization_suite_benchmark,
 )

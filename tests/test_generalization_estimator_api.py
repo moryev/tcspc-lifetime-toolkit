@@ -5,12 +5,12 @@ import pandas as pd
 import pytest
 from sklearn.linear_model import LinearRegression
 
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.estimator_api import EstimatorSpec
+from tcspc_toolkit.estimation.api import EstimatorSpec
 from tcspc_toolkit.generalization import FINAL_ROBUSTNESS_TEST_IDS
 from tcspc_toolkit.generalization_datasets import generate_generalization_test_suite
 from tcspc_toolkit.generalization_evaluation import (

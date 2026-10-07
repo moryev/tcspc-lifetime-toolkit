@@ -113,7 +113,7 @@ from tcspc_toolkit.representations import (
     transform_pca_representation,
 )
 
-from tcspc_toolkit.estimator_api import (
+from tcspc_toolkit.estimation.api import (
     RegressorProtocol,
     EstimatorSpec,
     fit_regressors,

@@ -36,9 +36,11 @@ OLD_MODULE_PATHS = (
 )
 
 # Responsibility sets identify implementations, not their future spelling.
-# Stage 1 will update the extension set to estimation.api, without removing
-# estimator_api from OLD_MODULE_PATHS or relaxing the dependency constraints.
-EXTENSION = {f"{PACKAGE}.estimator_api"}
+# Canonical implementations move; old paths and dependency restrictions stay.
+EXTENSION = {f"{PACKAGE}.estimation.api"}
+BASELINES = f"{PACKAGE}.estimation.baselines"
+ESTIMATION = f"{PACKAGE}.estimation"
+MIGRATED_SHIMS = {f"{PACKAGE}.estimator_api", f"{PACKAGE}.baselines"}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
@@ -181,6 +183,19 @@ def test_responsibility_dependency_direction(package_imports):
                            for t in targets), (module, targets)
 
 
+def test_estimation_initializer_and_canonical_consumers_stay_independent(package_imports):
+    records, _ = package_imports
+    assert records[ESTIMATION] == []  # No eager, deferred, or typing imports.
+    # Preserve the existing DummyRegressor dependency, not a new algorithm.
+    assert {base for _, base, _ in records[BASELINES]} == {
+        "__future__", "numpy", "numpy.typing", "sklearn.dummy",
+    }
+    for module, imports in records.items():
+        for _, base, names in imports:
+            targets = _targets(base, names, set(records)) | {base}
+            assert not targets.intersection(MIGRATED_SHIMS), (module, targets)
+
+
 def test_no_eager_internal_cycles(package_imports):
     records, packages = package_imports
     # The Bayesian -> sampling import is deliberately deferred; the reverse
@@ -234,8 +249,8 @@ async def later():
 @pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
 @pytest.mark.parametrize("generic_only", [True, False], ids=["generic", "supported"])
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
-    names = (["estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
-             if generic_only else list(OLD_MODULE_PATHS))
+    names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
+             if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -262,6 +277,49 @@ for name in {names!r}:
     importlib.import_module('tcspc_toolkit.' + name)
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", ["api", "baselines"])
+def test_fresh_canonical_estimation_import_adds_only_its_own_dependencies(tmp_path, module):
+    # A normal dotted import necessarily initializes tcspc_toolkit first. That
+    # existing root imports fitting/sklearn. Trace actual import callers to
+    # distinguish those inherited costs from dependencies of the new package;
+    # do not substitute a fake root or change root initialization for this move.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == 'tcspc_toolkit.estimation' or caller.startswith('tcspc_toolkit.estimation.'):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = track
+try:
+    importlib.import_module('tcspc_toolkit.estimation.{module}')
+finally:
+    builtins.__import__ = original_import
+assert not seen.get('tcspc_toolkit.estimation')
+assert seen['tcspc_toolkit.estimation.api'] <= {{
+    '__future__', 'collections.abc', 'dataclasses', 'typing', 'numpy', 'numpy.typing',
+}}
+if {module!r} == 'baselines':
+    assert seen['tcspc_toolkit.estimation.baselines'] == {{
+        '__future__', 'numpy', 'numpy.typing', 'sklearn.dummy',
+    }}
+else:
+    assert 'tcspc_toolkit.estimation.baselines' not in sys.modules
+assert 'tcspc_toolkit.estimator_api' not in sys.modules
+assert 'tcspc_toolkit.baselines' not in sys.modules
+assert 'tcspc_toolkit.persistence' not in sys.modules
+assert 'emcee' not in sys.modules
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
                                capture_output=True, text=True, timeout=60)

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )

@@ -15,7 +15,7 @@ from sklearn.metrics import (
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )
