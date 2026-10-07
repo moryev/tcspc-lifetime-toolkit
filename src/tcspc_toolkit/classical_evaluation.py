@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 from numpy.typing import ArrayLike
 
-from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
 from tcspc_toolkit.evaluation import (
     calculate_poisson_deviance_residuals,
 )
@@ -18,7 +18,7 @@ from tcspc_toolkit.fitting import (
     fit_monoexponential_reconvolution,
     poisson_negative_log_likelihood,
 )
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.physics.models import monoexponential_decay
 from tcspc_toolkit.preprocessing import (
     detect_peak,
     estimate_background,

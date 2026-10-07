@@ -5,10 +5,10 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import curve_fit, least_squares, minimize
 
-from tcspc_toolkit.forward_model import (
+from tcspc_toolkit.physics.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.physics.models import monoexponential_decay
 
 
 @dataclass(frozen=True)

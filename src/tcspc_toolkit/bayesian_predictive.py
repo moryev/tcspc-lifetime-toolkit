@@ -24,7 +24,7 @@ from tcspc_toolkit.bayesian_sampling import (
     _prior_draw,
 )
 from tcspc_toolkit.evaluation import calculate_poisson_deviance_residuals
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.simulation import sample_photon_counts
 
 

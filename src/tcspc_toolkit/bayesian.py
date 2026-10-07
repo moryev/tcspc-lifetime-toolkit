@@ -18,7 +18,7 @@ from numpy.typing import ArrayLike, NDArray
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.experimental import _resolve_reconvolution_irf
 from tcspc_toolkit.fitting import poisson_negative_log_likelihood
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
 from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.measurements import SampledIRF, TCSPCMeasurement

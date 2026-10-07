@@ -118,6 +118,15 @@ def test_extension_exports_are_canonical_objects(name):
     ("tcspc_toolkit.baselines", "tcspc_toolkit.estimation.baselines", (
         "FloatArray", "predict_constant_mean_baseline", "estimate_lifetime_from_mean_arrival",
     )),
+    ("tcspc_toolkit.models", "tcspc_toolkit.physics.models", (
+        "monoexponential_decay", "biexponential_decay", "multiexponential_decay",
+    )),
+    ("tcspc_toolkit.convolution", "tcspc_toolkit.physics.convolution", (
+        "convolve_decay_with_irf",
+    )),
+    ("tcspc_toolkit.forward_model", "tcspc_toolkit.physics.forward_model", (
+        "monoexponential_reconvolution_expected_counts",
+    )),
 ])
 def test_relocated_exports_keep_direct_identity_and_historical_lookup(old_module, canonical_module, names):
     canonical = importlib.import_module(canonical_module)
@@ -129,6 +138,14 @@ def test_relocated_exports_keep_direct_identity_and_historical_lookup(old_module
             # A trusted protocol-0 GLOBAL lookup exercises the historical path
             # without pretending that new objects retain old __module__ values.
             assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is obj
+
+
+@pytest.mark.parametrize("module, name", [
+    ("models", "monoexponential_decay"),
+    ("convolution", "convolve_decay_with_irf"),
+])
+def test_physical_root_exports_are_canonical_objects(module, name):
+    assert_same_export("tcspc_toolkit", f"tcspc_toolkit.physics.{module}", name)
 
 
 def test_expected_counts_builder_is_in_the_root_contract():

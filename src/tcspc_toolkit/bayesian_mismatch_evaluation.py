@@ -52,7 +52,7 @@ from tcspc_toolkit.classical_uncertainty import (
 from tcspc_toolkit.fitting import (
     poisson_negative_log_likelihood,
 )
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import generate_emg_irf_profile, generate_gaussian_irf_profile
 from tcspc_toolkit.irf_evaluation import _match_gaussian_to_emg_profile
 from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf

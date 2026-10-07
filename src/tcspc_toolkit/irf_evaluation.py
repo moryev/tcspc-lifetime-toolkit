@@ -48,7 +48,7 @@ from tcspc_toolkit.ml_models import (
     make_ridge_pipeline,
 )
 from tcspc_toolkit.ml_uncertainty import RandomForestTreeSpreadEstimator
-from tcspc_toolkit.models import biexponential_decay, monoexponential_decay
+from tcspc_toolkit.physics.models import biexponential_decay, monoexponential_decay
 from tcspc_toolkit.preprocessing import validate_time_axis
 from tcspc_toolkit.simulation import build_expected_counts_from_irf, sample_photon_counts
 

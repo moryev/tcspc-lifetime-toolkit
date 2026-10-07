@@ -28,7 +28,7 @@ from tcspc_toolkit.classical_uncertainty import (
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
 )
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.simulation import sample_photon_counts

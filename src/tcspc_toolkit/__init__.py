@@ -4,7 +4,7 @@ The explicit ``__all__`` is the supported package-root surface. See
 ``docs/api.md`` for the supported advanced APIs and compatibility policy.
 """
 
-from tcspc_toolkit.models import (
+from tcspc_toolkit.physics.models import (
     monoexponential_decay,
 )
 from tcspc_toolkit.simulation import (
@@ -28,7 +28,7 @@ from tcspc_toolkit.irf import (
     shift_irf,
 )
 
-from tcspc_toolkit.convolution import (
+from tcspc_toolkit.physics.convolution import (
     convolve_decay_with_irf,
 )
 

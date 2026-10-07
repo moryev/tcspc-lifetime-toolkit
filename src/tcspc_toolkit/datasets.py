@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.physics.models import monoexponential_decay
 
 
 FloatArray = NDArray[np.float64]

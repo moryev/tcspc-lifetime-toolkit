@@ -5,7 +5,8 @@ a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
 layer beneath the existing scientific reports. Issue #3 has begun structural
-relocation with the estimator API and baselines; other modules remain flat.
+relocation with estimator contracts/baselines and low-level physical primitives;
+other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -15,7 +16,7 @@ relocation with the estimator API and baselines; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 Stage 1 places the estimator API and baselines in `estimation`; further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1) and physical primitives in `physics` (Stage 2A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -47,6 +48,10 @@ Bayesian APIs also remain module-qualified.
 
 Important supported module-qualified workflows include:
 
+- `physics.models`, `physics.convolution`, and `physics.forward_model`:
+  decay models, numerical convolution, and the shared deterministic
+  reconvolution expected-count model. Flat `models`, `convolution`, and
+  `forward_model` imports remain direct-object compatibility paths.
 - `estimation.api` and `estimation.baselines`: canonical generic estimator
   execution and baseline implementations. `estimator_api` and `baselines` remain
   direct-object compatibility paths through at least Issue #12.
@@ -102,8 +107,8 @@ study-specific orchestration are not generic extension hooks.
 Package relocation preserves the exact 66-name root `__all__`, including its
 current order. It changes implementation locations, not scientific behavior,
 Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
-Stage 0 established the structural guards; Stage 1 moves only the generic
-estimator API and baselines.
+Stage 0 established the structural guards; Stage 1 moved the generic estimator
+API and baselines; Stage 2A moves only models, convolution, and the forward model.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -136,12 +141,15 @@ distinguishes eager, function-local, and `TYPE_CHECKING` dependencies; fresh
 processes also check real import order and side effects. The intentionally
 deferred Bayesian sampling relationship is not an eager cycle.
 
-The first implemented slice has these paths:
+The implemented slices have these paths:
 
 | Canonical implementation | Compatibility import |
 | --- | --- |
 | `tcspc_toolkit.estimation.api` | `tcspc_toolkit.estimator_api` |
 | `tcspc_toolkit.estimation.baselines` | `tcspc_toolkit.baselines` |
+| `tcspc_toolkit.physics.models` | `tcspc_toolkit.models` |
+| `tcspc_toolkit.physics.convolution` | `tcspc_toolkit.convolution` |
+| `tcspc_toolkit.physics.forward_model` | `tcspc_toolkit.forward_model` |
 
 The `estimation` initializer imports nothing. The generic API has no sklearn or
 package-internal dependency. Baselines retain the existing sklearn
@@ -152,6 +160,14 @@ root dependencies are not new dependencies of the `estimation` initializer.
 Direct old/new/root identity, natural canonical `__module__`, historical path
 resolution, and unchanged baseline/estimator behavior are tested. Future
 moves must extend these cases and update responsibility path sets deliberately.
+
+The `physics` initializer also imports nothing. Its implementations retain only
+their existing NumPy/SciPy and low-level physical dependencies. The forward
+model uses canonical `physics.models`/`physics.convolution` and the unchanged
+flat `irf.shift_irf`; classical and Bayesian inference remain consumers, not
+dependencies. Root convenience exports remain exactly the reviewed 66 names;
+the forward-model function is still module-qualified. No preprocessing, IRF,
+measurement, or further estimator relocation has occurred in Stage 2A.
 
 ### Completed evaluation work and later gates
 
@@ -166,8 +182,8 @@ generic execution must not know Ridge/RF/HGB or canonical representation names.
   conditional, mismatch, and Week-9 reporting paths. Specialized Bayesian and
   experimental reports retain their context; no universal report or
   representation framework was introduced. See [evaluation.md](evaluation.md).
-- Issue #3: incrementally relocate remaining implementations; only the two
-  `estimation` modules above have moved so far.
+- Issue #3: incrementally relocate remaining implementations; only the
+  `estimation` and `physics` modules listed above have moved so far.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
 

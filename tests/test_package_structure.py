@@ -40,13 +40,23 @@ OLD_MODULE_PATHS = (
 EXTENSION = {f"{PACKAGE}.estimation.api"}
 BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
-MIGRATED_SHIMS = {f"{PACKAGE}.estimator_api", f"{PACKAGE}.baselines"}
+MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
+    "estimator_api", "baselines", "models", "convolution", "forward_model",
+)}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
 PHYSICAL = {f"{PACKAGE}.{name}" for name in (
-    "models", "convolution", "forward_model", "irf",
+    "physics.models", "physics.convolution", "physics.forward_model", "irf",
 )}
+PHYSICS_IMPORTS = {
+    f"{PACKAGE}.physics.models": {"numpy", "numpy.typing"},
+    f"{PACKAGE}.physics.convolution": {"numpy", "numpy.typing", "scipy.signal"},
+    f"{PACKAGE}.physics.forward_model": {
+        "numpy", "numpy.typing", f"{PACKAGE}.physics.models",
+        f"{PACKAGE}.physics.convolution", f"{PACKAGE}.irf",
+    },
+}
 PERSISTENCE = f"{PACKAGE}.persistence"
 
 
@@ -183,13 +193,16 @@ def test_responsibility_dependency_direction(package_imports):
                            for t in targets), (module, targets)
 
 
-def test_estimation_initializer_and_canonical_consumers_stay_independent(package_imports):
+def test_migrated_initializers_and_canonical_consumers_stay_independent(package_imports):
     records, _ = package_imports
     assert records[ESTIMATION] == []  # No eager, deferred, or typing imports.
+    assert records[f"{PACKAGE}.physics"] == []
     # Preserve the existing DummyRegressor dependency, not a new algorithm.
     assert {base for _, base, _ in records[BASELINES]} == {
         "__future__", "numpy", "numpy.typing", "sklearn.dummy",
     }
+    for module, allowed in PHYSICS_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
     for module, imports in records.items():
         for _, base, names in imports:
             targets = _targets(base, names, set(records)) | {base}
@@ -250,7 +263,8 @@ async def later():
 @pytest.mark.parametrize("generic_only", [True, False], ids=["generic", "supported"])
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
     names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
-             if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines"])
+             if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
+                                   "physics.models", "physics.convolution", "physics.forward_model"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -276,6 +290,47 @@ sys.addaudithook(no_database)
 for name in {names!r}:
     importlib.import_module('tcspc_toolkit.' + name)
 assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(PHYSICS_IMPORTS))
+def test_fresh_physics_import_adds_only_low_level_dependencies(tmp_path, module):
+    # Trace real imports, retaining normal root initialization. The root's
+    # existing fitting/sklearn imports are not dependencies of physics itself.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == 'tcspc_toolkit.physics' or caller.startswith('tcspc_toolkit.physics.'):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('physical import opened a database')
+sys.addaudithook(no_database)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{module!r}]
+assert not seen.get('tcspc_toolkit.physics')
+allowed = {PHYSICS_IMPORTS!r}
+for caller, imports in seen.items():
+    assert imports <= allowed[caller], (caller, imports)
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,

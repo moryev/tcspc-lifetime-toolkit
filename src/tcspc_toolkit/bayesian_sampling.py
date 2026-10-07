@@ -24,7 +24,7 @@ from tcspc_toolkit.bayesian import (
     log_posterior,
     physical_to_sampling_coordinates,
 )
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import IRFSourceKind
 from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.measurements import TCSPCMeasurement

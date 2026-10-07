@@ -27,7 +27,7 @@ from tcspc_toolkit.evaluation_results import (
     EvaluationBatch, MethodDescriptor, PointEvaluationResult,
 )
 from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment
-from tcspc_toolkit.forward_model import (
+from tcspc_toolkit.physics.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
