@@ -10,7 +10,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from tcspc_toolkit.irf import IRFProfile, IRFSourceKind, normalize_irf
 from tcspc_toolkit.measurements import SampledIRF
-from tcspc_toolkit.preprocessing import time_axes_compatible, validate_time_axis
+from tcspc_toolkit.preprocessing.histograms import time_axes_compatible, validate_time_axis
 
 
 FloatArray = NDArray[np.float64]

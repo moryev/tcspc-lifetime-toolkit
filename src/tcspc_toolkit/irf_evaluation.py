@@ -29,7 +29,7 @@ from tcspc_toolkit.evaluation import (
     calculate_poisson_deviance_residuals,
 )
 from tcspc_toolkit.experimental import fit_experimental_reconvolution
-from tcspc_toolkit.features import extract_feature_table
+from tcspc_toolkit.preprocessing.features import extract_feature_table
 from tcspc_toolkit.irf import (
     IRFProfile,
     IRFSourceKind,
@@ -49,7 +49,7 @@ from tcspc_toolkit.ml_models import (
 )
 from tcspc_toolkit.ml_uncertainty import RandomForestTreeSpreadEstimator
 from tcspc_toolkit.physics.models import biexponential_decay, monoexponential_decay
-from tcspc_toolkit.preprocessing import validate_time_axis
+from tcspc_toolkit.preprocessing.histograms import validate_time_axis
 from tcspc_toolkit.simulation import build_expected_counts_from_irf, sample_photon_counts
 
 

@@ -1319,7 +1319,7 @@ def _require_row(connection: sqlite3.Connection, table: str, id_column: str, row
 
 
 def _uniform_grid(time_ns: ArrayLike) -> tuple[np.ndarray, int, float, float, str]:
-    from tcspc_toolkit.preprocessing import validate_time_axis
+    from tcspc_toolkit.preprocessing.histograms import validate_time_axis
 
     time = validate_time_axis(time_ns)
     return time, int(time.size), float(time[0]), float(np.diff(time)[0]), _hash_time_grid_ns(time)
@@ -1911,7 +1911,7 @@ def _record_observation(
     metadata: Mapping[str, Any] | None, provenance: Mapping[str, Any] | None,
     on_duplicate: DuplicatePolicy,
 ) -> int:
-    from tcspc_toolkit.preprocessing import validate_histogram
+    from tcspc_toolkit.preprocessing.histograms import validate_histogram
 
     time, n_bins, time_start, time_step, grid_sha = _uniform_grid(time_ns)
     if data_kind == "raw_counts":

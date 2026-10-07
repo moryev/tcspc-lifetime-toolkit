@@ -19,7 +19,7 @@ from tcspc_toolkit.fitting import (
     poisson_negative_log_likelihood,
 )
 from tcspc_toolkit.physics.models import monoexponential_decay
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     detect_peak,
     estimate_background,
     validate_histogram,

@@ -23,7 +23,7 @@ from tcspc_toolkit.config import (
     FeatureConfig,
     CountNormalization,
 )
-from tcspc_toolkit.features import extract_feature_table
+from tcspc_toolkit.preprocessing.features import extract_feature_table
 from tcspc_toolkit.evaluation_core import build_point_evaluation, calculate_reference_errors
 from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.ml_models import (
@@ -31,7 +31,7 @@ from tcspc_toolkit.ml_models import (
     make_random_forest_pipeline,
     make_ridge_pipeline,
 )
-from tcspc_toolkit.representations import (
+from tcspc_toolkit.preprocessing.representations import (
     augment_with_total_counts,
     fit_pca_representation,
     normalize_histogram_batch,

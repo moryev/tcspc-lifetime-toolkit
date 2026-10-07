@@ -5,8 +5,8 @@ a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
 layer beneath the existing scientific reports. Issue #3 has begun structural
-relocation with estimator contracts/baselines and low-level physical primitives;
-other modules remain flat.
+relocation with estimator contracts/baselines, low-level physical primitives,
+and histogram preprocessing/features/representations; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -16,7 +16,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1) and physical primitives in `physics` (Stage 2A); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), and histogram operations/features/representations in `preprocessing` (Stage 2B); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -55,7 +55,11 @@ Important supported module-qualified workflows include:
 - `estimation.api` and `estimation.baselines`: canonical generic estimator
   execution and baseline implementations. `estimator_api` and `baselines` remain
   direct-object compatibility paths through at least Issue #12.
-- `ml_models`, `ml_evaluation`, `cross_validation`, and `representations`:
+- `preprocessing.histograms`, `preprocessing.features`, and
+  `preprocessing.representations`: histogram/time-grid operations, engineered
+  features, normalization, PCA, and count augmentation. The historical
+  `preprocessing`, `features`, and `representations` paths remain supported.
+- `ml_models`, `ml_evaluation`, `cross_validation`, and `preprocessing.representations`:
   estimator factories (including `make_canonical_ml_estimator_specs()`),
   point-estimate evaluation, repeated CV and its configuration/result types,
   and transforms.
@@ -108,7 +112,9 @@ Package relocation preserves the exact 66-name root `__all__`, including its
 current order. It changes implementation locations, not scientific behavior,
 Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
 Stage 0 established the structural guards; Stage 1 moved the generic estimator
-API and baselines; Stage 2A moves only models, convolution, and the forward model.
+API and baselines; Stage 2A moved models, convolution, and the forward model;
+Stage 2B converts histogram preprocessing into a package and relocates features
+and representations beneath it.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -150,6 +156,9 @@ The implemented slices have these paths:
 | `tcspc_toolkit.physics.models` | `tcspc_toolkit.models` |
 | `tcspc_toolkit.physics.convolution` | `tcspc_toolkit.convolution` |
 | `tcspc_toolkit.physics.forward_model` | `tcspc_toolkit.forward_model` |
+| `tcspc_toolkit.preprocessing.histograms` | `tcspc_toolkit.preprocessing` |
+| `tcspc_toolkit.preprocessing.features` | `tcspc_toolkit.features` |
+| `tcspc_toolkit.preprocessing.representations` | `tcspc_toolkit.representations` |
 
 The `estimation` initializer imports nothing. The generic API has no sklearn or
 package-internal dependency. Baselines retain the existing sklearn
@@ -166,8 +175,25 @@ their existing NumPy/SciPy and low-level physical dependencies. The forward
 model uses canonical `physics.models`/`physics.convolution` and the unchanged
 flat `irf.shift_irf`; classical and Bayesian inference remain consumers, not
 dependencies. Root convenience exports remain exactly the reviewed 66 names;
-the forward-model function is still module-qualified. No preprocessing, IRF,
-measurement, or further estimator relocation has occurred in Stage 2A.
+the forward-model function is still module-qualified.
+
+Unlike the import-free initializers above, `preprocessing/__init__.py` preserves
+the former histogram module's supported API through direct re-exports from
+`preprocessing.histograms`: `validate_time_axis`, `time_axes_compatible`,
+`validate_histogram`, `estimate_background`, `subtract_background`, `detect_peak`,
+`align_to_irf`, `crop_time_window`, `rebin_histogram`, and `normalize_counts`.
+It also retains the historically imported `CountNormalization` alias, whose
+definition remains in `config`. Private validators/tolerances, the logger, and
+incidental numerical/type imports are not facade APIs.
+
+The old `preprocessing.py` no longer competes with this package. Its initializer
+does not import features or representations; callers request those submodules
+explicitly. Normal root initialization already imports them for the established
+root API, so initializer-isolation tests trace the actual importing module.
+Canonical consumers use the implementation submodules, not the compatibility
+facades. Histogram, feature, normalization, PCA, and augmentation algorithms are
+unchanged. Measurement/IRF validation consumers still use the same histogram
+helpers; no IRF, measurement, or further estimator relocation has occurred.
 
 ### Completed evaluation work and later gates
 
@@ -183,7 +209,7 @@ generic execution must not know Ridge/RF/HGB or canonical representation names.
   experimental reports retain their context; no universal report or
   representation framework was introduced. See [evaluation.md](evaluation.md).
 - Issue #3: incrementally relocate remaining implementations; only the
-  `estimation` and `physics` modules listed above have moved so far.
+  `estimation`, `physics`, and `preprocessing` modules listed above have moved so far.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
 

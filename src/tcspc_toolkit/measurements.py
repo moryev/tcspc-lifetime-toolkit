@@ -17,7 +17,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.irf import normalize_irf
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     time_axes_compatible,
     validate_histogram,
     validate_time_axis,

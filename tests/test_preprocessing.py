@@ -5,7 +5,7 @@ import pytest
 from numpy.typing import NDArray
 
 from tcspc_toolkit.exceptions import InvalidHistogramError, TCSPCError
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     estimate_background,
     subtract_background,
     validate_histogram,

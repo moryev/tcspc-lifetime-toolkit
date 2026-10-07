@@ -148,6 +148,41 @@ def test_physical_root_exports_are_canonical_objects(module, name):
     assert_same_export("tcspc_toolkit", f"tcspc_toolkit.physics.{module}", name)
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.preprocessing", "histograms", (
+        "CountNormalization", "validate_time_axis", "time_axes_compatible",
+        "validate_histogram", "estimate_background", "subtract_background",
+        "detect_peak", "align_to_irf", "crop_time_window", "rebin_histogram",
+        "normalize_counts",
+    )),
+    ("tcspc_toolkit.features", "features", (
+        "FEATURE_NAMES", "extract_features", "extract_feature_table",
+        "quantile_arrival_time", "half_decay_time", "tail_log_slope",
+        "integrated_tail_fraction", "early_late_count_ratio",
+    )),
+    ("tcspc_toolkit.representations", "representations", (
+        "normalize_histogram_batch", "fit_pca_representation",
+        "transform_pca_representation", "cumulative_explained_variance",
+        "augment_with_total_counts",
+    )),
+])
+def test_preprocessing_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.preprocessing.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if name in EXPECTED_ROOT_EXPORTS:
+            assert_same_export("tcspc_toolkit", canonical_module, name)
+        if name not in {"FEATURE_NAMES", "CountNormalization"}:
+            assert getattr(canonical, name).__module__ == canonical_module
+    # This enum was historically imported from preprocessing by real callers;
+    # it remains the config-owned object, not a second definition.
+    if module == "histograms":
+        assert_same_export(old_module, "tcspc_toolkit.config", "CountNormalization")
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

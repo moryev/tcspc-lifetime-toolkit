@@ -16,7 +16,7 @@ from scipy.signal import savgol_filter
 from tcspc_toolkit.irf import IRFProfile, IRFSourceKind, normalize_irf
 from tcspc_toolkit.irf_preparation import _sampled_fwhm
 from tcspc_toolkit.measurements import TCSPCMeasurement
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     estimate_background,
     subtract_background,
     validate_time_axis,

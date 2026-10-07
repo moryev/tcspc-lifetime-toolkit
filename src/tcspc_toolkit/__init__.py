@@ -80,7 +80,7 @@ from tcspc_toolkit.experimental import (
     measurement_to_histogram_batch,
 )
 
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     align_to_irf,
     crop_time_window,
     detect_peak,
@@ -100,13 +100,13 @@ from tcspc_toolkit.config import (
     save_config,
 )
 
-from tcspc_toolkit.features import (
+from tcspc_toolkit.preprocessing.features import (
     FEATURE_NAMES,
     extract_feature_table,
     extract_features,
 )
 
-from tcspc_toolkit.representations import (
+from tcspc_toolkit.preprocessing.representations import (
     cumulative_explained_variance,
     fit_pca_representation,
     normalize_histogram_batch,

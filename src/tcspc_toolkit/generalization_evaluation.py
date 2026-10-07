@@ -41,7 +41,7 @@ from tcspc_toolkit.evaluation_results import (
     MethodDescriptor,
     PointEvaluationResult,
 )
-from tcspc_toolkit.features import (
+from tcspc_toolkit.preprocessing.features import (
     extract_feature_table,
 )
 from tcspc_toolkit.generalization import (
@@ -67,7 +67,7 @@ from tcspc_toolkit.ml_models import (
     DEFAULT_PCA_COMPONENTS,
     make_canonical_ml_estimator_specs,
 )
-from tcspc_toolkit.representations import (
+from tcspc_toolkit.preprocessing.representations import (
     fit_pca_representation,
     normalize_histogram_batch,
     transform_pca_representation,

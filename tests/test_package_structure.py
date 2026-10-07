@@ -42,7 +42,12 @@ BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
+    "features", "representations",
 )}
+# A package facade must run as a parent initializer, but canonical code must
+# not explicitly import its old re-export surface as an implementation.
+PREPROCESSING = f"{PACKAGE}.preprocessing"
+COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
@@ -58,6 +63,21 @@ PHYSICS_IMPORTS = {
     },
 }
 PERSISTENCE = f"{PACKAGE}.persistence"
+PREPROCESSING_IMPORTS = {
+    PREPROCESSING: {f"{PREPROCESSING}.histograms"},
+    f"{PREPROCESSING}.histograms": {
+        "__future__", "logging", "numpy", "numpy.typing",
+        f"{PACKAGE}.config", f"{PACKAGE}.exceptions",
+    },
+    f"{PREPROCESSING}.features": {
+        "__future__", "numpy", "pandas", "numpy.typing",
+        f"{PACKAGE}.config", f"{PACKAGE}.exceptions", f"{PREPROCESSING}.histograms",
+    },
+    f"{PREPROCESSING}.representations": {
+        "__future__", "numpy", "numpy.typing", "sklearn.decomposition",
+        f"{PACKAGE}.config", f"{PREPROCESSING}.histograms",
+    },
+}
 
 
 def _imports(source, module, *, is_package=False):
@@ -203,10 +223,23 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     }
     for module, allowed in PHYSICS_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in PREPROCESSING_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
+    assert records[PREPROCESSING] and all(
+        kind == "eager" and base == f"{PREPROCESSING}.histograms"
+        for kind, base, _ in records[PREPROCESSING]
+    )
     for module, imports in records.items():
         for _, base, names in imports:
             targets = _targets(base, names, set(records)) | {base}
-            assert not targets.intersection(MIGRATED_SHIMS), (module, targets)
+            assert not targets.intersection(COMPATIBILITY_SURFACES), (module, targets)
+
+
+def test_preprocessing_collision_has_one_package_implementation():
+    assert not (SOURCE_ROOT / "preprocessing.py").exists()
+    package = importlib.import_module(PREPROCESSING)
+    assert Path(package.__file__).resolve() == SOURCE_ROOT / "preprocessing" / "__init__.py"
+    assert hasattr(package, "__path__")
 
 
 def test_no_eager_internal_cycles(package_imports):
@@ -264,7 +297,9 @@ async def later():
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
     names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
              if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
-                                   "physics.models", "physics.convolution", "physics.forward_model"])
+                                   "physics.models", "physics.convolution", "physics.forward_model",
+                                   "preprocessing.histograms", "preprocessing.features",
+                                   "preprocessing.representations"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -290,6 +325,53 @@ sys.addaudithook(no_database)
 for name in {names!r}:
     importlib.import_module('tcspc_toolkit.' + name)
 assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(PREPROCESSING_IMPORTS))
+def test_fresh_preprocessing_facade_loads_only_histograms(tmp_path, module):
+    # Keep real root initialization. The root already exposes features/PCA;
+    # distinguish its imports from those introduced by the package facade.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {PREPROCESSING!r} or caller.startswith({PREPROCESSING + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('preprocessing import opened a database')
+sys.addaudithook(no_database)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{PREPROCESSING!r}] == {{{PREPROCESSING + '.histograms'!r}}}
+allowed = {PREPROCESSING_IMPORTS!r}
+for caller, imports in seen.items():
+    assert imports <= allowed[caller], (caller, imports)
+from tcspc_toolkit.preprocessing import validate_histogram, normalize_counts, CountNormalization
+from tcspc_toolkit.preprocessing.histograms import validate_histogram as canonical_validate
+from tcspc_toolkit.preprocessing.histograms import normalize_counts as canonical_normalize
+from tcspc_toolkit.config import CountNormalization as canonical_mode
+assert validate_histogram is canonical_validate
+assert normalize_counts is canonical_normalize
+assert CountNormalization is canonical_mode
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,

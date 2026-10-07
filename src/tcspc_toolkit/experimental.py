@@ -18,11 +18,11 @@ from tcspc_toolkit.classical_evaluation import (
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.evaluation import calculate_lifetime_errors
 from tcspc_toolkit.exceptions import InvalidMeasurementError
-from tcspc_toolkit.features import FEATURE_NAMES, extract_features
+from tcspc_toolkit.preprocessing.features import FEATURE_NAMES, extract_features
 from tcspc_toolkit.irf import normalize_irf
 from tcspc_toolkit.irf_preparation import PreparedIRF
 from tcspc_toolkit.measurements import SampledIRF, TCSPCMeasurement
-from tcspc_toolkit.preprocessing import time_axes_compatible
+from tcspc_toolkit.preprocessing.histograms import time_axes_compatible
 
 
 @dataclass(frozen=True)
