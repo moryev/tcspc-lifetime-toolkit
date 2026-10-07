@@ -78,10 +78,18 @@ def test_report_fields_and_legacy_pickle_references(module_name, legacy_name, ca
     current_payload = pickle.dumps(report, protocol=0)
     # Protocol 0 encodes global names without length/frame prefixes. Substitute
     # the old module-global class reference to exercise historical unpickling.
-    reference = f"\n{canonical_name}\n".encode()
+    reference = f"c{canonical.__module__}\n{canonical_name}\n".encode()
     assert current_payload.count(reference) == 1
-    legacy_payload = current_payload.replace(reference, f"\n{legacy_name}\n".encode())
-    for payload in (current_payload, legacy_payload):
+    # Pin the *historical module* as well as the class name. After relocation,
+    # new pickles may use the canonical implementation module naturally; old
+    # payloads must still resolve through the flat compatibility path.
+    historical_payloads = [
+        current_payload.replace(
+            reference, f"ctcspc_toolkit.{module_name}\n{name}\n".encode(),
+        )
+        for name in (canonical_name, legacy_name)
+    ]
+    for payload in (current_payload, *historical_payloads):
         restored = pickle.loads(payload)
         assert type(restored) is canonical
         assert vars(restored).keys() == values.keys()

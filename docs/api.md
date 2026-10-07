@@ -94,6 +94,52 @@ study-specific orchestration are not generic extension hooks.
 
 ## Boundaries and deferred work
 
+### Issue-#3 structural migration contract
+
+Package relocation preserves the exact 66-name root `__all__`, including its
+current order. It changes implementation locations, not scientific behavior,
+Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
+No production modules have moved in Stage 0.
+
+- Established flat module imports remain compatibility paths through at least
+  Issue #12. Removal requires a separate explicit compatibility decision.
+  Canonical implementations will live in subpackages; old paths must re-export
+  identical objects, not wrappers or parallel implementations. Issue-#2
+  scientific names and direct Day/Week aliases retain the same policy.
+- New subpackage initializers stay minimal: do not eagerly import an entire
+  subtree. For existing names that become packages (`irf`, `simulation`,
+  `preprocessing`, `evaluation`, `persistence`), the new `__init__.py` must also
+  provide the reviewed old-path facade. Do not leave competing `name.py` and
+  `name/` implementations whose import precedence obscures ownership.
+- Existing serialized class references must resolve through old paths.
+  Canonical classes may acquire their new implementation `__module__`; do not
+  fake historical metadata. Persisted `source_result_type` strings are instead
+  historical schema-v1 provenance identities, not dynamically resolved import
+  paths, and must not be mechanically rewritten during moves.
+- Import compatibility does not promise arbitrary module-global monkeypatch
+  compatibility. Tests that replace an implementation dependency should patch
+  its canonical implementation module after relocation, not a re-export shim.
+- Generic estimator execution remains independent of sklearn/canonical model
+  factories. Generic factual evaluation remains independent of estimators,
+  frozen orchestration, Bayesian sampling, and persistence. Physical primitives
+  stay below reporting; scientific computation must not depend on persistence.
+  Root imports must neither require `emcee` nor initialize persistence/SQLite.
+
+The structural guards in `test_package_structure.py`, the exact root contract
+in `test_public_api.py`, legacy report-pickle/alias tests, and persistence
+source-identity tests are the incremental migration gate. The import graph
+distinguishes eager, function-local, and `TYPE_CHECKING` dependencies; fresh
+processes also check real import order and side effects. The intentionally
+deferred Bayesian sampling relationship is not an eager cycle.
+
+The first approved slice is `estimator_api` and `baselines` into
+`estimation.api` and `estimation.baselines`. When it is implemented, extend the
+direct-identity test pattern to both old/new paths and update responsibility
+path sets deliberately; retain baseline numerical and estimator-extension
+tests. Do not create placeholder production packages for Stage-0 tests.
+
+### Completed evaluation work and later gates
+
 Stage 1 established a generic estimator execution interface and a separate
 canonical specification factory. Stage 2 connects the generalization fitting
 and shared final-test ML prediction boundary to it, as described below.
