@@ -1,4 +1,4 @@
-# Evaluation architecture: Issue #11, Stages 0–7
+# Evaluation architecture: Issue #11, Stages 0–10
 
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
@@ -10,8 +10,10 @@ method/reference paths for conditional diagnostics, retaining a compatibility-on
 path for historical callers lacking those semantics. Stage 6 routes ordinary
 paired ML mismatch evaluation through the same facts and shares legacy regression
 result assembly. Stage 7 adds reference-independent interval and score attachment
-snapshots. Week-9 report integration, report consolidation and notebook migration
-remain later reviewed stages.
+snapshots; Stages 8–9 project ML and classical uncertainty source results onto them.
+Stage 10 shares ordered robustness-condition traversal, attachment identity checks,
+and classical scorecard-row assembly beneath unchanged Week-9 report types.
+Bayesian/experimental reporting and notebook migration remain separately reviewed.
 The 66-name root API is unchanged.
 
 ## Responsibilities and existing inventory
@@ -720,8 +722,53 @@ successful-refit denominators; they are not rebuilt from attachment validity.
 generated measurements of one physical condition and remains an empirical
 reference, even though it contains per-repeat intervals for evaluating the
 methods. It is not projected as an uncertainty output attached to one curve.
-The classical robustness report is not consolidated by Stage 9; Bayesian
-runtime uncertainty is not migrated.
+Stage 10 shares its row assembly with the conditional classical scorecard, without
+changing the distinct summary eligibility rules. Bayesian runtime uncertainty is
+not migrated.
+
+### Frozen Week-9 robustness reporting (Stage 10)
+
+```text
+frozen A–F conditions and calibration artifacts
+                  ↓
+existing ML / classical uncertainty methods
+                  ↓
+canonical point facts + interval / score attachments
+                  ↓
+ordered traversal and explicit attachment-identity checks
+                  ↓
+unchanged interval, score, and classical metric policies
+                  ↓
+legacy-compatible ML / classical scorecards and reports
+```
+
+`uncertainty_robustness` now shares prepared ML condition inputs and the ordered
+condition traversal. The traversal accepts caller-supplied IDs and does not assign
+scientific meaning to their spelling; frozen wrappers still select A–F and retain
+their exact order. The A–E generating-mono versus F primary-component target choice
+remains an explicit frozen label at the scoring boundary, not an inferred property
+of the generic attachment. Calibration and fitting still occur in their original
+method-specific code, outside final-test traversal.
+
+Before scorecard assembly, the reporting projection checks evaluation/sample order,
+point method, representation, uncertainty method, and—in the interval path—kind
+and nominal level. The Stage-8/9 source adapters already check that uncertainty
+outputs describe the declared canonical point estimate. Raw quantile and conformal
+intervals, covariance and bootstrap intervals, and RF-tree and training-bootstrap
+scores therefore retain separate identities. Method families are explicit; neither
+the traversal nor identity checks interpret name prefixes. Historical custom score
+results without a point descriptor remain on their narrow table-only path rather
+than receiving invented canonical identity.
+
+The two classical scorecards now use one private covariance/bootstrap row assembler,
+but still call the established classical interval metrics. ML interval and score
+metrics remain separate, as do classical fit, covariance, bootstrap, and refit-failure
+populations. Failed rows remain in the source per-curve/attachment facts; no generic
+validity mask replaces report-specific denominators. Repeated-Poisson variability
+remains an empirical validation reference, never a point attachment. Degradation,
+paired-response, and residual-mismatch calculations retain their prior policies.
+The ML and classical report dataclasses, scorecard schemas, persistence-facing
+identities, and Notebook 14 consumption contract are unchanged.
 
 Persistence schema v1 independently stores uncertainty rows linked to stored
 estimator results. Its `method_id` maps conceptually to
@@ -747,9 +794,8 @@ kind or nominal level in either layer. Source configuration, calibration scope,
 provenance, duplicate policy and nonfinite serialization remain persistence
 concerns; no automatic conversion or schema change is provided here.
 
-Later Issue-#11 stages will review remaining conditional caller migration,
-uncertainty integration, method-specific result adapters and frozen report
-consolidation. No combined
+Later Issue-#11 work may review remaining conditional caller migration and
+Bayesian/experimental reporting adapters. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
@@ -761,4 +807,4 @@ are unchanged. Representability will be tested through reviewed adapters later.
 
 Issue #3 owns physical package movement; Issue #12 owns the post-reorganization
 clean-environment, reference-workflow and cross-feature integration gate. Neither
-is claimed complete by this additive checkpoint.
+is claimed complete by Stage 10.
