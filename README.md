@@ -19,8 +19,8 @@ reuses the shared mono-exponential forward model and Poisson observation
 likelihood while adding explicit priors, posterior sampling, sampling
 diagnostics, posterior summaries, posterior-predictive checks, and controlled
 decay-model and IRF-model mismatch evaluation. These integrations are present
-on the current development branch while the package version remains 0.7.0
-pending the later API, package-architecture, and release-stabilization stages.
+while the package version remains 0.7.0. Public-API stabilization is complete;
+package reorganization and final integration/release verification remain ahead.
 
 SQLite-backed persistence now records measurements, IRF provenance, estimator
 results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
@@ -1429,7 +1429,7 @@ Version 0.7.0 completes the Week 8–9 generalization, robustness, uncertainty,
 and failure-awareness stage. The current authoritative post-Week-9 sequence is
 tracked in [Issue #5](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5).
 
-The planned integration and release path is:
+The integration and release sequence is:
 
 1. [Issue #6](https://github.com/moryev/tcspc-lifetime-toolkit/issues/6) —
    experimental TCSPC data ingestion, processing, validation, provenance, and
@@ -1443,14 +1443,14 @@ The planned integration and release path is:
    Notebook 17 implemented, final acceptance review completed, and issue closed;
 4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
    optional SQLite persistence for experiments, predictions, fit results,
-   uncertainty outputs, Bayesian summaries, and benchmark metrics — implemented;
-   final merge and issue closure pending;
+   uncertainty outputs, Bayesian summaries, and benchmark metrics — merged and closed;
 5. [Issue #1](https://github.com/moryev/tcspc-lifetime-toolkit/issues/1) —
-   standardization of array input type annotations — next after Issue #9, not started;
+   standardization of array input type annotations — merged and closed;
 6. [Issue #2](https://github.com/moryev/tcspc-lifetime-toolkit/issues/2) —
-   public-API stabilization and package hardening;
+   public-API stabilization and package hardening — merged and closed;
 7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —
-   consolidation of the Week 7–9 evaluation architecture;
+   consolidation of the Week 7–9 evaluation architecture — implementation complete,
+   final acceptance pending;
 8. [Issue #3](https://github.com/moryev/tcspc-lifetime-toolkit/issues/3) —
    reorganization of `tcspc_toolkit` into coherent subpackages;
 9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —

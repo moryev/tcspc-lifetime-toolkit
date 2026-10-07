@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike, NDArray
 
 from statistics import NormalDist
@@ -22,6 +23,10 @@ from tcspc_toolkit.simulation import (
     simulate_irf_convolved_histogram,
 )
 from tcspc_toolkit.fitting import ReconvolutionFitResult
+from tcspc_toolkit.evaluation_results import (
+    EvaluationBatch, MethodDescriptor, PointEvaluationResult,
+)
+from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment
 from tcspc_toolkit.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )
@@ -50,6 +55,9 @@ REPEATED_POISSON_REFERENCE_METHOD_ID = (
 
 DEFAULT_CLASSICAL_BOOTSTRAP_REPLICATES = 200
 DEFAULT_CLASSICAL_NOMINAL_COVERAGE = 0.90
+
+CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND = "classical_local_covariance"
+CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND = "classical_parametric_bootstrap"
 
 
 CLASSICAL_UNCERTAINTY_METHODS = {
@@ -158,6 +166,115 @@ class ParametricPoissonBootstrapResult:
 
     bootstrap_valid: bool
     failure_reason: str | None
+
+
+def _linked_classical_point(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    method: MethodDescriptor, sample_id: str | int,
+    curve: ReconvolutionCurveResult,
+) -> pd.Series:
+    """Select the declared Stage-4 point identity and verify its source fit."""
+    if method.family != "classical":
+        raise ValueError("Classical intervals require an explicit classical point method.")
+    if sample_id not in batch.sample_ids:
+        raise ValueError("sample_id is absent from the evaluation batch.")
+    facts = points.points
+    representation_matches = (
+        facts.representation_id.isna() if method.representation_id is None
+        else facts.representation_id.eq(method.representation_id)
+    )
+    selected = facts.loc[
+        facts.evaluation_id.eq(batch.evaluation_id)
+        & facts.sample_id.eq(sample_id)
+        & facts.method_id.eq(method.method_id)
+        & representation_matches
+    ]
+    if len(selected) != 1 or selected.iloc[0].method_family != "classical":
+        raise ValueError("Point facts do not match the declared classical identity.")
+    point = selected.iloc[0]
+    if not np.array_equal(
+        np.asarray([point.lifetime_estimate_ns], dtype=np.float64),
+        np.asarray([curve.fitted_lifetime_ns], dtype=np.float64),
+        equal_nan=True,
+    ):
+        raise ValueError("Classical source lifetime differs from the canonical point estimate.")
+    if bool(point.is_valid) != bool(curve.valid_fit):
+        raise ValueError("Classical point validity differs from the source fit decision.")
+    return point
+
+
+def _classical_interval_attachment(
+    *, points: PointEvaluationResult, point: pd.Series,
+    uncertainty_method_id: str, interval_kind: str, nominal_level: float,
+    lower_ns: float, upper_ns: float, is_valid_interval: bool,
+) -> IntervalAttachment:
+    """Project scalar interval facts; keep fit diagnostics in their source objects."""
+    return IntervalAttachment(points, pd.DataFrame([{
+        "evaluation_id": point.evaluation_id,
+        "sample_id": point.sample_id,
+        "method_id": point.method_id,
+        "representation_id": point.representation_id,
+        "uncertainty_method_id": uncertainty_method_id,
+        "interval_kind": interval_kind,
+        "nominal_level": nominal_level,
+        "lower_ns": lower_ns,
+        "upper_ns": upper_ns,
+        "is_valid_interval": is_valid_interval,
+    }]))
+
+
+def project_poisson_local_covariance_interval(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    method: MethodDescriptor, sample_id: str | int,
+    curve: ReconvolutionCurveResult, covariance: PoissonLocalCovarianceResult,
+    nominal_level: float,
+) -> IntervalAttachment:
+    """Project one source-validity-aware Fisher lifetime interval, without a reference.
+
+    The source covariance owns matrix/conditioning diagnostics. Finite bounds
+    remain factual even when that source rejects its covariance estimate.
+    """
+    point = _linked_classical_point(
+        batch=batch, points=points, method=method, sample_id=sample_id, curve=curve,
+    )
+    if not np.isfinite(nominal_level) or not 0.0 < nominal_level < 1.0:
+        raise ValueError("nominal_level must be strictly between zero and one.")
+    normal_quantile = NormalDist().inv_cdf(0.5 + nominal_level / 2.0)
+    half_width = normal_quantile * covariance.lifetime_std
+    return _classical_interval_attachment(
+        points=points, point=point,
+        uncertainty_method_id=POISSON_LOCAL_COVARIANCE_METHOD_ID,
+        interval_kind=CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND,
+        nominal_level=nominal_level,
+        lower_ns=float(curve.fitted_lifetime_ns - half_width),
+        upper_ns=float(curve.fitted_lifetime_ns + half_width),
+        is_valid_interval=covariance.covariance_valid,
+    )
+
+
+def project_parametric_poisson_bootstrap_interval(
+    *, batch: EvaluationBatch, points: PointEvaluationResult,
+    method: MethodDescriptor, sample_id: str | int,
+    curve: ReconvolutionCurveResult, bootstrap: ParametricPoissonBootstrapResult,
+) -> IntervalAttachment:
+    """Project the source percentile bounds, not its bootstrap refit samples."""
+    point = _linked_classical_point(
+        batch=batch, points=points, method=method, sample_id=sample_id, curve=curve,
+    )
+    if not np.array_equal(
+        np.asarray([bootstrap.source_lifetime_ns], dtype=np.float64),
+        np.asarray([curve.fitted_lifetime_ns], dtype=np.float64),
+        equal_nan=True,
+    ):
+        raise ValueError("Bootstrap source lifetime differs from the linked classical fit.")
+    return _classical_interval_attachment(
+        points=points, point=point,
+        uncertainty_method_id=PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
+        interval_kind=CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND,
+        nominal_level=bootstrap.nominal_coverage,
+        lower_ns=bootstrap.lower_ns, upper_ns=bootstrap.upper_ns,
+        is_valid_interval=bootstrap.bootstrap_valid,
+    )
 
 
 def estimate_parametric_poisson_bootstrap(

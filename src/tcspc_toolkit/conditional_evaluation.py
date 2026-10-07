@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from tcspc_toolkit.evaluation import (
     calculate_lifetime_errors,
 )
 from tcspc_toolkit.classical_evaluation import (
     ReconvolutionBenchmarkResult,
+)
+from tcspc_toolkit.evaluation_core import build_point_evaluation
+from tcspc_toolkit.evaluation_results import (
+    EvaluationBatch, LifetimeReference, MethodDescriptor, PointEvaluationResult,
 )
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkSplit,
@@ -25,8 +31,27 @@ def build_prediction_diagnostics(
     y_pred: ArrayLike,
     metadata: pd.DataFrame,
     valid_mask: ArrayLike | None = None,
+    method: MethodDescriptor | None = None,
+    reference: LifetimeReference | None = None,
 ) -> pd.DataFrame:
-    """Build aligned per-sample lifetime-estimation diagnostics."""
+    """Build aligned diagnostics, retaining finite errors on invalid rows.
+
+    Supply both ``method`` and ``reference`` to use canonical point facts.
+    The descriptor's ID replaces ``estimator_name`` in that path; its family
+    and representation remain explicit in the internal facts, not extra columns.
+    The reference must be fully available and exactly match ``y_true`` in order.
+    No reference kind or method family is inferred from names or target values.
+
+    Omitting both preserves the historical compatibility-only path, including
+    empty inputs and caller-supplied validity masks. Explicit inputs obey the
+    stricter core contract: nonempty batches and finite estimates when valid.
+    Metadata is aligned positionally; its index (including duplicates) survives.
+    Infinite estimates retain legacy infinite-error display in this array view,
+    although their canonical comparisons have NaN errors and are invalid.
+    Visible errors do not determine eligibility for valid-only summaries.
+    """
+    if (method is None) != (reference is None):
+        raise ValueError("method and reference must be supplied together.")
 
     y_true_array = np.asarray(
         y_true,
@@ -87,6 +112,27 @@ def build_prediction_diagnostics(
                 "valid_mask must contain one value per sample."
             )
 
+    if method is not None and reference is not None:
+        result = _build_conditional_point_evaluation(
+            method=method, reference=reference, y_true=y_true_array,
+            y_pred=y_pred_array, valid_mask=valid_array,
+        )
+        return _project_conditional_predictions(
+            result=result, reference_id=reference.reference_id, metadata=metadata,
+        )
+
+    return _build_legacy_prediction_diagnostics(
+        estimator_name=estimator_name, y_true_array=y_true_array,
+        y_pred_array=y_pred_array, metadata=metadata, valid_array=valid_array,
+    )
+
+
+def _build_legacy_prediction_diagnostics(
+    *, estimator_name: str, y_true_array: NDArray[np.float64],
+    y_pred_array: NDArray[np.float64], metadata: pd.DataFrame,
+    valid_array: NDArray[np.bool_],
+) -> pd.DataFrame:
+    """Historical array presentation with no invented method/reference semantics."""
     (
         error_ns,
         absolute_error_ns,
@@ -133,12 +179,83 @@ def build_prediction_diagnostics(
     return diagnostics
 
 
+def _build_conditional_point_evaluation(
+    *, method: MethodDescriptor, reference: LifetimeReference,
+    y_true: ArrayLike, y_pred: ArrayLike, valid_mask: ArrayLike,
+    failure_reasons: Sequence[str | None] | None = None,
+) -> PointEvaluationResult:
+    """Adapt explicit semantics without treating metadata labels as identities.
+
+    IDs are local positions within this single conditional invocation. Historical
+    metadata (including repeated sample labels/indexes) stays in the projection.
+    No representation matrix, fitting policy or synthetic model is inferred.
+    """
+    targets = np.asarray(y_true, dtype=np.float64)
+    if (
+        not np.array_equal(reference.values_ns, targets)
+        or not reference.available.all()
+    ):
+        raise ValueError("reference must be fully available and match the target vector exactly.")
+    batch = EvaluationBatch(
+        evaluation_id="conditional", sample_ids=range(targets.size),
+        references={reference.reference_id: reference},
+    )
+    return build_point_evaluation(
+        batch=batch, method=method, lifetime_estimates_ns=y_pred,
+        is_valid=valid_mask, failure_reasons=failure_reasons,
+    )
+
+
+def _project_conditional_predictions(
+    *, result: PointEvaluationResult, reference_id: str, metadata: pd.DataFrame,
+) -> pd.DataFrame:
+    """Project row-aligned facts without masking finite scientifically invalid errors.
+
+    Metadata rows correspond positionally to point rows, not pandas index labels.
+    Only the legacy array presentation restores infinite-estimate errors; canonical
+    comparisons remain untouched. Classical diagnostic columns stay in per_curve.
+    """
+    points = result.points
+    comparisons = result.reference_comparisons
+    key = ["evaluation_id", "sample_id", "method_id", "representation_id"]
+    rows = points.merge(
+        comparisons.loc[comparisons.reference_id == reference_id,
+                        key + ["reference_available", "reference_value_ns",
+                               "error_ns", "absolute_error_ns", "relative_error"]],
+        on=key, how="left", sort=False, validate="one_to_one",
+    )
+    if len(metadata) != len(rows) or not rows.reference_available.eq(True).all():
+        raise ValueError("Conditional projection requires row-aligned metadata and fully referenced points.")
+    # Compatibility-only display: the strict core leaves nonfinite errors absent.
+    infinite = np.isinf(rows.lifetime_estimate_ns)
+    rows.loc[infinite, "error_ns"] = rows.loc[infinite, "lifetime_estimate_ns"]
+    rows.loc[infinite, ["absolute_error_ns", "relative_error"]] = np.inf
+    table = metadata.copy(deep=True)
+    table.insert(0, "estimator_name", rows.method_id.to_numpy())
+    for name, source in (
+        ("true_lifetime_ns", "reference_value_ns"),
+        ("predicted_lifetime_ns", "lifetime_estimate_ns"),
+        ("error_ns", "error_ns"), ("absolute_error_ns", "absolute_error_ns"),
+        ("relative_error", "relative_error"), ("valid_estimate", "is_valid"),
+    ):
+        table[name] = rows[source].to_numpy()
+    return table
+
+
 def build_ml_prediction_diagnostics(
     *,
     split: BenchmarkSplit,
     result: RegressionBenchmarkResult,
+    method: MethodDescriptor | None = None,
+    reference: LifetimeReference | None = None,
 ) -> pd.DataFrame:
-    """Build per-sample diagnostics for one ML benchmark result."""
+    """Adapt a regression result without fitting or inferring method/reference kind.
+
+    ``RegressionBenchmarkResult`` also carries historical baseline outputs, so
+    its name cannot establish family. Supply both ``method`` and ``reference``
+    for factual evaluation, or omit both for exact historical table behavior.
+    See ``build_prediction_diagnostics`` for alignment and presentation policies.
+    """
 
     return build_prediction_diagnostics(
         estimator_name=(
@@ -147,6 +264,8 @@ def build_ml_prediction_diagnostics(
         y_true=split.y_test,
         y_pred=result.y_pred,
         metadata=split.metadata_test,
+        method=method,
+        reference=reference,
     )
 
 
@@ -154,8 +273,16 @@ def build_classical_prediction_diagnostics(
     result: ReconvolutionBenchmarkResult,
     *,
     estimator_name: str = "classical_reconvolution",
+    reference: LifetimeReference | None = None,
 ) -> pd.DataFrame:
-    """Standardize classical reconvolution results for conditional analysis."""
+    """Standardize classical diagnostics without recomputing fits or acceptance.
+
+    With an explicit, fully aligned ``reference``, adapt point facts using family
+    ``classical`` and representation ``raw_histogram``. Without it, retain the
+    historical table-only path: a column named true_lifetime_ns cannot establish
+    reference kind. Original diagnostic/error columns remain authoritative in
+    both paths, including finite-invalid visibility and nonfinite-error handling.
+    """
 
     per_curve = result.per_curve.copy(
         deep=True
@@ -181,6 +308,21 @@ def build_classical_prediction_diagnostics(
             )
         )
 
+    estimates = per_curve["fitted_lifetime_ns"]
+    valid = per_curve["valid_fit"].astype(bool)
+    if reference is not None:
+        facts = _build_conditional_point_evaluation(
+            method=MethodDescriptor(estimator_name, "classical", "raw_histogram"),
+            reference=reference, y_true=per_curve["true_lifetime_ns"],
+            y_pred=estimates, valid_mask=valid,
+            failure_reasons=per_curve["failure_reason"].tolist() if "failure_reason" in per_curve else None,
+        ).points
+        estimates = pd.Series(
+            facts.lifetime_estimate_ns.to_numpy(), index=per_curve.index,
+            dtype=estimates.dtype,
+        )
+        valid = facts.is_valid.to_numpy()
+
     per_curve.insert(
         0,
         "estimator_name",
@@ -189,15 +331,11 @@ def build_classical_prediction_diagnostics(
 
     per_curve[
         "predicted_lifetime_ns"
-    ] = per_curve[
-        "fitted_lifetime_ns"
-    ]
+    ] = estimates
 
     per_curve[
         "valid_estimate"
-    ] = per_curve[
-        "valid_fit"
-    ].astype(bool)
+    ] = valid
 
     return per_curve
 

@@ -11,14 +11,14 @@ or threshold selection.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from math import ceil
+from typing import TypeVar
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-
-from statistics import NormalDist
 
 from tcspc_toolkit.evaluation import (
     calculate_poisson_deviance_residuals,
@@ -27,6 +27,8 @@ from tcspc_toolkit.classical_evaluation import (
     fit_single_reconvolution_curve,
 )
 from tcspc_toolkit.classical_uncertainty import (
+    CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND,
+    CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND,
     DEFAULT_CLASSICAL_BOOTSTRAP_REPLICATES,
     DEFAULT_CLASSICAL_NOMINAL_COVERAGE,
     PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
@@ -34,7 +36,10 @@ from tcspc_toolkit.classical_uncertainty import (
     _reconstruct_reconvolution_fit_result,
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
+    project_parametric_poisson_bootstrap_interval,
+    project_poisson_local_covariance_interval,
 )
+from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.generalization import (
     FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
@@ -45,6 +50,8 @@ from tcspc_toolkit.generalization_datasets import (
 from tcspc_toolkit.generalization_evaluation import (
     GeneralizationPreparedData,
 )
+from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
@@ -54,8 +61,15 @@ from tcspc_toolkit.ml_evaluation import (
 )
 from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScoreCalibrationResult,
+    QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
     QuantileGradientBoostingCalibrationResult,
     QuantileGradientBoostingExternalResult,
+    _QUANTILE_MEDIAN_POINT_METHOD,
+    _SCORE_POINT_METHODS,
+    _development_calibration_batch,
+    _frozen_ml_uncertainty_batch,
+    _project_ml_interval_source,
+    _project_ml_score_source,
     evaluate_frozen_ml_uncertainty_score,
     evaluate_frozen_quantile_gradient_boosting,
 )
@@ -72,6 +86,86 @@ DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED = 62_001
 CONFORMALIZED_QUANTILE_METHOD_ID = (
     "conformalized_quantile_gradient_boosting"
 )
+
+
+_Condition = TypeVar("_Condition")
+
+
+def _ordered_conditions(
+    conditions: Mapping[str, _Condition], ordered_ids: Sequence[str],
+) -> Iterator[tuple[str, _Condition]]:
+    """Traverse caller-selected conditions without interpreting their names."""
+    for condition_id in ordered_ids:
+        yield condition_id, conditions[condition_id]
+
+
+def _frozen_target_reference(test_id: str) -> str:
+    """Legacy label for the frozen A–F target; not a generic reference policy."""
+    return (
+        "dominant_component_tau_1" if test_id == "F"
+        else "monoexponential_lifetime"
+    )
+
+
+def _report_attachment_rows(
+    table: pd.DataFrame, *, batch: EvaluationBatch,
+    method: MethodDescriptor, uncertainty_method_id: str,
+) -> pd.DataFrame:
+    """Require exact, ordered point and uncertainty identity before reporting."""
+    if len(table) != len(batch.sample_ids) or table.sample_id.tolist() != list(batch.sample_ids):
+        raise ValueError("Attachment rows do not match the condition sample ordering.")
+    representation_matches = (
+        table.representation_id.isna().all() if method.representation_id is None
+        else table.representation_id.eq(method.representation_id).all()
+    )
+    if (
+        not table.evaluation_id.eq(batch.evaluation_id).all()
+        or not table.method_id.eq(method.method_id).all()
+        or not representation_matches
+        or not table.uncertainty_method_id.eq(uncertainty_method_id).all()
+    ):
+        raise ValueError("Attachment identity does not match the declared report method/condition.")
+    return table
+
+
+def _report_interval_rows(
+    attachment: IntervalAttachment, *, batch: EvaluationBatch,
+    method: MethodDescriptor, uncertainty_method_id: str,
+    interval_kind: str, nominal_level: float,
+) -> pd.DataFrame:
+    rows = _report_attachment_rows(
+        attachment.intervals, batch=batch, method=method,
+        uncertainty_method_id=uncertainty_method_id,
+    )
+    if (
+        not rows.interval_kind.eq(interval_kind).all()
+        or not rows.nominal_level.eq(nominal_level).all()
+    ):
+        raise ValueError("Interval kind or nominal level does not match the report method.")
+    return rows
+
+
+def _report_score_rows(
+    attachment: ScoreAttachment, *, batch: EvaluationBatch,
+    method: MethodDescriptor, uncertainty_method_id: str,
+) -> pd.DataFrame:
+    return _report_attachment_rows(
+        attachment.scores, batch=batch, method=method,
+        uncertainty_method_id=uncertainty_method_id,
+    )
+
+
+def _ml_condition_inputs(
+    prepared: GeneralizationPreparedData, test_id: str,
+) -> tuple[pd.DataFrame, NDArray[np.float64], EvaluationBatch]:
+    """Resolve already-prepared ML inputs once, without fitting representations."""
+    test = prepared.tests[test_id]
+    features = prepared.X_features[test_id]
+    target = np.asarray(test.y, dtype=np.float64)
+    batch = _frozen_ml_uncertainty_batch(
+        test, features, np.arange(target.size, dtype=np.int64),
+    )
+    return features, target, batch
 
 
 @dataclass(frozen=True)
@@ -298,6 +392,16 @@ def conformalize_quantile_gradient_boosting(
         )
     )
 
+    _project_ml_interval_source(
+        _development_calibration_batch(
+            development, calibration_indices,
+            development.X_features.iloc[calibration_indices],
+        ),
+        _QUANTILE_MEDIAN_POINT_METHOD,
+        conformal_intervals,
+        "conformal_prediction",
+    )
+
     interval_metrics = (
         evaluate_prediction_intervals(
             y_calibration,
@@ -350,6 +454,8 @@ def evaluate_frozen_conformalized_quantile(
     y_true_ns: NDArray[np.float64],
     *,
     test_id: str,
+    evaluation_batch: EvaluationBatch | None = None,
+    point_method: MethodDescriptor | None = None,
 ) -> ConformalizedQuantileExternalResult:
     """Apply the frozen conformal correction to external data."""
 
@@ -362,6 +468,8 @@ def evaluate_frozen_conformalized_quantile(
             X_features,
             y_true_ns,
             condition_id=test_id,
+            evaluation_batch=evaluation_batch,
+            point_method=point_method,
         )
     )
 
@@ -393,6 +501,11 @@ def evaluate_frozen_conformalized_quantile(
             CONFORMALIZED_QUANTILE_METHOD_ID
         ),
     )
+
+    if evaluation_batch is not None and point_method is not None:
+        _project_ml_interval_source(
+            evaluation_batch, point_method, intervals, "conformal_prediction",
+        )
 
     y = np.asarray(
         y_true_ns,
@@ -445,9 +558,7 @@ def build_ml_interval_scorecard(
         dict[str, object]
     ] = []
 
-    for test_id in (
-        FINAL_ROBUSTNESS_TEST_IDS
-    ):
+    for test_id in FINAL_ROBUSTNESS_TEST_IDS:
         if test_id not in prepared.tests:
             raise ValueError(
                 f"Prepared data are missing Test {test_id}."
@@ -458,18 +569,7 @@ def build_ml_interval_scorecard(
                 f"Prepared features are missing Test {test_id}."
             )
 
-        test = prepared.tests[
-            test_id
-        ]
-
-        X_features = prepared.X_features[
-            test_id
-        ]
-
-        y = np.asarray(
-            test.y,
-            dtype=np.float64,
-        )
+        X_features, y, evaluation_batch = _ml_condition_inputs(prepared, test_id)
 
         quantile_result = (
             evaluate_frozen_quantile_gradient_boosting(
@@ -477,6 +577,8 @@ def build_ml_interval_scorecard(
                 X_features,
                 y,
                 condition_id=test_id,
+                evaluation_batch=evaluation_batch,
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
@@ -486,51 +588,45 @@ def build_ml_interval_scorecard(
                 X_features,
                 y,
                 test_id=test_id,
+                evaluation_batch=evaluation_batch,
+                point_method=_QUANTILE_MEDIAN_POINT_METHOD,
             )
         )
 
         for (
-            method_id,
-            mae,
-            metrics,
+            source,
+            interval_kind,
+            expected_method_id,
         ) in (
             (
-                quantile_result
-                .intervals
-                .method_id,
-
-                quantile_result
-                .median_prediction_mae_ns,
-
-                quantile_result
-                .interval_metrics,
+                quantile_result, "quantile_prediction",
+                QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
             ),
             (
-                conformal_result
-                .intervals
-                .method_id,
-
-                conformal_result
-                .median_prediction_mae_ns,
-
-                conformal_result
-                .interval_metrics,
+                conformal_result, "conformal_prediction",
+                CONFORMALIZED_QUANTILE_METHOD_ID,
             ),
         ):
+            attachment = _project_ml_interval_source(
+                evaluation_batch, _QUANTILE_MEDIAN_POINT_METHOD,
+                source.intervals, interval_kind,
+            )
+            factual_rows = _report_interval_rows(
+                attachment, batch=evaluation_batch,
+                method=_QUANTILE_MEDIAN_POINT_METHOD,
+                uncertainty_method_id=expected_method_id,
+                interval_kind=interval_kind,
+                nominal_level=quantile_result.intervals.nominal_coverage,
+            )
+            metrics = source.interval_metrics
             rows.append(
                 {
-                    "method": method_id,
+                    "method": factual_rows.uncertainty_method_id.iloc[0],
                     "test_id": test_id,
-                    "target_reference": (
-                        "dominant_component_tau_1"
-                        if test_id == "F"
-                        else "monoexponential_lifetime"
-                    ),
-                    "mae_ns": mae,
+                    "target_reference": _frozen_target_reference(test_id),
+                    "mae_ns": source.median_prediction_mae_ns,
                     "nominal_coverage": (
-                        quantile_result
-                        .intervals
-                        .nominal_coverage
+                        factual_rows.nominal_level.iloc[0]
                     ),
                     "empirical_coverage": (
                         metrics
@@ -590,30 +686,42 @@ def build_ml_uncertainty_scorecard(
         calibration_result,
     ) in calibration_results.items():
 
-        for test_id in (
-            FINAL_ROBUSTNESS_TEST_IDS
-        ):
-            test = prepared.tests[
-                test_id
-            ]
+        point_method = _SCORE_POINT_METHODS.get(
+            calibration_result.calibration_scores.method_id
+        )
 
-            X_features = (
-                prepared.X_features[
-                    test_id
-                ]
-            )
+        for test_id, _ in _ordered_conditions(prepared.tests, FINAL_ROBUSTNESS_TEST_IDS):
+            if point_method is None:
+                # Historical custom score results have no point descriptor.
+                # Keep their table-only path without inventing one or imposing
+                # the canonical batch's sample-identity requirements.
+                X_features = prepared.X_features[test_id]
+                y = np.asarray(prepared.tests[test_id].y, dtype=np.float64)
+                evaluation_batch = None
+            else:
+                X_features, y, evaluation_batch = _ml_condition_inputs(prepared, test_id)
 
             result = (
                 evaluate_frozen_ml_uncertainty_score(
                     calibration_result,
                     X_features,
-                    np.asarray(
-                        test.y,
-                        dtype=np.float64,
-                    ),
+                    y,
                     condition_id=test_id,
+                    evaluation_batch=(
+                        evaluation_batch
+                    ),
+                    point_method=point_method,
                 )
             )
+
+            if point_method is not None:
+                attachment = _project_ml_score_source(
+                    evaluation_batch, point_method, result.scores,
+                )
+                _report_score_rows(
+                    attachment, batch=evaluation_batch, method=point_method,
+                    uncertainty_method_id=calibration_result.calibration_scores.method_id,
+                )
 
             metrics = (
                 result.score_metrics
@@ -645,11 +753,7 @@ def build_ml_uncertainty_scorecard(
                 {
                     "method": method_name,
                     "test_id": test_id,
-                    "target_reference": (
-                        "dominant_component_tau_1"
-                        if test_id == "F"
-                        else "monoexponential_lifetime"
-                    ),
+                    "target_reference": _frozen_target_reference(test_id),
                     "mae_ns": (
                         metrics
                         .mean_absolute_error_ns
@@ -824,13 +928,6 @@ def _evaluate_classical_uncertainty_test(
             "irf_centre_ns must be finite."
         )
 
-    normal_quantile = (
-        NormalDist().inv_cdf(
-            0.5
-            + nominal_coverage / 2.0
-        )
-    )
-
     # Reuse an IRF for all samples having the same width.
     irf_cache: dict[
         float,
@@ -840,6 +937,10 @@ def _evaluate_classical_uncertainty_test(
     rows: list[
         dict[str, object]
     ] = []
+
+    point_method = MethodDescriptor(
+        "classical_reconvolution_mono_model", "classical", "raw_histogram",
+    )
 
     for sample_index in range(
         test.y.size
@@ -967,6 +1068,17 @@ def _evaluate_classical_uncertainty_test(
             )
         )
 
+        point_batch = EvaluationBatch(
+            test.test_id, [metadata_row["sample_id"]],
+            metadata=test.metadata.iloc[[sample_index]],
+        )
+        point_facts = build_point_evaluation(
+            batch=point_batch, method=point_method,
+            lifetime_estimates_ns=[curve_result.fitted_lifetime_ns],
+            is_valid=[curve_result.valid_fit],
+            failure_reasons=[curve_result.failure_reason],
+        )
+
         # -----------------------------------------------------
         # Day 60:
         # local Poisson/Fisher covariance
@@ -982,6 +1094,18 @@ def _evaluate_classical_uncertainty_test(
                 ),
             )
         )
+
+        covariance_attachment = project_poisson_local_covariance_interval(
+            batch=point_batch, points=point_facts, method=point_method,
+            sample_id=metadata_row["sample_id"], curve=curve_result,
+            covariance=covariance_result, nominal_level=nominal_coverage,
+        )
+        covariance_facts = _report_interval_rows(
+            covariance_attachment, batch=point_batch, method=point_method,
+            uncertainty_method_id=POISSON_LOCAL_COVARIANCE_METHOD_ID,
+            interval_kind=CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND,
+            nominal_level=nominal_coverage,
+        ).iloc[0]
 
         row[
             "covariance_valid"
@@ -1008,35 +1132,17 @@ def _evaluate_classical_uncertainty_test(
             covariance_result
             .covariance_valid
         ):
-            lifetime_std = float(
-                covariance_result
-                .lifetime_std
-            )
-
-            fitted_lifetime = float(
-                curve_result
-                .fitted_lifetime_ns
-            )
-
             row[
                 "covariance_std_ns"
-            ] = lifetime_std
+            ] = float(covariance_result.lifetime_std)
 
             row[
                 "covariance_lower_ns"
-            ] = (
-                fitted_lifetime
-                - normal_quantile
-                * lifetime_std
-            )
+            ] = float(covariance_facts.lower_ns)
 
             row[
                 "covariance_upper_ns"
-            ] = (
-                fitted_lifetime
-                + normal_quantile
-                * lifetime_std
-            )
+            ] = float(covariance_facts.upper_ns)
 
         # -----------------------------------------------------
         # Day 61:
@@ -1063,6 +1169,18 @@ def _evaluate_classical_uncertainty_test(
                 ),
             )
         )
+
+        bootstrap_attachment = project_parametric_poisson_bootstrap_interval(
+            batch=point_batch, points=point_facts, method=point_method,
+            sample_id=metadata_row["sample_id"], curve=curve_result,
+            bootstrap=bootstrap_result,
+        )
+        bootstrap_facts = _report_interval_rows(
+            bootstrap_attachment, batch=point_batch, method=point_method,
+            uncertainty_method_id=PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
+            interval_kind=CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND,
+            nominal_level=nominal_coverage,
+        ).iloc[0]
 
         row[
             "bootstrap_valid"
@@ -1098,17 +1216,11 @@ def _evaluate_classical_uncertainty_test(
 
             row[
                 "bootstrap_lower_ns"
-            ] = (
-                bootstrap_result
-                .lower_ns
-            )
+            ] = float(bootstrap_facts.lower_ns)
 
             row[
                 "bootstrap_upper_ns"
-            ] = (
-                bootstrap_result
-                .upper_ns
-            )
+            ] = float(bootstrap_facts.upper_ns)
 
         rows.append(
             row
@@ -1335,6 +1447,38 @@ def _summarize_classical_interval_method(
     }
 
 
+_CLASSICAL_INTERVAL_COLUMNS = (
+    (
+        POISSON_LOCAL_COVARIANCE_METHOD_ID,
+        "covariance_lower_ns", "covariance_upper_ns", "covariance_std_ns",
+    ),
+    (
+        PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
+        "bootstrap_lower_ns", "bootstrap_upper_ns", "bootstrap_std_ns",
+    ),
+)
+
+
+def _classical_interval_summary_rows(
+    condition_rows: pd.DataFrame, *, test_id: str,
+    nominal_coverage: float, condition_id: str | None = None,
+) -> list[dict[str, object]]:
+    """Assemble identities around the unchanged classical interval metric policy."""
+    rows = []
+    for method_id, lower_column, upper_column, std_column in _CLASSICAL_INTERVAL_COLUMNS:
+        summary = _summarize_classical_interval_method(
+            condition_rows, method_id=method_id,
+            lower_column=lower_column, upper_column=upper_column,
+            std_column=std_column, nominal_coverage=nominal_coverage,
+        )
+        if condition_id is not None:
+            summary["condition_id"] = condition_id
+        summary["test_id"] = test_id
+        summary["target_reference"] = _frozen_target_reference(test_id)
+        rows.append(summary)
+    return rows
+
+
 def build_classical_uncertainty_scorecard(
     per_curve: pd.DataFrame,
     *,
@@ -1392,103 +1536,18 @@ def build_classical_uncertainty_scorecard(
                 f"Classical uncertainty results are missing Test {test_id}."
             )
 
-        for (
-            method_id,
-            lower_column,
-            upper_column,
-            std_column,
-        ) in (
-            (
-                POISSON_LOCAL_COVARIANCE_METHOD_ID,
-                "covariance_lower_ns",
-                "covariance_upper_ns",
-                "covariance_std_ns",
-            ),
-            (
-                PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
-                "bootstrap_lower_ns",
-                "bootstrap_upper_ns",
-                "bootstrap_std_ns",
-            ),
-        ):
-            summary = (
-                _summarize_classical_interval_method(
-                    test_rows,
-                    method_id=method_id,
-                    lower_column=(
-                        lower_column
-                    ),
-                    upper_column=(
-                        upper_column
-                    ),
-                    std_column=(
-                        std_column
-                    ),
-                    nominal_coverage=(
-                        nominal_coverage
-                    ),
-                )
+        summaries = _classical_interval_summary_rows(
+            test_rows, test_id=test_id, nominal_coverage=nominal_coverage,
+        )
+        failure_rates = test_rows["bootstrap_fit_failure_rate"].to_numpy(dtype=np.float64)
+        finite_failure_rates = failure_rates[np.isfinite(failure_rates)]
+        for summary in summaries:
+            summary["mean_bootstrap_refit_failure_rate"] = (
+                float(np.mean(finite_failure_rates))
+                if summary["method"] == PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID
+                and finite_failure_rates.size > 0 else np.nan
             )
-
-            summary[
-                "test_id"
-            ] = test_id
-
-            summary[
-                "target_reference"
-            ] = (
-                "dominant_component_tau_1"
-                if test_id == "F"
-                else "monoexponential_lifetime"
-            )
-
-            if (
-                method_id
-                == PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID
-            ):
-                failure_rates = (
-                    test_rows[
-                        "bootstrap_fit_failure_rate"
-                    ]
-                    .to_numpy(
-                        dtype=np.float64
-                    )
-                )
-
-                finite_failure_rates = (
-                    failure_rates[
-                        np.isfinite(
-                            failure_rates
-                        )
-                    ]
-                )
-
-                if (
-                    finite_failure_rates
-                    .size
-                    > 0
-                ):
-                    summary[
-                        "mean_bootstrap_refit_failure_rate"
-                    ] = float(
-                        np.mean(
-                            finite_failure_rates
-                        )
-                    )
-
-                else:
-                    summary[
-                        "mean_bootstrap_refit_failure_rate"
-                    ] = np.nan
-
-            else:
-                summary[
-                    "mean_bootstrap_refit_failure_rate"
-                ] = np.nan
-
-            rows.append(
-                summary
-            )
+            rows.append(summary)
 
     result = pd.DataFrame(
         rows
@@ -1681,65 +1740,10 @@ def build_classical_conditional_uncertainty_scorecard(
                 f"{condition_id} contains no samples."
             )
 
-        for (
-            method_id,
-            lower_column,
-            upper_column,
-            std_column,
-        ) in (
-            (
-                POISSON_LOCAL_COVARIANCE_METHOD_ID,
-                "covariance_lower_ns",
-                "covariance_upper_ns",
-                "covariance_std_ns",
-            ),
-            (
-                PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
-                "bootstrap_lower_ns",
-                "bootstrap_upper_ns",
-                "bootstrap_std_ns",
-            ),
-        ):
-            summary = (
-                _summarize_classical_interval_method(
-                    condition_rows,
-                    method_id=(
-                        method_id
-                    ),
-                    lower_column=(
-                        lower_column
-                    ),
-                    upper_column=(
-                        upper_column
-                    ),
-                    std_column=(
-                        std_column
-                    ),
-                    nominal_coverage=(
-                        nominal_coverage
-                    ),
-                )
-            )
-
-            summary[
-                "condition_id"
-            ] = condition_id
-
-            summary[
-                "test_id"
-            ] = test_id
-
-            summary[
-                "target_reference"
-            ] = (
-                "dominant_component_tau_1"
-                if test_id == "F"
-                else "monoexponential_lifetime"
-            )
-
-            rows.append(
-                summary
-            )
+        rows.extend(_classical_interval_summary_rows(
+            condition_rows, test_id=test_id, condition_id=condition_id,
+            nominal_coverage=nominal_coverage,
+        ))
 
     result = pd.DataFrame(
         rows
@@ -1839,14 +1843,7 @@ def evaluate_classical_uncertainty_robustness(
         pd.DataFrame
     ] = []
 
-    for test_id in (
-        FINAL_ROBUSTNESS_TEST_IDS
-    ):
-        test = (
-            prepared.tests[
-                test_id
-            ]
-        )
+    for test_id, test in _ordered_conditions(prepared.tests, FINAL_ROBUSTNESS_TEST_IDS):
 
         if test.test_id != test_id:
             raise ValueError(

@@ -3,8 +3,9 @@
 This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
-configuration. Evaluation consolidation (#11) and package movement (#3)
-remain separate work, not implemented interfaces.
+configuration. Issue #11 has since added a module-qualified factual evaluation
+layer beneath the existing scientific reports; physical package movement (#3)
+remains separate work.
 
 | Status | Surface |
 | --- | --- |
@@ -13,7 +14,8 @@ remain separate work, not implemented interfaces.
 | Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
-| Deferred architecture | Issue #11 evaluation consolidation and Issue #3 physical package movement are plans, not established interfaces. |
+| Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
+| Deferred package movement | Issue #3 will move files into subpackages; no physical relocation has occurred. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -98,10 +100,11 @@ and shared final-test ML prediction boundary to it, as described below.
 The dependency direction is canonical specification -> generic contract;
 generic execution must not know Ridge/RF/HGB or canonical representation names.
 
-- Issue #11: consolidate A/B, A/C/D/E, and A-F evaluation paths, duplicated
-  prediction/summary/degradation machinery, overlapping result/report types,
-  and reporting integration across classical/ML/uncertainty/Bayesian/experimental
-  workflows. Stage 1 introduces no unified report or representation framework.
+- Issue #11: shared preparation, factual point/reference evaluation, and
+  interval/score attachments now underlie the relevant generalization,
+  conditional, mismatch, and Week-9 reporting paths. Specialized Bayesian and
+  experimental reports retain their context; no universal report or
+  representation framework was introduced. See [evaluation.md](evaluation.md).
 - Issue #3: move files and introduce subpackages. No relocation occurs here.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
@@ -335,10 +338,13 @@ canonical prepared matrices. A/B execution and historical report builders keep
 their existing canonical selections. Custom estimator results are not a claim
 to reproduce the canonical benchmark and need not satisfy those report builders.
 
-Existing reporting distinguishes baselines and classical methods by name.
-At this boundary, `constant_mean`, `mean_arrival_time`, and names starting with
-`classical_reconvolution` are therefore reserved, unlike the unrestricted generic
-Stage-1 estimator API. Broader method-identity/reporting design remains Issue #11.
+Issue #11 Stage 4 supplies explicit families to internal generalization summaries,
+so ML names starting with `classical_reconvolution` are no longer reserved there.
+Reusing `constant_mean` or `mean_arrival_time` for ML in the same result conflicts
+with the actual baseline identities. The standalone table-only
+`summarize_generalization_predictions` retains historical prefix inference for
+compatibility; specialized frozen reports retain canonical selections. See the
+[evaluation contract](evaluation.md) for the factual/projection boundary.
 
 `tests/test_generalization_estimator_api.py` checks default prediction, summary,
 and degradation tables against the former ordered execution loop, plus custom
@@ -428,8 +434,9 @@ The Day/Week audit classifies the remaining occurrences as follows:
 | --- | --- |
 | Frozen protocol/reproducibility identity | `WEEK9_HYPOTHESES` is the historical study hypothesis set, not a generic API configuration. Protocol strings such as `week8-day55-v2`, A-F IDs, stored method/model/source identities, random streams, and numerical seeds stay unchanged. |
 | Historical documentation/notebook narrative | Week/Day prose, scientific findings, historical test and artifact filenames, notebook-local report variables, and saved-output/cache labels remain valid provenance. Notebook 13-14 executable API imports/calls use canonical names without regenerating outputs. |
-| Deferred/internal scientific boundaries | A/B preparation/result carriers and report consolidation remain Issue #11. Private `_week9_scorecard_row` and `_validate_week9_scorecard_scope` still validate the existing scorecard format; they are not public extension points. Explicit `Issue4*` study records remain unchanged. |
+| Specialized/internal scientific boundaries | A/B prepared/result carriers and legacy-compatible reports remain over the Issue-#11 factual layer. Private `_week9_scorecard_row` and `_validate_week9_scorecard_scope` validate the existing scorecard format; they are not public extension points. Explicit `Issue4*` study records remain unchanged. |
 | Legacy public imports | All 23 aliases above remain supported at least through Issue #12, without warnings. Removal is a separate future compatibility decision. |
 
-Issue #11 will address evaluation/report consolidation; Issue #3 will address
-physical package movement. Neither is implemented by these naming changes.
+Issue #11 has since implemented the factual evaluation/reporting layer described
+in [evaluation.md](evaluation.md). Issue #3 will address physical package movement;
+neither change was part of the Issue-#2 naming pass documented above.

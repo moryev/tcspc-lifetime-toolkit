@@ -31,6 +31,16 @@ from tcspc_toolkit.estimator_api import (
     fit_regressors,
     predict_regressors,
 )
+from tcspc_toolkit.evaluation_core import (
+    build_point_evaluation,
+    combine_point_evaluations,
+)
+from tcspc_toolkit.evaluation_results import (
+    EvaluationBatch,
+    LifetimeReference,
+    MethodDescriptor,
+    PointEvaluationResult,
+)
 from tcspc_toolkit.features import (
     extract_feature_table,
 )
@@ -415,109 +425,34 @@ def prepare_generalization_ab_data(
             "lifetime targets."
         )
 
-    development = build_benchmark_dataset(
-        development_measurements,
+    prepared = _prepare_generalization_representations(
+        development_measurements=development_measurements,
+        tests={"A": test_a, "B": test_b},
         feature_config=feature_config,
-    )
-
-    X_features_a = extract_feature_table(
-        histograms=test_a.X_histograms,
-        time=test_a.time,
-        config=feature_config,
-    )
-
-    X_features_b = extract_feature_table(
-        histograms=test_b.X_histograms,
-        time=test_b.time,
-        config=feature_config,
-    )
-
-    if tuple(
-        development.X_features.columns
-    ) != tuple(
-        X_features_a.columns
-    ):
-        raise RuntimeError(
-            "Development and Test-A engineered "
+        n_pca_components=n_pca_components,
+        feature_schema_error=(
+            "Development and Test-{test_id} engineered "
             "feature schemas do not match."
-        )
-
-    if tuple(
-        development.X_features.columns
-    ) != tuple(
-        X_features_b.columns
-    ):
-        raise RuntimeError(
-            "Development and Test-B engineered "
-            "feature schemas do not match."
-        )
-
-    X_normalized_development = (
-        normalize_histogram_batch(
-            histograms=(
-                development.X_histograms
-            ),
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    X_normalized_a = (
-        normalize_histogram_batch(
-            histograms=test_a.X_histograms,
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    X_normalized_b = (
-        normalize_histogram_batch(
-            histograms=test_b.X_histograms,
-            mode=CountNormalization.TOTAL,
-        )
-    )
-
-    pca = fit_pca_representation(
-        X_train=X_normalized_development,
-        n_components=n_pca_components,
-    )
-
-    X_pca_development = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_development,
-        )
-    )
-
-    X_pca_a = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_a,
-        )
-    )
-
-    X_pca_b = (
-        transform_pca_representation(
-            pca=pca,
-            X=X_normalized_b,
-        )
+        ),
     )
 
     return GeneralizationABPreparedData(
-        development=development,
+        development=prepared.development,
         test_a=test_a,
         test_b=test_b,
-        X_features_a=X_features_a,
-        X_features_b=X_features_b,
+        X_features_a=prepared.X_features["A"],
+        X_features_b=prepared.X_features["B"],
         X_normalized_development=(
-            X_normalized_development
+            prepared.X_normalized_development
         ),
-        X_normalized_a=X_normalized_a,
-        X_normalized_b=X_normalized_b,
+        X_normalized_a=prepared.X_normalized["A"],
+        X_normalized_b=prepared.X_normalized["B"],
         X_pca_development=(
-            X_pca_development
+            prepared.X_pca_development
         ),
-        X_pca_a=X_pca_a,
-        X_pca_b=X_pca_b,
-        pca=pca,
+        X_pca_a=prepared.X_pca["A"],
+        X_pca_b=prepared.X_pca["B"],
+        pca=prepared.pca,
     )
 
 
@@ -535,6 +470,33 @@ def prepare_generalization_data(
 
     PCA is fitted exclusively on normalized development
     histograms. Final test sets are never used for fitting.
+    """
+
+    return _prepare_generalization_representations(
+        development_measurements=development_measurements,
+        tests=tests,
+        feature_config=feature_config,
+        n_pca_components=n_pca_components,
+    )
+
+
+def _prepare_generalization_representations(
+    *,
+    development_measurements: BenchmarkMeasurements,
+    tests: dict[str, GeneralizationTestMeasurements],
+    feature_config: FeatureConfig,
+    n_pca_components: int,
+    feature_schema_error: str = (
+        "Development and final-test feature schemas do not match."
+    ),
+) -> GeneralizationPreparedData:
+    """Shared frozen-test mechanics beneath both public preparation carriers.
+
+    Feature extraction and TOTAL normalization are stateless. Fit PCA once on
+    development only, then transform development and tests in insertion order.
+    Reuse the existing multi-test carrier internally; the A/B wrapper projects
+    its fields without copying matrices or hiding the learned PCA artifact.
+    The error template preserves each wrapper's legacy schema diagnostic only.
     """
 
     if not tests:
@@ -605,8 +567,7 @@ def prepare_generalization_data(
             features.columns
         ):
             raise RuntimeError(
-                "Development and final-test "
-                "feature schemas do not match."
+                feature_schema_error.format(test_id=normalized_id)
             )
 
         X_features[normalized_id] = (
@@ -845,7 +806,25 @@ def _build_generalization_prediction_table(
 def summarize_generalization_predictions(
     predictions: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Summarize robustness predictions by estimator and test."""
+    """Summarize legacy table-only predictions by estimator and test.
+
+    Without descriptors, classical failure-rate applicability retains historical
+    name-prefix inference. Internal benchmark execution supplies explicit families
+    to the shared implementation instead; no metric or denominator policy differs.
+    """
+    families = {
+        str(name): "classical" if str(name).startswith("classical_reconvolution") else "ml"
+        for name in predictions.get("estimator", pd.Series(dtype=object))
+    }
+    return _summarize_generalization_predictions(predictions, method_families=families)
+
+
+def _summarize_generalization_predictions(
+    predictions: pd.DataFrame,
+    *,
+    method_families: Mapping[str, str],
+) -> pd.DataFrame:
+    """Apply the legacy metric policy using explicit method-family declarations."""
 
     required_columns = {
         "estimator",
@@ -951,11 +930,7 @@ def summarize_generalization_predictions(
             p90_absolute_error_ns = np.nan
             p95_absolute_error_ns = np.nan
 
-        if str(
-                estimator_name
-        ).startswith(
-            "classical_reconvolution"
-        ):
+        if method_families[str(estimator_name)] == "classical":
             classical_failure_rate = (
                 1.0
                 - n_valid / n_total
@@ -1293,6 +1268,155 @@ def _get_generalization_test_representations(
     }
 
 
+def _build_generalization_evaluation_batch(
+    *,
+    test: GeneralizationTestMeasurements,
+    representations: Mapping[str, Any],
+) -> EvaluationBatch:
+    """View prepared matrices with the frozen test's explicit reference.
+
+    Matrix objects pass through unchanged. Sample identity comes from metadata,
+    or positional row numbers for legacy carriers without a sample_id column.
+    Test F uses its primary component, never a weighted or pseudo-true lifetime.
+    """
+    reference_kind = "primary_component" if test.test_id == "F" else "generating_mono"
+    reference = LifetimeReference(
+        reference_id=reference_kind,
+        kind=reference_kind,
+        values_ns=test.y,
+        available=np.ones(test.y.size, dtype=bool),
+    )
+    return EvaluationBatch(
+        evaluation_id=test.test_id,
+        sample_ids=test.metadata["sample_id"].tolist()
+        if "sample_id" in test.metadata else range(test.y.size),
+        representations=representations,
+        metadata=test.metadata,
+        references={reference.reference_id: reference},
+    )
+
+
+def _generalization_baseline_predictions(
+    *, y_development: ArrayLike, X_features: pd.DataFrame,
+) -> tuple[tuple[MethodDescriptor, ArrayLike], ...]:
+    """Keep the two frozen baseline algorithms and their input ownership."""
+    return (
+        (
+            MethodDescriptor("constant_mean", "baseline"),
+            predict_constant_mean_baseline(
+                y_train=y_development, n_predictions=len(X_features),
+            ),
+        ),
+        (
+            MethodDescriptor("mean_arrival_time", "baseline", "engineered_features"),
+            estimate_lifetime_from_mean_arrival(
+                mean_arrival_time_ns=X_features["mean_arrival_time_ns"].to_numpy(dtype=np.float64),
+                peak_time_ns=X_features["peak_time_ns"].to_numpy(dtype=np.float64),
+            ),
+        ),
+    )
+
+
+def _evaluate_nonclassical_batch(
+    *,
+    batch: EvaluationBatch,
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    baseline_predictions: Sequence[tuple[MethodDescriptor, ArrayLike]] = (),
+) -> PointEvaluationResult:
+    """Execute prepared regressors and combine explicit baseline/ML facts.
+
+    This boundary knows no test, estimator or representation identities. Baseline
+    algorithms stay outside it. Ordinary finite estimates are valid, including
+    zero/negative values; predict_regressors rejects nonfinite ML outputs.
+    """
+    estimates = list(baseline_predictions)
+    predictions = predict_regressors(
+        fitted_estimators=fitted_estimators,
+        X_by_representation=batch.representations,
+    )
+    for method_id, representations in predictions.items():
+        for representation_id, values in representations.items():
+            estimates.append((MethodDescriptor(method_id, "ml", representation_id), values))
+    return combine_point_evaluations([
+        build_point_evaluation(
+            batch=batch, method=method, lifetime_estimates_ns=values,
+            is_valid=np.ones(len(batch.sample_ids), dtype=bool),
+        )
+        for method, values in estimates
+    ])
+
+
+def _project_generalization_predictions(
+    *, batch: EvaluationBatch, result: PointEvaluationResult, reference_id: str,
+) -> pd.DataFrame:
+    """Project one batch's facts to the legacy schema, masking invalid errors.
+
+    Canonical facts retain finite invalid errors. This projection selects the
+    frozen reference explicitly and preserves point order and metadata columns,
+    resetting the metadata index exactly as the historical builder does.
+    """
+    points = result.points
+    comparisons = result.reference_comparisons
+    key = ["evaluation_id", "sample_id", "method_id", "representation_id"]
+    rows = points.merge(
+        comparisons.loc[comparisons["reference_id"] == reference_id,
+                        key + ["reference_available", "reference_value_ns",
+                               "error_ns", "absolute_error_ns"]],
+        on=key, how="left", sort=False, validate="one_to_one",
+    )
+    positions = pd.Index(batch.sample_ids).get_indexer(rows["sample_id"])
+    if (
+        not rows["evaluation_id"].eq(batch.evaluation_id).all()
+        or np.any(positions < 0)
+        or not rows["reference_available"].eq(True).all()
+    ):
+        raise ValueError("Legacy generalization projection requires aligned, fully referenced points.")
+    table = batch.metadata.iloc[positions].reset_index(drop=True)
+    table["estimator"] = rows["method_id"].to_numpy()
+    table["representation"] = rows["representation_id"].fillna("none").to_numpy()
+    table["true_lifetime_ns"] = rows["reference_value_ns"].to_numpy()
+    table["predicted_lifetime_ns"] = rows["lifetime_estimate_ns"].to_numpy()
+    table["valid_prediction"] = rows["is_valid"].to_numpy()
+    table["error_ns"] = rows["error_ns"].where(rows["is_valid"]).to_numpy()
+    table["absolute_error_ns"] = rows["absolute_error_ns"].where(rows["is_valid"]).to_numpy()
+    return table
+
+
+def _evaluate_generalization_test(
+    *,
+    test: GeneralizationTestMeasurements,
+    representations: Mapping[str, Any],
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+    baseline_predictions: Sequence[tuple[MethodDescriptor, ArrayLike]] = (),
+) -> pd.DataFrame:
+    """Adapt a frozen test to factual execution and its legacy table view."""
+    # Unselected user mapping entries are ignored, as in predict_regressors.
+    selected = {
+        name: representations[name]
+        for group in fitted_estimators.values() for name in group
+        if name in representations
+    }
+    batch = _build_generalization_evaluation_batch(test=test, representations=selected)
+    result = _evaluate_nonclassical_batch(
+        batch=batch, fitted_estimators=fitted_estimators,
+        baseline_predictions=baseline_predictions,
+    )
+    return _project_generalization_predictions(
+        batch=batch, result=result, reference_id=next(iter(batch.references)),
+    )
+
+
+def _nonclassical_method_families(
+    fitted_estimators: Mapping[str, Mapping[str, RegressorProtocol]],
+) -> dict[str, str]:
+    """Declare families from execution roles, never from estimator spelling."""
+    return {
+        **{name: "ml" for name in fitted_estimators},
+        "constant_mean": "baseline",
+        "mean_arrival_time": "baseline",
+    }
+
+
 def _evaluate_nonclassical_generalization_tests(
     *,
     prepared: GeneralizationPreparedData,
@@ -1324,17 +1448,6 @@ def _evaluate_nonclassical_generalization_tests(
             "test_ids must not contain duplicates."
         )
 
-    # These identities have scientific meaning in the existing reporting layer.
-    # Do not let a custom ML estimator merge with a baseline or appear classical.
-    for model_name in fitted_estimators:
-        if model_name in {"constant_mean", "mean_arrival_time"} or (
-            isinstance(model_name, str)
-            and model_name.startswith("classical_reconvolution")
-        ):
-            raise ValueError(
-                f"Estimator name {model_name!r} is reserved by generalization reporting."
-            )
-
     prediction_tables: list[
         pd.DataFrame
     ] = []
@@ -1360,91 +1473,14 @@ def _evaluate_nonclassical_generalization_tests(
                 raise ValueError(f"Missing representation mapping for Test {test_id!r}.")
             representations = X_by_test_and_representation[test_id]
 
-        #
-        # Constant development-mean baseline.
-        #
-        constant_predictions = (
-            predict_constant_mean_baseline(
-                y_train=(
-                    prepared.development.y
-                ),
-                n_predictions=(
-                    test.y.size
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "constant_mean"
-                ),
-                representation_name="none",
-                test=test,
-                y_pred=constant_predictions,
-            )
-        )
-
-        #
-        # Mean-arrival-time baseline.
-        #
-        X_features = prepared.X_features[test_id]
-
-        mean_arrival_predictions = (
-            estimate_lifetime_from_mean_arrival(
-                mean_arrival_time_ns=(
-                    X_features[
-                        "mean_arrival_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-                peak_time_ns=(
-                    X_features[
-                        "peak_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "mean_arrival_time"
-                ),
-                representation_name=(
-                    "engineered_features"
-                ),
-                test=test,
-                y_pred=(
-                    mean_arrival_predictions
-                ),
-            )
-        )
-
-        #
-        # Point-estimator execution is independent of estimator/representation IDs.
-        #
-        model_predictions = predict_regressors(
+        prediction_tables.append(_evaluate_generalization_test(
+            test=test, representations=representations,
             fitted_estimators=fitted_estimators,
-            X_by_representation=representations,
-        )
-        for model_name, representation_predictions in model_predictions.items():
-            for representation_name, predictions in representation_predictions.items():
-                prediction_tables.append(
-                    _build_generalization_prediction_table(
-                        estimator_name=(
-                            model_name
-                        ),
-                        representation_name=(
-                            representation_name
-                        ),
-                        test=test,
-                        y_pred=predictions,
-                    )
-                )
+            baseline_predictions=_generalization_baseline_predictions(
+                y_development=prepared.development.y,
+                X_features=prepared.X_features[test_id],
+            ),
+        ))
 
     return prediction_tables
 
@@ -1457,131 +1493,57 @@ def _evaluate_principal_nonclassical_estimators(
         dict[str, Any],
     ],
 ) -> list[pd.DataFrame]:
-    """Evaluate baselines and primary ML estimators on Tests A/B."""
+    """Evaluate the frozen principal selection through shared factual execution."""
+    selected = {}
+    for model_name in ("ridge", "random_forest", "hist_gradient_boosting"):
+        try:
+            selected[model_name] = {
+                "engineered_features": fitted_estimators[model_name]["engineered_features"],
+            }
+        except KeyError as exc:
+            raise KeyError(
+                "Missing fitted engineered-feature "
+                f"estimator for {model_name!r}."
+            ) from exc
+    return [
+        _evaluate_generalization_test(
+            test=test, representations={"engineered_features": features},
+            fitted_estimators=selected,
+            baseline_predictions=_generalization_baseline_predictions(
+                y_development=prepared.development.y, X_features=features,
+            ),
+        )
+        for test, features in (
+            (prepared.test_a, prepared.X_features_a),
+            (prepared.test_b, prepared.X_features_b),
+        )
+    ]
 
-    prediction_tables: list[
-        pd.DataFrame
-    ] = []
 
-    test_inputs = (
-        (
-            prepared.test_a,
-            prepared.X_features_a,
-        ),
-        (
-            prepared.test_b,
-            prepared.X_features_b,
-        ),
+def _build_classical_point_evaluation(
+    *,
+    batch: EvaluationBatch,
+    diagnostics: pd.DataFrame,
+    method_id: str,
+) -> PointEvaluationResult:
+    """Adapt existing fit decisions, without fitting or recomputing validity.
+
+    Diagnostics remain authoritative and are not changed. Invalid finite lifetimes
+    and original failure reasons are retained; no IRF/optimizer facts enter points.
+    Distinct IRF/model variants must have distinct declared method IDs.
+    """
+    if len(diagnostics) != len(batch.sample_ids):
+        raise ValueError("Classical diagnostics must contain one row per test sample.")
+    if "sample_id" in diagnostics or "sample_id" in batch.metadata:
+        if tuple(diagnostics["sample_id"]) != batch.sample_ids:
+            raise ValueError("Classical diagnostics are not aligned with the robustness test.")
+    return build_point_evaluation(
+        batch=batch,
+        method=MethodDescriptor(method_id, "classical", "raw_histogram"),
+        lifetime_estimates_ns=diagnostics["fitted_lifetime_ns"].to_numpy(dtype=np.float64),
+        is_valid=diagnostics["valid_fit"].to_numpy(dtype=bool),
+        failure_reasons=diagnostics["failure_reason"].tolist(),
     )
-
-    for (
-            test,
-            X_features,
-    ) in test_inputs:
-
-        # Constant baseline:
-        # training/development target mean only.
-        constant_predictions = (
-            predict_constant_mean_baseline(
-                y_train=(
-                    prepared.development.y
-                ),
-                n_predictions=(
-                    test.y.size
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "constant_mean"
-                ),
-                representation_name=(
-                    "none"
-                ),
-                test=test,
-                y_pred=constant_predictions,
-            )
-        )
-
-        # Physics-inspired mean-arrival-time baseline.
-        mean_arrival_predictions = (
-            estimate_lifetime_from_mean_arrival(
-                mean_arrival_time_ns=(
-                    X_features[
-                        "mean_arrival_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-                peak_time_ns=(
-                    X_features[
-                        "peak_time_ns"
-                    ].to_numpy(
-                        dtype=np.float64
-                    )
-                ),
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "mean_arrival_time"
-                ),
-                representation_name=(
-                    "engineered_features"
-                ),
-                test=test,
-                y_pred=(
-                    mean_arrival_predictions
-                ),
-            )
-        )
-
-        # Principal ML estimator set.
-        for model_name in (
-            "ridge",
-            "random_forest",
-            "hist_gradient_boosting",
-        ):
-            try:
-                estimator = (
-                    fitted_estimators[
-                        model_name
-                    ][
-                        "engineered_features"
-                    ]
-                )
-
-            except KeyError as exc:
-                raise KeyError(
-                    "Missing fitted engineered-feature "
-                    f"estimator for {model_name!r}."
-                ) from exc
-
-            predictions = np.asarray(
-                estimator.predict(
-                    X_features
-                ),
-                dtype=np.float64,
-            )
-
-            prediction_tables.append(
-                _build_generalization_prediction_table(
-                    estimator_name=(
-                        model_name
-                    ),
-                    representation_name=(
-                        "engineered_features"
-                    ),
-                    test=test,
-                    y_pred=predictions,
-                )
-            )
-
-    return prediction_tables
 
 
 def _evaluate_classical_ab(
@@ -1635,35 +1597,13 @@ def _evaluate_classical_ab(
             test.test_id
         ] = result
 
-        fitted_lifetimes = (
-            result.per_curve[
-                "fitted_lifetime_ns"
-            ].to_numpy(
-                dtype=np.float64
-            )
+        batch = _build_generalization_evaluation_batch(test=test, representations={})
+        points = _build_classical_point_evaluation(
+            batch=batch, diagnostics=result.per_curve, method_id="classical_reconvolution",
         )
-
-        valid_mask = (
-            result.per_curve[
-                "valid_fit"
-            ].to_numpy(
-                dtype=bool
-            )
-        )
-
-        prediction_tables.append(
-            _build_generalization_prediction_table(
-                estimator_name=(
-                    "classical_reconvolution"
-                ),
-                representation_name=(
-                    "raw_histogram"
-                ),
-                test=test,
-                y_pred=fitted_lifetimes,
-                valid_mask=valid_mask,
-            )
-        )
+        prediction_tables.append(_project_generalization_predictions(
+            batch=batch, result=points, reference_id=next(iter(batch.references)),
+        ))
 
     return (
         prediction_tables,
@@ -1718,8 +1658,12 @@ def evaluate_principal_ab_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions,
+            method_families={
+                **_nonclassical_method_families(fitted_estimators),
+                "classical_reconvolution": "classical",
+            },
         )
     )
 
@@ -2043,52 +1987,18 @@ def evaluate_ml_representation_ab_benchmark(
         ),
     )
 
-    for (
-        test,
-        representations,
-    ) in test_definitions:
-
-        for model_name in (
-            "ridge",
-            "random_forest",
-            "hist_gradient_boosting",
-        ):
-            for representation_name in (
-                "engineered_features",
-                "normalized_histogram",
-                "pca_histogram",
-            ):
-                estimator = (
-                    fitted_estimators[
-                        model_name
-                    ][
-                        representation_name
-                    ]
-                )
-
-                X_test = representations[
-                    representation_name
-                ]
-
-                predictions = np.asarray(
-                    estimator.predict(
-                        X_test
-                    ),
-                    dtype=np.float64,
-                )
-
-                prediction_tables.append(
-                    _build_generalization_prediction_table(
-                        estimator_name=(
-                            model_name
-                        ),
-                        representation_name=(
-                            representation_name
-                        ),
-                        test=test,
-                        y_pred=predictions,
-                    )
-                )
+    # Frozen selection/order belongs to this wrapper, not the executor.
+    selected = {
+        model_name: {
+            name: fitted_estimators[model_name][name]
+            for name in ("engineered_features", "normalized_histogram", "pca_histogram")
+        }
+        for model_name in ("ridge", "random_forest", "hist_gradient_boosting")
+    }
+    for test, representations in test_definitions:
+        prediction_tables.append(_evaluate_generalization_test(
+            test=test, representations=representations, fitted_estimators=selected,
+        ))
 
     predictions = pd.concat(
         prediction_tables,
@@ -2096,8 +2006,8 @@ def evaluate_ml_representation_ab_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={name: "ml" for name in fitted_estimators},
         )
     )
 
@@ -2926,8 +2836,8 @@ def evaluate_model_mismatch_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -3022,8 +2932,8 @@ def evaluate_instrument_acquisition_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -3247,61 +3157,13 @@ def _build_classical_generalization_prediction_table(
     diagnostics: pd.DataFrame,
     estimator_name: str,
 ) -> pd.DataFrame:
-    """Convert classical fit diagnostics to robustness predictions."""
-
-    if len(
-        diagnostics
-    ) != test.y.size:
-        raise ValueError(
-            "Classical diagnostics must contain "
-            "one row per test sample."
-        )
-
-    diagnostic_sample_ids = (
-        diagnostics[
-            "sample_id"
-        ].to_numpy()
+    """Project classical point facts and append the unchanged IRF/shift view."""
+    batch = _build_generalization_evaluation_batch(test=test, representations={})
+    points = _build_classical_point_evaluation(
+        batch=batch, diagnostics=diagnostics, method_id=estimator_name,
     )
-
-    test_sample_ids = (
-        test.metadata[
-            "sample_id"
-        ].to_numpy()
-    )
-
-    if not np.array_equal(
-        diagnostic_sample_ids,
-        test_sample_ids,
-    ):
-        raise ValueError(
-            "Classical diagnostics are not aligned "
-            "with the robustness test."
-        )
-
-    predictions = (
-        _build_generalization_prediction_table(
-            estimator_name=(
-                estimator_name
-            ),
-            representation_name=(
-                "raw_histogram"
-            ),
-            test=test,
-            y_pred=(
-                diagnostics[
-                    "fitted_lifetime_ns"
-                ].to_numpy(
-                    dtype=np.float64
-                )
-            ),
-            valid_mask=(
-                diagnostics[
-                    "valid_fit"
-                ].to_numpy(
-                    dtype=bool
-                )
-            ),
-        )
+    predictions = _project_generalization_predictions(
+        batch=batch, result=points, reference_id=next(iter(batch.references)),
     )
 
     predictions[
@@ -3734,8 +3596,8 @@ def evaluate_classical_instrument_acquisition_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={name: "classical" for name in predictions["estimator"].unique()},
         )
     )
 
@@ -5286,8 +5148,8 @@ def evaluate_classical_model_mismatch_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={estimator_name: "classical"},
         )
     )
 
@@ -5869,7 +5731,8 @@ def evaluate_generalization_suite_benchmark(
     The frozen test definitions, baseline inputs, and result/table schemas are
     unchanged. Custom estimator results do not redefine the canonical benchmark
     and are not necessarily accepted by canonical historical report builders.
-    Baseline names and the ``classical_reconvolution`` prefix are reserved here.
+    Families come from execution roles, not name prefixes. Baseline method IDs
+    cannot also identify an ML method in the same factual result.
     """
 
     missing_test_ids = (
@@ -5900,8 +5763,8 @@ def evaluate_generalization_suite_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families=_nonclassical_method_families(fitted_estimators),
         )
     )
 
@@ -6055,8 +5918,8 @@ def evaluate_classical_generalization_suite_benchmark(
     )
 
     summary = (
-        summarize_generalization_predictions(
-            predictions
+        _summarize_generalization_predictions(
+            predictions, method_families={estimator_name: "classical"},
         )
     )
 
