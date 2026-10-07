@@ -13,8 +13,23 @@ result assembly. Stage 7 adds reference-independent interval and score attachmen
 snapshots; Stages 8–9 project ML and classical uncertainty source results onto them.
 Stage 10 shares ordered robustness-condition traversal, attachment identity checks,
 and classical scorecard-row assembly beneath unchanged Week-9 report types.
-Bayesian/experimental reporting and notebook migration remain separately reviewed.
-The 66-name root API is unchanged.
+Bayesian and experimental runtime reports retain their specialized scientific
+context; the factual contracts support them compositionally without migrating
+those study workflows. The 66-name root API and notebooks are unchanged.
+
+```text
+frozen scientific benchmark definitions
+                ↓
+shared representation preparation
+                ↓
+canonical point/reference facts
+                ↓
+interval and score attachments
+                ↓
+specialized metric policies and diagnostics
+                ↓
+legacy-compatible scientific reports
+```
 
 ## Responsibilities and existing inventory
 
@@ -29,14 +44,14 @@ The 66-name root API is unchanged.
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
 | `mismatch_evaluation`, `timing_evaluation` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
-| `ml_uncertainty` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared traversal is a later candidate, not shared scientific interpretation. |
+| `ml_uncertainty` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
 | `uncertainty_evaluation` | Interval/score results, method definitions, development split, interval/quantile/score/selective metrics | Already separates intervals, heuristic scores and empirical reference variability. Retain that distinction. |
 | `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
 | `classical_uncertainty` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
 | `generalization_evaluation` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
 | `irf_evaluation` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
 | `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
-| Bayesian modules | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results, `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Adapt reporting later; do not replace inference or scientific records. |
+| Bayesian modules | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results, `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
 | `persistence` | Point, uncertainty, metric and scientific recording adapters | External consumer of existing concrete types and identities. Schema v1, source-result identities and duplicate semantics remain unchanged. |
 
 The reusable estimator boundary remains `estimator_api`: structural `fit`/`predict`,
@@ -266,8 +281,9 @@ Omitting both semantic arguments preserves the compatibility-only calculation.
 `RegressionBenchmarkResult` has no family or reference-kind fields and is also
 used for baseline and mismatch outputs in Notebook 12. Those unchanged callers
 therefore do **not** create falsely labelled canonical facts. Name/prefix inference
-is not a migration strategy. Migrating callers to explicit semantics remains a
-later reviewed task; no notebooks or result constructors changed in Stage 5.
+is not a migration strategy. Moving historical callers to explicit semantics
+would require a separate compatibility decision; no notebooks or result
+constructors changed in Stage 5.
 
 `build_classical_prediction_diagnostics` accepts only an optional `reference`:
 the adapter already knows family `classical`, retains its supplied/default method
@@ -520,7 +536,7 @@ All are module-qualified from `evaluation_core`:
 
 These kernels do not define one historical denominator convention. An
 attempted-population metric that propagates a missing value to NaN must remain
-an explicit policy in a later wrapper, not silently become finite-only MAE.
+an explicit compatibility policy, not silently become finite-only MAE.
 
 The three summary masks have independent meanings: `is_valid` is a scientific or
 method-validity fact; `reference_available` is a reference fact; `eligible` is
@@ -534,15 +550,15 @@ projections, not extra modes of this primitive.
 
 ## Baseline policies that are deliberately not equivalent
 
-| Existing behavior | Preservation requirement for later migration |
+| Existing behavior | Current compatibility policy |
 |---|---|
-| Generalization prediction builder masks errors on invalid rows; conditional builder retains errors for finite invalid rows and preserves the metadata index | Shared raw facts can support both projections; do not silently change either view. |
+| Generalization prediction builder masks errors on invalid rows; conditional builder retains errors for finite invalid rows and preserves the metadata index | Shared raw facts support both projections without changing either view. |
 | Regression metrics include relative error and sklearn R²; robustness metrics include bias and tail percentiles | Share mathematics, retain existing applicability/validation and public result fields. |
 | Classical benchmark errors use valid fits; failures use all attempts; runtime uses finite timing records | Do not filter failed rows out of attempted counts or pool timing scopes. |
 | Some classical uncertainty scorecard point metrics use finite fitted lifetimes, not `valid_fit` | Keep that explicit eligibility policy; do not equate finiteness with fit acceptance. |
 | ML quantile scorecard MAE uses attempted predictions and can be NaN when one prediction is nonfinite; interval metrics use valid intervals | Preserve both denominators. `test_persistence_uncertainty` explicitly checks these stored facts. |
-| Standard generalization ratios use a `1e-12` safeguard; scalar helper raises, table helpers return NaN | Keep the legacy policies; the new ratio primitive does not replace them in this checkpoint. |
-| Classical instrument comparisons use correct-IRF A as the reference even across method IDs, with a positive-denominator check | Share comparison mechanics later, not automatic same-method/reference selection. |
+| Standard generalization ratios use a `1e-12` safeguard; scalar helper raises, table helpers return NaN | Keep the legacy policies; the generic ratio primitive does not replace them. |
+| Classical instrument comparisons use correct-IRF A as the reference even across method IDs, with a positive-denominator check | The generic ratio kernel does not select a reference method or population. |
 | Week-7 mismatch ML ratio can be infinity at zero reference MAE; classical counterpart uses NaN | Do not silently unify these legacy outputs. |
 | CV summarizes fold metrics with sample SD (`ddof=1`) | Not pooled sample errors or final-test uncertainty; fold-local sklearn cloning stays separate. |
 | Test F scores against primary component tau_1; weighted lifetime is descriptive; Bayesian pseudo-true projection is prior-free and assumption-conditional | Three scientific concepts, not interchangeable ground truth. |
@@ -629,12 +645,12 @@ Point validity, interval validity, score validity, reference availability and
 metric eligibility are separate facts. A finite interval may be rejected while
 its point is valid; a valid score or interval may accompany an invalid point.
 Coverage and ranking metrics require explicit reference and eligibility policy
-in later evaluation adapters. The Stage-7 layer computes neither.
+in the method-specific evaluation functions. Attachments compute neither.
 
-`PredictionIntervalResult` and `UncertaintyScoreResult` can project their
+`PredictionIntervalResult` and `UncertaintyScoreResult` project their
 aligned bounds/scores and existing validity masks into these snapshots.
-Classical bootstrap or covariance-derived lifetime bounds can project as
-intervals; the covariance matrix and refit samples stay with the classical
+Classical bootstrap and covariance-derived lifetime bounds also project as
+intervals; covariance matrices and refit samples stay with the classical
 result. A Bayesian lifetime credible interval can project as
 `bayesian_credible` only as a reporting projection of an existing Bayesian
 result. The authoritative Bayesian result retains the assumed model, prior,
@@ -794,8 +810,9 @@ kind or nominal level in either layer. Source configuration, calibration scope,
 provenance, duplicate policy and nonfinite serialization remain persistence
 concerns; no automatic conversion or schema change is provided here.
 
-Later Issue-#11 work may review remaining conditional caller migration and
-Bayesian/experimental reporting adapters. No combined
+Historical conditional callers without explicit method/reference semantics remain
+on their compatibility-only path. Bayesian and experimental runtime reports retain
+their specialized context; neither is migrated merely for symmetry. No combined
 development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
@@ -803,8 +820,8 @@ public constructors and Issue-#2 legacy aliases remain supported through #12.
 Persistence is an external consumer: reference/method vocabulary aligns, but
 scope/version/assumption labels are not substituted for database keys. Existing
 schema, source identities, uncertainty-method restrictions and duplicate policies
-are unchanged. Representability will be tested through reviewed adapters later.
+are unchanged. Generic runtime attachments are not automatically persistable.
 
 Issue #3 owns physical package movement; Issue #12 owns the post-reorganization
 clean-environment, reference-workflow and cross-feature integration gate. Neither
-is claimed complete by Stage 10.
+is part of Issue #11.
