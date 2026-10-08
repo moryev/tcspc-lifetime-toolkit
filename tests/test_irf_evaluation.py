@@ -15,7 +15,7 @@ from tcspc_toolkit.irf_evaluation import (
     summarize_irf_shape_classical,
     summarize_leading_edge_regimes,
 )
-from tcspc_toolkit.irf_preparation import _sampled_fwhm
+from tcspc_toolkit.irf.preparation import _sampled_fwhm
 
 
 @pytest.fixture(scope="module")

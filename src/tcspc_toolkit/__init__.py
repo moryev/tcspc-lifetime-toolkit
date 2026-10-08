@@ -17,7 +17,7 @@ from tcspc_toolkit.datasets import (
     generate_monoexponential_dataset,
 )
 
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     IRFProfile,
     IRFSourceKind,
     generate_emg_irf,
@@ -54,14 +54,14 @@ from tcspc_toolkit.measurements import (
     convert_time_to_ns,
 )
 
-from tcspc_toolkit.irf_preparation import (
+from tcspc_toolkit.irf.preparation import (
     IRFPreparationDiagnostics,
     PreparedIRF,
     irf_profile_from_sampled_irf,
     prepare_irf,
 )
 
-from tcspc_toolkit.irf_estimation import (
+from tcspc_toolkit.irf.estimation import (
     LeadingEdgeIRFDiagnostics,
     LeadingEdgeIRFResult,
     estimate_irf_from_leading_edge,

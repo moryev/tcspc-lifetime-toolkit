@@ -6,7 +6,8 @@ and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
 layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
-and histogram preprocessing/features/representations; other modules remain flat.
+histogram preprocessing/features/representations, and IRF profiles/preparation/
+estimation; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -16,7 +17,7 @@ and histogram preprocessing/features/representations; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), and histogram operations/features/representations in `preprocessing` (Stage 2B); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), and IRF profiles/preparation/estimation in `irf` (Stage 3A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -55,6 +56,10 @@ Important supported module-qualified workflows include:
 - `estimation.api` and `estimation.baselines`: canonical generic estimator
   execution and baseline implementations. `estimator_api` and `baselines` remain
   direct-object compatibility paths through at least Issue #12.
+- `irf.profiles`, `irf.preparation`, and `irf.estimation`: source profiles,
+  explicit prepared kernels, and failure-aware leading-edge proxies. Historical
+  `irf`, `irf_preparation`, and `irf_estimation` imports remain supported;
+  the `irf` package facade exposes only the former profile-level API.
 - `preprocessing.histograms`, `preprocessing.features`, and
   `preprocessing.representations`: histogram/time-grid operations, engineered
   features, normalization, PCA, and count augmentation. The historical
@@ -113,8 +118,9 @@ current order. It changes implementation locations, not scientific behavior,
 Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
 Stage 0 established the structural guards; Stage 1 moved the generic estimator
 API and baselines; Stage 2A moved models, convolution, and the forward model;
-Stage 2B converts histogram preprocessing into a package and relocates features
-and representations beneath it.
+Stage 2B converted histogram preprocessing into a package and relocated features
+and representations beneath it; Stage 3A similarly moved IRF profiles,
+preparation, and estimation without moving measurement or experimental code.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -159,6 +165,9 @@ The implemented slices have these paths:
 | `tcspc_toolkit.preprocessing.histograms` | `tcspc_toolkit.preprocessing` |
 | `tcspc_toolkit.preprocessing.features` | `tcspc_toolkit.features` |
 | `tcspc_toolkit.preprocessing.representations` | `tcspc_toolkit.representations` |
+| `tcspc_toolkit.irf.profiles` | `tcspc_toolkit.irf` |
+| `tcspc_toolkit.irf.preparation` | `tcspc_toolkit.irf_preparation` |
+| `tcspc_toolkit.irf.estimation` | `tcspc_toolkit.irf_estimation` |
 
 The `estimation` initializer imports nothing. The generic API has no sklearn or
 package-internal dependency. Baselines retain the existing sklearn
@@ -172,8 +181,8 @@ moves must extend these cases and update responsibility path sets deliberately.
 
 The `physics` initializer also imports nothing. Its implementations retain only
 their existing NumPy/SciPy and low-level physical dependencies. The forward
-model uses canonical `physics.models`/`physics.convolution` and the unchanged
-flat `irf.shift_irf`; classical and Bayesian inference remain consumers, not
+model uses canonical `physics.models`/`physics.convolution` and
+`irf.profiles.shift_irf`; classical and Bayesian inference remain consumers, not
 dependencies. Root convenience exports remain exactly the reviewed 66 names;
 the forward-model function is still module-qualified.
 
@@ -193,7 +202,24 @@ root API, so initializer-isolation tests trace the actual importing module.
 Canonical consumers use the implementation submodules, not the compatibility
 facades. Histogram, feature, normalization, PCA, and augmentation algorithms are
 unchanged. Measurement/IRF validation consumers still use the same histogram
-helpers; no IRF, measurement, or further estimator relocation has occurred.
+helpers; no measurement or further estimator relocation has occurred.
+
+The `irf` module-to-package conversion follows the same narrow-facade policy.
+`irf/__init__.py` directly re-exports only `IRFSourceKind`, `IRFProfile`,
+`generate_gaussian_irf`, `generate_emg_irf`, `generate_gaussian_irf_profile`,
+`generate_emg_irf_profile`, `normalize_irf`, and `shift_irf` from `irf.profiles`.
+It does not import or expose preparation/estimation APIs; request those canonical
+submodules (or their flat compatibility facades) explicitly. The old `irf.py`
+no longer competes with the package. Root initialization already exposes the
+reviewed preparation/estimation objects, independently of this narrow facade.
+
+Measurement records depend only on IRF profiles; preparation consumes the still-
+flat measurement records and profiles. Keeping preparation out of the initializer
+preserves that direction without a cycle. Source profiles, derived prepared
+kernels, assumed inference kernels, and approximate leading-edge proxies remain
+distinct, as do source provenance, preparation history, and inference assumptions.
+All implementations are unchanged apart from imports. Experimental IRF selection
+remains in `experimental.py`; no `irf.selection` extraction is part of Stage 3A.
 
 ### Completed evaluation work and later gates
 

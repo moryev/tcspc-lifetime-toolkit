@@ -53,9 +53,9 @@ from tcspc_toolkit.fitting import (
     poisson_negative_log_likelihood,
 )
 from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
-from tcspc_toolkit.irf import generate_emg_irf_profile, generate_gaussian_irf_profile
+from tcspc_toolkit.irf.profiles import generate_emg_irf_profile, generate_gaussian_irf_profile
 from tcspc_toolkit.irf_evaluation import _match_gaussian_to_emg_profile
-from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf
+from tcspc_toolkit.irf.preparation import PreparedIRF, prepare_irf
 from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.simulation import sample_photon_counts
 

@@ -52,7 +52,7 @@ from tcspc_toolkit.generalization_evaluation import (
 )
 from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )

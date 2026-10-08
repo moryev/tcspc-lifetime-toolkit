@@ -183,6 +183,33 @@ def test_preprocessing_facades_preserve_supported_objects_and_root_identity(old_
         assert_same_export(old_module, "tcspc_toolkit.config", "CountNormalization")
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.irf", "profiles", (
+        "IRFSourceKind", "IRFProfile", "generate_gaussian_irf", "generate_emg_irf",
+        "generate_gaussian_irf_profile", "generate_emg_irf_profile", "normalize_irf", "shift_irf",
+    )),
+    ("tcspc_toolkit.irf_preparation", "preparation", (
+        "FloatArray", "ResamplingMethod", "IRFPreparationDiagnostics", "PreparedIRF",
+        "irf_profile_from_sampled_irf", "prepare_irf",
+    )),
+    ("tcspc_toolkit.irf_estimation", "estimation", (
+        "TimeWindow", "BinRange", "LeadingEdgeIRFDiagnostics", "LeadingEdgeIRFResult",
+        "estimate_irf_from_leading_edge",
+    )),
+])
+def test_irf_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.irf.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if name in EXPECTED_ROOT_EXPORTS:
+            assert_same_export("tcspc_toolkit", canonical_module, name)
+        if name not in {"FloatArray", "ResamplingMethod", "TimeWindow", "BinRange"}:
+            assert getattr(canonical, name).__module__ == canonical_module
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

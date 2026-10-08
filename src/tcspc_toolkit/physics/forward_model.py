@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
-from tcspc_toolkit.irf import shift_irf
+from tcspc_toolkit.irf.profiles import shift_irf
 from tcspc_toolkit.physics.models import monoexponential_decay
 
 

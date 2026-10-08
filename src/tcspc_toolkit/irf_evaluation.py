@@ -30,17 +30,17 @@ from tcspc_toolkit.evaluation import (
 )
 from tcspc_toolkit.experimental import fit_experimental_reconvolution
 from tcspc_toolkit.preprocessing.features import extract_feature_table
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     IRFProfile,
     IRFSourceKind,
     generate_emg_irf_profile,
     generate_gaussian_irf_profile,
 )
-from tcspc_toolkit.irf_estimation import (
+from tcspc_toolkit.irf.estimation import (
     LeadingEdgeIRFResult,
     estimate_irf_from_leading_edge,
 )
-from tcspc_toolkit.irf_preparation import PreparedIRF, _sampled_fwhm, prepare_irf
+from tcspc_toolkit.irf.preparation import PreparedIRF, _sampled_fwhm, prepare_irf
 from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements, evaluate_regression
 from tcspc_toolkit.ml_models import (

@@ -1463,8 +1463,8 @@ def record_irf_source(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a SampledIRF, IRFProfile or successful leading-edge result."""
-    from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
-    from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
+    from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
+    from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
     from tcspc_toolkit.measurements import SampledIRF
 
     supplied_source = source
@@ -1571,8 +1571,8 @@ def record_legacy_irf_source(
 def _verify_irf_source(
     connection: sqlite3.Connection, source_id: int, source: Any,
 ) -> None:
-    from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
-    from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
+    from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
+    from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
     from tcspc_toolkit.measurements import SampledIRF
 
     diagnostics = None
@@ -1628,7 +1628,7 @@ def _verify_irf_source(
 def _verify_prepared_irf(
     connection: sqlite3.Connection, prepared_id: int, prepared: Any,
 ) -> None:
-    from tcspc_toolkit.irf_preparation import PreparedIRF
+    from tcspc_toolkit.irf.preparation import PreparedIRF
 
     if not isinstance(prepared, PreparedIRF):
         raise TypeError("prepared must be a PreparedIRF")
@@ -1733,7 +1733,7 @@ def record_prepared_irf(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a PreparedIRF and, when keyed, its source in one transaction."""
-    from tcspc_toolkit.irf_preparation import PreparedIRF
+    from tcspc_toolkit.irf.preparation import PreparedIRF
 
     if not isinstance(prepared, PreparedIRF):
         raise TypeError("prepared must be a PreparedIRF")

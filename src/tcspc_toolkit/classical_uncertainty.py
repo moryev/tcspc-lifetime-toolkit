@@ -14,7 +14,7 @@ from tcspc_toolkit.classical_evaluation import (
     ReconvolutionCurveResult,
     fit_single_reconvolution_curve,
 )
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )

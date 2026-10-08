@@ -53,7 +53,7 @@ from tcspc_toolkit.generalization_datasets import (
     GeneralizationTestMeasurements,
     build_generalization_time_axis,
 )
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )

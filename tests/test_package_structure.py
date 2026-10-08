@@ -42,27 +42,44 @@ BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
-    "features", "representations",
+    "features", "representations", "irf_preparation", "irf_estimation",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
 PREPROCESSING = f"{PACKAGE}.preprocessing"
-COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING}
+IRF = f"{PACKAGE}.irf"
+COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
 PHYSICAL = {f"{PACKAGE}.{name}" for name in (
-    "physics.models", "physics.convolution", "physics.forward_model", "irf",
+    "physics.models", "physics.convolution", "physics.forward_model", "irf.profiles",
 )}
 PHYSICS_IMPORTS = {
     f"{PACKAGE}.physics.models": {"numpy", "numpy.typing"},
     f"{PACKAGE}.physics.convolution": {"numpy", "numpy.typing", "scipy.signal"},
     f"{PACKAGE}.physics.forward_model": {
         "numpy", "numpy.typing", f"{PACKAGE}.physics.models",
-        f"{PACKAGE}.physics.convolution", f"{PACKAGE}.irf",
+        f"{PACKAGE}.physics.convolution", f"{PACKAGE}.irf.profiles",
     },
 }
 PERSISTENCE = f"{PACKAGE}.persistence"
+IRF_IMPORTS = {
+    IRF: {f"{IRF}.profiles"},
+    f"{IRF}.profiles": {
+        "__future__", "copy", "dataclasses", "enum", "types", "typing",
+        "numpy", "numpy.typing", "scipy.stats",
+    },
+    f"{IRF}.preparation": {
+        "__future__", "dataclasses", "typing", "numpy", "numpy.typing",
+        f"{IRF}.profiles", f"{PACKAGE}.measurements", f"{PREPROCESSING}.histograms",
+    },
+    f"{IRF}.estimation": {
+        "__future__", "dataclasses", "typing", "numpy", "numpy.typing", "scipy.signal",
+        f"{IRF}.profiles", f"{IRF}.preparation", f"{PACKAGE}.measurements",
+        f"{PREPROCESSING}.histograms",
+    },
+}
 PREPROCESSING_IMPORTS = {
     PREPROCESSING: {f"{PREPROCESSING}.histograms"},
     f"{PREPROCESSING}.histograms": {
@@ -225,6 +242,16 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in PREPROCESSING_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in IRF_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
+    assert records[IRF] and all(
+        kind == "eager" and base == f"{IRF}.profiles"
+        for kind, base, _ in records[IRF]
+    )
+    # Records may depend on profiles, never on preparation via an aggregate
+    # initializer: preparation itself consumes those still-flat records.
+    assert {base for _, base, _ in records[f"{PACKAGE}.measurements"]
+            if base == IRF or base.startswith(IRF + ".")} == {f"{IRF}.profiles"}
     assert records[PREPROCESSING] and all(
         kind == "eager" and base == f"{PREPROCESSING}.histograms"
         for kind, base, _ in records[PREPROCESSING]
@@ -240,6 +267,19 @@ def test_preprocessing_collision_has_one_package_implementation():
     package = importlib.import_module(PREPROCESSING)
     assert Path(package.__file__).resolve() == SOURCE_ROOT / "preprocessing" / "__init__.py"
     assert hasattr(package, "__path__")
+
+
+def test_irf_collision_preserves_only_the_historical_profile_surface():
+    assert not (SOURCE_ROOT / "irf.py").exists()
+    package = importlib.import_module(IRF)
+    assert Path(package.__file__).resolve() == SOURCE_ROOT / "irf" / "__init__.py"
+    assert hasattr(package, "__path__")
+    # Importing canonical children must not add their APIs to the facade.
+    importlib.import_module(f"{IRF}.preparation")
+    importlib.import_module(f"{IRF}.estimation")
+    for name in ("PreparedIRF", "prepare_irf", "LeadingEdgeIRFResult",
+                 "estimate_irf_from_leading_edge", "_sampled_fwhm"):
+        assert not hasattr(package, name), name
 
 
 def test_no_eager_internal_cycles(package_imports):
@@ -299,7 +339,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
              if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
                                    "physics.models", "physics.convolution", "physics.forward_model",
                                    "preprocessing.histograms", "preprocessing.features",
-                                   "preprocessing.representations"])
+                                   "preprocessing.representations",
+                                   "irf.profiles", "irf.preparation", "irf.estimation"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -368,6 +409,51 @@ from tcspc_toolkit.config import CountNormalization as canonical_mode
 assert validate_histogram is canonical_validate
 assert normalize_counts is canonical_normalize
 assert CountNormalization is canonical_mode
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+]
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(IRF_IMPORTS))
+def test_fresh_irf_facade_loads_only_profiles(tmp_path, module):
+    # Root initialization already exposes preparation/estimation. Trace the
+    # actual caller rather than attributing that inherited cost to the facade.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {IRF!r} or caller.startswith({IRF + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('IRF import opened a database')
+sys.addaudithook(no_database)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{IRF!r}] == {{{IRF + '.profiles'!r}}}
+allowed = {IRF_IMPORTS!r}
+for caller, imports in seen.items():
+    assert imports <= allowed[caller], (caller, imports)
+from tcspc_toolkit.irf import IRFProfile, normalize_irf
+from tcspc_toolkit.irf.profiles import IRFProfile as canonical_profile
+from tcspc_toolkit.irf.profiles import normalize_irf as canonical_normalize
+assert IRFProfile is canonical_profile
+assert normalize_irf is canonical_normalize
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
