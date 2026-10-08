@@ -43,11 +43,13 @@ ESTIMATION = f"{PACKAGE}.estimation"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
+    "measurements", "measurement_io", "experimental",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
 PREPROCESSING = f"{PACKAGE}.preprocessing"
 IRF = f"{PACKAGE}.irf"
+MEASUREMENT = f"{PACKAGE}.measurement"
 COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
@@ -72,12 +74,36 @@ IRF_IMPORTS = {
     },
     f"{IRF}.preparation": {
         "__future__", "dataclasses", "typing", "numpy", "numpy.typing",
-        f"{IRF}.profiles", f"{PACKAGE}.measurements", f"{PREPROCESSING}.histograms",
+        f"{IRF}.profiles", f"{MEASUREMENT}.records", f"{PREPROCESSING}.histograms",
     },
     f"{IRF}.estimation": {
         "__future__", "dataclasses", "typing", "numpy", "numpy.typing", "scipy.signal",
-        f"{IRF}.profiles", f"{IRF}.preparation", f"{PACKAGE}.measurements",
+        f"{IRF}.profiles", f"{IRF}.preparation", f"{MEASUREMENT}.records",
         f"{PREPROCESSING}.histograms",
+    },
+    f"{IRF}.selection": {
+        "__future__", "numpy", "numpy.typing", f"{PACKAGE}.exceptions",
+        f"{IRF}.profiles", f"{IRF}.preparation", f"{MEASUREMENT}.records",
+        f"{PREPROCESSING}.histograms",
+    },
+}
+MEASUREMENT_IMPORTS = {
+    MEASUREMENT: set(),
+    f"{MEASUREMENT}.records": {
+        "__future__", "copy", "dataclasses", "enum", "types", "typing", "numpy",
+        "numpy.typing", f"{PACKAGE}.exceptions", f"{IRF}.profiles",
+        f"{PREPROCESSING}.histograms",
+    },
+    f"{MEASUREMENT}.io": {
+        "__future__", "csv", "decimal", "pathlib", "typing", "numpy",
+        f"{PACKAGE}.exceptions", f"{MEASUREMENT}.records",
+    },
+    f"{MEASUREMENT}.adapters": {
+        "__future__", "copy", "dataclasses", "types", "typing", "numpy", "pandas",
+        "numpy.typing", f"{PACKAGE}.classical_evaluation", f"{PACKAGE}.config",
+        f"{PACKAGE}.evaluation", f"{PACKAGE}.exceptions",
+        f"{PREPROCESSING}.features", f"{PREPROCESSING}.histograms",
+        f"{IRF}.preparation", f"{IRF}.selection", f"{MEASUREMENT}.records",
     },
 }
 PREPROCESSING_IMPORTS = {
@@ -234,6 +260,7 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     records, _ = package_imports
     assert records[ESTIMATION] == []  # No eager, deferred, or typing imports.
     assert records[f"{PACKAGE}.physics"] == []
+    assert records[MEASUREMENT] == []
     # Preserve the existing DummyRegressor dependency, not a new algorithm.
     assert {base for _, base, _ in records[BASELINES]} == {
         "__future__", "numpy", "numpy.typing", "sklearn.dummy",
@@ -244,13 +271,15 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in IRF_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in MEASUREMENT_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
     assert records[IRF] and all(
         kind == "eager" and base == f"{IRF}.profiles"
         for kind, base, _ in records[IRF]
     )
     # Records may depend on profiles, never on preparation via an aggregate
-    # initializer: preparation itself consumes those still-flat records.
-    assert {base for _, base, _ in records[f"{PACKAGE}.measurements"]
+    # initializer: preparation itself consumes those canonical records.
+    assert {base for _, base, _ in records[f"{MEASUREMENT}.records"]
             if base == IRF or base.startswith(IRF + ".")} == {f"{IRF}.profiles"}
     assert records[PREPROCESSING] and all(
         kind == "eager" and base == f"{PREPROCESSING}.histograms"
@@ -260,6 +289,10 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         for _, base, names in imports:
             targets = _targets(base, names, set(records)) | {base}
             assert not targets.intersection(COMPATIBILITY_SURFACES), (module, targets)
+            if module.startswith(f"{PACKAGE}.bayesian"):
+                assert not targets.intersection({
+                    f"{PACKAGE}.experimental", f"{MEASUREMENT}.adapters",
+                }), (module, targets)
 
 
 def test_preprocessing_collision_has_one_package_implementation():
@@ -277,9 +310,18 @@ def test_irf_collision_preserves_only_the_historical_profile_surface():
     # Importing canonical children must not add their APIs to the facade.
     importlib.import_module(f"{IRF}.preparation")
     importlib.import_module(f"{IRF}.estimation")
+    importlib.import_module(f"{IRF}.selection")
     for name in ("PreparedIRF", "prepare_irf", "LeadingEdgeIRFResult",
-                 "estimate_irf_from_leading_edge", "_sampled_fwhm"):
+                 "estimate_irf_from_leading_edge", "_sampled_fwhm", "_resolve_reconvolution_irf"):
         assert not hasattr(package, name), name
+
+
+def test_bayesian_and_experimental_consumers_share_the_canonical_irf_resolver():
+    selection = importlib.import_module(f"{IRF}.selection")
+    resolver = selection._resolve_reconvolution_irf
+    assert resolver.__module__ == f"{IRF}.selection"
+    for module in (f"{PACKAGE}.bayesian", f"{MEASUREMENT}.adapters"):
+        assert importlib.import_module(module)._resolve_reconvolution_irf is resolver
 
 
 def test_no_eager_internal_cycles(package_imports):
@@ -340,7 +382,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "physics.models", "physics.convolution", "physics.forward_model",
                                    "preprocessing.histograms", "preprocessing.features",
                                    "preprocessing.representations",
-                                   "irf.profiles", "irf.preparation", "irf.estimation"])
+                                   "irf.profiles", "irf.preparation", "irf.estimation", "irf.selection",
+                                   "measurement.records", "measurement.io", "measurement.adapters"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -457,6 +500,46 @@ assert normalize_irf is canonical_normalize
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+]
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(MEASUREMENT_IMPORTS))
+def test_fresh_measurement_initializer_does_not_aggregate_its_subtree(tmp_path, module):
+    # Root imports the public adapters already. Trace the importing module so
+    # those inherited dependencies are not attributed to the empty initializer.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {MEASUREMENT!r} or caller.startswith({MEASUREMENT + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('measurement import opened a database')
+sys.addaudithook(no_database)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert not seen.get({MEASUREMENT!r})
+allowed = {MEASUREMENT_IMPORTS!r}
+for caller, imports in seen.items():
+    assert imports <= allowed[caller], (caller, imports)
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.bayesian',
+    'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.uncertainty_robustness',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """

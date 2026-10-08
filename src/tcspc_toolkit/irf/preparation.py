@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind, normalize_irf
-from tcspc_toolkit.measurements import SampledIRF
+from tcspc_toolkit.measurement.records import SampledIRF
 from tcspc_toolkit.preprocessing.histograms import time_axes_compatible, validate_time_axis
 
 

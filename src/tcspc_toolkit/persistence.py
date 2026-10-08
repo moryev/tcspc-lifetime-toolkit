@@ -1465,7 +1465,7 @@ def record_irf_source(
     """Record a SampledIRF, IRFProfile or successful leading-edge result."""
     from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
     from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
-    from tcspc_toolkit.measurements import SampledIRF
+    from tcspc_toolkit.measurement.records import SampledIRF
 
     supplied_source = source
     estimate_diagnostics = None
@@ -1573,7 +1573,7 @@ def _verify_irf_source(
 ) -> None:
     from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
     from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
-    from tcspc_toolkit.measurements import SampledIRF
+    from tcspc_toolkit.measurement.records import SampledIRF
 
     diagnostics = None
     if isinstance(source, LeadingEdgeIRFResult):
@@ -1978,7 +1978,7 @@ def record_measurement(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a TCSPCMeasurement with its explicit raw or processed meaning."""
-    from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+    from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
 
     if not isinstance(measurement, TCSPCMeasurement):
         raise TypeError("measurement must be a TCSPCMeasurement")

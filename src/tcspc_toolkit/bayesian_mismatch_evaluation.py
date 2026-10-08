@@ -56,7 +56,7 @@ from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_ex
 from tcspc_toolkit.irf.profiles import generate_emg_irf_profile, generate_gaussian_irf_profile
 from tcspc_toolkit.irf_evaluation import _match_gaussian_to_emg_profile
 from tcspc_toolkit.irf.preparation import PreparedIRF, prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.simulation import sample_photon_counts
 
 

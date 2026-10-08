@@ -27,7 +27,7 @@ from tcspc_toolkit.bayesian import (
 from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf.profiles import IRFSourceKind
 from tcspc_toolkit.irf.preparation import PreparedIRF
-from tcspc_toolkit.measurements import TCSPCMeasurement
+from tcspc_toolkit.measurement.records import TCSPCMeasurement
 
 
 PHYSICAL_PARAMETER_NAMES = (

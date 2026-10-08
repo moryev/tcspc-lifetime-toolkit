@@ -46,7 +46,7 @@ from tcspc_toolkit.exceptions import (
     TCSPCError,
 )
 
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit.measurement.records import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,
@@ -67,12 +67,12 @@ from tcspc_toolkit.irf.estimation import (
     estimate_irf_from_leading_edge,
 )
 
-from tcspc_toolkit.measurement_io import (
+from tcspc_toolkit.measurement.io import (
     load_sampled_irf_csv,
     load_tcspc_measurement_csv,
 )
 
-from tcspc_toolkit.experimental import (
+from tcspc_toolkit.measurement.adapters import (
     ReferenceLifetimeEvaluation,
     evaluate_estimate_against_reference,
     fit_experimental_reconvolution,
