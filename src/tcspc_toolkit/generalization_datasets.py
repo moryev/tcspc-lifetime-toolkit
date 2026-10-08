@@ -14,7 +14,7 @@ from tcspc_toolkit.generalization import (
     GeneralizationSuiteDefinition,
     default_generalization_suite,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     simulate_irf_convolved_biexponential_histogram,
     simulate_irf_convolved_histogram,
 )

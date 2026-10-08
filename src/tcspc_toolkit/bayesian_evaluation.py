@@ -31,7 +31,7 @@ from tcspc_toolkit.classical_uncertainty import (
 from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf.preparation import PreparedIRF
 from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.simulation import sample_photon_counts
+from tcspc_toolkit.simulation.histograms import sample_photon_counts
 
 
 @dataclass(frozen=True)

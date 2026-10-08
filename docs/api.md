@@ -7,7 +7,8 @@ configuration. Issue #11 has since added a module-qualified factual evaluation
 layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
-estimation, and measurement records/I/O/adapters; other modules remain flat.
+estimation, measurement records/I/O/adapters, and generic histogram/dataset
+simulation; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -17,7 +18,7 @@ estimation, and measurement records/I/O/adapters; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), and records/I/O/experimental adapters in `measurement` (Stage 3B); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), and generic histogram/dataset generation in `simulation` (Stage 3C); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -56,6 +57,10 @@ Important supported module-qualified workflows include:
 - `estimation.api` and `estimation.baselines`: canonical generic estimator
   execution and baseline implementations. `estimator_api` and `baselines` remain
   direct-object compatibility paths through at least Issue #12.
+- `simulation.histograms` and `simulation.datasets`: deterministic expected
+  counts, Poisson sampling, and ordinary/grouped synthetic datasets. Historical
+  `simulation` and `datasets` imports remain direct-object compatibility paths;
+  the `simulation` facade does not aggregate dataset or frozen benchmark APIs.
 - `irf.profiles`, `irf.preparation`, and `irf.estimation`: source profiles,
   explicit prepared kernels, and failure-aware leading-edge proxies. Historical
   `irf`, `irf_preparation`, and `irf_estimation` imports remain supported;
@@ -126,6 +131,8 @@ Stage 2B converted histogram preprocessing into a package and relocated features
 and representations beneath it; Stage 3A similarly moved IRF profiles,
 preparation, and estimation. Stage 3B moved measurement records, I/O, and
 experimental adapters and extracted their shared fixed-IRF selection helper.
+Stage 3C converted histogram simulation into a package and relocated ordinary
+synthetic dataset generation beneath it.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -176,6 +183,8 @@ The implemented slices have these paths:
 | `tcspc_toolkit.measurement.records` | `tcspc_toolkit.measurements` |
 | `tcspc_toolkit.measurement.io` | `tcspc_toolkit.measurement_io` |
 | `tcspc_toolkit.measurement.adapters` | `tcspc_toolkit.experimental` |
+| `tcspc_toolkit.simulation.histograms` | `tcspc_toolkit.simulation` |
+| `tcspc_toolkit.simulation.datasets` | `tcspc_toolkit.datasets` |
 
 The `estimation` initializer imports nothing. The generic API has no sklearn or
 package-internal dependency. Baselines retain the existing sklearn
@@ -243,6 +252,19 @@ the attached trace. It does not prepare/resample implicitly, fit, or infer sourc
 meaning. Its dependencies are IRF/measurement foundations, not adapters or
 estimators. Selection is neither a new public/root API nor an export of
 `irf/__init__.py`. The resolver body, including historical errors, is unchanged.
+
+The `simulation` facade directly re-exports the former histogram module's seven
+functions: `sample_photon_counts`, `build_expected_counts_from_irf`,
+`simulate_irf_convolved_histogram`, `simulate_irf_convolved_biexponential_histogram`,
+`simulate_monoexponential_decay`, `simulate_biexponential_decay`, and
+`simulate_multiexponential_decay`. The old `simulation.py` no longer competes
+with the package. The initializer imports only `simulation.histograms`, not
+`simulation.datasets`; the root's existing dataset exports are a separate edge.
+Flat `datasets` directly re-exports `SyntheticDataset`, both dataset generators,
+and the existing array type aliases. Expected-count construction, Poisson
+sampling, seed/Generator handling, and random-draw ordering are unchanged.
+This is generic synthetic generation, not the frozen A–F protocol: the
+`generalization*` modules remain separate and have not moved in this stage.
 
 ### Completed evaluation work and later gates
 

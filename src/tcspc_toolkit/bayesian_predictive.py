@@ -25,7 +25,7 @@ from tcspc_toolkit.bayesian_sampling import (
 )
 from tcspc_toolkit.evaluation import calculate_poisson_deviance_residuals
 from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
-from tcspc_toolkit.simulation import sample_photon_counts
+from tcspc_toolkit.simulation.histograms import sample_photon_counts
 
 
 PHYSICAL_PARAMETER_ORDER = (

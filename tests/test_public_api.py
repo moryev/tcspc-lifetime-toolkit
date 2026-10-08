@@ -237,6 +237,31 @@ def test_measurement_facades_preserve_supported_objects_and_root_identity(old_mo
             assert getattr(canonical, name).__module__ == canonical_module
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.simulation", "histograms", (
+        "sample_photon_counts", "build_expected_counts_from_irf",
+        "simulate_irf_convolved_histogram", "simulate_irf_convolved_biexponential_histogram",
+        "simulate_monoexponential_decay", "simulate_biexponential_decay",
+        "simulate_multiexponential_decay",
+    )),
+    ("tcspc_toolkit.datasets", "datasets", (
+        "FloatArray", "IntArray", "SyntheticDataset", "generate_monoexponential_dataset",
+        "generate_grouped_monoexponential_dataset",
+    )),
+])
+def test_simulation_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.simulation.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if name in EXPECTED_ROOT_EXPORTS:
+            assert_same_export("tcspc_toolkit", canonical_module, name)
+        if name not in {"FloatArray", "IntArray"}:
+            assert getattr(canonical, name).__module__ == canonical_module
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

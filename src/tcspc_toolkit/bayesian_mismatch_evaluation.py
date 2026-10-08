@@ -57,7 +57,7 @@ from tcspc_toolkit.irf.profiles import generate_emg_irf_profile, generate_gaussi
 from tcspc_toolkit.irf_evaluation import _match_gaussian_to_emg_profile
 from tcspc_toolkit.irf.preparation import PreparedIRF, prepare_irf
 from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.simulation import sample_photon_counts
+from tcspc_toolkit.simulation.histograms import sample_photon_counts
 
 
 Mechanism = Literal["decay", "irf"]

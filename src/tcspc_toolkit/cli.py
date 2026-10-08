@@ -7,7 +7,7 @@ import numpy as np
 from tcspc_toolkit.fitting import fit_monoexponential_decay
 from tcspc_toolkit.measurement.io import load_tcspc_measurement_csv
 from tcspc_toolkit.measurement.records import MeasurementDataKind, TimeUnit
-from tcspc_toolkit.simulation import simulate_monoexponential_decay
+from tcspc_toolkit.simulation.histograms import simulate_monoexponential_decay
 
 
 def run_simulation(args: Namespace) -> None:

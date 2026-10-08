@@ -37,7 +37,7 @@ from tcspc_toolkit.preprocessing.representations import (
     normalize_histogram_batch,
     transform_pca_representation,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     simulate_irf_convolved_histogram,
 )
 

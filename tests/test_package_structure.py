@@ -43,14 +43,15 @@ ESTIMATION = f"{PACKAGE}.estimation"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
-    "measurements", "measurement_io", "experimental",
+    "measurements", "measurement_io", "experimental", "datasets",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
 PREPROCESSING = f"{PACKAGE}.preprocessing"
 IRF = f"{PACKAGE}.irf"
 MEASUREMENT = f"{PACKAGE}.measurement"
-COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF}
+SIMULATION = f"{PACKAGE}.simulation"
+COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF, SIMULATION}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
@@ -63,6 +64,16 @@ PHYSICS_IMPORTS = {
     f"{PACKAGE}.physics.forward_model": {
         "numpy", "numpy.typing", f"{PACKAGE}.physics.models",
         f"{PACKAGE}.physics.convolution", f"{PACKAGE}.irf.profiles",
+    },
+}
+SIMULATION_IMPORTS = {
+    SIMULATION: {f"{SIMULATION}.histograms"},
+    f"{SIMULATION}.histograms": {
+        "numpy", "numpy.typing", f"{PACKAGE}.physics.convolution",
+        f"{PACKAGE}.physics.models", f"{IRF}.profiles", f"{IRF}.preparation",
+    },
+    f"{SIMULATION}.datasets": {
+        "dataclasses", "numpy", "numpy.typing", "pandas", f"{PACKAGE}.physics.models",
     },
 }
 PERSISTENCE = f"{PACKAGE}.persistence"
@@ -273,6 +284,12 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in MEASUREMENT_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in SIMULATION_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
+    assert records[SIMULATION] and all(
+        kind == "eager" and base == f"{SIMULATION}.histograms"
+        for kind, base, _ in records[SIMULATION]
+    )
     assert records[IRF] and all(
         kind == "eager" and base == f"{IRF}.profiles"
         for kind, base, _ in records[IRF]
@@ -313,6 +330,17 @@ def test_irf_collision_preserves_only_the_historical_profile_surface():
     importlib.import_module(f"{IRF}.selection")
     for name in ("PreparedIRF", "prepare_irf", "LeadingEdgeIRFResult",
                  "estimate_irf_from_leading_edge", "_sampled_fwhm", "_resolve_reconvolution_irf"):
+        assert not hasattr(package, name), name
+
+
+def test_simulation_collision_preserves_only_the_historical_histogram_surface():
+    assert not (SOURCE_ROOT / "simulation.py").exists()
+    package = importlib.import_module(SIMULATION)
+    assert Path(package.__file__).resolve() == SOURCE_ROOT / "simulation" / "__init__.py"
+    assert hasattr(package, "__path__")
+    importlib.import_module(f"{SIMULATION}.datasets")
+    for name in ("SyntheticDataset", "generate_monoexponential_dataset",
+                 "generate_grouped_monoexponential_dataset", "monoexponential_decay"):
         assert not hasattr(package, name), name
 
 
@@ -383,7 +411,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "preprocessing.histograms", "preprocessing.features",
                                    "preprocessing.representations",
                                    "irf.profiles", "irf.preparation", "irf.estimation", "irf.selection",
-                                   "measurement.records", "measurement.io", "measurement.adapters"])
+                                   "measurement.records", "measurement.io", "measurement.adapters",
+                                   "simulation.histograms", "simulation.datasets"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
@@ -540,6 +569,50 @@ for caller, imports in seen.items():
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.bayesian',
     'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.uncertainty_robustness',
+]
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(SIMULATION_IMPORTS))
+def test_fresh_simulation_facade_loads_only_histograms(tmp_path, module):
+    # Root already exports SyntheticDataset. Trace the actual importing module
+    # rather than treating that inherited cost as a facade-to-datasets edge.
+    script = f"""
+import builtins
+import importlib
+import sys
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {SIMULATION!r} or caller.startswith({SIMULATION + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('simulation import opened a database')
+sys.addaudithook(no_database)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{SIMULATION!r}] == {{{SIMULATION + '.histograms'!r}}}
+allowed = {SIMULATION_IMPORTS!r}
+for caller, imports in seen.items():
+    assert imports <= allowed[caller], (caller, imports)
+from tcspc_toolkit.simulation import sample_photon_counts
+from tcspc_toolkit.simulation.histograms import sample_photon_counts as canonical_sample
+assert sample_photon_counts is canonical_sample
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.bayesian',
+    'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.ml_models',
+    'tcspc_toolkit.uncertainty_robustness',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """

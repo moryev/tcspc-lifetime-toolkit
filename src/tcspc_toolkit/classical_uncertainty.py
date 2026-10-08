@@ -18,7 +18,7 @@ from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     sample_photon_counts,
     simulate_irf_convolved_histogram,
 )

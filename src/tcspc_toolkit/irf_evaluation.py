@@ -50,7 +50,7 @@ from tcspc_toolkit.ml_models import (
 from tcspc_toolkit.ml_uncertainty import RandomForestTreeSpreadEstimator
 from tcspc_toolkit.physics.models import biexponential_decay, monoexponential_decay
 from tcspc_toolkit.preprocessing.histograms import validate_time_axis
-from tcspc_toolkit.simulation import build_expected_counts_from_irf, sample_photon_counts
+from tcspc_toolkit.simulation.histograms import build_expected_counts_from_irf, sample_photon_counts
 
 
 FloatArray = NDArray[np.float64]

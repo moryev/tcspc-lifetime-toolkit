@@ -7,12 +7,12 @@ The explicit ``__all__`` is the supported package-root surface. See
 from tcspc_toolkit.physics.models import (
     monoexponential_decay,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     build_expected_counts_from_irf,
     sample_photon_counts,
 )
 
-from tcspc_toolkit.datasets import (
+from tcspc_toolkit.simulation.datasets import (
     SyntheticDataset,
     generate_monoexponential_dataset,
 )

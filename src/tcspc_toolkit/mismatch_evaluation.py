@@ -27,7 +27,7 @@ from tcspc_toolkit.ml_models import (
     make_random_forest_pipeline,
     make_ridge_pipeline,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     simulate_irf_convolved_biexponential_histogram,
 )
 
