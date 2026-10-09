@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
 )
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
 )
 from tcspc_toolkit.ml_evaluation import (

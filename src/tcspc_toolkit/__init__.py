@@ -32,7 +32,7 @@ from tcspc_toolkit.physics.convolution import (
     convolve_decay_with_irf,
 )
 
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.fitting import (
     LifetimeFitResult,
     ReconvolutionFitResult,
     fit_monoexponential_decay,

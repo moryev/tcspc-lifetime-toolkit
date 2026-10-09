@@ -44,6 +44,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
     "measurements", "measurement_io", "experimental", "datasets",
+    "fitting", "classical_evaluation",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -64,6 +65,19 @@ PHYSICS_IMPORTS = {
     f"{PACKAGE}.physics.forward_model": {
         "numpy", "numpy.typing", f"{PACKAGE}.physics.models",
         f"{PACKAGE}.physics.convolution", f"{PACKAGE}.irf.profiles",
+    },
+}
+CLASSICAL_IMPORTS = {
+    f"{ESTIMATION}.fitting": {
+        "collections.abc", "dataclasses", "numpy", "numpy.typing", "scipy.optimize",
+        f"{PACKAGE}.physics.forward_model", f"{PACKAGE}.physics.models",
+    },
+    f"{ESTIMATION}.classical": {
+        "__future__", "dataclasses", "time", "pandas", "numpy", "numpy.typing",
+        f"{PACKAGE}.physics.convolution", f"{PACKAGE}.physics.models",
+        f"{PREPROCESSING}.histograms", f"{ESTIMATION}.fitting",
+        # Existing deviance diagnostics stay flat until their own migration.
+        f"{PACKAGE}.evaluation",
     },
 }
 SIMULATION_IMPORTS = {
@@ -111,7 +125,7 @@ MEASUREMENT_IMPORTS = {
     },
     f"{MEASUREMENT}.adapters": {
         "__future__", "copy", "dataclasses", "types", "typing", "numpy", "pandas",
-        "numpy.typing", f"{PACKAGE}.classical_evaluation", f"{PACKAGE}.config",
+        "numpy.typing", f"{ESTIMATION}.classical", f"{PACKAGE}.config",
         f"{PACKAGE}.evaluation", f"{PACKAGE}.exceptions",
         f"{PREPROCESSING}.features", f"{PREPROCESSING}.histograms",
         f"{IRF}.preparation", f"{IRF}.selection", f"{MEASUREMENT}.records",
@@ -278,6 +292,8 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     }
     for module, allowed in PHYSICS_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in CLASSICAL_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in PREPROCESSING_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in IRF_IMPORTS.items():
@@ -407,6 +423,7 @@ async def later():
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
     names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
              if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
+                                   "estimation.fitting", "estimation.classical",
                                    "physics.models", "physics.convolution", "physics.forward_model",
                                    "preprocessing.histograms", "preprocessing.features",
                                    "preprocessing.representations",
@@ -663,7 +680,7 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("module", ["api", "baselines"])
+@pytest.mark.parametrize("module", ["api", "baselines", "fitting", "classical"])
 def test_fresh_canonical_estimation_import_adds_only_its_own_dependencies(tmp_path, module):
     # A normal dotted import necessarily initializes tcspc_toolkit first. That
     # existing root imports fitting/sklearn. Trace actual import callers to
@@ -680,6 +697,10 @@ def track(name, globals=None, locals=None, fromlist=(), level=0):
     if caller == 'tcspc_toolkit.estimation' or caller.startswith('tcspc_toolkit.estimation.'):
         seen.setdefault(caller, set()).add(name)
     return original_import(name, globals, locals, fromlist, level)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('estimation import opened a database')
+sys.addaudithook(no_database)
 builtins.__import__ = track
 try:
     importlib.import_module('tcspc_toolkit.estimation.{module}')
@@ -695,10 +716,17 @@ if {module!r} == 'baselines':
     }}
 else:
     assert 'tcspc_toolkit.estimation.baselines' not in sys.modules
+for caller, allowed in {CLASSICAL_IMPORTS!r}.items():
+    assert seen.get(caller, set()) <= allowed, (caller, seen.get(caller))
 assert 'tcspc_toolkit.estimator_api' not in sys.modules
 assert 'tcspc_toolkit.baselines' not in sys.modules
+assert 'tcspc_toolkit.fitting' not in sys.modules
+assert 'tcspc_toolkit.classical_evaluation' not in sys.modules
 assert 'tcspc_toolkit.persistence' not in sys.modules
 assert 'emcee' not in sys.modules
+assert 'tcspc_toolkit.bayesian_sampling' not in sys.modules
+assert 'tcspc_toolkit.generalization_evaluation' not in sys.modules
+assert 'tcspc_toolkit.uncertainty_robustness' not in sys.modules
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
                                capture_output=True, text=True, timeout=60)

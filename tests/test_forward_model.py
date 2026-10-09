@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
-from tcspc_toolkit.fitting import _reconvolution_model
+from tcspc_toolkit.estimation.fitting import _reconvolution_model
 from tcspc_toolkit.physics.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )

@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 from tcspc_toolkit.evaluation import (
     calculate_poisson_deviance_residuals,
 )
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     fit_single_reconvolution_curve,
 )
 from tcspc_toolkit.classical_uncertainty import (

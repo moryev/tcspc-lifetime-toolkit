@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike, NDArray
 
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionCurveResult,
     fit_single_reconvolution_curve,
 )

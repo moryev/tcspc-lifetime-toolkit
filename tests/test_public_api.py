@@ -262,6 +262,34 @@ def test_simulation_facades_preserve_supported_objects_and_root_identity(old_mod
             assert getattr(canonical, name).__module__ == canonical_module
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.fitting", "fitting", (
+        "LifetimeFitResult", "ReconvolutionFitResult", "fit_monoexponential_decay",
+        "poisson_negative_log_likelihood", "fit_monoexponential_reconvolution",
+    )),
+    ("tcspc_toolkit.classical_evaluation", "classical", (
+        "ReconvolutionInitialGuess", "ReconvolutionCurveResult",
+        "ReconvolutionBenchmarkSummary", "ReconvolutionBenchmarkResult",
+        "estimate_reconvolution_initial_guess", "fit_single_reconvolution_curve",
+        "evaluate_reconvolution_benchmark",
+    )),
+])
+def test_classical_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.estimation.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        assert getattr(canonical, name).__module__ == canonical_module
+        if name in EXPECTED_ROOT_EXPORTS:
+            assert_same_export("tcspc_toolkit", canonical_module, name)
+        if name in {"ReconvolutionFitResult", "ReconvolutionCurveResult"}:
+            # Historical GLOBAL references still resolve, while newly pickled
+            # objects naturally use the canonical implementation module.
+            assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is getattr(canonical, name)
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

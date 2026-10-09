@@ -17,7 +17,7 @@ from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival,
     predict_constant_mean_baseline,
 )
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
     evaluate_reconvolution_benchmark,
 )

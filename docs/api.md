@@ -7,8 +7,8 @@ configuration. Issue #11 has since added a module-qualified factual evaluation
 layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
-estimation, measurement records/I/O/adapters, and generic histogram/dataset
-simulation; other modules remain flat.
+estimation, measurement records/I/O/adapters, generic histogram/dataset
+simulation, and core classical fitting/execution; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -18,7 +18,7 @@ simulation; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), and generic histogram/dataset generation in `simulation` (Stage 3C); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), and core classical fitting/execution in `estimation` (Stage 4A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -57,6 +57,10 @@ Important supported module-qualified workflows include:
 - `estimation.api` and `estimation.baselines`: canonical generic estimator
   execution and baseline implementations. `estimator_api` and `baselines` remain
   direct-object compatibility paths through at least Issue #12.
+- `estimation.fitting` and `estimation.classical`: classical fitting,
+  initialization, per-curve execution, batch benchmarks, and fit diagnostics.
+  Flat `fitting` and `classical_evaluation` remain direct-object compatibility
+  paths through at least Issue #12; these are not generic factual evaluation.
 - `simulation.histograms` and `simulation.datasets`: deterministic expected
   counts, Poisson sampling, and ordinary/grouped synthetic datasets. Historical
   `simulation` and `datasets` imports remain direct-object compatibility paths;
@@ -78,7 +82,7 @@ Important supported module-qualified workflows include:
   point-estimate evaluation, repeated CV and its configuration/result types,
   and transforms.
 - `generalization`, `generalization_datasets`, `generalization_evaluation`,
-  `classical_evaluation`, `conditional_evaluation`, `irf_evaluation`,
+  `conditional_evaluation`, `irf_evaluation`,
   `mismatch_evaluation`, and `timing_evaluation`: scientific protocols and
   specialized evaluation/reporting paths and report/result classes, not a
   unified generic interface. Prepared-data carriers remain workflow-specific,
@@ -133,6 +137,8 @@ preparation, and estimation. Stage 3B moved measurement records, I/O, and
 experimental adapters and extracted their shared fixed-IRF selection helper.
 Stage 3C converted histogram simulation into a package and relocated ordinary
 synthetic dataset generation beneath it.
+Stage 4A moved core classical fitting/execution into `estimation.fitting` and
+`estimation.classical`, without moving Bayesian, ML, or uncertainty modules.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -171,6 +177,8 @@ The implemented slices have these paths:
 | --- | --- |
 | `tcspc_toolkit.estimation.api` | `tcspc_toolkit.estimator_api` |
 | `tcspc_toolkit.estimation.baselines` | `tcspc_toolkit.baselines` |
+| `tcspc_toolkit.estimation.fitting` | `tcspc_toolkit.fitting` |
+| `tcspc_toolkit.estimation.classical` | `tcspc_toolkit.classical_evaluation` |
 | `tcspc_toolkit.physics.models` | `tcspc_toolkit.models` |
 | `tcspc_toolkit.physics.convolution` | `tcspc_toolkit.convolution` |
 | `tcspc_toolkit.physics.forward_model` | `tcspc_toolkit.forward_model` |
@@ -195,6 +203,19 @@ root dependencies are not new dependencies of the `estimation` initializer.
 Direct old/new/root identity, natural canonical `__module__`, historical path
 resolution, and unchanged baseline/estimator behavior are tested. Future
 moves must extend these cases and update responsibility path sets deliberately.
+
+The fitting and classical execution implementations do not broaden
+`estimation/__init__.py`; request their modules explicitly. Fitting uses the
+shared `physics.forward_model`. Classical execution retains its existing
+`evaluation.py` dependency for Poisson-deviance diagnostics; that legacy
+diagnostic module remains flat until its own migration. The generic factual
+evaluation contracts do not depend on these estimators. Optimizers, objectives,
+initialization, validity/failure policy, diagnostics, and timing are unchanged.
+Schema-v1 source identities remain
+`tcspc_toolkit.fitting.ReconvolutionFitResult` and
+`tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult`, despite executable
+imports and natural `__module__` values moving to their canonical locations.
+Historical class paths still resolve through the direct-reexport facades.
 
 The `physics` initializer also imports nothing. Its implementations retain only
 their existing NumPy/SciPy and low-level physical dependencies. The forward

@@ -2629,8 +2629,8 @@ def _classical_fit_payloads(
     assumption_id: int, analysis_key: str, irf_model_relation: str,
     execution: Mapping[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
-    from tcspc_toolkit.fitting import ReconvolutionFitResult
+    from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
+    from tcspc_toolkit.estimation.fitting import ReconvolutionFitResult
 
     if isinstance(result, ReconvolutionFitResult):
         valid = _result_flag(result.success, "success")
@@ -4988,7 +4988,7 @@ def record_reconvolution_benchmark_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record classical fit success, error, and runtime summary fields."""
-    from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkSummary
+    from tcspc_toolkit.estimation.classical import ReconvolutionBenchmarkSummary
 
     if not isinstance(summary, ReconvolutionBenchmarkSummary):
         raise TypeError("summary must be ReconvolutionBenchmarkSummary")

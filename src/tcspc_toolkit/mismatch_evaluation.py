@@ -9,7 +9,7 @@ import pandas as pd
 
 from numpy.typing import ArrayLike
 
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
     evaluate_reconvolution_benchmark,
 )

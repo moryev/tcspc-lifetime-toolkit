@@ -43,13 +43,13 @@ from tcspc_toolkit.bayesian_sampling import (
     BayesianSamplingConfig,
     BayesianSamplingStatus,
 )
-from tcspc_toolkit.classical_evaluation import fit_single_reconvolution_curve
+from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
 from tcspc_toolkit.classical_uncertainty import (
     _reconstruct_reconvolution_fit_result,
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
 )
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.fitting import (
     poisson_negative_log_likelihood,
 )
 from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts

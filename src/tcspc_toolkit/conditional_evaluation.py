@@ -11,7 +11,7 @@ from numpy.typing import ArrayLike, NDArray
 from tcspc_toolkit.evaluation import (
     calculate_lifetime_errors,
 )
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
 )
 from tcspc_toolkit.evaluation_core import build_point_evaluation

@@ -10,7 +10,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from statistics import NormalDist
 
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionCurveResult,
     fit_single_reconvolution_curve,
 )
@@ -22,7 +22,7 @@ from tcspc_toolkit.simulation.histograms import (
     sample_photon_counts,
     simulate_irf_convolved_histogram,
 )
-from tcspc_toolkit.fitting import ReconvolutionFitResult
+from tcspc_toolkit.estimation.fitting import ReconvolutionFitResult
 from tcspc_toolkit.evaluation_results import (
     EvaluationBatch, MethodDescriptor, PointEvaluationResult,
 )

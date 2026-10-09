@@ -15,7 +15,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy.optimize import brentq
 
-from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
+from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
 from tcspc_toolkit.classical_uncertainty import (
     ParametricPoissonBootstrapResult,
     PoissonLocalCovarianceResult,

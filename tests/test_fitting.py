@@ -5,9 +5,9 @@ import pytest
 from numpy.typing import NDArray
 from scipy.optimize import OptimizeResult
 
-import tcspc_toolkit.fitting as fitting
+import tcspc_toolkit.estimation.fitting as fitting
 
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.fitting import (
     LifetimeFitResult,
     ReconvolutionFitResult,
     fit_monoexponential_decay,

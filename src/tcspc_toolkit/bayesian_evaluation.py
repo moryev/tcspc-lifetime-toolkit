@@ -22,7 +22,7 @@ from tcspc_toolkit.bayesian import (
     fit_bayesian_monoexponential_reconvolution,
 )
 from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig, BayesianSamplingStatus
-from tcspc_toolkit.classical_evaluation import fit_single_reconvolution_curve
+from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
 from tcspc_toolkit.classical_uncertainty import (
     _reconstruct_reconvolution_fit_result,
     estimate_parametric_poisson_bootstrap,
