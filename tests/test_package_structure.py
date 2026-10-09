@@ -41,11 +41,13 @@ EXTENSION = {f"{PACKAGE}.estimation.api"}
 BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
 BAYESIAN = f"{ESTIMATION}.bayesian"
+ML = f"{PACKAGE}.ml"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
     "measurements", "measurement_io", "experimental", "datasets",
     "fitting", "classical_evaluation", "bayesian", "bayesian_sampling", "bayesian_predictive",
+    "ml_models", "ml_evaluation", "cross_validation",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -101,6 +103,26 @@ BAYESIAN_IMPORTS = {
         f"{PACKAGE}.physics.forward_model", f"{SIMULATION}.histograms",
         # Existing residual/deviance diagnostics stay flat until their own move.
         f"{PACKAGE}.evaluation",
+    },
+}
+ML_IMPORTS = {
+    ML: set(),
+    f"{ML}.models": {
+        "__future__", "numpy", "sklearn.decomposition", "sklearn.ensemble",
+        "sklearn.linear_model", "sklearn.pipeline", "sklearn.preprocessing",
+        f"{PACKAGE}.config", f"{ESTIMATION}.api", f"{PREPROCESSING}.representations",
+    },
+    f"{ML}.evaluation": {
+        "dataclasses", "itertools", "numpy", "pandas", "numpy.typing", "typing",
+        "sklearn.metrics", "sklearn.decomposition", "sklearn.model_selection",
+        BASELINES, f"{PACKAGE}.config", f"{PREPROCESSING}.features",
+        f"{PREPROCESSING}.representations", f"{SIMULATION}.histograms", f"{ML}.models",
+        # Issue-#11 factual infrastructure stays flat until its own migration.
+        f"{PACKAGE}.evaluation_core", f"{PACKAGE}.evaluation_results",
+    },
+    f"{ML}.cross_validation": {
+        "__future__", "collections.abc", "dataclasses", "typing", "numpy", "pandas",
+        "numpy.typing", "sklearn.base", "sklearn.model_selection", f"{ML}.evaluation",
     },
 }
 SIMULATION_IMPORTS = {
@@ -308,6 +330,7 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     records, _ = package_imports
     assert records[ESTIMATION] == []  # No eager, deferred, or typing imports.
     assert records[BAYESIAN] == []
+    assert records[ML] == []
     assert records[f"{PACKAGE}.physics"] == []
     assert records[MEASUREMENT] == []
     # Preserve the existing DummyRegressor dependency, not a new algorithm.
@@ -319,6 +342,8 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     for module, allowed in CLASSICAL_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in BAYESIAN_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in ML_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in PREPROCESSING_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
@@ -459,6 +484,66 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize("module", sorted(ML_IMPORTS))
+def test_fresh_ml_import_preserves_minimal_initializer_and_dependency_direction(tmp_path, module):
+    # Keep real root initialization (which already imports sklearn/PCA) and
+    # attribute dependencies to their actual caller, not to the ML initializer.
+    script = f"""
+import builtins
+import importlib
+import importlib.abc
+import sys
+attempts = []
+class NoSampler(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'emcee' or fullname.startswith('emcee.'):
+            attempts.append(fullname)
+            raise ModuleNotFoundError('optional sampler unavailable', name=fullname)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('ML import opened a database')
+sys.meta_path.insert(0, NoSampler())
+sys.addaudithook(no_database)
+import tcspc_toolkit
+import tcspc_toolkit.estimation.api
+assert not any(n == {ML!r} or n.startswith({ML + '.'!r}) for n in sys.modules)
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {ML!r} or caller.startswith({ML + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert not seen.get({ML!r})
+for caller, imports in seen.items():
+    assert imports <= {ML_IMPORTS!r}[caller], (caller, imports)
+expected = {{
+    {ML!r}: set(),
+    {ML + '.models'!r}: {{'models'}},
+    {ML + '.evaluation'!r}: {{'models', 'evaluation'}},
+    {ML + '.cross_validation'!r}: {{'models', 'evaluation', 'cross_validation'}},
+}}[{module!r}]
+loaded = {{n.rsplit('.', 1)[-1] for n in sys.modules if n.startswith({ML + '.'!r})}}
+assert loaded == expected, loaded
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    {BAYESIAN!r}, 'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
+    'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.ml_uncertainty',
+    'tcspc_toolkit.uncertainty_robustness',
+]
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_no_eager_internal_cycles(package_imports):
     records, packages = package_imports
     # The posterior -> sampling import is deliberately deferred; the reverse
@@ -517,6 +602,7 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "estimation.fitting", "estimation.classical",
                                    "estimation.bayesian.posterior", "estimation.bayesian.sampling",
                                    "estimation.bayesian.predictive",
+                                   "ml.models", "ml.evaluation", "ml.cross_validation",
                                    "physics.models", "physics.convolution", "physics.forward_model",
                                    "preprocessing.histograms", "preprocessing.features",
                                    "preprocessing.representations",
@@ -527,7 +613,7 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
         names.reverse()
     blocked = ["emcee"]
     if generic_only:
-        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling", BAYESIAN,
+        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling", BAYESIAN, ML,
                     f"{PACKAGE}.generalization_evaluation", f"{PACKAGE}.ml_models"]
     script = f"""
 import importlib
@@ -820,6 +906,7 @@ assert 'emcee' not in sys.modules
 assert 'tcspc_toolkit.bayesian_sampling' not in sys.modules
 assert not any(n == {BAYESIAN!r} or n.startswith({BAYESIAN + '.'!r}) for n in sys.modules)
 assert 'tcspc_toolkit.generalization_evaluation' not in sys.modules
+assert not any(n == {ML!r} or n.startswith({ML + '.'!r}) for n in sys.modules)
 assert 'tcspc_toolkit.uncertainty_robustness' not in sys.modules
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,

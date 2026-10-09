@@ -8,8 +8,8 @@ layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
-simulation, core classical fitting/execution, and Bayesian inference; other
-modules remain flat.
+simulation, core classical fitting/execution, Bayesian inference, and ML
+models/evaluation/cross-validation; other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -17,9 +17,9 @@ modules remain flat.
 | Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
 | Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
-| Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
+| Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), and Bayesian inference in `estimation.bayesian` (Stage 4B); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), and ML models/evaluation/cross-validation in `ml` (Stage 4C); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -78,10 +78,11 @@ Important supported module-qualified workflows include:
   `preprocessing.representations`: histogram/time-grid operations, engineered
   features, normalization, PCA, and count augmentation. The historical
   `preprocessing`, `features`, and `representations` paths remain supported.
-- `ml_models`, `ml_evaluation`, `cross_validation`, and `preprocessing.representations`:
+- `ml.models`, `ml.evaluation`, `ml.cross_validation`, and `preprocessing.representations`:
   estimator factories (including `make_canonical_ml_estimator_specs()`),
   point-estimate evaluation, repeated CV and its configuration/result types,
-  and transforms.
+  and transforms. Flat `ml_models`, `ml_evaluation`, and `cross_validation`
+  remain direct-object compatibility paths through at least Issue #12.
 - `generalization`, `generalization_datasets`, `generalization_evaluation`,
   `conditional_evaluation`, `irf_evaluation`,
   `mismatch_evaluation`, and `timing_evaluation`: scientific protocols and
@@ -148,6 +149,14 @@ uncertainty modules. Both estimation initializers remain minimal. The posterior
 sampling entry point still imports sampling only when called; importing the
 posterior, sampling, or predictive module does not require `emcee`. Executing
 MCMC retains the existing optional-extra requirement.
+
+Stage 4C moved ML factories, benchmark evaluation, and repeated CV into
+`ml.models`, `ml.evaluation`, and `ml.cross_validation`. The `ml` initializer
+does not aggregate these modules. Concrete sklearn factories remain separate
+from generic `estimation.api`; the factual `evaluation_core` and
+`evaluation_results` dependencies remain flat for their later migration.
+Frozen generalization and uncertainty orchestration remain in their existing
+modules.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
@@ -448,7 +457,7 @@ Canonical benchmark configuration is deliberately module-qualified, not a
 root convenience export. User-defined specifications can use the generic
 execution API directly without importing canonical experiment definitions.
 
-`tcspc_toolkit.ml_models.make_canonical_ml_estimator_specs()` returns an ordered
+`tcspc_toolkit.ml.models.make_canonical_ml_estimator_specs()` returns an ordered
 tuple with these definitions, all selecting
 `("engineered_features", "normalized_histogram", "pca_histogram")`:
 

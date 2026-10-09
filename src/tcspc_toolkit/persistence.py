@@ -2055,7 +2055,7 @@ def record_benchmark_observation(
 ) -> int:
     """Select one documented raw observation from a benchmark measurement carrier."""
     from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-    from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements
+    from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements
 
     if not isinstance(measurements, (BenchmarkMeasurements, GeneralizationTestMeasurements)):
         raise TypeError("expected BenchmarkMeasurements or GeneralizationTestMeasurements")
@@ -3775,7 +3775,7 @@ def record_regression_predictions(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record ordered RegressionBenchmarkResult predictions, never its metrics."""
-    from tcspc_toolkit.ml_evaluation import RegressionBenchmarkResult
+    from tcspc_toolkit.ml.evaluation import RegressionBenchmarkResult
 
     if not isinstance(result, RegressionBenchmarkResult):
         raise TypeError("result must be a RegressionBenchmarkResult")
@@ -4942,7 +4942,7 @@ def record_regression_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record an existing ML regression summary over an explicit test population."""
-    from tcspc_toolkit.ml_evaluation import RegressionMetrics
+    from tcspc_toolkit.ml.evaluation import RegressionMetrics
 
     if not isinstance(metrics, RegressionMetrics):
         raise TypeError("metrics must be RegressionMetrics")

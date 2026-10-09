@@ -42,8 +42,8 @@ from tcspc_toolkit.irf.estimation import (
 )
 from tcspc_toolkit.irf.preparation import PreparedIRF, _sampled_fwhm, prepare_irf
 from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements, evaluate_regression
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements, evaluate_regression
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_ridge_pipeline,
 )

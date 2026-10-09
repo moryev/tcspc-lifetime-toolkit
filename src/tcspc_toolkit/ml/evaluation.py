@@ -1,0 +1,1438 @@
+"""ML benchmarking for TCSPC lifetime estimation."""
+
+from dataclasses import dataclass
+from itertools import product
+
+import numpy as np
+import pandas as pd
+from numpy.typing import ArrayLike, NDArray
+from typing import Any
+from sklearn.metrics import (
+    mean_absolute_error,
+    median_absolute_error,
+    r2_score,
+)
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+
+from tcspc_toolkit.estimation.baselines import (
+    estimate_lifetime_from_mean_arrival,
+    predict_constant_mean_baseline,
+)
+from tcspc_toolkit.config import (
+    FeatureConfig,
+    CountNormalization,
+)
+from tcspc_toolkit.preprocessing.features import extract_feature_table
+from tcspc_toolkit.evaluation_core import build_point_evaluation, calculate_reference_errors
+from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.ml.models import (
+    make_hist_gradient_boosting_pipeline,
+    make_random_forest_pipeline,
+    make_ridge_pipeline,
+)
+from tcspc_toolkit.preprocessing.representations import (
+    augment_with_total_counts,
+    fit_pca_representation,
+    normalize_histogram_batch,
+    transform_pca_representation,
+)
+from tcspc_toolkit.simulation.histograms import (
+    simulate_irf_convolved_histogram,
+)
+
+
+FloatArray = NDArray[np.float64]
+IntArray = NDArray[np.int64]
+
+
+@dataclass(frozen=True)
+class BenchmarkMeasurements:
+    """Synthetic measurements used to construct benchmark inputs.
+
+    Attributes
+    ----------
+    time:
+        Shared TCSPC time axis.
+    X_histograms:
+        Raw Poisson-sampled histograms with shape
+        ``(n_samples, n_time_bins)``.
+    y:
+        True fluorescence lifetime for every sample.
+    metadata:
+        Simulation nuisance variables and count diagnostics used
+        for evaluation only.
+    """
+
+    time: FloatArray
+    X_histograms: IntArray
+    y: FloatArray
+    metadata: pd.DataFrame
+
+
+@dataclass(frozen=True)
+class BenchmarkDataset:
+    """Common dataset used for lifetime-estimation benchmarking.
+
+    Attributes
+    ----------
+    X_features:
+        Engineered histogram features with shape
+        ``(n_samples, n_features)``.
+    X_histograms:
+        Raw or explicitly preprocessed TCSPC histograms with shape
+        ``(n_samples, n_time_bins)``.
+    y:
+        True fluorescence lifetime for each sample with shape
+        ``(n_samples,)``.
+    metadata:
+        Simulation metadata used only for evaluation and
+        stratification. One row corresponds to one sample.
+    """
+
+    X_features: pd.DataFrame
+    X_histograms: IntArray
+    y: FloatArray
+    metadata: pd.DataFrame
+
+
+@dataclass(frozen=True)
+class BenchmarkSplit:
+    """Train/test split shared across all benchmark representations."""
+
+    train_indices: IntArray
+    test_indices: IntArray
+
+    X_features_train: pd.DataFrame
+    X_features_test: pd.DataFrame
+
+    X_histograms_train: IntArray
+    X_histograms_test: IntArray
+
+    y_train: FloatArray
+    y_test: FloatArray
+
+    metadata_train: pd.DataFrame
+    metadata_test: pd.DataFrame
+
+
+@dataclass(frozen=True)
+class RegressionMetrics:
+    """Summary metrics for lifetime regression."""
+
+    mae_ns: float
+    median_absolute_error_ns: float
+    rmse_ns: float
+    mean_relative_error: float
+    median_relative_error: float
+    r2: float
+
+
+@dataclass(frozen=True)
+class RegressionBenchmarkResult:
+    """Predictions and metrics for one lifetime estimator.
+
+    Attributes
+    ----------
+    estimator_name:
+        Stable identifier for the evaluated estimator.
+    y_pred:
+        Lifetime predictions for the benchmark test samples.
+    relative_errors:
+        Absolute relative error for every benchmark test sample.
+    metrics:
+        Aggregate regression metrics evaluated against the true
+        test lifetimes.
+    """
+
+    estimator_name: str
+    y_pred: FloatArray
+    relative_errors: FloatArray
+    metrics: RegressionMetrics
+
+
+@dataclass(frozen=True)
+class HistogramRepresentations:
+    """Derived train/test histogram representations for ML benchmarking.
+
+    Attributes
+    ----------
+    X_normalized_train:
+        TOTAL-normalized training histograms with one histogram per row.
+    X_normalized_test:
+        TOTAL-normalized test histograms with one histogram per row.
+    X_pca_train:
+        PCA-compressed training histograms.
+    X_pca_test:
+        PCA-compressed test histograms transformed using the PCA model
+        fitted only on the training data.
+    pca:
+        PCA transformer fitted exclusively on the normalized training
+        histograms.
+    """
+
+    X_normalized_train: FloatArray
+    X_normalized_test: FloatArray
+
+    X_pca_train: FloatArray
+    X_pca_test: FloatArray
+
+    pca: PCA
+
+
+def generate_benchmark_measurements(
+    *,
+    time: ArrayLike,
+    lifetimes_ns: ArrayLike,
+    signal_photon_counts: ArrayLike,
+    background_levels: ArrayLike,
+    irf_centre_ns: float,
+    irf_fwhm_values_ns: ArrayLike,
+    irf_shift_values_ns: ArrayLike,
+    random_seed: int | None = 42,
+) -> BenchmarkMeasurements:
+    """Generate a structured IRF-convolved TCSPC benchmark.
+
+    The benchmark contains every combination of lifetime, signal
+    photon count, background level, IRF width, and IRF temporal shift.
+
+    Parameters
+    ----------
+    time:
+        Shared TCSPC time axis.
+    lifetimes_ns:
+        True fluorescence lifetimes included in the benchmark.
+    signal_photon_counts:
+        Target expected signal-photon counts.
+    background_levels:
+        Expected background counts per histogram bin.
+    irf_centre_ns:
+        Centre of the unshifted Gaussian IRF.
+    irf_fwhm_values_ns:
+        IRF full-width-at-half-maximum values.
+    irf_shift_values_ns:
+        Temporal IRF shifts.
+    random_seed:
+        Seed controlling Poisson sampling.
+
+    Returns
+    -------
+    BenchmarkMeasurements
+        Aligned raw histograms, lifetime targets, and simulation
+        metadata.
+    """
+    time_array = np.asarray(
+        time,
+        dtype=np.float64,
+    )
+
+    lifetimes_array = np.asarray(
+        lifetimes_ns,
+        dtype=np.float64,
+    )
+
+    photon_counts_array = np.asarray(
+        signal_photon_counts,
+    )
+
+    background_array = np.asarray(
+        background_levels,
+        dtype=np.float64,
+    )
+
+    irf_fwhm_array = np.asarray(
+        irf_fwhm_values_ns,
+        dtype=np.float64,
+    )
+
+    irf_shift_array = np.asarray(
+        irf_shift_values_ns,
+        dtype=np.float64,
+    )
+
+    parameter_arrays = {
+        "lifetimes_ns": lifetimes_array,
+        "signal_photon_counts": photon_counts_array,
+        "background_levels": background_array,
+        "irf_fwhm_values_ns": irf_fwhm_array,
+        "irf_shift_values_ns": irf_shift_array,
+    }
+
+    for name, values in parameter_arrays.items():
+        if values.ndim != 1:
+            raise ValueError(
+                f"{name} must be one-dimensional."
+            )
+
+        if values.size == 0:
+            raise ValueError(
+                f"{name} must contain at least one value."
+            )
+
+    if time_array.ndim != 1:
+        raise ValueError(
+            "time must be one-dimensional."
+        )
+
+    if time_array.size < 2:
+        raise ValueError(
+            "time must contain at least two values."
+        )
+
+    if not np.issubdtype(
+        photon_counts_array.dtype,
+        np.integer,
+    ):
+        raise ValueError(
+            "signal_photon_counts must contain integers."
+        )
+
+    photon_counts_array = photon_counts_array.astype(
+        np.int64,
+        copy=False,
+    )
+
+    n_samples = (
+        lifetimes_array.size
+        * photon_counts_array.size
+        * background_array.size
+        * irf_fwhm_array.size
+        * irf_shift_array.size
+    )
+
+    X_histograms = np.empty(
+        (
+            n_samples,
+            time_array.size,
+        ),
+        dtype=np.int64,
+    )
+
+    y = np.empty(
+        n_samples,
+        dtype=np.float64,
+    )
+
+    metadata_rows: list[
+        dict[str, float | int]
+    ] = []
+
+    rng = np.random.default_rng(
+        random_seed
+    )
+
+    parameter_grid = product(
+        lifetimes_array,
+        photon_counts_array,
+        background_array,
+        irf_fwhm_array,
+        irf_shift_array,
+    )
+
+    for sample_id, parameters in enumerate(
+        parameter_grid
+    ):
+        (
+            lifetime_ns,
+            signal_photon_count,
+            background_per_bin,
+            irf_fwhm_ns,
+            irf_shift_ns,
+        ) = parameters
+
+        measured_counts, simulation_metadata = (
+            simulate_irf_convolved_histogram(
+                time=time_array,
+                lifetime_ns=float(
+                    lifetime_ns
+                ),
+                signal_photon_count=int(
+                    signal_photon_count
+                ),
+                background_per_bin=float(
+                    background_per_bin
+                ),
+                irf_centre_ns=irf_centre_ns,
+                irf_fwhm_ns=float(
+                    irf_fwhm_ns
+                ),
+                irf_shift_ns=float(
+                    irf_shift_ns
+                ),
+                rng=rng,
+            )
+        )
+
+        X_histograms[
+            sample_id
+        ] = measured_counts
+
+        y[
+            sample_id
+        ] = float(
+            lifetime_ns
+        )
+
+        metadata_rows.append(
+            {
+                "sample_id": sample_id,
+                "signal_photon_count_target": int(
+                    signal_photon_count
+                ),
+                "background_per_bin": float(
+                    background_per_bin
+                ),
+                "irf_fwhm_ns": float(
+                    irf_fwhm_ns
+                ),
+                "irf_shift_ns": float(
+                    irf_shift_ns
+                ),
+                "expected_signal_counts": simulation_metadata[
+                    "expected_signal_counts"
+                ],
+                "expected_background_counts": simulation_metadata[
+                    "expected_background_counts"
+                ],
+                "expected_total_counts": simulation_metadata[
+                    "expected_total_counts"
+                ],
+                "measured_total_counts": simulation_metadata[
+                    "measured_total_counts"
+                ],
+            }
+        )
+
+    metadata = pd.DataFrame(
+        metadata_rows
+    )
+
+    return BenchmarkMeasurements(
+        time=time_array,
+        X_histograms=X_histograms,
+        y=y,
+        metadata=metadata,
+    )
+
+
+def build_benchmark_dataset(
+    measurements: BenchmarkMeasurements,
+    *,
+    feature_config: FeatureConfig,
+) -> BenchmarkDataset:
+    """Build aligned ML benchmark representations from measurements.
+
+    Parameters
+    ----------
+    measurements:
+        Simulated TCSPC measurements containing raw histograms,
+        lifetime targets, metadata, and the shared time axis.
+    feature_config:
+        Configuration used to extract physically engineered
+        histogram features.
+
+    Returns
+    -------
+    BenchmarkDataset
+        Aligned engineered features, raw histograms, lifetime
+        targets, and evaluation metadata.
+
+    Notes
+    -----
+    Engineered features are extracted directly from the same raw
+    histograms stored in ``X_histograms``. Simulation metadata is
+    kept separate and is not passed into feature extraction.
+    """
+    if measurements.time.ndim != 1:
+        raise ValueError(
+            "measurements.time must be one-dimensional."
+        )
+
+    if measurements.X_histograms.ndim != 2:
+        raise ValueError(
+            "measurements.X_histograms must be two-dimensional."
+        )
+
+    n_samples, n_time_bins = (
+        measurements.X_histograms.shape
+    )
+
+    if n_time_bins != measurements.time.size:
+        raise ValueError(
+            "Histogram bin count must match the time axis."
+        )
+
+    if measurements.y.shape != (n_samples,):
+        raise ValueError(
+            "y must contain exactly one target per histogram."
+        )
+
+    if measurements.metadata.shape[0] != n_samples:
+        raise ValueError(
+            "metadata must contain exactly one row per histogram."
+        )
+
+    X_features = extract_feature_table(
+        histograms=measurements.X_histograms,
+        time=measurements.time,
+        config=feature_config,
+    )
+
+    if X_features.shape[0] != n_samples:
+        raise RuntimeError(
+            "Feature extraction did not preserve sample count."
+        )
+
+    return BenchmarkDataset(
+        X_features=X_features,
+        X_histograms=measurements.X_histograms.copy(),
+        y=measurements.y.copy(),
+        metadata=measurements.metadata.copy(
+            deep=True
+        ),
+    )
+
+
+def split_benchmark_dataset(
+    dataset: BenchmarkDataset,
+    *,
+    test_size: float = 0.2,
+    random_state: int = 42,
+) -> BenchmarkSplit:
+    """Split all benchmark representations using common sample indices.
+
+    Parameters
+    ----------
+    dataset:
+        Benchmark dataset containing aligned representations,
+        targets, and metadata.
+    test_size:
+        Fraction of samples assigned to the test set.
+    random_state:
+        Seed controlling the reproducible train/test split.
+
+    Returns
+    -------
+    BenchmarkSplit
+        Train/test subsets with identical sample membership across
+        histogram representations, engineered features, targets,
+        and metadata.
+    """
+    n_samples = dataset.y.shape[0]
+
+    if dataset.X_features.shape[0] != n_samples:
+        raise ValueError(
+            "X_features and y must contain the same number of samples."
+        )
+
+    if dataset.X_histograms.shape[0] != n_samples:
+        raise ValueError(
+            "X_histograms and y must contain the same number of samples."
+        )
+
+    if dataset.metadata.shape[0] != n_samples:
+        raise ValueError(
+            "metadata and y must contain the same number of samples."
+        )
+
+    sample_indices = np.arange(
+        n_samples,
+        dtype=np.int64,
+    )
+
+    train_indices, test_indices = train_test_split(
+        sample_indices,
+        test_size=test_size,
+        random_state=random_state,
+    )
+
+    return BenchmarkSplit(
+        train_indices=train_indices,
+        test_indices=test_indices,
+        X_features_train=dataset.X_features.iloc[
+            train_indices
+        ].reset_index(drop=True),
+        X_features_test=dataset.X_features.iloc[
+            test_indices
+        ].reset_index(drop=True),
+        X_histograms_train=dataset.X_histograms[
+            train_indices
+        ],
+        X_histograms_test=dataset.X_histograms[
+            test_indices
+        ],
+        y_train=dataset.y[
+            train_indices
+        ],
+        y_test=dataset.y[
+            test_indices
+        ],
+        metadata_train=dataset.metadata.iloc[
+            train_indices
+        ].reset_index(drop=True),
+        metadata_test=dataset.metadata.iloc[
+            test_indices
+        ].reset_index(drop=True),
+    )
+
+
+def build_histogram_representations(
+    split: BenchmarkSplit,
+    *,
+    n_pca_components: int = 10,
+) -> HistogramRepresentations:
+    """Build normalized and PCA-compressed histogram representations.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing raw TCSPC
+        histograms.
+    n_pca_components:
+        Number of principal components retained from the normalized
+        training histograms.
+
+    Returns
+    -------
+    HistogramRepresentations
+        TOTAL-normalized train/test histograms, PCA-compressed
+        train/test representations, and the fitted PCA transformer.
+
+    Notes
+    -----
+    PCA is fitted exclusively on the normalized training histograms.
+    The test histograms are transformed using the already fitted PCA
+    model and therefore do not contribute to PCA fitting.
+    """
+    X_normalized_train = normalize_histogram_batch(
+        histograms=split.X_histograms_train,
+        mode=CountNormalization.TOTAL,
+    )
+
+    X_normalized_test = normalize_histogram_batch(
+        histograms=split.X_histograms_test,
+        mode=CountNormalization.TOTAL,
+    )
+
+    pca = fit_pca_representation(
+        X_train=X_normalized_train,
+        n_components=n_pca_components,
+    )
+
+    X_pca_train = transform_pca_representation(
+        pca=pca,
+        X=X_normalized_train,
+    )
+
+    X_pca_test = transform_pca_representation(
+        pca=pca,
+        X=X_normalized_test,
+    )
+
+    return HistogramRepresentations(
+        X_normalized_train=X_normalized_train,
+        X_normalized_test=X_normalized_test,
+        X_pca_train=X_pca_train,
+        X_pca_test=X_pca_test,
+        pca=pca,
+    )
+
+
+def _split_parameter_values(
+    split: BenchmarkSplit,
+) -> dict[
+    str,
+    tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ],
+]:
+    """Return train/test values for benchmark target and nuisance variables."""
+    return {
+        "lifetime_ns": (
+            np.asarray(
+                split.y_train,
+                dtype=np.float64,
+            ),
+            np.asarray(
+                split.y_test,
+                dtype=np.float64,
+            ),
+        ),
+        "signal_photon_count_target": (
+            split.metadata_train[
+                "signal_photon_count_target"
+            ].to_numpy(dtype=np.float64),
+            split.metadata_test[
+                "signal_photon_count_target"
+            ].to_numpy(dtype=np.float64),
+        ),
+        "background_per_bin": (
+            split.metadata_train[
+                "background_per_bin"
+            ].to_numpy(dtype=np.float64),
+            split.metadata_test[
+                "background_per_bin"
+            ].to_numpy(dtype=np.float64),
+        ),
+        "irf_fwhm_ns": (
+            split.metadata_train[
+                "irf_fwhm_ns"
+            ].to_numpy(dtype=np.float64),
+            split.metadata_test[
+                "irf_fwhm_ns"
+            ].to_numpy(dtype=np.float64),
+        ),
+        "irf_shift_ns": (
+            split.metadata_train[
+                "irf_shift_ns"
+            ].to_numpy(dtype=np.float64),
+            split.metadata_test[
+                "irf_shift_ns"
+            ].to_numpy(dtype=np.float64),
+        ),
+    }
+
+
+def summarize_split_coverage(
+    split: BenchmarkSplit,
+) -> pd.DataFrame:
+    """Summarize train/test coverage of benchmark parameter space.
+
+    Parameters
+    ----------
+    split:
+        Benchmark train/test split.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per target or nuisance variable containing train/test
+        ranges, means, numbers of unique values, and whether both
+        subsets contain exactly the same parameter levels.
+
+    Notes
+    -----
+    Matching minimum and maximum values alone do not guarantee that
+    train and test cover the same parameter support. Therefore,
+    ``same_support`` compares the complete set of unique values.
+    """
+    summary_rows: list[
+        dict[str, float | int | bool | str]
+    ] = []
+
+    parameter_values = _split_parameter_values(
+        split
+    )
+
+    for parameter_name, (
+        train_values,
+        test_values,
+    ) in parameter_values.items():
+        train_unique = np.unique(
+            train_values
+        )
+
+        test_unique = np.unique(
+            test_values
+        )
+
+        same_support = np.array_equal(
+            train_unique,
+            test_unique,
+        )
+
+        summary_rows.append(
+            {
+                "parameter": parameter_name,
+                "train_min": float(
+                    np.min(train_values)
+                ),
+                "train_max": float(
+                    np.max(train_values)
+                ),
+                "test_min": float(
+                    np.min(test_values)
+                ),
+                "test_max": float(
+                    np.max(test_values)
+                ),
+                "train_mean": float(
+                    np.mean(train_values)
+                ),
+                "test_mean": float(
+                    np.mean(test_values)
+                ),
+                "train_n_unique": int(
+                    train_unique.size
+                ),
+                "test_n_unique": int(
+                    test_unique.size
+                ),
+                "same_support": bool(
+                    same_support
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        summary_rows
+    )
+
+
+def summarize_split_level_balance(
+    split: BenchmarkSplit,
+) -> pd.DataFrame:
+    """Summarize train/test sample balance at each parameter level.
+
+    Parameters
+    ----------
+    split:
+        Benchmark train/test split.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long-format table containing one row per parameter level,
+        with train/test counts and fractions.
+    """
+    balance_rows: list[
+        dict[str, float | int | str]
+    ] = []
+
+    parameter_values = _split_parameter_values(
+        split
+    )
+
+    for parameter_name, (
+        train_values,
+        test_values,
+    ) in parameter_values.items():
+        levels = np.union1d(
+            train_values,
+            test_values,
+        )
+
+        for level in levels:
+            train_count = int(
+                np.count_nonzero(
+                    np.isclose(
+                        train_values,
+                        level,
+                    )
+                )
+            )
+
+            test_count = int(
+                np.count_nonzero(
+                    np.isclose(
+                        test_values,
+                        level,
+                    )
+                )
+            )
+
+            balance_rows.append(
+                {
+                    "parameter": parameter_name,
+                    "value": float(level),
+                    "train_count": train_count,
+                    "test_count": test_count,
+                    "train_fraction": (
+                        train_count
+                        / train_values.size
+                    ),
+                    "test_fraction": (
+                        test_count
+                        / test_values.size
+                    ),
+                }
+            )
+
+    return pd.DataFrame(
+        balance_rows
+    )
+
+
+def evaluate_regression(
+    y_true: NDArray[np.float64],
+    y_pred: NDArray[np.float64],
+) -> RegressionMetrics:
+    """Evaluate predicted lifetimes."""
+    if y_true.shape != y_pred.shape:
+        raise ValueError(
+            "y_true and y_pred must have identical shapes."
+        )
+
+    if np.any(y_true <= 0):
+        raise ValueError(
+            "True lifetimes must be strictly positive."
+        )
+
+    relative_errors = (
+        np.abs(y_pred - y_true) / y_true
+    )
+
+    rmse_ns = np.sqrt(
+        np.mean(
+            (y_pred - y_true) ** 2
+        )
+    )
+
+    return RegressionMetrics(
+        mae_ns=float(
+            mean_absolute_error(y_true, y_pred)
+        ),
+        median_absolute_error_ns=float(
+            median_absolute_error(y_true, y_pred)
+        ),
+        rmse_ns=float(
+            rmse_ns
+        ),
+        mean_relative_error=float(
+            np.mean(relative_errors)
+        ),
+        median_relative_error=float(
+            np.median(relative_errors)
+        ),
+        r2=float(
+            r2_score(y_true, y_pred)
+        ),
+    )
+
+
+def _build_regression_benchmark_result(
+    *,
+    estimator_name: str,
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
+) -> RegressionBenchmarkResult:
+    """Validate predictions and construct one benchmark result."""
+    y_true_array = np.asarray(
+        y_true,
+        dtype=np.float64,
+    )
+
+    y_pred_array = np.asarray(
+        y_pred,
+        dtype=np.float64,
+    )
+
+    if y_pred_array.shape != y_true_array.shape:
+        raise RuntimeError(
+            "Benchmark estimator must produce exactly "
+            "one prediction per test sample."
+        )
+
+    if not np.all(
+        np.isfinite(y_pred_array)
+    ):
+        raise RuntimeError(
+            "Benchmark predictions must be finite."
+        )
+
+    return _assemble_regression_benchmark_result(
+        estimator_name=estimator_name, y_true=y_true_array, y_pred=y_pred_array,
+    )
+
+
+def _assemble_regression_benchmark_result(
+    *, estimator_name: str, y_true: FloatArray, y_pred: FloatArray,
+    method: MethodDescriptor | None = None, batch: EvaluationBatch | None = None,
+) -> RegressionBenchmarkResult:
+    """Shared projection after module-specific prediction checks.
+
+    Keep the existing regression metric/target-validation contract, including
+    sklearn R² and historical column-vector/multioutput compatibility. Bare
+    arrays cannot establish method family or reference kind: that path uses only
+    the shared numerical error kernel, not fabricated point/reference metadata.
+
+    Explicit one-reference batches instead supply canonical facts. They must
+    fully match the targets in positional order. All predictions here have
+    already passed the caller's finite check; zero/negative values stay valid.
+    No estimator is fitted and no metric/degradation policy is selected here.
+    """
+    metrics = evaluate_regression(y_true=y_true, y_pred=y_pred)
+    if (method is None) != (batch is None):
+        raise ValueError("method and batch must be supplied together.")
+    if method is not None and batch is not None:
+        if len(batch.references) != 1:
+            raise ValueError("Regression projection requires exactly one lifetime reference.")
+        reference = next(iter(batch.references.values()))
+        if not reference.available.all() or not np.array_equal(reference.values_ns, y_true):
+            raise ValueError("Regression reference must be fully available and match y_true exactly.")
+        facts = build_point_evaluation(
+            batch=batch, method=method, lifetime_estimates_ns=y_pred,
+            is_valid=np.ones(y_pred.shape, dtype=bool),
+        )
+        estimator_name = method.method_id
+        # Legacy result arrays are writable; do not expose pandas read-only views.
+        y_pred = facts.points.lifetime_estimate_ns.to_numpy(copy=True)
+        relative_errors = facts.reference_comparisons.relative_error.to_numpy(copy=True)
+    else:
+        # Flatten only for the vector kernel; retain the legacy result's shape.
+        _, _, relative_errors = calculate_reference_errors(
+            y_pred.ravel(), y_true.ravel(), reference_available=np.ones(y_true.size, dtype=bool),
+        )
+        relative_errors = relative_errors.reshape(y_true.shape)
+
+    return RegressionBenchmarkResult(
+        estimator_name=estimator_name,
+        y_pred=y_pred,
+        relative_errors=relative_errors,
+        metrics=metrics,
+    )
+
+
+def evaluate_regressor(
+    *,
+    estimator_name: str,
+    estimator: Any,
+    X_train: Any,
+    y_train: ArrayLike,
+    X_test: Any,
+    y_test: ArrayLike,
+) -> RegressionBenchmarkResult:
+    """Fit and evaluate a regression estimator.
+
+    Parameters
+    ----------
+    estimator_name:
+        Stable identifier for the estimator in benchmark results.
+    estimator:
+        Scikit-learn-compatible regression estimator implementing
+        ``fit`` and ``predict``.
+    X_train:
+        Training input representation.
+    y_train:
+        Training-set fluorescence lifetimes.
+    X_test:
+        Test input representation.
+    y_test:
+        True test-set fluorescence lifetimes used only for
+        evaluation after prediction.
+
+    Returns
+    -------
+    RegressionBenchmarkResult
+        Predictions, per-sample relative errors, and aggregate
+        regression metrics.
+
+    Notes
+    -----
+    The estimator is fitted only on ``X_train`` and ``y_train``.
+    Test targets are not supplied to the estimator and are used
+    only after prediction for metric computation.
+    """
+    y_train_array = np.asarray(
+        y_train,
+        dtype=np.float64,
+    )
+
+    y_test_array = np.asarray(
+        y_test,
+        dtype=np.float64,
+    )
+
+    if y_train_array.ndim != 1:
+        raise ValueError(
+            "y_train must be one-dimensional."
+        )
+
+    if y_test_array.ndim != 1:
+        raise ValueError(
+            "y_test must be one-dimensional."
+        )
+
+    if y_train_array.size == 0:
+        raise ValueError(
+            "y_train must contain at least one lifetime."
+        )
+
+    if y_test_array.size == 0:
+        raise ValueError(
+            "y_test must contain at least one lifetime."
+        )
+
+    if not np.all(
+        np.isfinite(y_train_array)
+    ):
+        raise ValueError(
+            "y_train must contain only finite values."
+        )
+
+    if not np.all(
+        np.isfinite(y_test_array)
+    ):
+        raise ValueError(
+            "y_test must contain only finite values."
+        )
+
+    if np.any(y_train_array <= 0.0):
+        raise ValueError(
+            "Training lifetimes must be strictly positive."
+        )
+
+    if np.any(y_test_array <= 0.0):
+        raise ValueError(
+            "Test lifetimes must be strictly positive."
+        )
+
+    if X_train.shape[0] != y_train_array.size:
+        raise ValueError(
+            "X_train and y_train must contain "
+            "the same number of samples."
+        )
+
+    if X_test.shape[0] != y_test_array.size:
+        raise ValueError(
+            "X_test and y_test must contain "
+            "the same number of samples."
+        )
+
+    estimator.fit(
+        X_train,
+        y_train_array,
+    )
+
+    predictions = estimator.predict(
+        X_test
+    )
+
+    return _build_regression_benchmark_result(
+        estimator_name=estimator_name,
+        y_true=y_test_array,
+        y_pred=predictions,
+    )
+
+
+def evaluate_ridge_representation_benchmark(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Compare TCSPC input representations using Ridge regression.
+
+    The benchmark keeps the train/test samples, lifetime targets,
+    estimator family, and evaluation metrics fixed while changing only
+    the input representation.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing engineered
+        features and lifetime targets.
+    representations:
+        TOTAL-normalized and PCA-compressed histogram representations
+        derived from the same benchmark split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Ridge-regression results for engineered features,
+        TOTAL-normalized histogram bins, and PCA-compressed
+        normalized histograms.
+
+    Notes
+    -----
+    A fresh Ridge pipeline is created for each representation so that
+    every estimator is fitted independently from scratch.
+    """
+    results = {
+        "engineered_features": evaluate_regressor(
+            estimator_name="ridge_engineered_features",
+            estimator=make_ridge_pipeline(),
+            X_train=split.X_features_train,
+            y_train=split.y_train,
+            X_test=split.X_features_test,
+            y_test=split.y_test,
+        ),
+        "normalized_histogram": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_normalized_train,
+            y_train=split.y_train,
+            X_test=representations.X_normalized_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram": evaluate_regressor(
+            estimator_name="ridge_pca_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_pca_train,
+            y_train=split.y_train,
+            X_test=representations.X_pca_test,
+            y_test=split.y_test,
+        ),
+    }
+
+    return results
+
+
+def evaluate_photon_count_ablation(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Test the effect of restoring total photon-count information.
+
+    The benchmark compares TOTAL-normalized and PCA-compressed
+    histogram representations both with and without the measured
+    total photon count appended as an additional feature.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split.
+    representations:
+        Normalized and PCA-compressed histogram representations
+        derived from the same split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Ridge-regression results for normalized and PCA histogram
+        representations with and without total-count information.
+
+    Notes
+    -----
+    The appended total count is calculated from each measured raw
+    histogram. Simulation photon-count targets and other metadata are
+    not provided to the regressors.
+
+    Fresh Ridge pipelines are fitted independently for all four
+    comparisons.
+    """
+    X_normalized_with_counts_train = augment_with_total_counts(
+        X_representation=representations.X_normalized_train,
+        histograms=split.X_histograms_train,
+    )
+
+    X_normalized_with_counts_test = augment_with_total_counts(
+        X_representation=representations.X_normalized_test,
+        histograms=split.X_histograms_test,
+    )
+
+    X_pca_with_counts_train = augment_with_total_counts(
+        X_representation=representations.X_pca_train,
+        histograms=split.X_histograms_train,
+    )
+
+    X_pca_with_counts_test = augment_with_total_counts(
+        X_representation=representations.X_pca_test,
+        histograms=split.X_histograms_test,
+    )
+
+    return {
+        "normalized_histogram": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_normalized_train,
+            y_train=split.y_train,
+            X_test=representations.X_normalized_test,
+            y_test=split.y_test,
+        ),
+        "normalized_histogram_with_total_counts": evaluate_regressor(
+            estimator_name="ridge_normalized_histogram_with_total_counts",
+            estimator=make_ridge_pipeline(),
+            X_train=X_normalized_with_counts_train,
+            y_train=split.y_train,
+            X_test=X_normalized_with_counts_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram": evaluate_regressor(
+            estimator_name="ridge_pca_histogram",
+            estimator=make_ridge_pipeline(),
+            X_train=representations.X_pca_train,
+            y_train=split.y_train,
+            X_test=representations.X_pca_test,
+            y_test=split.y_test,
+        ),
+        "pca_histogram_with_total_counts": evaluate_regressor(
+            estimator_name="ridge_pca_histogram_with_total_counts",
+            estimator=make_ridge_pipeline(),
+            X_train=X_pca_with_counts_train,
+            y_train=split.y_train,
+            X_test=X_pca_with_counts_test,
+            y_test=split.y_test,
+        ),
+    }
+
+
+def evaluate_nonlinear_representation_benchmark(
+    split: BenchmarkSplit,
+    representations: HistogramRepresentations,
+) -> dict[
+    str,
+    dict[str, RegressionBenchmarkResult],
+]:
+    """Compare TCSPC representations using nonlinear regressors.
+
+    The benchmark evaluates Random Forest and histogram gradient
+    boosting on the same engineered-feature, TOTAL-normalized
+    histogram, and PCA-compressed histogram representations.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split containing engineered
+        features and lifetime targets.
+    representations:
+        TOTAL-normalized and PCA-compressed histogram representations
+        derived from the same benchmark split.
+
+    Returns
+    -------
+    dict[str, dict[str, RegressionBenchmarkResult]]
+        Nested benchmark results grouped first by model family and
+        then by input representation.
+
+    Notes
+    -----
+    All model families use exactly the same training samples, test
+    samples, and lifetime targets.
+
+    Fresh estimators are created for every representation so that
+    each model is fitted independently from scratch.
+
+    The models use their predefined benchmark hyperparameters.
+    Hyperparameter tuning is deliberately excluded from this
+    representation comparison.
+    """
+    representation_data = {
+        "engineered_features": (
+            split.X_features_train,
+            split.X_features_test,
+        ),
+        "normalized_histogram": (
+            representations.X_normalized_train,
+            representations.X_normalized_test,
+        ),
+        "pca_histogram": (
+            representations.X_pca_train,
+            representations.X_pca_test,
+        ),
+    }
+
+    model_factories = {
+        "random_forest": make_random_forest_pipeline,
+        "hist_gradient_boosting": (
+            make_hist_gradient_boosting_pipeline
+        ),
+    }
+
+    results: dict[
+        str,
+        dict[str, RegressionBenchmarkResult],
+    ] = {}
+
+    for model_name, make_estimator in model_factories.items():
+        model_results: dict[
+            str,
+            RegressionBenchmarkResult,
+        ] = {}
+
+        for (
+            representation_name,
+            (X_train, X_test),
+        ) in representation_data.items():
+            model_results[
+                representation_name
+            ] = evaluate_regressor(
+                estimator_name=(
+                    f"{model_name}_{representation_name}"
+                ),
+                estimator=make_estimator(),
+                X_train=X_train,
+                y_train=split.y_train,
+                X_test=X_test,
+                y_test=split.y_test,
+            )
+
+        results[model_name] = model_results
+
+    return results
+
+
+def evaluate_baselines(
+    split: BenchmarkSplit,
+) -> dict[str, RegressionBenchmarkResult]:
+    """Evaluate the Day 44 lifetime-estimation baselines.
+
+    Parameters
+    ----------
+    split:
+        Common benchmark train/test split.
+
+    Returns
+    -------
+    dict[str, RegressionBenchmarkResult]
+        Results for the constant-mean and mean-arrival-time
+        baselines.
+
+    Notes
+    -----
+    The constant baseline uses only training-set lifetime targets.
+
+    The mean-arrival-time estimator uses only histogram-derived
+    test-set features and does not use simulation metadata or
+    training-set lifetime targets.
+    """
+    required_feature_columns = (
+        "mean_arrival_time_ns",
+        "peak_time_ns",
+    )
+
+    missing_columns = [
+        column
+        for column in required_feature_columns
+        if column
+        not in split.X_features_test.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            "X_features_test is missing required baseline "
+            "features: "
+            + ", ".join(missing_columns)
+        )
+
+    constant_predictions = (
+        predict_constant_mean_baseline(
+            y_train=split.y_train,
+            n_predictions=split.y_test.size,
+        )
+    )
+
+    mean_arrival_predictions = (
+        estimate_lifetime_from_mean_arrival(
+            mean_arrival_time_ns=(
+                split.X_features_test[
+                    "mean_arrival_time_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            ),
+            peak_time_ns=(
+                split.X_features_test[
+                    "peak_time_ns"
+                ].to_numpy(
+                    dtype=np.float64
+                )
+            ),
+        )
+    )
+
+    return {
+        "constant_mean": (
+            _build_regression_benchmark_result(
+                estimator_name="constant_mean",
+                y_true=split.y_test,
+                y_pred=constant_predictions,
+            )
+        ),
+        "mean_arrival_time": (
+            _build_regression_benchmark_result(
+                estimator_name="mean_arrival_time",
+                y_true=split.y_test,
+                y_pred=mean_arrival_predictions,
+            )
+        ),
+    }

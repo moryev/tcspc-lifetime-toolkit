@@ -16,13 +16,13 @@ from tcspc_toolkit.estimation.classical import (
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.preprocessing.features import extract_feature_table
 from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,
     RegressionBenchmarkResult,
     _assemble_regression_benchmark_result,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,

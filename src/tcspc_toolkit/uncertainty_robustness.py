@@ -56,7 +56,7 @@ from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )
 from tcspc_toolkit.ml_uncertainty import (

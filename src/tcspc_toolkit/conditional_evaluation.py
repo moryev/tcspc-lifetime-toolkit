@@ -18,7 +18,7 @@ from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.evaluation_results import (
     EvaluationBatch, LifetimeReference, MethodDescriptor, PointEvaluationResult,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkSplit,
     RegressionBenchmarkResult,
 )

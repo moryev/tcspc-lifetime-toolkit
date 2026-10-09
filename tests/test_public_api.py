@@ -355,6 +355,69 @@ def test_bayesian_facades_preserve_supported_objects_and_historical_lookup(old_m
         ) is canonical.BayesianReconvolutionResult
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.ml_models", "models", (
+        "DEFAULT_RANDOM_STATE",
+        "DEFAULT_PCA_COMPONENTS",
+        "make_ridge_pipeline",
+        "make_random_forest_pipeline",
+        "make_hist_gradient_boosting_pipeline",
+        "make_canonical_ml_estimator_specs",
+        "make_quantile_hist_gradient_boosting_pipeline",
+        "make_normalized_histogram_ridge_pipeline",
+        "make_pca_histogram_ridge_pipeline",
+    )),
+    ("tcspc_toolkit.ml_evaluation", "evaluation", (
+        "FloatArray",
+        "IntArray",
+        "BenchmarkMeasurements",
+        "BenchmarkDataset",
+        "BenchmarkSplit",
+        "RegressionMetrics",
+        "RegressionBenchmarkResult",
+        "HistogramRepresentations",
+        "generate_benchmark_measurements",
+        "build_benchmark_dataset",
+        "split_benchmark_dataset",
+        "build_histogram_representations",
+        "summarize_split_coverage",
+        "summarize_split_level_balance",
+        "evaluate_regression",
+        "evaluate_regressor",
+        "evaluate_ridge_representation_benchmark",
+        "evaluate_photon_count_ablation",
+        "evaluate_nonlinear_representation_benchmark",
+        "evaluate_baselines",
+    )),
+    ("tcspc_toolkit.cross_validation", "cross_validation", (
+        "DEFAULT_CV_N_SPLITS",
+        "DEFAULT_CV_N_REPEATS",
+        "DEFAULT_CV_RANDOM_STATE",
+        "RepeatedCVConfig",
+        "RepeatedCVBenchmarkResult",
+        "make_repeated_kfold",
+        "evaluate_regressor_repeated_cv",
+        "CV_METRIC_COLUMNS",
+        "summarize_repeated_cv",
+        "evaluate_estimators_repeated_cv",
+    )),
+])
+def test_ml_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.ml.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if not name.isupper() and name not in {"FloatArray", "IntArray"}:
+            assert getattr(canonical, name).__module__ == canonical_module
+    if module == "evaluation":
+        assert pickle.loads(
+            b"ctcspc_toolkit.ml_evaluation\nRegressionBenchmarkResult\n."
+        ) is canonical.RegressionBenchmarkResult
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from tcspc_toolkit.cross_validation import (
+from tcspc_toolkit.ml.cross_validation import (
     DEFAULT_CV_N_REPEATS,
     DEFAULT_CV_N_SPLITS,
     DEFAULT_CV_RANDOM_STATE,
@@ -14,7 +14,7 @@ from tcspc_toolkit.cross_validation import (
     make_repeated_kfold,
     summarize_repeated_cv,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_pca_histogram_ridge_pipeline,
     make_random_forest_pipeline,
@@ -947,5 +947,4 @@ def test_multiple_estimator_cv_rejects_empty_mapping(
             X=X,
             y=y,
         )
-
 

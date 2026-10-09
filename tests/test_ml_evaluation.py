@@ -4,7 +4,7 @@ import pytest
 
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.features import FEATURE_NAMES
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,
     build_benchmark_dataset,
@@ -20,7 +20,7 @@ from tcspc_toolkit.ml_evaluation import (
     summarize_split_coverage,
     summarize_split_level_balance,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,
@@ -1551,5 +1551,4 @@ def test_nonlinear_representation_benchmark_uses_stable_names() -> None:
         ].estimator_name
         == "hist_gradient_boosting_pca_histogram"
     )
-
 

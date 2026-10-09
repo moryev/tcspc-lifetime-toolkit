@@ -57,13 +57,13 @@ from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
     BenchmarkMeasurements,
     build_benchmark_dataset,
     generate_benchmark_measurements,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     DEFAULT_PCA_COMPONENTS,
     make_canonical_ml_estimator_specs,
 )

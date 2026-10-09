@@ -19,10 +19,10 @@ from scipy.stats import spearmanr
 from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor, PointEvaluationResult
 from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     DEFAULT_RANDOM_STATE,
     make_quantile_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,

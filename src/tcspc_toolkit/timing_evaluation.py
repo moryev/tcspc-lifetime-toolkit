@@ -16,10 +16,10 @@ from tcspc_toolkit.estimation.baselines import (
 from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkSplit,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,
