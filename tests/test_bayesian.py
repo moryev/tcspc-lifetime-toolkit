@@ -9,7 +9,7 @@ import pytest
 from scipy.integrate import quad
 from scipy.stats import gamma, lognorm, uniform
 
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianModelContext,
     BayesianPhysicalParameters,
     BayesianPriorConfig,
@@ -377,7 +377,7 @@ def blocked_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 builtins.__import__ = blocked_import
 import tcspc_toolkit
-from tcspc_toolkit.bayesian import GammaPrior
+from tcspc_toolkit.estimation.bayesian.posterior import GammaPrior
 assert GammaPrior(2.0, 1.0).shape == 2.0
 """
     completed = subprocess.run(

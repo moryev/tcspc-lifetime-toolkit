@@ -290,6 +290,71 @@ def test_classical_facades_preserve_supported_objects_and_historical_lookup(old_
             assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is getattr(canonical, name)
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.bayesian", "posterior", (
+        "GammaPrior",
+        "LogNormalPrior",
+        "BoundedUniformPrior",
+        "BayesianPriorConfig",
+        "BayesianPhysicalParameters",
+        "IRFModelRelation",
+        "BayesianModelContext",
+        "sampling_to_physical_parameters",
+        "physical_to_sampling_coordinates",
+        "log_transformation_jacobian",
+        "log_prior",
+        "log_likelihood",
+        "log_posterior",
+        "fit_bayesian_monoexponential_reconvolution",
+    )),
+    ("tcspc_toolkit.bayesian_sampling", "sampling", (
+        "PHYSICAL_PARAMETER_NAMES",
+        "SAMPLING_COORDINATE_NAMES",
+        "PARAMETER_UNITS",
+        "BayesianSamplingConfig",
+        "BayesianSamplingStatus",
+        "BayesianPosteriorSamples",
+        "BayesianParameterSummary",
+        "BayesianSamplingDiagnostics",
+        "BayesianRuntime",
+        "BayesianModelContextSummary",
+        "BayesianReconvolutionResult",
+        "BayesianInferenceRun",
+        "BayesianInitializationError",
+        "fit_bayesian_monoexponential_reconvolution",
+    )),
+    ("tcspc_toolkit.bayesian_predictive", "predictive", (
+        "PHYSICAL_PARAMETER_ORDER",
+        "BayesianPredictiveBand",
+        "summarize_predictive_band",
+        "BayesianPredictiveDiscrepancy",
+        "BayesianPredictiveWindowDiscrepancy",
+        "BayesianPosteriorPredictiveDiagnostics",
+        "calculate_bayesian_posterior_predictive_diagnostics",
+        "BayesianPriorPredictiveResult",
+        "BayesianPosteriorPredictiveResult",
+        "sample_bayesian_prior_predictive",
+        "sample_bayesian_posterior_predictive",
+    )),
+])
+def test_bayesian_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.estimation.bayesian.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if not name.isupper():
+            assert getattr(canonical, name).__module__ == canonical_module
+    if module == "sampling":
+        # Persisted historical source identity remains resolvable without
+        # forcing new objects to pretend to be defined in the old module.
+        assert pickle.loads(
+            b"ctcspc_toolkit.bayesian_sampling\nBayesianReconvolutionResult\n."
+        ) is canonical.BayesianReconvolutionResult
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

@@ -281,6 +281,9 @@ def test_bayesian_point_summary_diagnostics_and_immutable_reuse(context):
         "SELECT * FROM bayesian_summaries WHERE result_id = ?", (result_id,),
     ).fetchone()
     assert point["point_summary"] == "posterior_median"
+    assert point["source_result_type"] == (
+        "tcspc_toolkit.bayesian_sampling.BayesianReconvolutionResult"
+    )
     assert point["lifetime_estimate_ns"] == source.parameter_summaries[1].median
     assert point["random_seed_decimal"] == str(_SEED)
     assert point["irf_model_relation"] == "matched"

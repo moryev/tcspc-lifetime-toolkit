@@ -40,11 +40,12 @@ OLD_MODULE_PATHS = (
 EXTENSION = {f"{PACKAGE}.estimation.api"}
 BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
+BAYESIAN = f"{ESTIMATION}.bayesian"
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
     "measurements", "measurement_io", "experimental", "datasets",
-    "fitting", "classical_evaluation",
+    "fitting", "classical_evaluation", "bayesian", "bayesian_sampling", "bayesian_predictive",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -77,6 +78,28 @@ CLASSICAL_IMPORTS = {
         f"{PACKAGE}.physics.convolution", f"{PACKAGE}.physics.models",
         f"{PREPROCESSING}.histograms", f"{ESTIMATION}.fitting",
         # Existing deviance diagnostics stay flat until their own migration.
+        f"{PACKAGE}.evaluation",
+    },
+}
+BAYESIAN_IMPORTS = {
+    BAYESIAN: set(),
+    f"{BAYESIAN}.posterior": {
+        "__future__", "math", "dataclasses", "enum", "typing", "numpy", "numpy.typing",
+        f"{PACKAGE}.exceptions", f"{IRF}.selection", f"{IRF}.profiles",
+        f"{IRF}.preparation", f"{MEASUREMENT}.records", f"{ESTIMATION}.fitting",
+        f"{PACKAGE}.physics.forward_model", f"{BAYESIAN}.sampling",
+    },
+    f"{BAYESIAN}.sampling": {
+        "__future__", "math", "time", "warnings", "dataclasses", "enum", "typing",
+        "numpy", "numpy.typing", "emcee", "emcee.autocorr",
+        f"{BAYESIAN}.posterior", f"{PACKAGE}.physics.forward_model",
+        f"{IRF}.profiles", f"{IRF}.preparation", f"{MEASUREMENT}.records",
+    },
+    f"{BAYESIAN}.predictive": {
+        "__future__", "math", "time", "dataclasses", "numpy", "numpy.typing",
+        f"{BAYESIAN}.posterior", f"{BAYESIAN}.sampling",
+        f"{PACKAGE}.physics.forward_model", f"{SIMULATION}.histograms",
+        # Existing residual/deviance diagnostics stay flat until their own move.
         f"{PACKAGE}.evaluation",
     },
 }
@@ -284,6 +307,7 @@ def test_responsibility_dependency_direction(package_imports):
 def test_migrated_initializers_and_canonical_consumers_stay_independent(package_imports):
     records, _ = package_imports
     assert records[ESTIMATION] == []  # No eager, deferred, or typing imports.
+    assert records[BAYESIAN] == []
     assert records[f"{PACKAGE}.physics"] == []
     assert records[MEASUREMENT] == []
     # Preserve the existing DummyRegressor dependency, not a new algorithm.
@@ -293,6 +317,8 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     for module, allowed in PHYSICS_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in CLASSICAL_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} <= allowed, module
+    for module, allowed in BAYESIAN_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
     for module, allowed in PREPROCESSING_IMPORTS.items():
         assert {base for _, base, _ in records[module]} <= allowed, module
@@ -322,7 +348,7 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         for _, base, names in imports:
             targets = _targets(base, names, set(records)) | {base}
             assert not targets.intersection(COMPATIBILITY_SURFACES), (module, targets)
-            if module.startswith(f"{PACKAGE}.bayesian"):
+            if module.startswith((f"{PACKAGE}.bayesian", BAYESIAN)):
                 assert not targets.intersection({
                     f"{PACKAGE}.experimental", f"{MEASUREMENT}.adapters",
                 }), (module, targets)
@@ -364,13 +390,78 @@ def test_bayesian_and_experimental_consumers_share_the_canonical_irf_resolver():
     selection = importlib.import_module(f"{IRF}.selection")
     resolver = selection._resolve_reconvolution_irf
     assert resolver.__module__ == f"{IRF}.selection"
-    for module in (f"{PACKAGE}.bayesian", f"{MEASUREMENT}.adapters"):
+    for module in (f"{BAYESIAN}.posterior", f"{MEASUREMENT}.adapters"):
         assert importlib.import_module(module)._resolve_reconvolution_irf is resolver
+
+
+def test_bayesian_sampling_edges_remain_deferred(package_imports):
+    records, _ = package_imports
+    internal = {
+        module: {(kind, base) for kind, base, _ in records[module]
+                 if base.startswith(BAYESIAN + ".")}
+        for module in BAYESIAN_IMPORTS
+    }
+    assert internal == {
+        BAYESIAN: set(),
+        f"{BAYESIAN}.posterior": {("deferred", f"{BAYESIAN}.sampling")},
+        f"{BAYESIAN}.sampling": {("eager", f"{BAYESIAN}.posterior")},
+        f"{BAYESIAN}.predictive": {
+            ("eager", f"{BAYESIAN}.posterior"), ("eager", f"{BAYESIAN}.sampling"),
+        },
+    }
+    sampler_edges = [(module, kind, base) for module in BAYESIAN_IMPORTS
+                     for kind, base, _ in records[module]
+                     if base == "emcee" or base.startswith("emcee.")]
+    assert sampler_edges
+    assert all(module == f"{BAYESIAN}.sampling" and kind == "deferred"
+               for module, kind, _ in sampler_edges)
+
+
+@pytest.mark.parametrize("module", sorted(BAYESIAN_IMPORTS))
+def test_fresh_bayesian_import_preserves_optional_sampler_and_minimal_initializers(tmp_path, module):
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+class NoSampler(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'emcee' or fullname.startswith('emcee.'):
+            attempts.append(fullname)
+            raise ModuleNotFoundError('optional sampler unavailable', name=fullname)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('Bayesian import opened a database')
+sys.meta_path.insert(0, NoSampler())
+sys.addaudithook(no_database)
+import tcspc_toolkit
+assert not any(n == {BAYESIAN!r} or n.startswith({BAYESIAN + '.'!r}) for n in sys.modules)
+importlib.import_module({module!r})
+expected = {{
+    {BAYESIAN!r}: set(),
+    {BAYESIAN + '.posterior'!r}: {{'posterior'}},
+    {BAYESIAN + '.sampling'!r}: {{'posterior', 'sampling'}},
+    {BAYESIAN + '.predictive'!r}: {{'posterior', 'sampling', 'predictive'}},
+}}[{module!r}]
+loaded = {{n.rsplit('.', 1)[-1] for n in sys.modules if n.startswith({BAYESIAN + '.'!r})}}
+assert loaded == expected, loaded
+assert not attempts, attempts
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.bayesian_evaluation',
+    'tcspc_toolkit.bayesian_mismatch_evaluation', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.uncertainty_robustness',
+]
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_no_eager_internal_cycles(package_imports):
     records, packages = package_imports
-    # The Bayesian -> sampling import is deliberately deferred; the reverse
+    # The posterior -> sampling import is deliberately deferred; the reverse
     # dependency is eager. Do not turn the combined graph into an eager graph.
     tuple(TopologicalSorter(_eager_graph(records, packages)).static_order())
 
@@ -424,6 +515,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
     names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
              if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
                                    "estimation.fitting", "estimation.classical",
+                                   "estimation.bayesian.posterior", "estimation.bayesian.sampling",
+                                   "estimation.bayesian.predictive",
                                    "physics.models", "physics.convolution", "physics.forward_model",
                                    "preprocessing.histograms", "preprocessing.features",
                                    "preprocessing.representations",
@@ -434,7 +527,7 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
         names.reverse()
     blocked = ["emcee"]
     if generic_only:
-        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling",
+        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling", BAYESIAN,
                     f"{PACKAGE}.generalization_evaluation", f"{PACKAGE}.ml_models"]
     script = f"""
 import importlib
@@ -725,6 +818,7 @@ assert 'tcspc_toolkit.classical_evaluation' not in sys.modules
 assert 'tcspc_toolkit.persistence' not in sys.modules
 assert 'emcee' not in sys.modules
 assert 'tcspc_toolkit.bayesian_sampling' not in sys.modules
+assert not any(n == {BAYESIAN!r} or n.startswith({BAYESIAN + '.'!r}) for n in sys.modules)
 assert 'tcspc_toolkit.generalization_evaluation' not in sys.modules
 assert 'tcspc_toolkit.uncertainty_robustness' not in sys.modules
 """

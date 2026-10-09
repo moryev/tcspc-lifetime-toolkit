@@ -19,7 +19,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares, minimize
 
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianPriorConfig,
     BoundedUniformPrior,
     GammaPrior,
@@ -35,11 +35,11 @@ from tcspc_toolkit.bayesian_evaluation import (
     _unavailable_bootstrap,
     _unavailable_covariance,
 )
-from tcspc_toolkit.bayesian_predictive import (
+from tcspc_toolkit.estimation.bayesian.predictive import (
     BayesianPredictiveDiscrepancy,
     sample_bayesian_posterior_predictive,
 )
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianSamplingConfig,
     BayesianSamplingStatus,
 )

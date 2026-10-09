@@ -2100,8 +2100,8 @@ def link_run_measurement(
 
 def bayesian_model_configuration(priors: Any, sampler: Any) -> dict[str, Any]:
     """Build reusable Bayesian configuration, excluding execution random seed."""
-    from tcspc_toolkit.bayesian import BayesianPriorConfig
-    from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.posterior import BayesianPriorConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
 
     if not isinstance(priors, BayesianPriorConfig) or not isinstance(sampler, BayesianSamplingConfig):
         raise TypeError("expected BayesianPriorConfig and BayesianSamplingConfig")
@@ -2110,7 +2110,7 @@ def bayesian_model_configuration(priors: Any, sampler: Any) -> dict[str, Any]:
 
 def _without_bayesian_sampling_seed(value: Any) -> dict[str, Any]:
     """Omit only the recognized Bayesian sampler execution-seed field."""
-    from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
 
     normalized = _json_value(value)
     if not isinstance(normalized, dict):
@@ -2188,7 +2188,7 @@ def record_model_assumption(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record physical inference assumptions independently of estimator priors."""
-    from tcspc_toolkit.bayesian import BayesianPriorConfig
+    from tcspc_toolkit.estimation.bayesian.posterior import BayesianPriorConfig
 
     decay = _required_text(assumed_decay_model, "assumed_decay_model")
     observation = _required_text(observation_model, "observation_model")
@@ -2889,10 +2889,10 @@ def _bayesian_model_context(
     sampling_seed: int | str,
 ) -> tuple[dict[str, Any], dict[str, Any], sqlite3.Row | tuple]:
     """Validate the reusable prior and the separately persisted physical model."""
-    from tcspc_toolkit.bayesian import (
+    from tcspc_toolkit.estimation.bayesian.posterior import (
         BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
     )
-    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianReconvolutionResult, BayesianSamplingConfig
 
     model = connection.execute(
         "SELECT family, estimator_name, configuration_json, prior_policy_id "
@@ -3066,7 +3066,7 @@ def _bayesian_predictive_payload(
     nonfinite: dict[str, str],
 ) -> dict[str, Any]:
     from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchPredictiveSummary
-    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+    from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
 
     if predictive is None:
         if ppc_seed is not None:
@@ -3173,7 +3173,7 @@ def _bayesian_payloads(
     sampling_seed: int | str, assumption: sqlite3.Row | tuple,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     from tcspc_toolkit.bayesian_evaluation import Issue4Bayesian
-    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingStatus
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianReconvolutionResult, BayesianSamplingStatus
 
     if not isinstance(source, (BayesianReconvolutionResult, Issue4Bayesian)):
         raise TypeError("Bayesian source must be a full sampler result or Issue4Bayesian")
@@ -3483,7 +3483,7 @@ def _record_bayesian_composed(
         connection, model_id=model, assumption_id=assumed,
         measurement_id=measured, source=source, context=context, sampling_seed=sampling_seed,
     )
-    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+    from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
 
     if isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
         _bayesian_model_context(
@@ -3550,7 +3550,7 @@ def record_bayesian_result(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record one completed Bayesian sampler result and optional PPC summary."""
-    from tcspc_toolkit.bayesian_sampling import BayesianInferenceRun, BayesianReconvolutionResult
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianInferenceRun, BayesianReconvolutionResult
 
     if isinstance(result, BayesianInferenceRun):
         source, context = result.result, result.context
@@ -3567,7 +3567,7 @@ def record_bayesian_result(
     else:
         raise TypeError("result must be BayesianReconvolutionResult or BayesianInferenceRun")
     if posterior_predictive is not None:
-        from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+        from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
         if not isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
             raise TypeError("posterior_predictive must be BayesianPosteriorPredictiveResult")
         if posterior_predictive.inference_sampling_status is not source.status or (

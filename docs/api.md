@@ -8,7 +8,8 @@ layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
-simulation, and core classical fitting/execution; other modules remain flat.
+simulation, core classical fitting/execution, and Bayesian inference; other
+modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -18,7 +19,7 @@ simulation, and core classical fitting/execution; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), and core classical fitting/execution in `estimation` (Stage 4A); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), and Bayesian inference in `estimation.bayesian` (Stage 4B); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -90,10 +91,12 @@ Important supported module-qualified workflows include:
 - `classical_uncertainty`, `ml_uncertainty`, `uncertainty_evaluation`, and
   `uncertainty_robustness`: distinct model-conditional intervals, calibration,
   sensitivity, and disagreement-score workflows.
-- `bayesian`, `bayesian_sampling`, `bayesian_predictive`, `bayesian_evaluation`,
-  and `bayesian_mismatch_evaluation`: explicit priors, inference, diagnostics,
-  and study-specific comparisons. Their configuration/result types are not
-  newly promoted to the root.
+- `estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
+  `estimation.bayesian.predictive`: explicit priors, posterior/context,
+  sampling, and predictive diagnostics. Flat `bayesian`, `bayesian_sampling`,
+  and `bayesian_predictive` remain direct-object compatibility paths through
+  at least Issue #12. No Bayesian objects are root exports. Study orchestration
+  remains in `bayesian_evaluation` and `bayesian_mismatch_evaluation`.
 - `persistence`: optional SQLite schema-v1 storage, scientific recording
   adapters, and read-only queries; see [persistence.md](persistence.md).
 
@@ -138,7 +141,13 @@ experimental adapters and extracted their shared fixed-IRF selection helper.
 Stage 3C converted histogram simulation into a package and relocated ordinary
 synthetic dataset generation beneath it.
 Stage 4A moved core classical fitting/execution into `estimation.fitting` and
-`estimation.classical`, without moving Bayesian, ML, or uncertainty modules.
+`estimation.classical`. Stage 4B moved Bayesian inference into
+`estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
+`estimation.bayesian.predictive`, without moving Bayesian studies, ML, or
+uncertainty modules. Both estimation initializers remain minimal. The posterior
+sampling entry point still imports sampling only when called; importing the
+posterior, sampling, or predictive module does not require `emcee`. Executing
+MCMC retains the existing optional-extra requirement.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.

@@ -16,12 +16,12 @@ from statistics import NormalDist
 import numpy as np
 from numpy.typing import NDArray
 
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianPriorConfig,
     IRFModelRelation,
     fit_bayesian_monoexponential_reconvolution,
 )
-from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig, BayesianSamplingStatus
+from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig, BayesianSamplingStatus
 from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
 from tcspc_toolkit.classical_uncertainty import (
     _reconstruct_reconvolution_fit_result,
