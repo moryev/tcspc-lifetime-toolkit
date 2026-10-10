@@ -17,6 +17,16 @@ Bayesian and experimental runtime reports retain their specialized scientific
 context; the factual contracts support them compositionally without migrating
 those study workflows. The 66-name root API and notebooks are unchanged.
 
+Issue #3 Stage 5B places the factual implementations in
+`tcspc_toolkit.evaluation.results`, `tcspc_toolkit.evaluation.core`, and
+`tcspc_toolkit.evaluation.attachments`. Historical `evaluation_results`,
+`evaluation_core`, and `evaluation_uncertainty` imports remain direct-object
+compatibility paths through at least Issue #12. Import factual APIs from those
+explicit submodules: `tcspc_toolkit.evaluation` remains the historical
+seven-function diagnostics facade, not an aggregate factual/reporting API.
+Its inherited initialization of diagnostics/fitting is separate from the
+estimator-independent source dependencies of the factual modules.
+
 ```text
 frozen scientific benchmark definitions
                 ↓
@@ -264,7 +274,7 @@ For example, given an existing split and regression result:
 
 ```python
 from tcspc_toolkit.conditional_evaluation import build_ml_prediction_diagnostics
-from tcspc_toolkit.evaluation_results import LifetimeReference, MethodDescriptor
+from tcspc_toolkit.evaluation.results import LifetimeReference, MethodDescriptor
 
 diagnostics = build_ml_prediction_diagnostics(
     split=split,
@@ -358,7 +368,7 @@ mutated, and the original estimator factories, fit calls and prediction order re
 prediction shape/nonfinite errors are `RuntimeError` in ordinary ML and `ValueError`
 in mismatch, with the same messages and check order. Both delegate to the private
 `ml_evaluation._assemble_regression_benchmark_result`. This keeps existing
-`evaluate_regression` metrics/target validation and uses `evaluation_core`'s
+`evaluate_regression` metrics/target validation and uses `evaluation.core`'s
 shared error calculation. The generic core has no reverse dependency on ML,
 mismatch, frozen model definitions, or sklearn.
 
@@ -395,7 +405,7 @@ scientific identities. No uncertainty migration is included in Stage 6.
 
 ### Identity and batches
 
-`evaluation_results.MethodDescriptor(method_id, family, representation_id=None)`
+`evaluation.results.MethodDescriptor(method_id, family, representation_id=None)`
 is immutable and deliberately small. Families are `baseline`, `ml`, `classical`,
 and `bayesian`, matching persistence vocabulary without depending on persistence.
 Names are nonblank strings preserved verbatim. No case folding or prefix inference
@@ -509,7 +519,7 @@ reference/errors where absent. This retains attempted and available counts.
 
 ## Implemented builders and derived primitives
 
-All are module-qualified from `evaluation_core`:
+All are module-qualified from `evaluation.core`:
 
 - `build_point_evaluation(*, batch, method, lifetime_estimates_ns, is_valid,
   failure_reasons=None)` builds one method/batch result without execution or scoring.
@@ -588,7 +598,7 @@ PointEvaluationResult
   └── separate diagnostics: residuals, PPC, fit and sampler diagnostics
 ```
 
-`evaluation_uncertainty` defines two module-qualified, validated DataFrame
+`evaluation.attachments` defines two module-qualified, validated DataFrame
 snapshots. Both require a `PointEvaluationResult` when constructed and check
 every attachment against its exact point key:
 `(evaluation_id, sample_id, method_id, representation_id)`. The uncertainty

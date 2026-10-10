@@ -14,8 +14,8 @@ from tcspc_toolkit.evaluation.diagnostics import (
 from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
 )
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import (
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import (
     EvaluationBatch, LifetimeReference, MethodDescriptor, PointEvaluationResult,
 )
 from tcspc_toolkit.ml.evaluation import (

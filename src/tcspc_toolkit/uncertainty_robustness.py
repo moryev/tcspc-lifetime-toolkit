@@ -39,7 +39,7 @@ from tcspc_toolkit.classical_uncertainty import (
     project_parametric_poisson_bootstrap_interval,
     project_poisson_local_covariance_interval,
 )
-from tcspc_toolkit.evaluation_core import build_point_evaluation
+from tcspc_toolkit.evaluation.core import build_point_evaluation
 from tcspc_toolkit.generalization import (
     FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
@@ -50,8 +50,8 @@ from tcspc_toolkit.generalization_datasets import (
 from tcspc_toolkit.generalization_evaluation import (
     GeneralizationPreparedData,
 )
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment, ScoreAttachment
 from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,

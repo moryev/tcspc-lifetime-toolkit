@@ -16,9 +16,9 @@ from sklearn.base import clone
 
 from scipy.stats import spearmanr
 
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor, PointEvaluationResult
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor, PointEvaluationResult
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment, ScoreAttachment
 from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )

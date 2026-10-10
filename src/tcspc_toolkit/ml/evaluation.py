@@ -24,8 +24,8 @@ from tcspc_toolkit.config import (
     CountNormalization,
 )
 from tcspc_toolkit.preprocessing.features import extract_feature_table
-from tcspc_toolkit.evaluation_core import build_point_evaluation, calculate_reference_errors
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation.core import build_point_evaluation, calculate_reference_errors
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,

@@ -31,11 +31,11 @@ from tcspc_toolkit.estimation.api import (
     fit_regressors,
     predict_regressors,
 )
-from tcspc_toolkit.evaluation_core import (
+from tcspc_toolkit.evaluation.core import (
     build_point_evaluation,
     combine_point_evaluations,
 )
-from tcspc_toolkit.evaluation_results import (
+from tcspc_toolkit.evaluation.results import (
     EvaluationBatch,
     LifetimeReference,
     MethodDescriptor,

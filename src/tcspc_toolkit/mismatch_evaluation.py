@@ -15,7 +15,7 @@ from tcspc_toolkit.estimation.classical import (
 )
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.preprocessing.features import extract_feature_table
-from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
+from tcspc_toolkit.evaluation.results import EvaluationBatch, LifetimeReference, MethodDescriptor
 from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,

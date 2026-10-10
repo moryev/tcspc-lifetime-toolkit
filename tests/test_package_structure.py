@@ -48,6 +48,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "measurements", "measurement_io", "experimental", "datasets",
     "fitting", "classical_evaluation", "bayesian", "bayesian_sampling", "bayesian_predictive",
     "ml_models", "ml_evaluation", "cross_validation",
+    "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -66,9 +67,18 @@ DIAGNOSTIC_IMPORTS = {
     "numpy", "numpy.typing", f"{PACKAGE}.physics.models", f"{ESTIMATION}.fitting",
 }
 COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF, SIMULATION, EVALUATION}
-FACTUAL = {f"{PACKAGE}.{name}" for name in (
-    "evaluation_results", "evaluation_core", "evaluation_uncertainty",
-)}
+FACTUAL_IMPORTS = {
+    f"{EVALUATION}.results": {
+        "collections.abc", "dataclasses", "types", "typing", "numpy", "pandas", "numpy.typing",
+    },
+    f"{EVALUATION}.core": {
+        "collections.abc", "numpy", "pandas", "numpy.typing", f"{EVALUATION}.results",
+    },
+    f"{EVALUATION}.attachments": {
+        "dataclasses", "numpy", "pandas", f"{EVALUATION}.results",
+    },
+}
+FACTUAL = set(FACTUAL_IMPORTS)
 PHYSICAL = {f"{PACKAGE}.{name}" for name in (
     "physics.models", "physics.convolution", "physics.forward_model", "irf.profiles",
 )}
@@ -125,8 +135,7 @@ ML_IMPORTS = {
         "sklearn.metrics", "sklearn.decomposition", "sklearn.model_selection",
         BASELINES, f"{PACKAGE}.config", f"{PREPROCESSING}.features",
         f"{PREPROCESSING}.representations", f"{SIMULATION}.histograms", f"{ML}.models",
-        # Issue-#11 factual infrastructure stays flat until its own migration.
-        f"{PACKAGE}.evaluation_core", f"{PACKAGE}.evaluation_results",
+        f"{EVALUATION}.core", f"{EVALUATION}.results",
     },
     f"{ML}.cross_validation": {
         "__future__", "collections.abc", "dataclasses", "typing", "numpy", "pandas",
@@ -379,6 +388,8 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     )
     assert records[EVALUATION] == [("eager", DIAGNOSTICS, DIAGNOSTIC_EXPORTS)]
     assert {base for _, base, _ in records[DIAGNOSTICS]} == DIAGNOSTIC_IMPORTS
+    for module, allowed in FACTUAL_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} == allowed, module
     # Diagnostics legitimately uses a fitting result. This is not a dependency
     # of the factual modules: their own source imports are guarded separately
     # above, regardless of root/parent initializer costs observed at runtime.
@@ -456,6 +467,8 @@ blocked = [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
     'tcspc_toolkit.evaluation_results', 'tcspc_toolkit.evaluation_core',
     'tcspc_toolkit.evaluation_uncertainty', 'tcspc_toolkit.conditional_evaluation',
+    'tcspc_toolkit.evaluation.results', 'tcspc_toolkit.evaluation.core',
+    'tcspc_toolkit.evaluation.attachments',
     'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
@@ -489,6 +502,61 @@ assert tuple(facade.__all__) == {DIAGNOSTIC_EXPORTS!r}
 for name in {DIAGNOSTIC_EXPORTS!r}:
     assert getattr(facade, name) is getattr(canonical, name)
 assert 'tcspc_toolkit.estimation.fitting' in sys.modules
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", sorted(FACTUAL_IMPORTS))
+def test_fresh_factual_imports_separate_source_dependencies_from_parent_cost(tmp_path, module):
+    # Retain real root/parent initialization. Fitting belongs to historical
+    # diagnostics, not the factual source modules whose imports we trace here.
+    script = f"""
+import builtins
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = {sorted(MIGRATED_SHIMS)!r} + [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.conditional_evaluation',
+    'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.uncertainty_evaluation',
+    'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.classical_uncertainty',
+    'tcspc_toolkit.uncertainty_robustness',
+]
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {EVALUATION!r} or caller.startswith({EVALUATION + '.'!r}):
+        base = importlib.util.resolve_name('.' * level + name, globals['__package__']) if level else name
+        seen.setdefault(caller, set()).add(base)
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{EVALUATION!r}] == {{{DIAGNOSTICS!r}}}
+assert seen[{DIAGNOSTICS!r}] == {DIAGNOSTIC_IMPORTS!r}
+assert 'tcspc_toolkit.estimation.fitting' in sys.modules
+expected = {{{module!r}, {EVALUATION + '.results'!r}}}
+assert set(seen) == expected | {{{EVALUATION!r}, {DIAGNOSTICS!r}}}
+for caller in expected:
+    assert seen[caller] == {FACTUAL_IMPORTS!r}[caller], (caller, seen[caller])
+assert tuple(sys.modules[{EVALUATION!r}].__all__) == {DIAGNOSTIC_EXPORTS!r}
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -684,7 +752,8 @@ async def later():
 @pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
 @pytest.mark.parametrize("generic_only", [True, False], ids=["generic", "supported"])
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
-    names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty"]
+    names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty",
+              "evaluation.results", "evaluation.core", "evaluation.attachments"]
              if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
                                    "estimation.fitting", "estimation.classical",
                                    "estimation.bayesian.posterior", "estimation.bayesian.sampling",
@@ -696,7 +765,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "irf.profiles", "irf.preparation", "irf.estimation", "irf.selection",
                                    "measurement.records", "measurement.io", "measurement.adapters",
                                    "simulation.histograms", "simulation.datasets",
-                                   "evaluation.diagnostics"])
+                                   "evaluation.diagnostics", "evaluation.results",
+                                   "evaluation.core", "evaluation.attachments"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]

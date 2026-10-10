@@ -9,7 +9,8 @@ relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
 simulation, core classical fitting/execution, Bayesian inference, ML
-models/evaluation/cross-validation, and historical evaluation diagnostics;
+models/evaluation/cross-validation, historical evaluation diagnostics, and
+factual point/reference/attachment contracts;
 other modules remain flat.
 
 | Status | Surface |
@@ -20,7 +21,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), and historical diagnostics in `evaluation.diagnostics` (Stage 5A); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), and factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -101,6 +102,11 @@ Important supported module-qualified workflows include:
   remains in `bayesian_evaluation` and `bayesian_mismatch_evaluation`.
 - `persistence`: optional SQLite schema-v1 storage, scientific recording
   adapters, and read-only queries; see [persistence.md](persistence.md).
+- `evaluation.results`, `evaluation.core`, and `evaluation.attachments`:
+  factual point/reference contracts, explicit-population primitives, and separate
+  interval/score attachments. Flat `evaluation_results`, `evaluation_core`,
+  and `evaluation_uncertainty` remain direct-object compatibility paths through
+  at least Issue #12. These objects are not root or diagnostics-facade exports.
 
 This inventory does not promote every implementation helper to public API.
 Private validation, prediction-table construction, SQL internals, and
@@ -154,8 +160,8 @@ MCMC retains the existing optional-extra requirement.
 Stage 4C moved ML factories, benchmark evaluation, and repeated CV into
 `ml.models`, `ml.evaluation`, and `ml.cross_validation`. The `ml` initializer
 does not aggregate these modules. Concrete sklearn factories remain separate
-from generic `estimation.api`; the factual `evaluation_core` and
-`evaluation_results` dependencies remain flat for their later migration.
+from generic `estimation.api`; factual dependencies now use
+`evaluation.core` and `evaluation.results` after Stage 5B.
 Frozen generalization and uncertainty orchestration remain in their existing
 modules.
 
@@ -170,8 +176,23 @@ The initializer does not aggregate factual results, attachments, conditional
 analysis, plots, uncertainty, or benchmark reports. The existing diagnostics
 dependency on `estimation.fitting.LifetimeFitResult` remains; parent-package
 initialization costs must not be mistaken for imports owned by factual modules.
-`evaluation_results`, `evaluation_core`, and `evaluation_uncertainty` remain
-flat, as do conditional evaluation and plotting. No root exports were added.
+Conditional evaluation and plotting remain flat. No root exports were added.
+
+Stage 5B moved the Issue-#11 factual implementations into explicit submodules:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.evaluation.results` | `tcspc_toolkit.evaluation_results` |
+| `tcspc_toolkit.evaluation.core` | `tcspc_toolkit.evaluation_core` |
+| `tcspc_toolkit.evaluation.attachments` | `tcspc_toolkit.evaluation_uncertainty` |
+
+The results source has no package-internal dependency; core and attachments
+depend only on results. They do not import diagnostics, estimators, uncertainty
+algorithms, benchmarks, or persistence. Importing them still executes the
+historical diagnostics package facade first; that inherited initialization cost
+does not change their source-level dependency boundary. Field/reference/validity
+semantics, caller-selected metric populations, and attachment identities are
+unchanged. The `evaluation` initializer still exports only the seven diagnostics.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.

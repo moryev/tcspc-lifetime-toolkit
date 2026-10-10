@@ -23,10 +23,10 @@ from tcspc_toolkit.simulation.histograms import (
     simulate_irf_convolved_histogram,
 )
 from tcspc_toolkit.estimation.fitting import ReconvolutionFitResult
-from tcspc_toolkit.evaluation_results import (
+from tcspc_toolkit.evaluation.results import (
     EvaluationBatch, MethodDescriptor, PointEvaluationResult,
 )
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment
 from tcspc_toolkit.physics.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )

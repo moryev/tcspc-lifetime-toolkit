@@ -154,26 +154,29 @@ def test_generic_dependencies_and_fresh_imports():
     # Root initialization is existing package behavior. Check the new modules'
     # direct dependencies as well as actual imports in a fresh process.
     allowed = {"__future__", "collections", "dataclasses", "types", "typing", "numpy", "pandas"}
-    for module_name in ("evaluation_results", "evaluation_core"):
+    for module_name in ("evaluation.results", "evaluation.core"):
         module = importlib.import_module("tcspc_toolkit." + module_name)
         tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             imports = ([node.module] if isinstance(node, ast.ImportFrom)
                        else [alias.name for alias in node.names] if isinstance(node, ast.Import) else [])
             for name in imports:
-                assert name.split(".")[0] in allowed or name == "tcspc_toolkit.evaluation_results"
+                assert name.split(".")[0] in allowed or name == "tcspc_toolkit.evaluation.results"
     script = """
 import importlib.abc
 import sys
 blocked = {'tcspc_toolkit.generalization', 'tcspc_toolkit.generalization_evaluation',
-           'tcspc_toolkit.persistence', 'tcspc_toolkit.bayesian_sampling', 'tcspc_toolkit.ml_models'}
+           'tcspc_toolkit.persistence', 'tcspc_toolkit.bayesian_sampling', 'tcspc_toolkit.ml_models',
+           'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.ml'}
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname in blocked:
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
             raise AssertionError('Forbidden dependency: ' + fullname)
 sys.meta_path.insert(0, Block())
 import tcspc_toolkit.evaluation_results
 import tcspc_toolkit.evaluation_core
+import tcspc_toolkit.evaluation.results
+import tcspc_toolkit.evaluation.core
 assert not blocked.intersection(sys.modules)
 assert 'emcee' not in sys.modules
 """
