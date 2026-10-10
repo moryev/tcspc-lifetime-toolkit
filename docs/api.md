@@ -8,8 +8,9 @@ layer beneath the existing scientific reports. Issue #3 has begun structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
-simulation, core classical fitting/execution, Bayesian inference, and ML
-models/evaluation/cross-validation; other modules remain flat.
+simulation, core classical fitting/execution, Bayesian inference, ML
+models/evaluation/cross-validation, and historical evaluation diagnostics;
+other modules remain flat.
 
 | Status | Surface |
 | --- | --- |
@@ -19,7 +20,7 @@ models/evaluation/cross-validation; other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), and ML models/evaluation/cross-validation in `ml` (Stage 4C); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), and historical diagnostics in `evaluation.diagnostics` (Stage 5A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -158,6 +159,20 @@ from generic `estimation.api`; the factual `evaluation_core` and
 Frozen generalization and uncertainty orchestration remain in their existing
 modules.
 
+Stage 5A converted the historical `evaluation.py` module into a package.
+Its canonical implementation is `tcspc_toolkit.evaluation.diagnostics`;
+`tcspc_toolkit.evaluation` directly re-exports only the seven historical functions:
+`generate_fitted_signal`, `calculate_residuals`, `calculate_reduced_residuals`,
+`calculate_absolute_lifetime_error`, `calculate_relative_lifetime_error`,
+`calculate_poisson_deviance_residuals`, and `calculate_lifetime_errors`.
+The compatibility path remains supported through at least Issue #12.
+The initializer does not aggregate factual results, attachments, conditional
+analysis, plots, uncertainty, or benchmark reports. The existing diagnostics
+dependency on `estimation.fitting.LifetimeFitResult` remains; parent-package
+initialization costs must not be mistaken for imports owned by factual modules.
+`evaluation_results`, `evaluation_core`, and `evaluation_uncertainty` remain
+flat, as do conditional evaluation and plotting. No root exports were added.
+
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
   Canonical implementations will live in subpackages; old paths must re-export
@@ -193,6 +208,7 @@ The implemented slices have these paths:
 
 | Canonical implementation | Compatibility import |
 | --- | --- |
+| `tcspc_toolkit.evaluation.diagnostics` | `tcspc_toolkit.evaluation` (seven-function diagnostics facade) |
 | `tcspc_toolkit.estimation.api` | `tcspc_toolkit.estimator_api` |
 | `tcspc_toolkit.estimation.baselines` | `tcspc_toolkit.baselines` |
 | `tcspc_toolkit.estimation.fitting` | `tcspc_toolkit.fitting` |

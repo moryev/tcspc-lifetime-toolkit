@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from tcspc_toolkit.evaluation import (
+from tcspc_toolkit.evaluation.diagnostics import (
     calculate_poisson_deviance_residuals,
 )
 from tcspc_toolkit.estimation.classical import (

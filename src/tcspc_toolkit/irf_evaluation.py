@@ -24,7 +24,7 @@ from tcspc_toolkit.classical_uncertainty import (
     estimate_poisson_reconvolution_local_covariance,
 )
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.evaluation import (
+from tcspc_toolkit.evaluation.diagnostics import (
     calculate_lifetime_errors,
     calculate_poisson_deviance_residuals,
 )

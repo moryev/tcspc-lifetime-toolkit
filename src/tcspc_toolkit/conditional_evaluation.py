@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike, NDArray
 
-from tcspc_toolkit.evaluation import (
+from tcspc_toolkit.evaluation.diagnostics import (
     calculate_lifetime_errors,
 )
 from tcspc_toolkit.estimation.classical import (

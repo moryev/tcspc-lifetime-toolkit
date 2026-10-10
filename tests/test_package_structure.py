@@ -55,7 +55,17 @@ PREPROCESSING = f"{PACKAGE}.preprocessing"
 IRF = f"{PACKAGE}.irf"
 MEASUREMENT = f"{PACKAGE}.measurement"
 SIMULATION = f"{PACKAGE}.simulation"
-COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF, SIMULATION}
+EVALUATION = f"{PACKAGE}.evaluation"
+DIAGNOSTICS = f"{EVALUATION}.diagnostics"
+DIAGNOSTIC_EXPORTS = (
+    "generate_fitted_signal", "calculate_residuals", "calculate_reduced_residuals",
+    "calculate_absolute_lifetime_error", "calculate_relative_lifetime_error",
+    "calculate_poisson_deviance_residuals", "calculate_lifetime_errors",
+)
+DIAGNOSTIC_IMPORTS = {
+    "numpy", "numpy.typing", f"{PACKAGE}.physics.models", f"{ESTIMATION}.fitting",
+}
+COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF, SIMULATION, EVALUATION}
 FACTUAL = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
 )}
@@ -79,8 +89,7 @@ CLASSICAL_IMPORTS = {
         "__future__", "dataclasses", "time", "pandas", "numpy", "numpy.typing",
         f"{PACKAGE}.physics.convolution", f"{PACKAGE}.physics.models",
         f"{PREPROCESSING}.histograms", f"{ESTIMATION}.fitting",
-        # Existing deviance diagnostics stay flat until their own migration.
-        f"{PACKAGE}.evaluation",
+        DIAGNOSTICS,
     },
 }
 BAYESIAN_IMPORTS = {
@@ -101,8 +110,7 @@ BAYESIAN_IMPORTS = {
         "__future__", "math", "time", "dataclasses", "numpy", "numpy.typing",
         f"{BAYESIAN}.posterior", f"{BAYESIAN}.sampling",
         f"{PACKAGE}.physics.forward_model", f"{SIMULATION}.histograms",
-        # Existing residual/deviance diagnostics stay flat until their own move.
-        f"{PACKAGE}.evaluation",
+        DIAGNOSTICS,
     },
 }
 ML_IMPORTS = {
@@ -171,7 +179,7 @@ MEASUREMENT_IMPORTS = {
     f"{MEASUREMENT}.adapters": {
         "__future__", "copy", "dataclasses", "types", "typing", "numpy", "pandas",
         "numpy.typing", f"{ESTIMATION}.classical", f"{PACKAGE}.config",
-        f"{PACKAGE}.evaluation", f"{PACKAGE}.exceptions",
+        DIAGNOSTICS, f"{PACKAGE}.exceptions",
         f"{PREPROCESSING}.features", f"{PREPROCESSING}.histograms",
         f"{IRF}.preparation", f"{IRF}.selection", f"{MEASUREMENT}.records",
     },
@@ -369,6 +377,11 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
         kind == "eager" and base == f"{PREPROCESSING}.histograms"
         for kind, base, _ in records[PREPROCESSING]
     )
+    assert records[EVALUATION] == [("eager", DIAGNOSTICS, DIAGNOSTIC_EXPORTS)]
+    assert {base for _, base, _ in records[DIAGNOSTICS]} == DIAGNOSTIC_IMPORTS
+    # Diagnostics legitimately uses a fitting result. This is not a dependency
+    # of the factual modules: their own source imports are guarded separately
+    # above, regardless of root/parent initializer costs observed at runtime.
     for module, imports in records.items():
         for _, base, names in imports:
             targets = _targets(base, names, set(records)) | {base}
@@ -409,6 +422,80 @@ def test_simulation_collision_preserves_only_the_historical_histogram_surface():
     for name in ("SyntheticDataset", "generate_monoexponential_dataset",
                  "generate_grouped_monoexponential_dataset", "monoexponential_decay"):
         assert not hasattr(package, name), name
+
+
+def test_evaluation_collision_preserves_only_the_historical_diagnostics_surface():
+    assert not (SOURCE_ROOT / "evaluation.py").exists()
+    package = importlib.import_module(EVALUATION)
+    canonical = importlib.import_module(DIAGNOSTICS)
+    root = importlib.import_module(PACKAGE)
+    assert Path(package.__file__).resolve() == SOURCE_ROOT / "evaluation" / "__init__.py"
+    assert hasattr(package, "__path__")
+    assert tuple(package.__all__) == DIAGNOSTIC_EXPORTS
+    assert not set(DIAGNOSTIC_EXPORTS).intersection(root.__all__)
+    for name in DIAGNOSTIC_EXPORTS:
+        assert getattr(package, name) is getattr(canonical, name)
+        assert getattr(canonical, name).__module__ == DIAGNOSTICS
+    for name in ("LifetimeFitResult", "monoexponential_decay", "np", "NDArray",
+                 "PointEvaluationResult", "build_point_evaluation", "IntervalAttachment",
+                 "build_prediction_diagnostics", "plot_true_vs_predicted"):
+        assert not hasattr(package, name), name
+
+
+@pytest.mark.parametrize("module", [EVALUATION, DIAGNOSTICS])
+def test_fresh_evaluation_facade_loads_only_historical_diagnostics(tmp_path, module):
+    # Keep real root initialization, which already imports fitting and diagnostics.
+    # Attribute import edges to their owner, not everything present in sys.modules.
+    script = f"""
+import builtins
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
+    'tcspc_toolkit.evaluation_results', 'tcspc_toolkit.evaluation_core',
+    'tcspc_toolkit.evaluation_uncertainty', 'tcspc_toolkit.conditional_evaluation',
+    'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.ml',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty_robustness',
+]
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller in ({EVALUATION!r}, {DIAGNOSTICS!r}):
+        base = importlib.util.resolve_name('.' * level + name, globals['__package__']) if level else name
+        seen.setdefault(caller, set()).add(base)
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = track
+try:
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert seen[{EVALUATION!r}] == {{{DIAGNOSTICS!r}}}
+assert seen[{DIAGNOSTICS!r}] == {DIAGNOSTIC_IMPORTS!r}
+facade = importlib.import_module({EVALUATION!r})
+canonical = importlib.import_module({DIAGNOSTICS!r})
+assert tuple(facade.__all__) == {DIAGNOSTIC_EXPORTS!r}
+for name in {DIAGNOSTIC_EXPORTS!r}:
+    assert getattr(facade, name) is getattr(canonical, name)
+assert 'tcspc_toolkit.estimation.fitting' in sys.modules
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_bayesian_and_experimental_consumers_share_the_canonical_irf_resolver():
@@ -608,7 +695,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "preprocessing.representations",
                                    "irf.profiles", "irf.preparation", "irf.estimation", "irf.selection",
                                    "measurement.records", "measurement.io", "measurement.adapters",
-                                   "simulation.histograms", "simulation.datasets"])
+                                   "simulation.histograms", "simulation.datasets",
+                                   "evaluation.diagnostics"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]

@@ -16,7 +16,7 @@ from tcspc_toolkit.estimation.classical import (
     fit_single_reconvolution_curve,
 )
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.evaluation import calculate_lifetime_errors
+from tcspc_toolkit.evaluation.diagnostics import calculate_lifetime_errors
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.preprocessing.features import FEATURE_NAMES, extract_features
 from tcspc_toolkit.irf.preparation import PreparedIRF

@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
-from tcspc_toolkit.evaluation import (
+from tcspc_toolkit.evaluation.diagnostics import (
     calculate_poisson_deviance_residuals,
 )
 from tcspc_toolkit.estimation.fitting import (
