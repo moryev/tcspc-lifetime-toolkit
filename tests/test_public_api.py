@@ -444,6 +444,31 @@ def test_factual_facades_preserve_supported_objects_without_expanding_root(old_m
         assert not hasattr(toolkit, name)
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.conditional_evaluation", "conditional", (
+        "build_prediction_diagnostics", "build_ml_prediction_diagnostics",
+        "build_classical_prediction_diagnostics", "summarize_conditional_performance",
+        "assign_numeric_regimes", "add_benchmark_regimes", "summarize_standard_regimes",
+    )),
+    ("tcspc_toolkit.benchmark_plots", "plots", (
+        "plot_true_vs_predicted", "plot_error_histogram", "plot_error_vs_condition",
+        "plot_paired_absolute_error_comparison",
+    )),
+])
+def test_analysis_facades_preserve_supported_functions_without_expanding_root(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.evaluation.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    diagnostics_facade = importlib.import_module("tcspc_toolkit.evaluation")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        assert getattr(canonical, name).__module__ == canonical_module
+        assert not hasattr(diagnostics_facade, name)
+        assert not hasattr(toolkit, name)
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

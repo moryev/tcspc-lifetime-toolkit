@@ -27,6 +27,14 @@ seven-function diagnostics facade, not an aggregate factual/reporting API.
 Its inherited initialization of diagnostics/fitting is separate from the
 estimator-independent source dependencies of the factual modules.
 
+Stage 5C adds canonical `tcspc_toolkit.evaluation.conditional` and
+`tcspc_toolkit.evaluation.plots`. Historical `conditional_evaluation` and
+`benchmark_plots` remain direct-object compatibility paths through at least
+Issue #12. These explicit submodules preserve the existing conditional
+populations, legacy adapters, caller-selected references/regimes, and plotting
+schemas. The diagnostics facade imports neither module nor Matplotlib.
+Frozen benchmark and uncertainty implementations remain in their existing locations.
+
 ```text
 frozen scientific benchmark definitions
                 ↓
@@ -50,7 +58,7 @@ legacy-compatible scientific reports
 | `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
 | `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
 | `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
-| `conditional_evaluation` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
+| `evaluation.conditional` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
 | `mismatch_evaluation`, `timing_evaluation` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
@@ -273,7 +281,7 @@ the contract of these legacy, fully targeted conditional tables.
 For example, given an existing split and regression result:
 
 ```python
-from tcspc_toolkit.conditional_evaluation import build_ml_prediction_diagnostics
+from tcspc_toolkit.evaluation.conditional import build_ml_prediction_diagnostics
 from tcspc_toolkit.evaluation.results import LifetimeReference, MethodDescriptor
 
 diagnostics = build_ml_prediction_diagnostics(

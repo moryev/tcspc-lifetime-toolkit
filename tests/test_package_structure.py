@@ -27,7 +27,7 @@ OLD_MODULE_PATHS = (
     "estimator_api", "baselines", "fitting", "classical_evaluation",
     "ml_models", "ml_evaluation", "cross_validation", "evaluation",
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
-    "conditional_evaluation", "mismatch_evaluation", "timing_evaluation",
+    "conditional_evaluation", "benchmark_plots", "mismatch_evaluation", "timing_evaluation",
     "generalization", "generalization_datasets", "generalization_evaluation",
     "irf_evaluation", "uncertainty_evaluation", "ml_uncertainty",
     "classical_uncertainty", "uncertainty_robustness", "bayesian",
@@ -49,6 +49,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "fitting", "classical_evaluation", "bayesian", "bayesian_sampling", "bayesian_predictive",
     "ml_models", "ml_evaluation", "cross_validation",
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
+    "conditional_evaluation", "benchmark_plots",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -79,6 +80,16 @@ FACTUAL_IMPORTS = {
     },
 }
 FACTUAL = set(FACTUAL_IMPORTS)
+ANALYSIS_IMPORTS = {
+    f"{EVALUATION}.conditional": {
+        "__future__", "collections.abc", "numpy", "pandas", "numpy.typing",
+        DIAGNOSTICS, f"{ESTIMATION}.classical", f"{EVALUATION}.core",
+        f"{EVALUATION}.results", f"{ML}.evaluation",
+    },
+    f"{EVALUATION}.plots": {
+        "__future__", "matplotlib.pyplot", "numpy", "pandas", "matplotlib.axes",
+    },
+}
 PHYSICAL = {f"{PACKAGE}.{name}" for name in (
     "physics.models", "physics.convolution", "physics.forward_model", "irf.profiles",
 )}
@@ -390,6 +401,8 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
     assert {base for _, base, _ in records[DIAGNOSTICS]} == DIAGNOSTIC_IMPORTS
     for module, allowed in FACTUAL_IMPORTS.items():
         assert {base for _, base, _ in records[module]} == allowed, module
+    for module, allowed in ANALYSIS_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} == allowed, module
     # Diagnostics legitimately uses a fitting result. This is not a dependency
     # of the factual modules: their own source imports are guarded separately
     # above, regardless of root/parent initializer costs observed at runtime.
@@ -469,6 +482,7 @@ blocked = [
     'tcspc_toolkit.evaluation_uncertainty', 'tcspc_toolkit.conditional_evaluation',
     'tcspc_toolkit.evaluation.results', 'tcspc_toolkit.evaluation.core',
     'tcspc_toolkit.evaluation.attachments',
+    'tcspc_toolkit.evaluation.conditional', 'tcspc_toolkit.evaluation.plots',
     'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
@@ -524,6 +538,7 @@ attempts = []
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.conditional_evaluation',
+    'tcspc_toolkit.evaluation.conditional', 'tcspc_toolkit.evaluation.plots',
     'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.uncertainty_evaluation',
@@ -559,6 +574,64 @@ for caller in expected:
 assert tuple(sys.modules[{EVALUATION!r}].__all__) == {DIAGNOSTIC_EXPORTS!r}
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module, canonical", [
+    (f"{EVALUATION}.conditional", f"{EVALUATION}.conditional"),
+    (f"{PACKAGE}.conditional_evaluation", f"{EVALUATION}.conditional"),
+    (f"{EVALUATION}.plots", f"{EVALUATION}.plots"),
+    (f"{PACKAGE}.benchmark_plots", f"{EVALUATION}.plots"),
+])
+def test_fresh_analysis_imports_require_explicit_submodules(tmp_path, module, canonical):
+    script = f"""
+import importlib
+import importlib.abc
+import os
+import sys
+os.environ['MPLBACKEND'] = 'Agg'
+attempts = []
+blocked = [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.uncertainty_evaluation',
+    'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.classical_uncertainty',
+    'tcspc_toolkit.uncertainty_robustness',
+]
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+facade = importlib.import_module({EVALUATION!r})
+assert tuple(facade.__all__) == {DIAGNOSTIC_EXPORTS!r}
+assert not any(n in sys.modules for n in {sorted(FACTUAL | set(ANALYSIS_IMPORTS))!r})
+assert not any(n == 'matplotlib' or n.startswith('matplotlib.') for n in sys.modules)
+loaded = importlib.import_module({module!r})
+implementation = importlib.import_module({canonical!r})
+if {canonical!r} == {EVALUATION + '.conditional'!r}:
+    assert {EVALUATION + '.plots'!r} not in sys.modules
+    assert not any(n == 'matplotlib' or n.startswith('matplotlib.') for n in sys.modules)
+else:
+    assert 'matplotlib.pyplot' in sys.modules
+    assert {EVALUATION + '.conditional'!r} not in sys.modules
+    assert not any(n in sys.modules for n in {sorted(FACTUAL)!r})
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+legacy = importlib.import_module(
+    'tcspc_toolkit.conditional_evaluation'
+    if {canonical!r} == {EVALUATION + '.conditional'!r} else 'tcspc_toolkit.benchmark_plots'
+)
+for name in legacy.__all__:
+    assert getattr(legacy, name) is getattr(implementation, name)
+    assert not hasattr(facade, name)
+assert tuple(facade.__all__) == {DIAGNOSTIC_EXPORTS!r}
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
                                capture_output=True, text=True, timeout=60)
@@ -766,7 +839,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "measurement.records", "measurement.io", "measurement.adapters",
                                    "simulation.histograms", "simulation.datasets",
                                    "evaluation.diagnostics", "evaluation.results",
-                                   "evaluation.core", "evaluation.attachments"])
+                                   "evaluation.core", "evaluation.attachments",
+                                   "evaluation.conditional", "evaluation.plots"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]

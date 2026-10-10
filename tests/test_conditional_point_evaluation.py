@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit import conditional_evaluation as conditional
+import tcspc_toolkit.evaluation.conditional as conditional
 from tcspc_toolkit.classical_evaluation import (
     ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary,
 )
