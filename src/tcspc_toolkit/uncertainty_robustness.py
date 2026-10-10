@@ -40,11 +40,11 @@ from tcspc_toolkit.classical_uncertainty import (
     project_poisson_local_covariance_interval,
 )
 from tcspc_toolkit.evaluation.core import build_point_evaluation
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     GeneralizationTestMeasurements,
 )
 from tcspc_toolkit.generalization_evaluation import (

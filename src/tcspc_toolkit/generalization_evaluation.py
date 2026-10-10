@@ -44,12 +44,12 @@ from tcspc_toolkit.evaluation.results import (
 from tcspc_toolkit.preprocessing.features import (
     extract_feature_table,
 )
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     FINAL_ROBUSTNESS_TEST_IDS,
     GeneralizationSuiteDefinition,
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     GeneralizationTestMeasurements,
     build_generalization_time_axis,
 )

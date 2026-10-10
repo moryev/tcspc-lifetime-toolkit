@@ -10,7 +10,8 @@ histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
 simulation, core classical fitting/execution, Bayesian inference, ML
 models/evaluation/cross-validation, historical evaluation diagnostics,
-factual point/reference/attachment contracts, conditional analysis, and plotting;
+factual point/reference/attachment contracts, conditional analysis, plotting,
+and frozen Week-8 generalization protocol/data generation;
 other modules remain flat.
 
 | Status | Surface |
@@ -21,7 +22,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), and conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -85,7 +86,11 @@ Important supported module-qualified workflows include:
   point-estimate evaluation, repeated CV and its configuration/result types,
   and transforms. Flat `ml_models`, `ml_evaluation`, and `cross_validation`
   remain direct-object compatibility paths through at least Issue #12.
-- `generalization`, `generalization_datasets`, `generalization_evaluation`,
+- `benchmarks.generalization_protocol` and `benchmarks.generalization_datasets`:
+  frozen Week-8 A–F definitions and paired observation generation. Flat
+  `generalization` and `generalization_datasets` remain direct-object
+  compatibility paths through at least Issue #12.
+- `generalization_evaluation`,
   `irf_evaluation`,
   `mismatch_evaluation`, and `timing_evaluation`: scientific protocols and
   specialized evaluation/reporting paths and report/result classes, not a
@@ -211,6 +216,24 @@ paths; it does not select frozen A–F conditions. Plotting remains a separate
 explicit import: importing `tcspc_toolkit.evaluation` does not load conditional
 analysis or Matplotlib. Benchmark, uncertainty, and persistence modules have
 not moved in these stages.
+
+Stage 6A creates the docstring-only `benchmarks` namespace and moves only
+the frozen Week-8 protocol/configuration and dataset-generation implementations:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.generalization_protocol` | `tcspc_toolkit.generalization` |
+| `tcspc_toolkit.benchmarks.generalization_datasets` | `tcspc_toolkit.generalization_datasets` |
+
+The initializer imports no children. Protocol definitions, A–F ordering, seeds,
+paired designs, RNG behavior, and development/external roles are unchanged.
+`generalization_evaluation.py` has not moved: preparation, execution, and
+report construction remain there until the separately reviewed Stage 6B.
+Other benchmark studies, uncertainty implementations, and persistence remain
+in their existing locations. The uncertainty provenance guard still depends
+explicitly on the frozen protocol; ML uncertainty's protocol/data annotations
+remain typing-only imports. Both flat compatibility paths remain supported
+through at least Issue #12.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.

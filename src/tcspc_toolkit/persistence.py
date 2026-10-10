@@ -2054,7 +2054,7 @@ def record_benchmark_observation(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Select one documented raw observation from a benchmark measurement carrier."""
-    from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+    from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
     from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements
 
     if not isinstance(measurements, (BenchmarkMeasurements, GeneralizationTestMeasurements)):

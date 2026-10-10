@@ -469,6 +469,53 @@ def test_analysis_facades_preserve_supported_functions_without_expanding_root(ol
         assert not hasattr(toolkit, name)
 
 
+@pytest.mark.parametrize("old_module, module, names", [
+    ("tcspc_toolkit.generalization", "generalization_protocol", (
+        "FINAL_ROBUSTNESS_TEST_IDS",
+        "DEVELOPMENT_ONLY_OPERATIONS",
+        "GeneralizationShift",
+        "GeneralizationRegime",
+        "GeneralizationProtocol",
+        "default_generalization_protocol",
+        "FamiliarSimulationDomain",
+        "DEFAULT_GENERALIZATION_SUITE_VERSION",
+        "DEFAULT_DEVELOPMENT_REFERENCE",
+        "default_familiar_simulation_domain",
+        "GeneralizationNumerics",
+        "GeneralizationSuiteDefinition",
+        "default_generalization_numerics",
+        "default_generalization_suite",
+    )),
+    ("tcspc_toolkit.generalization_datasets", "generalization_datasets", (
+        "FloatArray",
+        "IntArray",
+        "PAIR_VARIANTS_PER_CONDITION",
+        "GeneralizationTestMeasurements",
+        "GeneralizationTestSuite",
+        "build_generalization_time_axis",
+        "build_paired_parameter_design",
+        "build_test_parameter_table",
+        "build_test_f_parameter_table",
+        "generate_generalization_test",
+        "generate_generalization_test_suite",
+        "build_generalization_suite_manifest",
+    )),
+])
+def test_benchmark_facades_preserve_supported_objects_without_expanding_root(old_module, module, names):
+    canonical_module = f"tcspc_toolkit.benchmarks.{module}"
+    canonical = importlib.import_module(canonical_module)
+    facade = importlib.import_module(old_module)
+    namespace = importlib.import_module("tcspc_toolkit.benchmarks")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        assert_same_export(old_module, canonical_module, name)
+        if not name.isupper() and name not in {"FloatArray", "IntArray"}:
+            assert getattr(canonical, name).__module__ == canonical_module
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

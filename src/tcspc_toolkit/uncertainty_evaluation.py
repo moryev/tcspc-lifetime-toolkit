@@ -13,7 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import spearmanr
 
-from tcspc_toolkit.generalization import FINAL_ROBUSTNESS_TEST_IDS
+from tcspc_toolkit.benchmarks.generalization_protocol import FINAL_ROBUSTNESS_TEST_IDS
 
 
 DEFAULT_UNCERTAINTY_CALIBRATION_FRACTION = 0.25

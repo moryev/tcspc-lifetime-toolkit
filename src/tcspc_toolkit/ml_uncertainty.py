@@ -45,13 +45,13 @@ from tcspc_toolkit.uncertainty_evaluation import (
 
 
 if TYPE_CHECKING:
-    from tcspc_toolkit.generalization import (
+    from tcspc_toolkit.benchmarks.generalization_protocol import (
         GeneralizationSuiteDefinition,
     )
     from tcspc_toolkit.generalization_evaluation import (
         GeneralizationPreparedData,
     )
-    from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+    from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
 
 
 QUANTILE_GRADIENT_BOOSTING_METHOD_ID = (

@@ -42,6 +42,17 @@ BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
 BAYESIAN = f"{ESTIMATION}.bayesian"
 ML = f"{PACKAGE}.ml"
+BENCHMARKS = f"{PACKAGE}.benchmarks"
+GENERALIZATION_PROTOCOL = f"{BENCHMARKS}.generalization_protocol"
+GENERALIZATION_DATASETS = f"{BENCHMARKS}.generalization_datasets"
+BENCHMARK_IMPORTS = {
+    BENCHMARKS: set(),
+    GENERALIZATION_PROTOCOL: {"dataclasses", "enum", "math"},
+    GENERALIZATION_DATASETS: {
+        "__future__", "dataclasses", "itertools", "numpy", "pandas", "numpy.typing",
+        GENERALIZATION_PROTOCOL, f"{PACKAGE}.simulation.histograms",
+    },
+}
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "estimator_api", "baselines", "models", "convolution", "forward_model",
     "features", "representations", "irf_preparation", "irf_estimation",
@@ -50,6 +61,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "ml_models", "ml_evaluation", "cross_validation",
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
     "conditional_evaluation", "benchmark_plots",
+    "generalization", "generalization_datasets",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -416,6 +428,120 @@ def test_migrated_initializers_and_canonical_consumers_stay_independent(package_
                 }), (module, targets)
 
 
+def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(package_imports):
+    records, _ = package_imports
+    tree = ast.parse((SOURCE_ROOT / "benchmarks" / "__init__.py").read_text(encoding="utf-8"))
+    assert len(tree.body) == 1 and ast.get_docstring(tree)
+    assert records[BENCHMARKS] == []
+    for module, allowed in BENCHMARK_IMPORTS.items():
+        assert {base for _, base, _ in records[module]} == allowed, module
+        assert all(kind == "eager" for kind, _, _ in records[module]), module
+
+    def benchmark_edges(module):
+        return {(kind, base) for kind, base, _ in records[module]
+                if base == BENCHMARKS or base.startswith(BENCHMARKS + ".")}
+
+    assert benchmark_edges(f"{PACKAGE}.ml_uncertainty") == {
+        ("typing", GENERALIZATION_PROTOCOL), ("typing", GENERALIZATION_DATASETS),
+    }
+    assert ("typing", f"{PACKAGE}.generalization_evaluation",
+            ("GeneralizationPreparedData",)) in records[f"{PACKAGE}.ml_uncertainty"]
+    assert benchmark_edges(PERSISTENCE) == {("deferred", GENERALIZATION_DATASETS)}
+    # Existing scientific provenance guard, not a protocol-independent metric layer.
+    assert ("eager", GENERALIZATION_PROTOCOL, ("FINAL_ROBUSTNESS_TEST_IDS",)) in (
+        records[f"{PACKAGE}.uncertainty_evaluation"]
+    )
+    for module in (f"{PACKAGE}.generalization_evaluation", f"{PACKAGE}.uncertainty_robustness"):
+        assert benchmark_edges(module) == {
+            ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
+        }
+    foundations = (
+        f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
+    )
+    for module in records:
+        if (module in FACTUAL or module == f"{ML}.models"
+                or any(module == p or module.startswith(p + ".") for p in foundations)):
+            assert not benchmark_edges(module), module
+
+
+@pytest.mark.parametrize("module", [
+    BENCHMARKS, GENERALIZATION_PROTOCOL, GENERALIZATION_DATASETS,
+    f"{PACKAGE}.generalization", f"{PACKAGE}.generalization_datasets",
+])
+def test_fresh_benchmark_imports_do_not_aggregate_studies(tmp_path, module):
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization_evaluation',
+    'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.mismatch_evaluation',
+    'tcspc_toolkit.timing_evaluation', 'tcspc_toolkit.bayesian_evaluation',
+    'tcspc_toolkit.bayesian_mismatch_evaluation',
+]
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+import tcspc_toolkit
+assert not any(n == {BENCHMARKS!r} or n.startswith({BENCHMARKS + '.'!r}) for n in sys.modules)
+namespace = importlib.import_module({BENCHMARKS!r})
+assert not any(n.startswith({BENCHMARKS + '.'!r}) for n in sys.modules)
+importlib.import_module({module!r})
+expected = {{
+    {BENCHMARKS!r}: set(),
+    {GENERALIZATION_PROTOCOL!r}: {{{GENERALIZATION_PROTOCOL!r}}},
+    {GENERALIZATION_DATASETS!r}: {{{GENERALIZATION_PROTOCOL!r}, {GENERALIZATION_DATASETS!r}}},
+    'tcspc_toolkit.generalization': {{{GENERALIZATION_PROTOCOL!r}}},
+    'tcspc_toolkit.generalization_datasets': {{{GENERALIZATION_PROTOCOL!r}, {GENERALIZATION_DATASETS!r}}},
+}}[{module!r}]
+assert {{n for n in sys.modules if n.startswith({BENCHMARKS + '.'!r})}} == expected
+assert not hasattr(namespace, 'GeneralizationSuiteDefinition')
+assert not hasattr(namespace, 'GeneralizationTestSuite')
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_fresh_foundations_do_not_load_benchmarks(tmp_path):
+    # The real root already loads sklearn/fitting. None of these imports may
+    # load even benchmark configuration, much less execution or reporting.
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = [{BENCHMARKS!r}, 'tcspc_toolkit.generalization',
+           'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
+           'emcee', 'sqlite3', 'tcspc_toolkit.persistence']
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+for module in ('tcspc_toolkit', 'tcspc_toolkit.estimation.api',
+               'tcspc_toolkit.ml.models', 'tcspc_toolkit.evaluation.results'):
+    importlib.import_module(module)
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_preprocessing_collision_has_one_package_implementation():
     assert not (SOURCE_ROOT / "preprocessing.py").exists()
     package = importlib.import_module(PREPROCESSING)
@@ -484,7 +610,7 @@ blocked = [
     'tcspc_toolkit.evaluation.attachments',
     'tcspc_toolkit.evaluation.conditional', 'tcspc_toolkit.evaluation.plots',
     'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.ml',
-    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.benchmarks', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty',
     'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty_robustness',
@@ -539,7 +665,7 @@ blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.conditional_evaluation',
     'tcspc_toolkit.evaluation.conditional', 'tcspc_toolkit.evaluation.plots',
-    'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.benchmark_plots', 'matplotlib', 'tcspc_toolkit.benchmarks', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.uncertainty_evaluation',
     'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.classical_uncertainty',
@@ -597,7 +723,7 @@ os.environ['MPLBACKEND'] = 'Agg'
 attempts = []
 blocked = [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
-    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.benchmarks', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.uncertainty_evaluation',
     'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.classical_uncertainty',
@@ -840,12 +966,14 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "simulation.histograms", "simulation.datasets",
                                    "evaluation.diagnostics", "evaluation.results",
                                    "evaluation.core", "evaluation.attachments",
-                                   "evaluation.conditional", "evaluation.plots"])
+                                   "evaluation.conditional", "evaluation.plots",
+                                   "benchmarks.generalization_protocol",
+                                   "benchmarks.generalization_datasets"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]
     if generic_only:
-        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling", BAYESIAN, ML,
+        blocked += [PERSISTENCE, f"{PACKAGE}.bayesian_sampling", BAYESIAN, ML, BENCHMARKS,
                     f"{PACKAGE}.generalization_evaluation", f"{PACKAGE}.ml_models"]
     script = f"""
 import importlib

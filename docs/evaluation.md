@@ -33,7 +33,15 @@ Stage 5C adds canonical `tcspc_toolkit.evaluation.conditional` and
 Issue #12. These explicit submodules preserve the existing conditional
 populations, legacy adapters, caller-selected references/regimes, and plotting
 schemas. The diagnostics facade imports neither module nor Matplotlib.
-Frozen benchmark and uncertainty implementations remain in their existing locations.
+
+Stage 6A places only frozen Week-8 protocol/configuration and paired dataset
+generation in `tcspc_toolkit.benchmarks.generalization_protocol` and
+`tcspc_toolkit.benchmarks.generalization_datasets`. Historical `generalization`
+and `generalization_datasets` remain direct-object compatibility paths through
+at least Issue #12. The benchmark initializer imports no children.
+`generalization_evaluation.py` remains flat and retains preparation, execution,
+and reporting until Stage 6B; other studies and uncertainty implementations
+have not moved. Frozen A–F values, seeds, pairing, and data roles are unchanged.
 
 ```text
 frozen scientific benchmark definitions
@@ -54,7 +62,7 @@ legacy-compatible scientific reports
 | Current location | Carriers / entry points | Responsibility and consolidation boundary |
 |---|---|---|
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
-| `generalization`, `generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
+| `benchmarks.generalization_protocol`, `benchmarks.generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
 | `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
 | `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
 | `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
