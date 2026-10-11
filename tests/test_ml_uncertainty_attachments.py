@@ -12,12 +12,14 @@ from tcspc_toolkit.ml_evaluation import BenchmarkDataset
 from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScoreCalibrationResult,
     QuantileGradientBoostingCalibrationResult,
-    _QUANTILE_MEDIAN_POINT_METHOD,
-    _development_calibration_batch,
-    _frozen_ml_uncertainty_batch,
     evaluate_frozen_ml_uncertainty_score,
     project_ml_prediction_intervals,
     project_ml_uncertainty_scores,
+)
+from tcspc_toolkit.uncertainty.ml import (
+    _QUANTILE_MEDIAN_POINT_METHOD,
+    _development_calibration_batch,
+    _frozen_ml_uncertainty_batch,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult, UncertaintyDevelopmentSplit, UncertaintyScoreResult,
@@ -237,7 +239,7 @@ def test_conformal_workflow_projects_corrected_bounds_with_no_refit(monkeypatch)
 
 
 def test_external_score_projection_preserves_source_metrics_and_explicit_point_link(monkeypatch):
-    import tcspc_toolkit.ml_uncertainty as ml_uncertainty
+    import tcspc_toolkit.uncertainty.ml as ml_uncertainty
 
     source = UncertaintyScoreResult(
         np.array([2.0, 3.0]), np.array([0.2, 0.0]),

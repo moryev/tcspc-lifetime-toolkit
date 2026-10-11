@@ -4055,8 +4055,8 @@ def record_prediction_intervals(
         UncertaintyOutputKind,
     )
     from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
-    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
-    from tcspc_toolkit.classical_uncertainty import CLASSICAL_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty.classical import CLASSICAL_UNCERTAINTY_METHODS
 
     if not isinstance(intervals, PredictionIntervalResult):
         raise TypeError("intervals must be a PredictionIntervalResult")
@@ -4129,7 +4129,7 @@ def record_quantile_intervals(
     result_ids: Sequence[int], on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the current q05/q50/q95 interval without creating a median point."""
-    from tcspc_toolkit.ml_uncertainty import (
+    from tcspc_toolkit.uncertainty.ml import (
         DEFAULT_LOWER_QUANTILE, DEFAULT_MEDIAN_QUANTILE, DEFAULT_UPPER_QUANTILE,
         ML_UNCERTAINTY_METHODS, QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
     )
@@ -4159,7 +4159,7 @@ def record_conformal_intervals(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record split-conformalized quantile intervals and calibration identity."""
-    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
     from tcspc_toolkit.uncertainty.evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
     from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
 
@@ -4196,7 +4196,7 @@ def record_uncertainty_scores(
     from tcspc_toolkit.uncertainty.evaluation import (
         UncertaintyMethodDefinition, UncertaintyOutputKind, UncertaintyScoreResult,
     )
-    from tcspc_toolkit.ml_uncertainty import (
+    from tcspc_toolkit.uncertainty.ml import (
         ML_TRAINING_BOOTSTRAP_METHOD_ID, ML_UNCERTAINTY_METHODS,
         RANDOM_FOREST_TREE_SPREAD_METHOD_ID,
     )
@@ -4247,7 +4247,7 @@ def record_classical_covariance_uncertainty(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Store a per-fit Poisson/Fisher local summary, never empirical variability."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         CLASSICAL_UNCERTAINTY_METHODS, POISSON_LOCAL_COVARIANCE_METHOD_ID,
         PoissonLocalCovarianceResult,
     )
@@ -4297,7 +4297,7 @@ def record_parametric_bootstrap_uncertainty(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Store one Poisson refit-bootstrap interval and std in the same row."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         CLASSICAL_UNCERTAINTY_METHODS, PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
         ParametricPoissonBootstrapResult,
     )
@@ -4852,7 +4852,7 @@ def record_repeated_poisson_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record empirical sampling variability and method comparisons as facts."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         REPEATED_POISSON_REFERENCE_METHOD_ID, RepeatedPoissonUncertaintyResult,
     )
 

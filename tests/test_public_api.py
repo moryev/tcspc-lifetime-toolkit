@@ -636,6 +636,90 @@ def test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_l
     assert not hasattr(canonical, "ScoreAttachment")
 
 
+@pytest.mark.parametrize("historical, canonical_name, names, aliases", [
+    ("tcspc_toolkit.ml_uncertainty", "tcspc_toolkit.uncertainty.ml", (
+        "QUANTILE_GRADIENT_BOOSTING_METHOD_ID",
+        "DEFAULT_LOWER_QUANTILE",
+        "DEFAULT_MEDIAN_QUANTILE",
+        "DEFAULT_UPPER_QUANTILE",
+        "DEFAULT_QUANTILE_NOMINAL_COVERAGE",
+        "RANDOM_FOREST_TREE_SPREAD_METHOD_ID",
+        "ML_TRAINING_BOOTSTRAP_METHOD_ID",
+        "DEFAULT_BOOTSTRAP_REPLICATES",
+        "project_ml_prediction_intervals",
+        "project_ml_uncertainty_scores",
+        "QuantileGradientBoostingIntervalEstimator",
+        "RandomForestTreeSpreadEstimator",
+        "BootstrapPredictionSpreadEstimator",
+        "MLUncertaintyScoreCalibrationResult",
+        "fit_and_evaluate_random_forest_tree_spread",
+        "fit_and_evaluate_ridge_bootstrap_spread",
+        "QuantileGradientBoostingCalibrationResult",
+        "QuantileGradientBoostingExternalResult",
+        "QuantileGradientBoostingRobustnessResult",
+        "QuantileGradientBoostingPairedConditionResult",
+        "QuantileGradientBoostingPairedRobustnessResult",
+        "fit_and_evaluate_quantile_gradient_boosting",
+        "evaluate_frozen_quantile_gradient_boosting",
+        "evaluate_quantile_interval_robustness",
+        "evaluate_paired_quantile_interval_response",
+        "MLUncertaintyScoreExternalResult",
+        "MLUncertaintyScorePairedConditionResult",
+        "MLUncertaintyScorePairedRobustnessResult",
+        "evaluate_paired_uncertainty_score_response",
+        "evaluate_frozen_ml_uncertainty_score",
+        "ML_UNCERTAINTY_METHODS",
+        "evaluate_week9_quantile_robustness_conditions",
+        "evaluate_week9_paired_quantile_response",
+        "evaluate_week9_paired_ml_uncertainty_response",
+    ), (
+        ("evaluate_week9_quantile_robustness_conditions", "evaluate_quantile_interval_robustness"),
+        ("evaluate_week9_paired_quantile_response", "evaluate_paired_quantile_interval_response"),
+        ("evaluate_week9_paired_ml_uncertainty_response", "evaluate_paired_uncertainty_score_response"),
+    )),
+    ("tcspc_toolkit.classical_uncertainty", "tcspc_toolkit.uncertainty.classical", (
+        "POISSON_LOCAL_COVARIANCE_METHOD_ID",
+        "DEFAULT_LOCAL_COVARIANCE_RELATIVE_STEP",
+        "DEFAULT_INFORMATION_CONDITION_LIMIT",
+        "PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID",
+        "REPEATED_POISSON_REFERENCE_METHOD_ID",
+        "DEFAULT_CLASSICAL_BOOTSTRAP_REPLICATES",
+        "DEFAULT_CLASSICAL_NOMINAL_COVERAGE",
+        "CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND",
+        "CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND",
+        "CLASSICAL_UNCERTAINTY_METHODS",
+        "PoissonLocalCovarianceResult",
+        "ParametricPoissonBootstrapResult",
+        "project_poisson_local_covariance_interval",
+        "project_parametric_poisson_bootstrap_interval",
+        "estimate_parametric_poisson_bootstrap",
+        "RepeatedPoissonUncertaintyResult",
+        "evaluate_repeated_poisson_uncertainty",
+        "estimate_poisson_reconvolution_local_covariance",
+    ), ()),
+])
+def test_uncertainty_method_facades_preserve_public_surface_and_pickle_lookup(
+    historical, canonical_name, names, aliases,
+):
+    canonical = importlib.import_module(canonical_name)
+    facade = importlib.import_module(historical)
+    namespace = importlib.import_module("tcspc_toolkit.uncertainty")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        obj = getattr(canonical, name)
+        assert getattr(facade, name) is obj
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+        if callable(obj):
+            assert obj.__module__ == canonical_name
+            historical_global = f"c{historical}\n{name}\n.".encode()
+            assert pickle.loads(historical_global) is obj
+            assert pickle.loads(pickle.dumps(obj)) is obj
+    for alias, name in aliases:
+        assert getattr(facade, alias) is getattr(canonical, name)
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

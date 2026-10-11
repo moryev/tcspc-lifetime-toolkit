@@ -26,7 +26,7 @@ from tcspc_toolkit.evaluation.diagnostics import (
 from tcspc_toolkit.estimation.classical import (
     fit_single_reconvolution_curve,
 )
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     CLASSICAL_LOCAL_COVARIANCE_INTERVAL_KIND,
     CLASSICAL_PARAMETRIC_BOOTSTRAP_INTERVAL_KIND,
     DEFAULT_CLASSICAL_BOOTSTRAP_REPLICATES,
@@ -59,7 +59,7 @@ from tcspc_toolkit.irf.profiles import (
 from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit.uncertainty.ml import (
     MLUncertaintyScoreCalibrationResult,
     QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
     QuantileGradientBoostingCalibrationResult,

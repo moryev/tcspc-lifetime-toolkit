@@ -55,8 +55,18 @@ objects. This module retains `WEEK9_HYPOTHESES` and its existing dependency on
 `benchmarks.generalization_protocol.FINAL_ROBUSTNESS_TEST_IDS` for the provenance
 guard. It is distinct from `evaluation.attachments`, whose `IntervalAttachment`
 and `ScoreAttachment` remain generic point-linked contracts. The new uncertainty
-initializer is docstring-only. ML/classical uncertainty and robustness/conformal
-implementations remain flat, with their scientific policies and populations unchanged.
+initializer is docstring-only.
+
+Stage 7B moves the intact ML and classical implementations to
+`tcspc_toolkit.uncertainty.ml` and `tcspc_toolkit.uncertainty.classical`.
+Historical `tcspc_toolkit.ml_uncertainty` and `tcspc_toolkit.classical_uncertainty`
+directly re-export their 34 and 18 supported names, including the three ML Week-9
+aliases. Source-to-attachment projections remain separate from source carriers;
+repeated-Poisson variability remains an empirical reference rather than a per-point
+interval attachment. ML benchmark annotations remain typing-only. Private helpers
+remain in their owning canonical modules. The frozen `uncertainty_robustness.py`
+study/report layer, including conformal, stays flat. Scientific policies, populations,
+seeds, algorithms, report schemas, and persistence identities are unchanged.
 
 ```text
 frozen scientific benchmark definitions
@@ -85,10 +95,10 @@ legacy-compatible scientific reports
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
 | `mismatch_evaluation`, `timing_evaluation` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
-| `ml_uncertainty` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
+| `uncertainty.ml` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
 | `uncertainty.evaluation` | Interval/score source results, method/provenance definitions, development split, interval/quantile/score/selective metrics | Retains frozen protocol configuration for the provenance guard; separates intervals, heuristic scores and empirical reference variability from generic factual attachments. |
 | `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
-| `classical_uncertainty` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
+| `uncertainty.classical` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
 | `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
 | `irf_evaluation` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
 | `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |

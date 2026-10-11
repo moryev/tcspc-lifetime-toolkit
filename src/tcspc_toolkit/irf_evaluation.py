@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 from scipy.optimize import brentq
 
 from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     ParametricPoissonBootstrapResult,
     PoissonLocalCovarianceResult,
     _reconstruct_reconvolution_fit_result,
@@ -47,7 +47,7 @@ from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_ridge_pipeline,
 )
-from tcspc_toolkit.ml_uncertainty import RandomForestTreeSpreadEstimator
+from tcspc_toolkit.uncertainty.ml import RandomForestTreeSpreadEstimator
 from tcspc_toolkit.physics.models import biexponential_decay, monoexponential_decay
 from tcspc_toolkit.preprocessing.histograms import validate_time_axis
 from tcspc_toolkit.simulation.histograms import build_expected_counts_from_irf, sample_photon_counts

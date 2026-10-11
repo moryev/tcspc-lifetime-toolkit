@@ -23,7 +23,7 @@ from tcspc_toolkit.estimation.bayesian.posterior import (
 )
 from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig, BayesianSamplingStatus
 from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     _reconstruct_reconvolution_fit_result,
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
