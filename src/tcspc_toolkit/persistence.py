@@ -1862,8 +1862,8 @@ def record_issue4_condition(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Adapt matched-model or mismatch Issue-4 generating-condition objects."""
-    from tcspc_toolkit.bayesian_evaluation import BayesianClassicalCondition
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchCondition
+    from tcspc_toolkit.benchmarks.bayesian_calibration import BayesianClassicalCondition
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchCondition
 
     if not isinstance(condition, (BayesianClassicalCondition, MismatchCondition)):
         raise TypeError("condition must be an Issue-4 generating condition")
@@ -2419,7 +2419,7 @@ def record_issue4_pseudo_true_reference(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record an Issue-4 projection with its scoped IDs and numerical audit."""
-    from tcspc_toolkit.bayesian_mismatch_evaluation import PseudoTrueReference
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import PseudoTrueReference
 
     if not isinstance(reference, PseudoTrueReference):
         raise TypeError("reference must be a PseudoTrueReference")
@@ -3065,7 +3065,7 @@ def _bayesian_predictive_payload(
     predictive: Any | None, *, ppc_seed: int | str | None,
     nonfinite: dict[str, str],
 ) -> dict[str, Any]:
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchPredictiveSummary
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchPredictiveSummary
     from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
 
     if predictive is None:
@@ -3172,7 +3172,7 @@ def _bayesian_payloads(
     valid_retained_samples: int | None, execution: Mapping[str, Any] | None,
     sampling_seed: int | str, assumption: sqlite3.Row | tuple,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    from tcspc_toolkit.bayesian_evaluation import Issue4Bayesian
+    from tcspc_toolkit.benchmarks.bayesian_calibration import Issue4Bayesian
     from tcspc_toolkit.estimation.bayesian.sampling import BayesianReconvolutionResult, BayesianSamplingStatus
 
     if not isinstance(source, (BayesianReconvolutionResult, Issue4Bayesian)):
@@ -3600,8 +3600,8 @@ def record_issue4_bayesian_result(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record the compact matched or mismatch Issue-4 Bayesian realization."""
-    from tcspc_toolkit.bayesian_evaluation import BayesianClassicalRealizationResult
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchInferenceRecord
+    from tcspc_toolkit.benchmarks.bayesian_calibration import BayesianClassicalRealizationResult
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchInferenceRecord
 
     if not isinstance(record, (BayesianClassicalRealizationResult, MismatchInferenceRecord)):
         raise TypeError("record must be an Issue-4 Bayesian evaluation realization")

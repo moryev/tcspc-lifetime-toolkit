@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalCondition,
     build_issue4_expected_counts,
     derive_issue4_seed,

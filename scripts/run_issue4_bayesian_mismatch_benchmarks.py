@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tcspc_toolkit.bayesian_mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_mismatch import (
     build_mismatch_workflow,
     evaluate_mismatch_workflow,
 )

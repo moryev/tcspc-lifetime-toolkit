@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from tcspc_toolkit.bayesian_mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_mismatch import (
     MismatchReferenceComparison,
     build_mismatch_workflow,
     construct_pseudo_true_reference,

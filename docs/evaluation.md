@@ -77,7 +77,29 @@ Week-8 Test F: it imports no generalization protocol and retains its
 `generating_mono`/`primary_component` ML reference identities, not pseudo-true
 projections. Timing retains distinct `repeated_batch` and
 `per_curve_optimization` scopes. The benchmark initializer imports neither
-study. IRF/Bayesian studies, uncertainty robustness, and persistence have not moved.
+study. At that checkpoint, IRF/Bayesian studies, uncertainty robustness, and persistence
+remained in place.
+
+Stage 8B relocates the intact Issue-8 study to `tcspc_toolkit.benchmarks.irf`
+and the Issue-4 matched-model and mismatch studies to
+`tcspc_toolkit.benchmarks.bayesian_calibration` and
+`tcspc_toolkit.benchmarks.bayesian_mismatch`. Historical `irf_evaluation`,
+`bayesian_evaluation`, and `bayesian_mismatch_evaluation` are direct-reexport
+facades for 18, 21, and 23 supported names (listed in [the API contract](api.md)).
+Bayesian estimator implementations remain in `estimation.bayesian.*`; the
+`benchmarks.bayesian_*` modules only orchestrate their scientific studies.
+Source profiles, prepared/assumed kernels, leading-edge proxies, and their
+provenance stay distinct. IRF studies remain independent of A–F execution/data;
+their existing uncertainty dependencies can transitively load protocol configuration.
+
+Bayesian mismatch retains canonical eager dependencies on the private IRF
+peak/FWHM matcher and calibration's compact carriers/unavailable-result helpers.
+Its deterministic `pseudo_true_mono` reference remains a prior-free,
+model-conditional likelihood projection, not physical truth, a primary component,
+or a posterior estimate. Credible intervals remain model/prior/fixed-IRF conditional.
+Persistence keeps seven study imports deferred and records the historical literal
+`tcspc_toolkit.bayesian_evaluation.Issue4Bayesian` unchanged. Benchmark initialization
+loads none of these studies or `emcee`. Uncertainty robustness and persistence remain flat.
 
 ```text
 frozen scientific benchmark definitions
@@ -111,9 +133,9 @@ legacy-compatible scientific reports
 | `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
 | `uncertainty.classical` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
 | `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
-| `irf_evaluation` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
+| `benchmarks.irf` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
 | `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
-| Bayesian modules | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results, `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
+| `estimation.bayesian.*`; `benchmarks.bayesian_calibration`, `benchmarks.bayesian_mismatch` | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results; `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Estimator implementations versus matched/mismatch studies. Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
 | `persistence` | Point, uncertainty, metric and scientific recording adapters | External consumer of existing concrete types and identities. Schema v1, source-result identities and duplicate semantics remain unchanged. |
 
 The reusable estimator boundary remains `estimator_api`: structural `fit`/`predict`,

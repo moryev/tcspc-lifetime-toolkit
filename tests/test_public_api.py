@@ -765,6 +765,101 @@ def test_week7_study_facades_preserve_public_surface_and_historical_lookup(
         assert canonical.FloatArray == NDArray[float64]
 
 
+@pytest.mark.parametrize("historical, canonical_name, names", [
+    ("tcspc_toolkit.irf_evaluation", "tcspc_toolkit.benchmarks.irf", (
+        "FloatArray",
+        "IntArray",
+        "IRFShapeMismatchConfig",
+        "IRFShapeMismatchDataset",
+        "generate_irf_shape_mismatch_dataset",
+        "IRFClassicalPair",
+        "IRFClassicalEvaluation",
+        "evaluate_irf_shape_classical",
+        "summarize_irf_shape_classical",
+        "IRFConditionalUncertaintyEvaluation",
+        "evaluate_irf_shape_conditional_uncertainty",
+        "IRFMLTransferEvaluation",
+        "evaluate_gaussian_trained_irf_transfer",
+        "LeadingEdgeFailureConfig",
+        "LeadingEdgeRegimeResult",
+        "LeadingEdgeFailureEvaluation",
+        "evaluate_leading_edge_failure_regimes",
+        "summarize_leading_edge_regimes",
+    )),
+    ("tcspc_toolkit.bayesian_evaluation", "tcspc_toolkit.benchmarks.bayesian_calibration", (
+        "BayesianClassicalCondition",
+        "BayesianClassicalEvaluationConfig",
+        "Issue4RealizationSeeds",
+        "derive_issue4_seed",
+        "issue4_realization_seeds",
+        "build_issue4_expected_counts",
+        "sample_issue4_observation",
+        "Issue4ClassicalFit",
+        "Issue4Covariance",
+        "Issue4Bootstrap",
+        "Issue4Bayesian",
+        "BayesianClassicalRealizationResult",
+        "evaluate_issue4_realization",
+        "Issue4IntervalCoverage",
+        "Issue4EstimatorSpread",
+        "Issue4RuntimeSummary",
+        "Issue4UncertaintyScaleComparison",
+        "BayesianClassicalConditionSummary",
+        "BayesianCalibrationReport",
+        "summarize_issue4_condition",
+        "evaluate_issue4_condition",
+    )),
+    ("tcspc_toolkit.bayesian_mismatch_evaluation", "tcspc_toolkit.benchmarks.bayesian_mismatch", (
+        "Mechanism",
+        "GeneratingModel",
+        "ReferenceName",
+        "MismatchAssumption",
+        "MismatchCondition",
+        "MismatchEvaluationConfig",
+        "MismatchWorkflow",
+        "build_mismatch_workflow",
+        "MismatchSeeds",
+        "mismatch_seeds",
+        "GeneratingCounts",
+        "build_mismatch_expected_counts",
+        "PseudoTrueReference",
+        "construct_pseudo_true_reference",
+        "MismatchReferenceComparison",
+        "MismatchPredictiveSummary",
+        "MismatchInferenceRecord",
+        "MismatchGroupSummary",
+        "MismatchReport",
+        "sample_mismatch_observation",
+        "evaluate_mismatch_inference",
+        "summarize_mismatch_records",
+        "evaluate_mismatch_workflow",
+    )),
+])
+def test_irf_bayesian_study_facades_preserve_surface_and_historical_lookup(
+    historical, canonical_name, names,
+):
+    canonical = importlib.import_module(canonical_name)
+    facade = importlib.import_module(historical)
+    namespace = importlib.import_module("tcspc_toolkit.benchmarks")
+    typing_aliases = {"FloatArray", "IntArray", "Mechanism", "GeneratingModel", "ReferenceName"}
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        obj = getattr(canonical, name)
+        assert getattr(facade, name) is obj
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+        historical_global = f"c{historical}\n{name}\n.".encode()
+        assert pickle.loads(historical_global) is obj
+        if name not in typing_aliases:
+            assert obj.__module__ == canonical_name
+            assert pickle.loads(pickle.dumps(obj)) is obj
+    for private in ("_match_gaussian_to_emg_profile", "_unavailable_bootstrap", "_unavailable_covariance"):
+        assert private not in facade.__all__
+        assert not hasattr(facade, private)
+
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

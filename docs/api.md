@@ -13,7 +13,7 @@ models/evaluation/cross-validation, historical evaluation diagnostics,
 factual point/reference/attachment contracts, conditional analysis, plotting,
 frozen Week-8 generalization protocol/data generation and execution/reporting,
 uncertainty source/metric/split/provenance contracts and ML/classical methods,
-and the separate Week-7 mismatch/timing studies;
+the separate Week-7 mismatch/timing studies, and Issue-8 IRF/Issue-4 Bayesian studies;
 other modules remain flat.
 
 | Status | Surface |
@@ -24,7 +24,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -93,7 +93,7 @@ Important supported module-qualified workflows include:
   `generalization` and `generalization_datasets` remain direct-object
   compatibility paths through at least Issue #12.
 - `benchmarks.generalization` (historical `generalization_evaluation`),
-  `irf_evaluation`,
+  `benchmarks.irf`, `benchmarks.bayesian_calibration`, `benchmarks.bayesian_mismatch`,
   `benchmarks.mismatch`, and `benchmarks.timing`: scientific protocols and
   specialized evaluation/reporting paths and report/result classes, not a
   unified generic interface. Prepared-data carriers remain workflow-specific,
@@ -303,8 +303,121 @@ aggregation, ordering, and table schemas are unchanged.
 
 Both historical paths directly re-export identical objects, with no new root
 exports. The benchmark initializer remains docstring-only. Neither study has
-production consumers or persistence-local imports. IRF/Bayesian studies,
-`uncertainty_robustness.py`, and persistence remain in their existing locations.
+production consumers or persistence-local imports. At the Stage-8A checkpoint,
+IRF/Bayesian studies, uncertainty robustness, and persistence remained in place.
+
+Stage 8B moves three intact scientific-study modules:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.irf` | `tcspc_toolkit.irf_evaluation` |
+| `tcspc_toolkit.benchmarks.bayesian_calibration` | `tcspc_toolkit.bayesian_evaluation` |
+| `tcspc_toolkit.benchmarks.bayesian_mismatch` | `tcspc_toolkit.bayesian_mismatch_evaluation` |
+
+`estimation.bayesian.*` remains the Bayesian estimator implementation;
+`benchmarks.bayesian_*` owns the matched-model calibration/comparison and separate
+model-mismatch studies. Priors, named streams, inference, PPC, and report schemas
+are unchanged. Credible intervals remain conditional on the model, prior, and
+fixed assumed IRF. The deterministic, prior-free `pseudo_true_mono` likelihood
+projection remains separate from `generating_mono` and `primary_component`.
+
+The IRF study retains source-profile, prepared-kernel, assumed-kernel, and
+leading-edge-proxy distinctions. It has no direct frozen A–F dependency; existing
+uncertainty dependencies can transitively load protocol configuration. Bayesian
+mismatch eagerly imports the private `_match_gaussian_to_emg_profile` from
+`benchmarks.irf` and `_unavailable_bootstrap`/`_unavailable_covariance` plus four
+compact result carriers from `benchmarks.bayesian_calibration`. These helpers
+remain private and are neither copied nor extracted.
+
+Persistence's three calibration and four mismatch imports remain function-local.
+Its schema-v1 source identity is still exactly
+`tcspc_toolkit.bayesian_evaluation.Issue4Bayesian`, independent of the relocated
+class's natural `__module__`. The four Issue-4 runner/audit scripts use canonical
+study imports. The benchmark initializer is docstring-only, no root exports are
+added, and importing any study does not require `emcee`. Neither persistence nor
+`uncertainty_robustness.py` has moved; conformal has not been extracted.
+
+The exact supported surfaces are below. `FloatArray`, `IntArray`, `Mechanism`,
+`GeneratingModel`, and `ReferenceName` are existing typing aliases; there are no
+additional historical callable aliases. Incidental imports and private helpers
+are not added to the facades.
+
+`benchmarks.irf` (18 names):
+
+```text
+FloatArray
+IntArray
+IRFShapeMismatchConfig
+IRFShapeMismatchDataset
+generate_irf_shape_mismatch_dataset
+IRFClassicalPair
+IRFClassicalEvaluation
+evaluate_irf_shape_classical
+summarize_irf_shape_classical
+IRFConditionalUncertaintyEvaluation
+evaluate_irf_shape_conditional_uncertainty
+IRFMLTransferEvaluation
+evaluate_gaussian_trained_irf_transfer
+LeadingEdgeFailureConfig
+LeadingEdgeRegimeResult
+LeadingEdgeFailureEvaluation
+evaluate_leading_edge_failure_regimes
+summarize_leading_edge_regimes
+```
+
+`benchmarks.bayesian_calibration` (21 names):
+
+```text
+BayesianClassicalCondition
+BayesianClassicalEvaluationConfig
+Issue4RealizationSeeds
+derive_issue4_seed
+issue4_realization_seeds
+build_issue4_expected_counts
+sample_issue4_observation
+Issue4ClassicalFit
+Issue4Covariance
+Issue4Bootstrap
+Issue4Bayesian
+BayesianClassicalRealizationResult
+evaluate_issue4_realization
+Issue4IntervalCoverage
+Issue4EstimatorSpread
+Issue4RuntimeSummary
+Issue4UncertaintyScaleComparison
+BayesianClassicalConditionSummary
+BayesianCalibrationReport
+summarize_issue4_condition
+evaluate_issue4_condition
+```
+
+`benchmarks.bayesian_mismatch` (23 names):
+
+```text
+Mechanism
+GeneratingModel
+ReferenceName
+MismatchAssumption
+MismatchCondition
+MismatchEvaluationConfig
+MismatchWorkflow
+build_mismatch_workflow
+MismatchSeeds
+mismatch_seeds
+GeneratingCounts
+build_mismatch_expected_counts
+PseudoTrueReference
+construct_pseudo_true_reference
+MismatchReferenceComparison
+MismatchPredictiveSummary
+MismatchInferenceRecord
+MismatchGroupSummary
+MismatchReport
+sample_mismatch_observation
+evaluate_mismatch_inference
+summarize_mismatch_records
+evaluate_mismatch_workflow
+```
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.

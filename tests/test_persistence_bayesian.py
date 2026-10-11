@@ -597,6 +597,7 @@ def test_full_inference_run_checks_observation_and_counts_finite_draws(context):
 def test_compact_matched_and_mismatch_share_posterior_median_convention(context):
     db, run_id, measurement_id, model_id, assumption_id, *_ = context
     matched = _matched_record(context)
+    assert type(matched.bayesian).__module__ == "tcspc_toolkit.benchmarks.bayesian_calibration"
     matched_id = store.record_issue4_bayesian_result(
         db, matched, run_id=run_id, measurement_id=measurement_id,
         model_id=model_id, assumption_id=assumption_id,
@@ -616,6 +617,11 @@ def test_compact_matched_and_mismatch_share_posterior_median_convention(context)
             "FROM estimator_results WHERE result_id = ?", (result_id,),
         ).fetchone()
         assert point[:] == ("posterior_median", 1.8, str(_SEED))
+        # Schema-v1 provenance stays historical despite the canonical class move.
+        assert db.execute(
+            "SELECT source_result_type FROM estimator_results WHERE result_id = ?",
+            (result_id,),
+        ).fetchone()[0] == "tcspc_toolkit.bayesian_evaluation.Issue4Bayesian"
         summary = db.execute(
             "SELECT lifetime_mean_ns, ppc_status, ppc_n_draws, ppc_deviance_tail_probability, "
             "ppc_discrepancies_json FROM bayesian_summaries WHERE result_id = ?",

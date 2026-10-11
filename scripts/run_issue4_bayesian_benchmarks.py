@@ -18,7 +18,7 @@ import numpy as np
 from tcspc_toolkit.bayesian import (
     BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
 )
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalCondition,
     BayesianClassicalEvaluationConfig,
     evaluate_issue4_condition,

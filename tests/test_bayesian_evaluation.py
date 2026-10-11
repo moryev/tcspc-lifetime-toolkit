@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import tcspc_toolkit.bayesian_evaluation as evaluation
+import tcspc_toolkit.benchmarks.bayesian_calibration as evaluation
 from tcspc_toolkit.bayesian import BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior
 from tcspc_toolkit.bayesian_evaluation import (
     BayesianClassicalCondition,
