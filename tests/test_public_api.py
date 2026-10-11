@@ -720,6 +720,51 @@ def test_uncertainty_method_facades_preserve_public_surface_and_pickle_lookup(
         assert getattr(facade, alias) is getattr(canonical, name)
 
 
+@pytest.mark.parametrize("historical, canonical_name, names", [
+    ("tcspc_toolkit.mismatch_evaluation", "tcspc_toolkit.benchmarks.mismatch", (
+        "EstimatorMismatchResult",
+        "ClassicalMismatchResult",
+        "generate_matched_biexponential_mismatch_dataset",
+        "evaluate_ml_mismatch_benchmark",
+        "evaluate_classical_mismatch_benchmark",
+        "summarize_mismatch_benchmark",
+    )),
+    ("tcspc_toolkit.timing_evaluation", "tcspc_toolkit.benchmarks.timing", (
+        "FloatArray",
+        "InferenceTimingResult",
+        "benchmark_fitted_regressor_runtime",
+        "benchmark_mean_arrival_runtime",
+        "benchmark_ml_inference_runtime",
+        "summarize_reconvolution_runtime",
+        "benchmark_inference_runtime",
+        "summarize_inference_timing",
+    )),
+])
+def test_week7_study_facades_preserve_public_surface_and_historical_lookup(
+    historical, canonical_name, names,
+):
+    canonical = importlib.import_module(canonical_name)
+    facade = importlib.import_module(historical)
+    namespace = importlib.import_module("tcspc_toolkit.benchmarks")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        obj = getattr(canonical, name)
+        assert getattr(facade, name) is obj
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+        historical_global = f"c{historical}\n{name}\n.".encode()
+        assert pickle.loads(historical_global) is obj
+        if name != "FloatArray":
+            assert obj.__module__ == canonical_name
+            assert pickle.loads(pickle.dumps(obj)) is obj
+    if "FloatArray" in names:
+        # Preserve the existing numpy typing alias, not a fabricated local type.
+        from numpy import float64
+        from numpy.typing import NDArray
+        assert canonical.FloatArray == NDArray[float64]
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

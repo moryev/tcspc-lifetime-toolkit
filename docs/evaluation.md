@@ -68,6 +68,17 @@ remain in their owning canonical modules. The frozen `uncertainty_robustness.py`
 study/report layer, including conformal, stays flat. Scientific policies, populations,
 seeds, algorithms, report schemas, and persistence identities are unchanged.
 
+Stage 8A places the intact Week-7 studies in `tcspc_toolkit.benchmarks.mismatch`
+and `tcspc_toolkit.benchmarks.timing`. Historical
+`tcspc_toolkit.mismatch_evaluation` and `tcspc_toolkit.timing_evaluation`
+remain direct-export facades for six and eight supported names respectively.
+The paired mono-/bi-exponential mismatch experiment is separate from frozen
+Week-8 Test F: it imports no generalization protocol and retains its
+`generating_mono`/`primary_component` ML reference identities, not pseudo-true
+projections. Timing retains distinct `repeated_batch` and
+`per_curve_optimization` scopes. The benchmark initializer imports neither
+study. IRF/Bayesian studies, uncertainty robustness, and persistence have not moved.
+
 ```text
 frozen scientific benchmark definitions
                 ↓
@@ -89,12 +100,12 @@ legacy-compatible scientific reports
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
 | `benchmarks.generalization_protocol`, `benchmarks.generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
 | `benchmarks.generalization` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
-| `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
+| `ml_evaluation`, `benchmarks.mismatch` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
 | `benchmarks.generalization` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
 | `evaluation.conditional` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
-| `mismatch_evaluation`, `timing_evaluation` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
+| `benchmarks.mismatch`, `benchmarks.timing` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Separate Week-7 paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
 | `uncertainty.ml` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
 | `uncertainty.evaluation` | Interval/score source results, method/provenance definitions, development split, interval/quantile/score/selective metrics | Retains frozen protocol configuration for the provenance guard; separates intervals, heuristic scores and empirical reference variability from generic factual attachments. |
 | `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
