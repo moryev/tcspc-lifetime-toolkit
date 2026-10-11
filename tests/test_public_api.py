@@ -591,6 +591,51 @@ def test_generalization_historical_pickle_globals_resolve_without_fabricated_mod
             assert pickle.loads(pickle.dumps(obj)) is obj
 
 
+def test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_lookup():
+    names = (
+        "DEFAULT_UNCERTAINTY_CALIBRATION_FRACTION",
+        "DEFAULT_UNCERTAINTY_SPLIT_SEED",
+        "WEEK9_HYPOTHESES",
+        "UncertaintyOutputKind",
+        "UncertaintyDataRole",
+        "UncertaintyMethodDefinition",
+        "UncertaintyDataProvenance",
+        "UncertaintyDevelopmentSplit",
+        "make_uncertainty_development_split",
+        "PredictionIntervalResult",
+        "UncertaintyScoreResult",
+        "IntervalEvaluationMetrics",
+        "QuantileIntervalEvaluationMetrics",
+        "UncertaintyScoreMetrics",
+        "SelectivePredictionMetrics",
+        "evaluate_prediction_intervals",
+        "evaluate_quantile_prediction_intervals",
+        "evaluate_uncertainty_scores",
+        "evaluate_selective_prediction",
+    )
+    canonical = importlib.import_module("tcspc_toolkit.uncertainty.evaluation")
+    facade = importlib.import_module("tcspc_toolkit.uncertainty_evaluation")
+    namespace = importlib.import_module("tcspc_toolkit.uncertainty")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        obj = getattr(canonical, name)
+        assert getattr(facade, name) is obj
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+        if callable(obj):
+            assert obj.__module__ == canonical.__name__
+            historical = f"ctcspc_toolkit.uncertainty_evaluation\n{name}\n.".encode()
+            assert pickle.loads(historical) is obj
+            assert pickle.loads(pickle.dumps(obj)) is obj
+    # Source uncertainty outputs remain distinct from point-linked attachments.
+    attachments = importlib.import_module("tcspc_toolkit.evaluation.attachments")
+    assert canonical.PredictionIntervalResult is not attachments.IntervalAttachment
+    assert canonical.UncertaintyScoreResult is not attachments.ScoreAttachment
+    assert not hasattr(canonical, "IntervalAttachment")
+    assert not hasattr(canonical, "ScoreAttachment")
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

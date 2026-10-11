@@ -28,7 +28,7 @@ from tcspc_toolkit.ml.models import (
     make_random_forest_pipeline,
     make_ridge_pipeline,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     IntervalEvaluationMetrics,
     PredictionIntervalResult,
     QuantileIntervalEvaluationMetrics,

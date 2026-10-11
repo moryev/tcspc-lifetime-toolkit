@@ -4050,7 +4050,7 @@ def record_prediction_intervals(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Attach ordered source prediction intervals to existing point results."""
-    from tcspc_toolkit.uncertainty_evaluation import (
+    from tcspc_toolkit.uncertainty.evaluation import (
         PredictionIntervalResult, UncertaintyMethodDefinition,
         UncertaintyOutputKind,
     )
@@ -4160,7 +4160,7 @@ def record_conformal_intervals(
 ) -> tuple[int, ...]:
     """Record split-conformalized quantile intervals and calibration identity."""
     from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
-    from tcspc_toolkit.uncertainty_evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
+    from tcspc_toolkit.uncertainty.evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
     from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
 
     correction = _finite_scalar(correction_ns, "correction_ns", nonnegative=True)
@@ -4193,7 +4193,7 @@ def record_uncertainty_scores(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Attach score-only ensemble or bootstrap spread without interval claims."""
-    from tcspc_toolkit.uncertainty_evaluation import (
+    from tcspc_toolkit.uncertainty.evaluation import (
         UncertaintyMethodDefinition, UncertaintyOutputKind, UncertaintyScoreResult,
     )
     from tcspc_toolkit.ml_uncertainty import (
@@ -4709,7 +4709,7 @@ def record_interval_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record aggregate interval calibration/sharpness with source denominators."""
-    from tcspc_toolkit.uncertainty_evaluation import IntervalEvaluationMetrics
+    from tcspc_toolkit.uncertainty.evaluation import IntervalEvaluationMetrics
 
     if not isinstance(metrics, IntervalEvaluationMetrics):
         raise TypeError("metrics must be IntervalEvaluationMetrics")
@@ -4743,7 +4743,7 @@ def record_quantile_interval_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record quantile pinball losses and crossing rate, not point intervals."""
-    from tcspc_toolkit.uncertainty_evaluation import QuantileIntervalEvaluationMetrics
+    from tcspc_toolkit.uncertainty.evaluation import QuantileIntervalEvaluationMetrics
 
     if not isinstance(metrics, QuantileIntervalEvaluationMetrics):
         raise TypeError("metrics must be QuantileIntervalEvaluationMetrics")
@@ -4769,7 +4769,7 @@ def record_uncertainty_score_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record aggregate score/error ranking; tail subset sizes remain unknown."""
-    from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreMetrics
+    from tcspc_toolkit.uncertainty.evaluation import UncertaintyScoreMetrics
 
     if not isinstance(metrics, UncertaintyScoreMetrics):
         raise TypeError("metrics must be UncertaintyScoreMetrics")
@@ -4795,7 +4795,7 @@ def record_uncertainty_score_metrics(
         ("tail_fraction", "fraction", fraction, valid, valid, "valid_scores"),
     ]
     if scores is not None:
-        from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreResult
+        from tcspc_toolkit.uncertainty.evaluation import UncertaintyScoreResult
         if not isinstance(scores, UncertaintyScoreResult):
             raise TypeError("scores must be UncertaintyScoreResult")
         if scores.method_id != scope.method_id or len(scores.prediction) != attempted or (
@@ -4815,7 +4815,7 @@ def record_selective_prediction_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the existing selective-rejection evaluation at a stated population."""
-    from tcspc_toolkit.uncertainty_evaluation import SelectivePredictionMetrics
+    from tcspc_toolkit.uncertainty.evaluation import SelectivePredictionMetrics
 
     if not isinstance(metrics, SelectivePredictionMetrics):
         raise TypeError("metrics must be SelectivePredictionMetrics")

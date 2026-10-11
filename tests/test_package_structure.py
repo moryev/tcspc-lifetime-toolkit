@@ -46,6 +46,12 @@ BENCHMARKS = f"{PACKAGE}.benchmarks"
 GENERALIZATION_PROTOCOL = f"{BENCHMARKS}.generalization_protocol"
 GENERALIZATION_DATASETS = f"{BENCHMARKS}.generalization_datasets"
 GENERALIZATION = f"{BENCHMARKS}.generalization"
+UNCERTAINTY = f"{PACKAGE}.uncertainty"
+UNCERTAINTY_EVALUATION = f"{UNCERTAINTY}.evaluation"
+UNCERTAINTY_EVALUATION_IMPORTS = {
+    "dataclasses", "enum", "numpy", "numpy.typing", "scipy.stats",
+    GENERALIZATION_PROTOCOL,
+}
 BENCHMARK_IMPORTS = {
     BENCHMARKS: set(),
     GENERALIZATION_PROTOCOL: {"dataclasses", "enum", "math"},
@@ -74,6 +80,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
     "conditional_evaluation", "benchmark_plots",
     "generalization", "generalization_datasets", "generalization_evaluation",
+    "uncertainty_evaluation",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -464,7 +471,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     }
     # Existing scientific provenance guard, not a protocol-independent metric layer.
     assert ("eager", GENERALIZATION_PROTOCOL, ("FINAL_ROBUSTNESS_TEST_IDS",)) in (
-        records[f"{PACKAGE}.uncertainty_evaluation"]
+        records[UNCERTAINTY_EVALUATION]
     )
     assert benchmark_edges(GENERALIZATION) == {
         ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
@@ -616,19 +623,129 @@ assert not set(blocked).intersection(sys.modules)
     assert list(tmp_path.iterdir()) == []
 
 
-def test_generalization_facade_contains_only_direct_compatibility_exports():
-    path = SOURCE_ROOT / "generalization_evaluation.py"
+@pytest.mark.parametrize("filename, canonical, count", [
+    ("generalization_evaluation.py", GENERALIZATION, 61),
+    ("uncertainty_evaluation.py", UNCERTAINTY_EVALUATION, 19),
+])
+def test_study_facades_contain_only_direct_compatibility_exports(filename, canonical, count):
+    path = SOURCE_ROOT / filename
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert ast.get_docstring(tree)
     imports = [node for node in tree.body if isinstance(node, ast.ImportFrom)]
     assert len(tree.body) == 3 and len(imports) == 1
-    assert imports[0].module == GENERALIZATION and imports[0].level == 0
+    assert imports[0].module == canonical and imports[0].level == 0
     assert all(alias.asname is None and not alias.name.startswith("_") for alias in imports[0].names)
     exports = tree.body[-1]
     assert isinstance(exports, ast.Assign) and len(exports.targets) == 1
     assert exports.targets[0].id == "__all__"
     assert ast.literal_eval(exports.value) == tuple(alias.name for alias in imports[0].names)
-    assert len(imports[0].names) == 61
+    assert len(imports[0].names) == count
+
+
+def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(package_imports):
+    records, _ = package_imports
+    tree = ast.parse((SOURCE_ROOT / "uncertainty" / "__init__.py").read_text(encoding="utf-8"))
+    assert len(tree.body) == 1 and ast.get_docstring(tree)
+    assert records[UNCERTAINTY] == []
+    assert {base for _, base, _ in records[UNCERTAINTY_EVALUATION]} == UNCERTAINTY_EVALUATION_IMPORTS
+    assert all(kind == "eager" for kind, _, _ in records[UNCERTAINTY_EVALUATION])
+    internal = [(kind, base, names) for kind, base, names in records[UNCERTAINTY_EVALUATION]
+                if base.startswith(PACKAGE + ".")]
+    assert internal == [("eager", GENERALIZATION_PROTOCOL, ("FINAL_ROBUSTNESS_TEST_IDS",))]
+    consumers = [(module, kind, names) for module, imports in records.items()
+                 for kind, base, names in imports if base == UNCERTAINTY_EVALUATION]
+    assert {(module, kind) for module, kind, _ in consumers} == {
+        (f"{PACKAGE}.uncertainty_evaluation", "eager"),
+        (f"{PACKAGE}.ml_uncertainty", "eager"),
+        (f"{PACKAGE}.classical_uncertainty", "eager"),
+        (f"{PACKAGE}.uncertainty_robustness", "eager"),
+        (PERSISTENCE, "deferred"),
+    }
+    assert len(consumers) == 12  # Facade, three eager consumers, eight local imports.
+    assert sum(module == PERSISTENCE for module, _, _ in consumers) == 8
+    foundations = (
+        f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
+    )
+    for module, imports in records.items():
+        if (module in FACTUAL or module == f"{ML}.models"
+                or any(module == p or module.startswith(p + ".") for p in foundations)):
+            for _, base, names in imports:
+                targets = _targets(base, names, set(records)) | {base}
+                assert not any(t == UNCERTAINTY or t.startswith(UNCERTAINTY + ".")
+                               or t == f"{PACKAGE}.uncertainty_evaluation" for t in targets), module
+
+
+@pytest.mark.parametrize("module", [
+    UNCERTAINTY, UNCERTAINTY_EVALUATION, f"{PACKAGE}.uncertainty_evaluation",
+])
+def test_fresh_uncertainty_imports_preserve_initializer_and_protocol_only_boundary(tmp_path, module):
+    # Keep the real root, which already loads sklearn. Attribute new imports to
+    # their source and compare added modules; do not replace root initialization.
+    script = f"""
+import builtins
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = {sorted(MIGRATED_SHIMS - {f"{PACKAGE}.uncertainty_evaluation"})!r} + [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.ml_uncertainty',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.evaluation.attachments', {GENERALIZATION!r}, {GENERALIZATION_DATASETS!r},
+    'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.mismatch_evaluation',
+    'tcspc_toolkit.timing_evaluation', 'tcspc_toolkit.bayesian_evaluation',
+    'tcspc_toolkit.bayesian_mismatch_evaluation',
+]
+if {module!r} != 'tcspc_toolkit.uncertainty_evaluation':
+    blocked.append('tcspc_toolkit.uncertainty_evaluation')
+if {module!r} == {UNCERTAINTY!r}:
+    blocked.extend([{BENCHMARKS!r}, {UNCERTAINTY_EVALUATION!r}])
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+import tcspc_toolkit
+root_exports = tuple(tcspc_toolkit.__all__)
+assert len(root_exports) == 66
+assert not any(n == {UNCERTAINTY!r} or n.startswith({UNCERTAINTY + '.'!r}) for n in sys.modules)
+assert not any(n == {BENCHMARKS!r} or n.startswith({BENCHMARKS + '.'!r}) for n in sys.modules)
+inherited = set(sys.modules)
+original_import = builtins.__import__
+seen = {{}}
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller == {UNCERTAINTY!r} or caller.startswith({UNCERTAINTY + '.'!r}):
+        seen.setdefault(caller, set()).add(name)
+    return original_import(name, globals, locals, fromlist, level)
+builtins.__import__ = track
+try:
+    namespace = importlib.import_module({UNCERTAINTY!r})
+    assert set(sys.modules) - inherited == {{{UNCERTAINTY!r}}}
+    importlib.import_module({module!r})
+finally:
+    builtins.__import__ = original_import
+assert not seen.get({UNCERTAINTY!r})
+if {module!r} == {UNCERTAINTY!r}:
+    assert set(sys.modules) - inherited == {{{UNCERTAINTY!r}}}
+    assert not seen
+else:
+    assert seen[{UNCERTAINTY_EVALUATION!r}] == {UNCERTAINTY_EVALUATION_IMPORTS!r}
+    assert {{n for n in sys.modules if n.startswith({BENCHMARKS + '.'!r})}} == {{
+        {GENERALIZATION_PROTOCOL!r},
+    }}
+assert not any(n == 'sklearn' or n.startswith('sklearn.') for n in set(sys.modules) - inherited)
+assert not hasattr(namespace, 'PredictionIntervalResult')
+assert not hasattr(namespace, 'IntervalAttachment')
+assert tuple(tcspc_toolkit.__all__) == root_exports
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_fresh_foundations_do_not_load_benchmarks(tmp_path):
@@ -639,7 +756,7 @@ import importlib
 import importlib.abc
 import sys
 attempts = []
-blocked = [{BENCHMARKS!r}, 'tcspc_toolkit.generalization',
+blocked = [{BENCHMARKS!r}, {UNCERTAINTY!r}, 'tcspc_toolkit.generalization',
            'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
            'emcee', 'sqlite3', 'tcspc_toolkit.persistence']
 class BoundaryGuard(importlib.abc.MetaPathFinder):
@@ -1087,7 +1204,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "evaluation.conditional", "evaluation.plots",
                                    "benchmarks.generalization_protocol",
                                    "benchmarks.generalization_datasets",
-                                   "benchmarks.generalization"])
+                                   "benchmarks.generalization",
+                                   "uncertainty", "uncertainty.evaluation"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]

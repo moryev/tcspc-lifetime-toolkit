@@ -73,7 +73,7 @@ from tcspc_toolkit.ml_uncertainty import (
     evaluate_frozen_ml_uncertainty_score,
     evaluate_frozen_quantile_gradient_boosting,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     IntervalEvaluationMetrics,
     PredictionIntervalResult,
     evaluate_prediction_intervals,

@@ -11,7 +11,8 @@ estimation, measurement records/I/O/adapters, generic histogram/dataset
 simulation, core classical fitting/execution, Bayesian inference, ML
 models/evaluation/cross-validation, historical evaluation diagnostics,
 factual point/reference/attachment contracts, conditional analysis, plotting,
-and frozen Week-8 generalization protocol/data generation and execution/reporting;
+frozen Week-8 generalization protocol/data generation and execution/reporting,
+and uncertainty source/metric/split/provenance contracts;
 other modules remain flat.
 
 | Status | Surface |
@@ -22,7 +23,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -96,7 +97,11 @@ Important supported module-qualified workflows include:
   specialized evaluation/reporting paths and report/result classes, not a
   unified generic interface. Prepared-data carriers remain workflow-specific,
   not package-root abstractions.
-- `classical_uncertainty`, `ml_uncertainty`, `uncertainty_evaluation`, and
+- `uncertainty.evaluation`: source interval/score carriers, uncertainty metrics,
+  and development/calibration split and provenance policy. The historical
+  `uncertainty_evaluation` path remains a direct-object compatibility facade.
+  Its existing A–F provenance guard depends on frozen benchmark protocol configuration.
+- `classical_uncertainty`, `ml_uncertainty`, and
   `uncertainty_robustness`: distinct model-conditional intervals, calibration,
   sensitivity, and disagreement-score workflows.
 - `estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
@@ -242,6 +247,28 @@ annotations remain typing-only imports. Uncertainty robustness imports the
 canonical prepared-data carrier eagerly; persistence imports `RobustnessMetrics`
 locally, preserving schema v1 and stored identities. All three flat paths remain supported
 through at least Issue #12.
+
+Stage 7A creates the docstring-only `uncertainty` namespace and moves only
+the uncertainty-evaluation implementation:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.uncertainty.evaluation` | `tcspc_toolkit.uncertainty_evaluation` |
+
+The 19 supported names retain their identity through the facade. Source carriers
+such as `PredictionIntervalResult` and `UncertaintyScoreResult`, uncertainty
+metrics, split/provenance policy, and `WEEK9_HYPOTHESES` stay together unchanged.
+They remain separate from the generic point-linked `IntervalAttachment` and
+`ScoreAttachment` contracts in `evaluation.attachments`.
+
+The implementation retains its explicit `FINAL_ROBUSTNESS_TEST_IDS` dependency
+on `benchmarks.generalization_protocol` for the A–F provenance restriction;
+it does not import benchmark execution or datasets. The initializer imports
+no children and adds no scientific imports beyond the existing root initialization
+(which already loads scikit-learn). None of these names is root-exported.
+ML uncertainty, classical uncertainty, robustness/conformal workflows, other
+studies, and persistence remain in their existing locations; only their applicable
+imports change, with persistence imports remaining local.
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
