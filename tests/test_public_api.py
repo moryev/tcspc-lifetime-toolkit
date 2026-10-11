@@ -500,6 +500,69 @@ def test_analysis_facades_preserve_supported_functions_without_expanding_root(ol
         "generate_generalization_test_suite",
         "build_generalization_suite_manifest",
     )),
+    ("tcspc_toolkit.generalization_evaluation", "generalization", (
+        "DEFAULT_DEVELOPMENT_RANDOM_SEED",
+        "MIN_REFERENCE_MAE_NS",
+        "RobustnessMetrics",
+        "RobustnessDegradation",
+        "calculate_robustness_metrics",
+        "calculate_mae_degradation",
+        "build_generalization_development_measurements",
+        "GeneralizationABPreparedData",
+        "GeneralizationPreparedData",
+        "prepare_generalization_ab_data",
+        "prepare_generalization_data",
+        "fit_generalization_ml_estimators",
+        "PrincipalABBenchmarkResult",
+        "summarize_generalization_predictions",
+        "build_mae_degradation_table",
+        "build_reference_mae_degradation_table",
+        "evaluate_principal_ab_benchmark",
+        "RepresentationABBenchmarkResult",
+        "build_ab_comparison_table",
+        "evaluate_ml_representation_ab_benchmark",
+        "add_test_b_photon_count_regime",
+        "summarize_test_b_photon_count_ood",
+        "PhotonCountShiftReport",
+        "build_photon_count_shift_report",
+        "build_generalization_plot_diagnostics",
+        "InstrumentAcquisitionBenchmarkResult",
+        "ModelMismatchBenchmarkResult",
+        "build_test_f_reference_diagnostics",
+        "summarize_test_f_model_mismatch",
+        "evaluate_model_mismatch_benchmark",
+        "evaluate_instrument_acquisition_benchmark",
+        "ClassicalInstrumentAcquisitionBenchmarkResult",
+        "evaluate_classical_instrument_acquisition_benchmark",
+        "build_instrument_representation_comparison",
+        "build_test_c_paired_irf_diagnostics",
+        "summarize_test_c_paired_irf_diagnostics",
+        "summarize_test_e_temporal_shift_recovery",
+        "InstrumentAcquisitionDiagnostics",
+        "build_instrument_acquisition_diagnostics",
+        "ClassicalModelMismatchBenchmarkResult",
+        "build_classical_af_paired_diagnostics",
+        "summarize_classical_test_f_model_mismatch",
+        "evaluate_classical_model_mismatch_benchmark",
+        "build_af_comparison_table",
+        "build_model_mismatch_severity_comparison",
+        "build_classical_model_mismatch_gof_summary",
+        "DecayModelMismatchReport",
+        "build_decay_model_mismatch_report",
+        "GeneralizationSuiteBenchmarkResult",
+        "evaluate_generalization_suite_benchmark",
+        "ClassicalGeneralizationSuiteBenchmarkResult",
+        "evaluate_classical_generalization_suite_benchmark",
+        "GeneralizationRobustnessReport",
+        "build_generalization_robustness_report",
+        "Day53ABReport",
+        "build_day53_ab_report",
+        "Day55ModelMismatchReport",
+        "build_day55_model_mismatch_report",
+        "build_day55_severity_comparison",
+        "Week8RobustnessReport",
+        "build_week8_robustness_report",
+    )),
 ])
 def test_benchmark_facades_preserve_supported_objects_without_expanding_root(old_module, module, names):
     canonical_module = f"tcspc_toolkit.benchmarks.{module}"
@@ -514,6 +577,18 @@ def test_benchmark_facades_preserve_supported_objects_without_expanding_root(old
             assert getattr(canonical, name).__module__ == canonical_module
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
+
+
+def test_generalization_historical_pickle_globals_resolve_without_fabricated_modules():
+    canonical = importlib.import_module("tcspc_toolkit.benchmarks.generalization")
+    facade = importlib.import_module("tcspc_toolkit.generalization_evaluation")
+    for name in facade.__all__:
+        obj = getattr(canonical, name)
+        if callable(obj):
+            assert obj.__module__ == canonical.__name__
+            historical = f"ctcspc_toolkit.generalization_evaluation\n{name}\n.".encode()
+            assert pickle.loads(historical) is obj
+            assert pickle.loads(pickle.dumps(obj)) is obj
 
 
 def test_expected_counts_builder_is_in_the_root_contract():

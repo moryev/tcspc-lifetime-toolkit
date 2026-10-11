@@ -45,12 +45,24 @@ ML = f"{PACKAGE}.ml"
 BENCHMARKS = f"{PACKAGE}.benchmarks"
 GENERALIZATION_PROTOCOL = f"{BENCHMARKS}.generalization_protocol"
 GENERALIZATION_DATASETS = f"{BENCHMARKS}.generalization_datasets"
+GENERALIZATION = f"{BENCHMARKS}.generalization"
 BENCHMARK_IMPORTS = {
     BENCHMARKS: set(),
     GENERALIZATION_PROTOCOL: {"dataclasses", "enum", "math"},
     GENERALIZATION_DATASETS: {
         "__future__", "dataclasses", "itertools", "numpy", "pandas", "numpy.typing",
         GENERALIZATION_PROTOCOL, f"{PACKAGE}.simulation.histograms",
+    },
+    GENERALIZATION: {
+        "__future__", "dataclasses", "numpy", "pandas", "numpy.typing",
+        "collections.abc", "typing", "sklearn.decomposition",
+        f"{PACKAGE}.estimation.baselines", f"{PACKAGE}.estimation.classical",
+        f"{PACKAGE}.config", f"{PACKAGE}.estimation.api",
+        f"{PACKAGE}.evaluation.core", f"{PACKAGE}.evaluation.results",
+        f"{PACKAGE}.preprocessing.features", GENERALIZATION_PROTOCOL,
+        GENERALIZATION_DATASETS, f"{PACKAGE}.irf.profiles",
+        f"{PACKAGE}.ml.evaluation", f"{PACKAGE}.ml.models",
+        f"{PACKAGE}.preprocessing.representations",
     },
 }
 MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
@@ -61,7 +73,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "ml_models", "ml_evaluation", "cross_validation",
     "evaluation_results", "evaluation_core", "evaluation_uncertainty",
     "conditional_evaluation", "benchmark_plots",
-    "generalization", "generalization_datasets",
+    "generalization", "generalization_datasets", "generalization_evaluation",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -443,18 +455,35 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
 
     assert benchmark_edges(f"{PACKAGE}.ml_uncertainty") == {
         ("typing", GENERALIZATION_PROTOCOL), ("typing", GENERALIZATION_DATASETS),
+        ("typing", GENERALIZATION),
     }
-    assert ("typing", f"{PACKAGE}.generalization_evaluation",
+    assert ("typing", GENERALIZATION,
             ("GeneralizationPreparedData",)) in records[f"{PACKAGE}.ml_uncertainty"]
-    assert benchmark_edges(PERSISTENCE) == {("deferred", GENERALIZATION_DATASETS)}
+    assert benchmark_edges(PERSISTENCE) == {
+        ("deferred", GENERALIZATION_DATASETS), ("deferred", GENERALIZATION),
+    }
     # Existing scientific provenance guard, not a protocol-independent metric layer.
     assert ("eager", GENERALIZATION_PROTOCOL, ("FINAL_ROBUSTNESS_TEST_IDS",)) in (
         records[f"{PACKAGE}.uncertainty_evaluation"]
     )
-    for module in (f"{PACKAGE}.generalization_evaluation", f"{PACKAGE}.uncertainty_robustness"):
-        assert benchmark_edges(module) == {
-            ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
-        }
+    assert benchmark_edges(GENERALIZATION) == {
+        ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
+    }
+    assert benchmark_edges(f"{PACKAGE}.uncertainty_robustness") == {
+        ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
+        ("eager", GENERALIZATION),
+    }
+    consumers = {(module, kind, names) for module, imports in records.items()
+                 for kind, base, names in imports if base == GENERALIZATION}
+    facade = f"{PACKAGE}.generalization_evaluation"
+    assert {(module, kind, names) for module, kind, names in consumers if module != facade} == {
+        (f"{PACKAGE}.ml_uncertainty", "typing", ("GeneralizationPreparedData",)),
+        (f"{PACKAGE}.uncertainty_robustness", "eager", ("GeneralizationPreparedData",)),
+        (PERSISTENCE, "deferred", ("RobustnessMetrics",)),
+    }
+    assert {(module, kind) for module, kind, _ in consumers if module == facade} == {
+        (facade, "eager"),
+    }
     foundations = (
         f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
     )
@@ -477,6 +506,7 @@ attempts = []
 blocked = [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization_evaluation',
+    {GENERALIZATION!r},
     'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty',
     'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty_robustness',
     'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.mismatch_evaluation',
@@ -511,6 +541,94 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
                                capture_output=True, text=True, timeout=60)
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("module", [
+    GENERALIZATION, f"{PACKAGE}.generalization_evaluation",
+])
+def test_fresh_generalization_execution_uses_only_canonical_dependencies(tmp_path, module):
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = {sorted(MIGRATED_SHIMS - {f"{PACKAGE}.generalization_evaluation"})!r} + [
+    'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
+    'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.uncertainty_evaluation',
+    'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.classical_uncertainty',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.irf_evaluation',
+    'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.timing_evaluation',
+    'tcspc_toolkit.bayesian_evaluation', 'tcspc_toolkit.bayesian_mismatch_evaluation',
+]
+if {module!r} == {GENERALIZATION!r}:
+    blocked.append('tcspc_toolkit.generalization_evaluation')
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+import tcspc_toolkit
+exports = tuple(tcspc_toolkit.__all__)
+assert len(exports) == 66
+namespace = importlib.import_module({BENCHMARKS!r})
+assert not any(n.startswith({BENCHMARKS + '.'!r}) for n in sys.modules)
+importlib.import_module({module!r})
+assert {{n for n in sys.modules if n.startswith({BENCHMARKS + '.'!r})}} == {{
+    {GENERALIZATION!r}, {GENERALIZATION_PROTOCOL!r}, {GENERALIZATION_DATASETS!r},
+}}
+assert not hasattr(namespace, 'GeneralizationPreparedData')
+assert tuple(tcspc_toolkit.__all__) == exports
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_fresh_typing_and_deferred_consumers_do_not_load_generalization_execution(tmp_path):
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = [{GENERALIZATION!r}, 'tcspc_toolkit.generalization_evaluation', 'emcee']
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname in blocked or fullname.startswith('emcee.'):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+def no_database(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('import opened a database')
+sys.meta_path.insert(0, BoundaryGuard())
+sys.addaudithook(no_database)
+for module in ('tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.persistence'):
+    importlib.import_module(module)
+assert not attempts, attempts
+assert not set(blocked).intersection(sys.modules)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_generalization_facade_contains_only_direct_compatibility_exports():
+    path = SOURCE_ROOT / "generalization_evaluation.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree)
+    imports = [node for node in tree.body if isinstance(node, ast.ImportFrom)]
+    assert len(tree.body) == 3 and len(imports) == 1
+    assert imports[0].module == GENERALIZATION and imports[0].level == 0
+    assert all(alias.asname is None and not alias.name.startswith("_") for alias in imports[0].names)
+    exports = tree.body[-1]
+    assert isinstance(exports, ast.Assign) and len(exports.targets) == 1
+    assert exports.targets[0].id == "__all__"
+    assert ast.literal_eval(exports.value) == tuple(alias.name for alias in imports[0].names)
+    assert len(imports[0].names) == 61
 
 
 def test_fresh_foundations_do_not_load_benchmarks(tmp_path):
@@ -968,7 +1086,8 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "evaluation.core", "evaluation.attachments",
                                    "evaluation.conditional", "evaluation.plots",
                                    "benchmarks.generalization_protocol",
-                                   "benchmarks.generalization_datasets"])
+                                   "benchmarks.generalization_datasets",
+                                   "benchmarks.generalization"])
     if reverse:
         names.reverse()
     blocked = ["emcee"]

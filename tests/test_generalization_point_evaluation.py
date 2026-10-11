@@ -9,7 +9,7 @@ from tcspc_toolkit.estimation.api import EstimatorSpec, fit_regressors
 from tcspc_toolkit.evaluation_core import build_point_evaluation, combine_point_evaluations
 from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     _build_generalization_evaluation_batch,
     _build_classical_point_evaluation,
     _evaluate_nonclassical_batch,

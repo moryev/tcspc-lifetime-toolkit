@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from tcspc_toolkit.benchmarks.generalization_protocol import (
         GeneralizationSuiteDefinition,
     )
-    from tcspc_toolkit.generalization_evaluation import (
+    from tcspc_toolkit.benchmarks.generalization import (
         GeneralizationPreparedData,
     )
     from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements

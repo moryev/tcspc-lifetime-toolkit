@@ -4965,7 +4965,7 @@ def record_robustness_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the existing generalization-summary fields for one selected test."""
-    from tcspc_toolkit.generalization_evaluation import RobustnessMetrics
+    from tcspc_toolkit.benchmarks.generalization import RobustnessMetrics
 
     if not isinstance(metrics, RobustnessMetrics):
         raise TypeError("metrics must be RobustnessMetrics")

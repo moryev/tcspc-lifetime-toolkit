@@ -7,7 +7,7 @@ import pytest
 from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-from tcspc_toolkit.generalization_evaluation import _build_generalization_evaluation_batch
+from tcspc_toolkit.benchmarks.generalization import _build_generalization_evaluation_batch
 from tcspc_toolkit.ml_evaluation import BenchmarkDataset
 from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScoreCalibrationResult,

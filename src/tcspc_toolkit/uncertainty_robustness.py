@@ -47,7 +47,7 @@ from tcspc_toolkit.benchmarks.generalization_protocol import (
 from tcspc_toolkit.benchmarks.generalization_datasets import (
     GeneralizationTestMeasurements,
 )
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     GeneralizationPreparedData,
 )
 from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor

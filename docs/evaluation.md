@@ -39,9 +39,14 @@ generation in `tcspc_toolkit.benchmarks.generalization_protocol` and
 `tcspc_toolkit.benchmarks.generalization_datasets`. Historical `generalization`
 and `generalization_datasets` remain direct-object compatibility paths through
 at least Issue #12. The benchmark initializer imports no children.
-`generalization_evaluation.py` remains flat and retains preparation, execution,
-and reporting until Stage 6B; other studies and uncertainty implementations
-have not moved. Frozen A–F values, seeds, pairing, and data roles are unchanged.
+Stage 6B moves the entire preparation/execution/reporting implementation to
+`tcspc_toolkit.benchmarks.generalization`; historical
+`tcspc_toolkit.generalization_evaluation` directly re-exports its 61 supported
+names, including seven aliases. Private helpers stay in the canonical module,
+and patches of its execution bindings target that module. No responsibilities,
+schemas, metric policies, or table-only compatibility behavior are repartitioned.
+Other studies, uncertainty implementations, and persistence have not moved.
+Frozen A–F values, seeds, pairing, and data roles are unchanged.
 
 ```text
 frozen scientific benchmark definitions
@@ -63,9 +68,9 @@ legacy-compatible scientific reports
 |---|---|---|
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
 | `benchmarks.generalization_protocol`, `benchmarks.generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
-| `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
+| `benchmarks.generalization` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
 | `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
-| `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
+| `benchmarks.generalization` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
 | `evaluation.conditional` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
@@ -74,7 +79,7 @@ legacy-compatible scientific reports
 | `uncertainty_evaluation` | Interval/score results, method definitions, development split, interval/quantile/score/selective metrics | Already separates intervals, heuristic scores and empirical reference variability. Retain that distinction. |
 | `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
 | `classical_uncertainty` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
-| `generalization_evaluation` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
+| `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
 | `irf_evaluation` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
 | `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
 | Bayesian modules | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results, `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
@@ -98,7 +103,7 @@ baseline/ML factual evaluation and legacy table projection (Stage 3)
 
 `prepare_generalization_ab_data` and `prepare_generalization_data` delegate to
 the private `_prepare_generalization_representations` helper in
-`generalization_evaluation`. It reuses `GeneralizationPreparedData` internally;
+`benchmarks.generalization`. It reuses `GeneralizationPreparedData` internally;
 no new public carrier, preparation framework or `PreparedEvaluationData` exists.
 
 The common mechanics build the development dataset, extract ordered test features,
@@ -143,7 +148,7 @@ legacy generalization table projection
 existing summaries / frozen reports
 ```
 
-Private adapters in `generalization_evaluation` now share this path for principal
+Private adapters in `benchmarks.generalization` now share this path for principal
 A/B, representation A/B, A/C/D/E instrument/acquisition, A/F model mismatch and
 the full A–F suite. Public signatures and result dataclasses are unchanged.
 Principal A/B still selects the three canonical engineered-feature estimators;
