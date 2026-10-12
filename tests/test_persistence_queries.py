@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from tcspc_toolkit import persistence as store
+from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
 from tcspc_toolkit.irf_preparation import prepare_irf
 from tcspc_toolkit.measurements import MeasurementDataKind, SampledIRF, TCSPCMeasurement
@@ -141,7 +142,7 @@ def populated(tmp_path):
                 interpretation="stored method-conditional output", is_valid=1,
                 **({"calibration_scope": "none"} | extra),
             ))
-        parameter_json = store._canonical_json({
+        parameter_json = persistence_impl._canonical_json({
             "credible_probability": 0.9,
             "parameters": [{"name": "lifetime_ns", "median": 1.85, "mean": 1.9,
                             "credible_lower": 1.6, "credible_upper": 2.2}],
@@ -157,7 +158,7 @@ def populated(tmp_path):
                 nonfinite_fields_json='{"minimum_effective_samples":"+inf"}',
                 posterior_artifact_id=artifact, predictive_artifact_id=predictive_artifact,
                 ppc_status="success", ppc_n_draws=3, ppc_deviance_tail_probability=0.4,
-                ppc_discrepancies_json=store._canonical_json({"random_seed_decimal": str(2**64 - 2)}))
+                ppc_discrepancies_json=persistence_impl._canonical_json({"random_seed_decimal": str(2**64 - 2)}))
         trusted = store.record_trusted_lifetime_reference(
             db, reference_key="trusted", reference_version="calibration-v1",
             measurement_id=experiment, lifetime_ns=2.4,
@@ -181,7 +182,7 @@ def populated(tmp_path):
                 reference_semantics="generating_mono: known generating lifetime", method_id="quantile_gradient_boosting",
                 method_configuration={"coverage": coverage}, nominal_coverage=coverage,
             )
-            metrics.extend(store._record_metric_facts(
+            metrics.extend(persistence_impl._record_metric_facts(
                 db, scope, n_attempted=4,
                 facts=[("empirical_coverage", "fraction", float("nan") if value is None else value,
                         0 if value is None else 4, 0 if value is None else 4, "valid_intervals")],
@@ -502,7 +503,7 @@ def test_path_queries_open_readonly_and_missing_database_is_not_created(populate
         db = original(database, readonly=readonly)
         opened.append(db)
         return db
-    monkeypatch.setattr(store, "connect_database", checked)
+    monkeypatch.setattr(persistence_impl, "connect_database", checked)
     for query, options in _ALL_QUERIES:
         assert query(path, **options).rows
     for db in opened:
@@ -549,7 +550,7 @@ def test_queries_do_not_call_scientific_or_recording_adapters(populated, monkeyp
         raise AssertionError("retrieval must not normalize, recompute or record science")
     for name in ("_metric_scope", "_metric_fact", "_bayesian_payloads", "_estimator_payload",
                  "_record_row", "initialize_database", "transaction"):
-        monkeypatch.setattr(store, name, forbidden)
+        monkeypatch.setattr(persistence_impl, name, forbidden)
     for query, options in _ALL_QUERIES:
         assert query(path, **options).rows
 

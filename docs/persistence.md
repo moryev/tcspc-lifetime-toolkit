@@ -9,6 +9,125 @@ results with posterior, sampler and posterior-predictive summaries.
 Stage 6 retrieves these stored facts through read-only queries and an explicit
 DataFrame conversion, without scientific recomputation.
 
+## Package layout and compatibility (Issue #3, Stage 9)
+
+The complete SQLite implementation now lives in
+`tcspc_toolkit.persistence.sqlite`. The historical/public
+`tcspc_toolkit.persistence` path is a package facade that directly re-exports
+the same objects. It is intentionally not a docstring-only initializer:
+its sole implementation dependency is `.sqlite`. There is no competing
+`persistence.py`, no wrapper, and no fabricated historical `__module__`.
+
+This is a Python-path relocation, not a database migration. Schema version
+remains **1**, with the unchanged DDL fingerprint:
+
+```text
+1edaa036c1e9ffe00927e87d7d14aad89e995c11a0a68172f6cc68842e833cf9
+```
+
+Executable scientific imports remain canonical and function-local (55 import
+statements); both pandas imports remain deferred. The implementation's eager
+dependencies are `__future__`, `hashlib`, `itertools`, `json`, `math`,
+`sqlite3`, `collections.abc`, `contextlib`, `dataclasses`, `datetime`,
+`enum`, `pathlib`, `typing`, `numpy`, and `numpy.typing`.
+There are no typing-only imports. Importing either persistence path opens no
+database, creates no database file, and executes no scientific workflow.
+This preserves the existing boundary; it does not optimize inherited package-root
+imports. Scientific implementations do not import persistence.
+
+The exact supported 62-name historical surface is preserved below, including
+the `DuplicatePolicy` typing alias. Private schema/hash/record helpers belong
+to `persistence.sqlite`, not to the public facade.
+
+```text
+SCHEMA_VERSION
+PersistenceSchemaError
+initialize_database
+connect_database
+transaction
+DuplicatePolicy
+PersistenceConflictError
+record_run
+record_artifact
+record_irf_source
+record_legacy_irf_source
+record_prepared_irf
+record_supplied_kernel
+record_simulation_condition
+record_issue4_condition
+record_measurement
+record_synthetic_observation
+record_benchmark_observation
+link_run_measurement
+bayesian_model_configuration
+record_model_version
+record_model_assumption
+record_trusted_lifetime_reference
+record_pseudo_true_reference
+record_issue4_pseudo_true_reference
+record_reconvolution_fit
+record_bayesian_result
+record_issue4_bayesian_result
+record_regression_predictions
+record_baseline_predictions
+record_scalar_prediction
+record_prediction_intervals
+record_quantile_intervals
+record_conformal_intervals
+record_uncertainty_scores
+record_classical_covariance_uncertainty
+record_parametric_bootstrap_uncertainty
+BenchmarkMetricScope
+record_interval_metrics
+record_quantile_interval_metrics
+record_uncertainty_score_metrics
+record_selective_prediction_metrics
+record_repeated_poisson_metrics
+record_regression_metrics
+record_robustness_metrics
+record_reconvolution_benchmark_metrics
+record_ml_interval_scorecard_row
+record_ml_uncertainty_scorecard_row
+QueryResult
+query_to_dataframe
+query_runs
+query_artifacts
+query_measurements
+query_irf_sources
+query_prepared_irfs
+query_results
+query_uncertainty
+query_bayesian
+query_references
+query_metrics
+record_week9_interval_scorecard_row
+record_week9_score_only_scorecard_row
+```
+
+The final two names remain direct aliases:
+`record_week9_interval_scorecard_row is record_ml_interval_scorecard_row` and
+`record_week9_score_only_scorecard_row is record_ml_uncertainty_scorecard_row`.
+Historical pickle/module-qualified lookup resolves through the facade, while
+new objects naturally identify their canonical implementation module.
+
+All seven historical persisted Python identities remain verbatim, independently
+of the canonical executable imports:
+
+```text
+tcspc_toolkit.baselines.estimate_lifetime_from_mean_arrival
+tcspc_toolkit.baselines.predict_constant_mean_baseline
+tcspc_toolkit.bayesian_evaluation.Issue4Bayesian
+tcspc_toolkit.bayesian_sampling.BayesianReconvolutionResult
+tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult
+tcspc_toolkit.fitting.ReconvolutionFitResult
+tcspc_toolkit.ml_evaluation.RegressionBenchmarkResult
+```
+
+Do not replace these strings with canonical `__module__` values. Schema v1,
+transactions, read-only queries, overwrite protection, scientific identities,
+and existing database-opening behavior are unchanged. The public-import
+round-trip example and notebooks retain their supported imports.
+
 ## Scientific entities
 
 The database has sixteen tables, each with a specific role:
@@ -145,7 +264,7 @@ Shape is separately stored as n_bins (including IRF sources) or grid metadata.
 A caller must also compare the array's scientific role and grid; a digest by
 itself is not an IRF or observation identity.
 
-The private helpers in persistence.py define these byte representations:
+The private helpers in `persistence.sqlite` define these byte representations:
 
 | Array role | Canonical bytes and validation |
 |---|---|

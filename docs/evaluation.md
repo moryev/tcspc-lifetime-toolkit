@@ -919,6 +919,11 @@ development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
 
+Issue #3 Stage 9 places the intact persistence implementation in
+`tcspc_toolkit.persistence.sqlite`; `tcspc_toolkit.persistence` is its direct-export
+historical/public package facade. Schema v1 and stored historical identities are
+unchanged; scientific adapter imports remain function-local.
+
 Persistence is an external consumer: reference/method vocabulary aligns, but
 scope/version/assumption labels are not substituted for database keys. Existing
 schema, source identities, uncertainty-method restrictions and duplicate policies

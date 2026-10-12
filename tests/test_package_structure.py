@@ -229,7 +229,9 @@ DIAGNOSTIC_EXPORTS = (
 DIAGNOSTIC_IMPORTS = {
     "numpy", "numpy.typing", f"{PACKAGE}.physics.models", f"{ESTIMATION}.fitting",
 }
-COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {PREPROCESSING, IRF, SIMULATION, EVALUATION}
+COMPATIBILITY_SURFACES = MIGRATED_SHIMS | {
+    PREPROCESSING, IRF, SIMULATION, EVALUATION, f"{PACKAGE}.persistence",
+}
 FACTUAL_IMPORTS = {
     f"{EVALUATION}.results": {
         "collections.abc", "dataclasses", "types", "typing", "numpy", "pandas", "numpy.typing",
@@ -326,6 +328,7 @@ SIMULATION_IMPORTS = {
     },
 }
 PERSISTENCE = f"{PACKAGE}.persistence"
+PERSISTENCE_SQLITE = f"{PERSISTENCE}.sqlite"
 IRF_IMPORTS = {
     IRF: {f"{IRF}.profiles"},
     f"{IRF}.profiles": {
@@ -597,7 +600,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     }
     assert ("typing", GENERALIZATION,
             ("GeneralizationPreparedData",)) in records[UNCERTAINTY_ML]
-    assert benchmark_edges(PERSISTENCE) == {
+    assert benchmark_edges(PERSISTENCE_SQLITE) == {
         ("deferred", GENERALIZATION_DATASETS), ("deferred", GENERALIZATION),
         ("deferred", BAYESIAN_CALIBRATION), ("deferred", BAYESIAN_MISMATCH),
         ("deferred", UNCERTAINTY_BENCHMARK),
@@ -619,7 +622,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     assert {(module, kind, names) for module, kind, names in consumers if module != facade} == {
         (UNCERTAINTY_ML, "typing", ("GeneralizationPreparedData",)),
         (UNCERTAINTY_BENCHMARK, "eager", ("GeneralizationPreparedData",)),
-        (PERSISTENCE, "deferred", ("RobustnessMetrics",)),
+        (PERSISTENCE_SQLITE, "deferred", ("RobustnessMetrics",)),
     }
     assert {(module, kind) for module, kind, _ in consumers if module == facade} == {
         (facade, "eager"),
@@ -676,6 +679,291 @@ assert not hasattr(namespace, 'GeneralizationSuiteDefinition')
 assert not hasattr(namespace, 'GeneralizationTestSuite')
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+# Stage-8C persistence inventory, pinned independently of the package facade.
+PERSISTENCE_EXPORTS = (
+    "SCHEMA_VERSION",
+    "PersistenceSchemaError",
+    "initialize_database",
+    "connect_database",
+    "transaction",
+    "DuplicatePolicy",
+    "PersistenceConflictError",
+    "record_run",
+    "record_artifact",
+    "record_irf_source",
+    "record_legacy_irf_source",
+    "record_prepared_irf",
+    "record_supplied_kernel",
+    "record_simulation_condition",
+    "record_issue4_condition",
+    "record_measurement",
+    "record_synthetic_observation",
+    "record_benchmark_observation",
+    "link_run_measurement",
+    "bayesian_model_configuration",
+    "record_model_version",
+    "record_model_assumption",
+    "record_trusted_lifetime_reference",
+    "record_pseudo_true_reference",
+    "record_issue4_pseudo_true_reference",
+    "record_reconvolution_fit",
+    "record_bayesian_result",
+    "record_issue4_bayesian_result",
+    "record_regression_predictions",
+    "record_baseline_predictions",
+    "record_scalar_prediction",
+    "record_prediction_intervals",
+    "record_quantile_intervals",
+    "record_conformal_intervals",
+    "record_uncertainty_scores",
+    "record_classical_covariance_uncertainty",
+    "record_parametric_bootstrap_uncertainty",
+    "BenchmarkMetricScope",
+    "record_interval_metrics",
+    "record_quantile_interval_metrics",
+    "record_uncertainty_score_metrics",
+    "record_selective_prediction_metrics",
+    "record_repeated_poisson_metrics",
+    "record_regression_metrics",
+    "record_robustness_metrics",
+    "record_reconvolution_benchmark_metrics",
+    "record_ml_interval_scorecard_row",
+    "record_ml_uncertainty_scorecard_row",
+    "QueryResult",
+    "query_to_dataframe",
+    "query_runs",
+    "query_artifacts",
+    "query_measurements",
+    "query_irf_sources",
+    "query_prepared_irfs",
+    "query_results",
+    "query_uncertainty",
+    "query_bayesian",
+    "query_references",
+    "query_metrics",
+    "record_week9_interval_scorecard_row",
+    "record_week9_score_only_scorecard_row",
+)
+PERSISTENCE_EAGER_IMPORTS = {
+    "__future__",
+    "hashlib",
+    "itertools",
+    "json",
+    "math",
+    "sqlite3",
+    "collections.abc",
+    "contextlib",
+    "dataclasses",
+    "datetime",
+    "enum",
+    "pathlib",
+    "typing",
+    "numpy",
+    "numpy.typing",
+}
+PERSISTENCE_DEFERRED_IMPORT_COUNTS = {
+    "tcspc_toolkit.preprocessing.histograms": 2,
+    "tcspc_toolkit.irf.profiles": 2,
+    "tcspc_toolkit.irf.estimation": 2,
+    "tcspc_toolkit.measurement.records": 3,
+    "tcspc_toolkit.irf.preparation": 2,
+    "tcspc_toolkit.benchmarks.bayesian_calibration": 3,
+    "tcspc_toolkit.benchmarks.bayesian_mismatch": 4,
+    "tcspc_toolkit.benchmarks.generalization_datasets": 1,
+    "tcspc_toolkit.ml.evaluation": 3,
+    "tcspc_toolkit.estimation.bayesian.posterior": 3,
+    "tcspc_toolkit.estimation.bayesian.sampling": 5,
+    "tcspc_toolkit.estimation.classical": 2,
+    "tcspc_toolkit.estimation.fitting": 1,
+    "tcspc_toolkit.estimation.bayesian.predictive": 3,
+    "tcspc_toolkit.uncertainty.evaluation": 8,
+    "tcspc_toolkit.benchmarks.uncertainty": 2,
+    "tcspc_toolkit.uncertainty.ml": 4,
+    "tcspc_toolkit.uncertainty.classical": 4,
+    "tcspc_toolkit.benchmarks.generalization": 1,
+    "pandas": 2,
+}
+PERSISTENCE_STORED_IDENTITIES = {
+    "tcspc_toolkit.fitting.ReconvolutionFitResult",
+    "tcspc_toolkit.bayesian_evaluation.Issue4Bayesian",
+    "tcspc_toolkit.bayesian_sampling.BayesianReconvolutionResult",
+    "tcspc_toolkit.baselines.predict_constant_mean_baseline",
+    "tcspc_toolkit.baselines.estimate_lifetime_from_mean_arrival",
+    "tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult",
+    "tcspc_toolkit.ml_evaluation.RegressionBenchmarkResult",
+}
+
+
+def test_persistence_package_layout_and_direct_public_facade():
+    assert not (SOURCE_ROOT / "persistence.py").exists()
+    directory = SOURCE_ROOT / "persistence"
+    assert {path.name for path in directory.glob("*.py")} == {"__init__.py", "sqlite.py"}
+    tree = ast.parse((directory / "__init__.py").read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree)
+    assert len(tree.body) == 3
+    exports = tree.body[1]
+    assert isinstance(exports, ast.ImportFrom)
+    assert exports.level == 1 and exports.module == "sqlite"
+    assert tuple(alias.name for alias in exports.names) == PERSISTENCE_EXPORTS
+    assert all(alias.asname is None for alias in exports.names)
+    declaration = tree.body[2]
+    assert isinstance(declaration, ast.Assign)
+    assert len(declaration.targets) == 1 and declaration.targets[0].id == "__all__"
+    assert tuple(ast.literal_eval(declaration.value)) == PERSISTENCE_EXPORTS
+    # The only real schema definitions live in sqlite.py, never in the facade.
+    for name in ("SCHEMA_VERSION", "_TABLES", "_INDEXES"):
+        definitions = [
+            path.name
+            for path in directory.glob("*.py")
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+            and node.id == name
+        ]
+        assert definitions == ["sqlite.py"], (name, definitions)
+
+
+def test_persistence_public_identity_aliases_and_historical_pickle_lookup():
+    import inspect
+    import pickle
+
+    old = importlib.import_module(PERSISTENCE)
+    new = importlib.import_module(PERSISTENCE_SQLITE)
+    assert Path(old.__file__).name == "__init__.py"
+    assert tuple(old.__all__) == PERSISTENCE_EXPORTS
+    assert {name for name in vars(old) if not name.startswith("_")} == {
+        *PERSISTENCE_EXPORTS, "sqlite",
+    }
+    for name in PERSISTENCE_EXPORTS:
+        value = getattr(new, name)
+        assert getattr(old, name) is value
+        # Protocol-0 GLOBAL resolves historical module-qualified lookups.
+        historical = f"c{PERSISTENCE}\n{name}\n.".encode()
+        assert pickle.loads(historical) is value
+        if inspect.isfunction(value) or inspect.isclass(value):
+            assert value.__module__ == PERSISTENCE_SQLITE
+            assert pickle.loads(pickle.dumps(value)) is value
+    assert old.record_week9_interval_scorecard_row is new.record_ml_interval_scorecard_row
+    assert old.record_week9_score_only_scorecard_row is new.record_ml_uncertainty_scorecard_row
+    for value in (
+        new.QueryResult(("id",), ((1,),)),
+        new.BenchmarkMetricScope(1, "selection", "development", "generating_mono"),
+        new.PersistenceSchemaError("schema"),
+        new.PersistenceConflictError("conflict"),
+    ):
+        payload = pickle.dumps(value, protocol=0)
+        qualified = PERSISTENCE_SQLITE.encode() + b"\n"
+        assert qualified in payload
+        restored = pickle.loads(payload.replace(qualified, PERSISTENCE.encode() + b"\n"))
+        assert type(restored) is type(value)
+        if isinstance(value, Exception):
+            assert restored.args == value.args
+        else:
+            assert restored == value
+
+
+def test_persistence_schema_v1_fingerprint_and_stored_identities():
+    implementation = importlib.import_module(PERSISTENCE_SQLITE)
+    assert implementation.SCHEMA_VERSION == 1
+    assert implementation._definition_sha256() == (
+        "1edaa036c1e9ffe00927e87d7d14aad89e995c11a0a68172f6cc68842e833cf9"
+    )
+    tree = ast.parse(Path(implementation.__file__).read_text(encoding="utf-8"))
+    stored = [
+        node.value for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        and node.value.startswith(PACKAGE + ".")
+    ]
+    assert len(stored) == 7
+    assert set(stored) == PERSISTENCE_STORED_IDENTITIES
+    # Executable adapter imports are canonical; stored identities stay historical.
+    imports = {base for _, base, _ in _imports(
+        Path(implementation.__file__).read_text(encoding="utf-8"), PERSISTENCE_SQLITE,
+    )}
+    assert {
+        f"{ESTIMATION}.fitting", f"{ESTIMATION}.classical", f"{ML}.evaluation",
+        BAYESIAN_CALIBRATION, f"{BAYESIAN}.sampling",
+    } <= imports
+    assert not imports & COMPATIBILITY_SURFACES
+
+
+def test_persistence_import_classification_and_incoming_edges(package_imports):
+    from collections import Counter
+
+    records, packages = package_imports
+    assert records[PERSISTENCE] == [("eager", PERSISTENCE_SQLITE, PERSISTENCE_EXPORTS)]
+    implementation = records[PERSISTENCE_SQLITE]
+    eager = [base for kind, base, _ in implementation if kind == "eager"]
+    assert len(eager) == 15 and set(eager) == PERSISTENCE_EAGER_IMPORTS
+    assert Counter(base for kind, base, _ in implementation if kind == "deferred") == (
+        PERSISTENCE_DEFERRED_IMPORT_COUNTS
+    )
+    assert not any(kind == "typing" for kind, _, _ in implementation)
+    assert sum(kind == "deferred" and base.startswith(PACKAGE + ".")
+               for kind, base, _ in implementation) == 55
+    incoming = [
+        (module, kind, base) for module, imports in records.items()
+        for kind, base, names in imports
+        if _targets(base, names, set(records)) & {PERSISTENCE, PERSISTENCE_SQLITE}
+    ]
+    assert incoming == [(PERSISTENCE, "eager", PERSISTENCE_SQLITE)]
+    graph = _eager_graph(records, packages)
+    # The root initializer is already running, not a new dependency edge.
+    assert graph[PERSISTENCE] == {PERSISTENCE_SQLITE}
+    assert graph[PERSISTENCE_SQLITE] == set()
+    tuple(TopologicalSorter(graph).static_order())
+
+
+@pytest.mark.parametrize("module", [PERSISTENCE, PERSISTENCE_SQLITE])
+def test_fresh_persistence_import_has_no_database_or_scientific_side_effects(tmp_path, module):
+    script = f"""
+import builtins
+import importlib
+import importlib.abc
+import os
+import sys
+class NoSampler(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'emcee' or fullname.startswith('emcee.'):
+            raise AssertionError('persistence import requires optional emcee')
+sys.meta_path.insert(0, NoSampler())
+# Root initialization has inherited ML/pandas cost; this stage does not optimize it.
+import tcspc_toolkit
+before = set(sys.modules)
+assert {PERSISTENCE!r} not in before
+seen = {{}}
+original_import = builtins.__import__
+def track(name, globals=None, locals=None, fromlist=(), level=0):
+    caller = (globals or {{}}).get('__name__', '')
+    if caller in ({PERSISTENCE!r}, {PERSISTENCE_SQLITE!r}):
+        seen.setdefault(caller, set()).add(name)
+        if caller == {PERSISTENCE_SQLITE!r}:
+            assert name in {PERSISTENCE_EAGER_IMPORTS!r}, (caller, name)
+    return original_import(name, globals, locals, fromlist, level)
+def no_database_or_writes(event, args):
+    if event == 'sqlite3.connect':
+        raise AssertionError('import opened a database')
+    if event == 'open':
+        mode, flags = args[1:3]
+        assert not isinstance(mode, str) or not any(c in mode for c in 'wax+'), args
+        assert not flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC), args
+sys.addaudithook(no_database_or_writes)
+builtins.__import__ = track
+importlib.import_module({module!r})
+assert seen[{PERSISTENCE!r}] == {{'sqlite'}}
+assert seen[{PERSISTENCE_SQLITE!r}] == {PERSISTENCE_EAGER_IMPORTS!r}
+added = set(sys.modules) - before
+blocked = (
+    'pandas', 'sklearn', 'emcee', 'matplotlib', 'tcspc_toolkit.benchmarks',
+    'tcspc_toolkit.uncertainty', 'tcspc_toolkit.estimation', 'tcspc_toolkit.ml',
+)
+assert not any(n == b or n.startswith(b + '.') for n in added for b in blocked), added
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
                                capture_output=True, text=True, timeout=60)
@@ -792,9 +1080,9 @@ def test_week9_benchmark_has_only_existing_eager_dependencies_and_local_consumer
                  if UNCERTAINTY_BENCHMARK in _targets(base, names, set(records))]
     facade = f"{PACKAGE}.uncertainty_robustness"
     assert {(module, kind) for module, kind, _ in consumers} == {
-        (facade, "eager"), (PERSISTENCE, "deferred"),
+        (facade, "eager"), (PERSISTENCE_SQLITE, "deferred"),
     }
-    assert [(kind, names) for module, kind, names in consumers if module == PERSISTENCE] == [
+    assert [(kind, names) for module, kind, names in consumers if module == PERSISTENCE_SQLITE] == [
         ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
         ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
     ]
@@ -878,10 +1166,10 @@ def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(
         (UNCERTAINTY_ML, "eager"),
         (UNCERTAINTY_CLASSICAL, "eager"),
         (UNCERTAINTY_BENCHMARK, "eager"),
-        (PERSISTENCE, "deferred"),
+        (PERSISTENCE_SQLITE, "deferred"),
     }
     assert len(consumers) == 12  # Facade, three eager consumers, eight local imports.
-    assert sum(module == PERSISTENCE for module, _, _ in consumers) == 8
+    assert sum(module == PERSISTENCE_SQLITE for module, _, _ in consumers) == 8
     foundations = (
         f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
     )
@@ -1026,7 +1314,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
             (f"{PACKAGE}.ml_uncertainty", "eager"),
             (IRF_STUDY, "eager"),
             (UNCERTAINTY_BENCHMARK, "eager"),
-            (PERSISTENCE, "deferred"),
+            (PERSISTENCE_SQLITE, "deferred"),
         },
         UNCERTAINTY_CLASSICAL: {
             (f"{PACKAGE}.classical_uncertainty", "eager"),
@@ -1034,7 +1322,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
             (BAYESIAN_MISMATCH, "eager"),
             (IRF_STUDY, "eager"),
             (UNCERTAINTY_BENCHMARK, "eager"),
-            (PERSISTENCE, "deferred"),
+            (PERSISTENCE_SQLITE, "deferred"),
         },
     }
     for target, expected_edges in expected.items():
@@ -1042,7 +1330,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
                      for kind, base, _ in imports if base == target]
         assert set(consumers) == expected_edges
         assert len(consumers) == len(expected_edges) + 3  # Four persistence-local imports.
-        assert consumers.count((PERSISTENCE, "deferred")) == 4
+        assert consumers.count((PERSISTENCE_SQLITE, "deferred")) == 4
 
 
 @pytest.mark.parametrize("module, canonical", [
@@ -1115,7 +1403,7 @@ def test_week7_studies_remain_independent_of_other_benchmarks(package_imports):
                      if canonical in _targets(base, names, set(records))]
         assert consumers == [(facade, "eager")]
     # No production/private or persistence-local consumer existed at relocation.
-    assert not any(base in {MISMATCH, TIMING} for _, base, _ in records[PERSISTENCE])
+    assert not any(base in {MISMATCH, TIMING} for _, base, _ in records[PERSISTENCE_SQLITE])
 
 
 @pytest.mark.parametrize("module, canonical", [
@@ -1177,11 +1465,11 @@ def test_irf_bayesian_study_edges_and_private_helpers_remain_canonical(package_i
         BAYESIAN_CALIBRATION: Counter({
             (f"{PACKAGE}.bayesian_evaluation", "eager"): 1,
             (BAYESIAN_MISMATCH, "eager"): 1,
-            (PERSISTENCE, "deferred"): 3,
+            (PERSISTENCE_SQLITE, "deferred"): 3,
         }),
         BAYESIAN_MISMATCH: Counter({
             (f"{PACKAGE}.bayesian_mismatch_evaluation", "eager"): 1,
-            (PERSISTENCE, "deferred"): 4,
+            (PERSISTENCE_SQLITE, "deferred"): 4,
         }),
     }
     for canonical, expected in expected_consumers.items():
@@ -1720,7 +2008,7 @@ async def later():
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
     names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty",
               "evaluation.results", "evaluation.core", "evaluation.attachments"]
-             if generic_only else [*OLD_MODULE_PATHS, "estimation.api", "estimation.baselines",
+             if generic_only else [*OLD_MODULE_PATHS, "persistence.sqlite", "estimation.api", "estimation.baselines",
                                    "estimation.fitting", "estimation.classical",
                                    "estimation.bayesian.posterior", "estimation.bayesian.sampling",
                                    "estimation.bayesian.predictive",

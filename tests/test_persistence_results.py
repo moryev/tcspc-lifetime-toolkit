@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit import persistence
+from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival, predict_constant_mean_baseline,
 )
@@ -398,7 +399,7 @@ def test_classical_reuse_checks_extension_and_composed_write_rolls_back(db, monk
         "SELECT optimizer_nfev FROM fit_details WHERE result_id = ?", (result_id,),
     ).fetchone()[0] == 25
 
-    original_record_row = persistence._record_row
+    original_record_row = persistence_impl._record_row
 
     def fail_fit_details(*args, **kwargs):
         if kwargs.get("table") == "fit_details":
@@ -406,7 +407,7 @@ def test_classical_reuse_checks_extension_and_composed_write_rolls_back(db, monk
         return original_record_row(*args, **kwargs)
 
     with monkeypatch.context() as patcher:
-        patcher.setattr(persistence, "_record_row", fail_fit_details)
+        patcher.setattr(persistence_impl, "_record_row", fail_fit_details)
         with pytest.raises(RuntimeError, match="injected extension failure"):
             persistence.record_reconvolution_fit(
                 db, result, run_id=run_id, measurement_id=measurement_id,

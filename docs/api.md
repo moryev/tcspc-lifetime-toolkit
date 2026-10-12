@@ -14,7 +14,7 @@ factual point/reference/attachment contracts, conditional analysis, plotting,
 frozen Week-8 generalization protocol/data generation and execution/reporting,
 uncertainty source/metric/split/provenance contracts and ML/classical methods,
 the separate Week-7 mismatch/timing studies, Issue-8 IRF/Issue-4 Bayesian studies,
-and frozen Week-9 uncertainty orchestration/reporting. Persistence remains flat.
+frozen Week-9 uncertainty orchestration/reporting, and SQLite persistence.
 
 | Status | Surface |
 | --- | --- |
@@ -24,7 +24,23 @@ and frozen Week-9 uncertainty orchestration/reporting. Persistence remains flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B), and intact frozen Week-9 orchestration/reporting in `benchmarks.uncertainty` (Stage 8C); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B), and intact frozen Week-9 orchestration/reporting in `benchmarks.uncertainty` (Stage 8C), and the intact SQLite implementation in `persistence.sqlite` with the historical/public `persistence` package facade (Stage 9). |
+
+## Persistence implementation and public package facade (Issue #3, Stage 9)
+
+Canonical implementation: `tcspc_toolkit.persistence.sqlite`.
+Historical/public compatibility: `tcspc_toolkit.persistence`.
+
+The new package initializer directly re-exports all 62 supported names, including
+`DuplicatePolicy` and the two Week-9 compatibility aliases. Old/new objects have
+direct identity; the exact inventory is in the
+[persistence contract](persistence.md#package-layout-and-compatibility-issue-3-stage-9).
+Unlike the explicit-only benchmark/uncertainty namespaces, this initializer is
+intentionally a public facade. It contains no SQL or database-opening logic.
+Scientific adapter imports and pandas remain deferred in the single SQLite
+implementation. Schema v1, its fingerprint, all seven historical stored type
+strings, and the exact 66-name root API remain unchanged. No persistence names
+are added to the root, and existing public-import examples remain supported.
 
 ## Curated root API and supported module-qualified workflows
 

@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit import persistence
+from tcspc_toolkit.persistence import sqlite as persistence_impl
 
 
 _DIGEST = "a" * 64
@@ -138,7 +139,7 @@ def test_new_database_has_complete_versioned_schema(database_path):
         ).fetchone()
         assert metadata["schema_version"] == persistence.SCHEMA_VERSION
         assert metadata["serialization_version"] == 1
-        assert metadata["definition_sha256"] == persistence._definition_sha256()
+        assert metadata["definition_sha256"] == persistence_impl._definition_sha256()
         tables = {row[0] for row in connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         )}
@@ -182,8 +183,8 @@ def test_compatible_reopen_is_idempotent(database_path):
 
 def test_provisional_stage1_v1_fingerprint_is_rejected(database_path):
     assert persistence.SCHEMA_VERSION == 1
-    assert persistence._SERIALIZATION_VERSION == 1
-    assert persistence._definition_sha256() != _PROVISIONAL_STAGE1_SHA256
+    assert persistence_impl._SERIALIZATION_VERSION == 1
+    assert persistence_impl._definition_sha256() != _PROVISIONAL_STAGE1_SHA256
     with closing(sqlite3.connect(database_path)) as connection:
         connection.execute(
             "UPDATE schema_metadata SET definition_sha256 = ?",
@@ -198,7 +199,7 @@ def test_provisional_stage1_v1_fingerprint_is_rejected(database_path):
 
 def test_provisional_biexponential_table_ddl_is_rejected():
     with closing(sqlite3.connect(":memory:", isolation_level=None)) as connection:
-        for name, statement in persistence._TABLES:
+        for name, statement in persistence_impl._TABLES:
             if name == "simulation_conditions":
                 # Reconstruct the original Stage-1 v1 CHECK for this table.
                 previous = statement.replace(
@@ -214,7 +215,7 @@ def test_provisional_biexponential_table_ddl_is_rejected():
                 assert previous != statement
                 statement = previous
             connection.execute(statement)
-        for _, statement in persistence._INDEXES:
+        for _, statement in persistence_impl._INDEXES:
             connection.execute(statement)
         connection.execute(
             "INSERT INTO schema_metadata "
@@ -339,7 +340,7 @@ def test_schema_indexes_foreign_keys_and_checks(database_path):
         indexes = {row[0] for row in connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'index'"
         )}
-        assert {name for name, _ in persistence._INDEXES} <= indexes
+        assert {name for name, _ in persistence_impl._INDEXES} <= indexes
         assert {"uq_results_identity", "uq_uncertainty_identity"} <= indexes
         result_fks = connection.execute(
             "PRAGMA foreign_key_list(estimator_results)"
@@ -956,7 +957,7 @@ def test_experimental_reference_and_pseudo_true_scopes_differ(database_path):
 
 def test_schema_initialization_failure_rolls_back_all_schema_state(tmp_path, monkeypatch):
     path = tmp_path / "interrupted.sqlite"
-    original = persistence._execute_schema_statement
+    original = persistence_impl._execute_schema_statement
     calls = 0
 
     def fail_during_ddl(connection, statement):
@@ -966,7 +967,7 @@ def test_schema_initialization_failure_rolls_back_all_schema_state(tmp_path, mon
             raise RuntimeError("injected DDL failure")
         original(connection, statement)
 
-    monkeypatch.setattr(persistence, "_execute_schema_statement", fail_during_ddl)
+    monkeypatch.setattr(persistence_impl, "_execute_schema_statement", fail_during_ddl)
     with pytest.raises(RuntimeError, match="injected DDL failure"):
         persistence.initialize_database(path)
     with closing(sqlite3.connect(path)) as connection:
@@ -974,7 +975,7 @@ def test_schema_initialization_failure_rolls_back_all_schema_state(tmp_path, mon
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
         ).fetchall() == []
-    monkeypatch.setattr(persistence, "_execute_schema_statement", original)
+    monkeypatch.setattr(persistence_impl, "_execute_schema_statement", original)
     persistence.initialize_database(path)
     with closing(persistence.connect_database(path)) as connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
@@ -988,7 +989,7 @@ def test_late_initialization_failure_rolls_back_metadata_and_user_version(
     def fail_final_validation(_connection):
         raise RuntimeError("injected final validation failure")
 
-    monkeypatch.setattr(persistence, "_validate_schema", fail_final_validation)
+    monkeypatch.setattr(persistence_impl, "_validate_schema", fail_final_validation)
     with pytest.raises(RuntimeError, match="injected final validation failure"):
         persistence.initialize_database(path)
     with closing(sqlite3.connect(path)) as connection:
@@ -1096,61 +1097,61 @@ def test_parameter_binding_does_not_execute_user_sql(database_path):
 
 def test_canonical_hashes_ignore_byte_order_width_strides_and_signed_zero():
     time = np.array([0.0, 0.25, 0.5], dtype="<f8")
-    assert persistence._hash_time_grid_ns(time) == persistence._hash_time_grid_ns(
+    assert persistence_impl._hash_time_grid_ns(time) == persistence_impl._hash_time_grid_ns(
         np.array([0.0, 0.25, 0.5], dtype=">f8")
     )
-    assert persistence._hash_time_grid_ns(time) == persistence._hash_time_grid_ns(
+    assert persistence_impl._hash_time_grid_ns(time) == persistence_impl._hash_time_grid_ns(
         np.array([0.0, 0.25, 0.5], dtype="<f4")
     )
-    assert persistence._hash_time_grid_ns(time) == persistence._hash_time_grid_ns(
+    assert persistence_impl._hash_time_grid_ns(time) == persistence_impl._hash_time_grid_ns(
         np.array([0.0, -1.0, 0.25, -1.0, 0.5])[::2]
     )
     values = np.array([0.0, -0.0, 1.5], dtype="<f8")
     positive_zero = np.array([0.0, 0.0, 1.5], dtype=">f8")
-    assert persistence._hash_continuous_histogram_values(values) == (
-        persistence._hash_continuous_histogram_values(positive_zero)
+    assert persistence_impl._hash_continuous_histogram_values(values) == (
+        persistence_impl._hash_continuous_histogram_values(positive_zero)
     )
-    for helper in (persistence._hash_irf_source_values,
-                   persistence._hash_prepared_kernel):
+    for helper in (persistence_impl._hash_irf_source_values,
+                   persistence_impl._hash_prepared_kernel):
         assert helper(np.array([0.0, -0.0, 1.5], dtype="<f4")) == helper(
             positive_zero
         )
     raw = np.array([0, 3, 12], dtype="<i8")
     expected = hashlib.sha256(raw.tobytes()).hexdigest()
-    assert persistence._hash_raw_counts(raw) == expected
+    assert persistence_impl._hash_raw_counts(raw) == expected
     for equivalent in (
         np.array([0, 3, 12], dtype=">i8"),
         np.array([0, 3, 12], dtype="<i4"),
         np.array([0, 3, 12], dtype="<f8"),
         np.array([0, 99, 3, 99, 12])[::2],
     ):
-        assert persistence._hash_raw_counts(equivalent) == expected
+        assert persistence_impl._hash_raw_counts(equivalent) == expected
 
 
 def test_canonical_hash_rejects_invalid_scientific_arrays():
     with pytest.raises(ValueError, match="strictly increasing"):
-        persistence._hash_time_grid_ns([0.0, 0.0])
+        persistence_impl._hash_time_grid_ns([0.0, 0.0])
     with pytest.raises(ValueError, match="finite"):
-        persistence._hash_time_grid_ns([0.0, float("nan")])
+        persistence_impl._hash_time_grid_ns([0.0, float("nan")])
     with pytest.raises(ValueError, match="nonnegative"):
-        persistence._hash_irf_source_values([1.0, -0.1])
+        persistence_impl._hash_irf_source_values([1.0, -0.1])
     with pytest.raises(ValueError, match="nonnegative"):
-        persistence._hash_prepared_kernel([1.0, -0.1])
+        persistence_impl._hash_prepared_kernel([1.0, -0.1])
     with pytest.raises(ValueError, match="finite"):
-        persistence._hash_continuous_histogram_values([1.0, float("inf")])
+        persistence_impl._hash_continuous_histogram_values([1.0, float("inf")])
     with pytest.raises(ValueError, match="exact integers"):
-        persistence._hash_raw_counts([1.5, 2.0])
+        persistence_impl._hash_raw_counts([1.5, 2.0])
     with pytest.raises(ValueError, match="int64 range"):
-        persistence._hash_raw_counts(np.array([2**63], dtype=np.uint64))
+        persistence_impl._hash_raw_counts(np.array([2**63], dtype=np.uint64))
     with pytest.raises(ValueError, match="nonempty one-dimensional"):
-        persistence._hash_raw_counts(np.array([[1, 2]]))
+        persistence_impl._hash_raw_counts(np.array([[1, 2]]))
 
 
 def test_frozen_issue4_float_hash_does_not_rewrite_signed_zero():
     historical = np.array([-0.0, 1.0], dtype="<f8")
     expected = hashlib.sha256(historical.tobytes()).hexdigest()
-    assert persistence._hash_legacy_issue4_float64_array(historical) == expected
-    assert persistence._hash_continuous_histogram_values(historical) != expected
+    assert persistence_impl._hash_legacy_issue4_float64_array(historical) == expected
+    assert persistence_impl._hash_continuous_histogram_values(historical) != expected
 
 
 def test_scientific_import_does_not_import_or_initialize_persistence(tmp_path):
