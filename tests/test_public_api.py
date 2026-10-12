@@ -860,6 +860,78 @@ def test_irf_bayesian_study_facades_preserve_surface_and_historical_lookup(
 
 
 
+def test_week9_benchmark_facade_preserves_public_alias_and_pickle_identity():
+    names = (
+        "DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED",
+        "CONFORMALIZED_QUANTILE_METHOD_ID",
+        "ConformalizedQuantileCalibrationResult",
+        "conformalize_quantile_gradient_boosting",
+        "ConformalizedQuantileExternalResult",
+        "evaluate_frozen_conformalized_quantile",
+        "build_ml_interval_scorecard",
+        "build_ml_uncertainty_scorecard",
+        "MLUncertaintyRobustnessReport",
+        "build_ml_uncertainty_robustness_report",
+        "build_classical_uncertainty_scorecard",
+        "build_classical_conditional_uncertainty_scorecard",
+        "ClassicalUncertaintyRobustnessReport",
+        "evaluate_classical_uncertainty_robustness",
+        "ClassicalResidualMatrixResult",
+        "ResidualMismatchReport",
+        "evaluate_residual_mismatch_diagnostics",
+        "DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED",
+        "build_week9_interval_scorecard",
+        "build_week9_score_only_scorecard",
+        "Week9MLUncertaintyRobustnessReport",
+        "build_week9_ml_uncertainty_robustness_report",
+        "build_week9_classical_uncertainty_scorecard",
+        "build_week9_classical_conditional_scorecard",
+        "Week9ClassicalUncertaintyRobustnessReport",
+        "evaluate_week9_classical_uncertainty_robustness",
+        "Week9ResidualMismatchReport",
+        "evaluate_week9_residual_mismatch_diagnostics",
+    )
+    aliases = (
+        ("DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED", "DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED"),
+        ("build_week9_interval_scorecard", "build_ml_interval_scorecard"),
+        ("build_week9_score_only_scorecard", "build_ml_uncertainty_scorecard"),
+        ("Week9MLUncertaintyRobustnessReport", "MLUncertaintyRobustnessReport"),
+        ("build_week9_ml_uncertainty_robustness_report", "build_ml_uncertainty_robustness_report"),
+        ("build_week9_classical_uncertainty_scorecard", "build_classical_uncertainty_scorecard"),
+        ("build_week9_classical_conditional_scorecard", "build_classical_conditional_uncertainty_scorecard"),
+        ("Week9ClassicalUncertaintyRobustnessReport", "ClassicalUncertaintyRobustnessReport"),
+        ("evaluate_week9_classical_uncertainty_robustness", "evaluate_classical_uncertainty_robustness"),
+        ("Week9ResidualMismatchReport", "ResidualMismatchReport"),
+        ("evaluate_week9_residual_mismatch_diagnostics", "evaluate_residual_mismatch_diagnostics"),
+    )
+    historical = "tcspc_toolkit.uncertainty_robustness"
+    canonical_name = "tcspc_toolkit.benchmarks.uncertainty"
+    canonical = importlib.import_module(canonical_name)
+    facade = importlib.import_module(historical)
+    namespace = importlib.import_module("tcspc_toolkit.benchmarks")
+    assert tuple(facade.__all__) == names
+    assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
+    for name in names:
+        obj = getattr(canonical, name)
+        assert getattr(facade, name) is obj
+        assert not hasattr(namespace, name)
+        assert not hasattr(toolkit, name)
+        historical_global = f"c{historical}\n{name}\n.".encode()
+        assert pickle.loads(historical_global) is obj
+        if callable(obj):
+            assert obj.__module__ == canonical_name
+            assert pickle.loads(pickle.dumps(obj)) is obj
+    for alias, name in aliases:
+        assert getattr(facade, alias) is getattr(canonical, name)
+    # Test-only private consumers migrate; they do not become compatibility API.
+    for private in (
+        "_finite_sample_conformal_quantile", "_summarize_signed_residual_profile",
+        "_evaluate_classical_uncertainty_test", "_report_interval_rows", "_report_score_rows",
+    ):
+        assert callable(getattr(canonical, private))
+        assert not hasattr(facade, private)
+
+
 def test_expected_counts_builder_is_in_the_root_contract():
     assert "build_expected_counts_from_irf" in toolkit.__all__
     assert toolkit.build_expected_counts_from_irf is build_expected_counts_from_irf

@@ -64,9 +64,10 @@ directly re-export their 34 and 18 supported names, including the three ML Week-
 aliases. Source-to-attachment projections remain separate from source carriers;
 repeated-Poisson variability remains an empirical reference rather than a per-point
 interval attachment. ML benchmark annotations remain typing-only. Private helpers
-remain in their owning canonical modules. The frozen `uncertainty_robustness.py`
-study/report layer, including conformal, stays flat. Scientific policies, populations,
-seeds, algorithms, report schemas, and persistence identities are unchanged.
+remain in their owning canonical modules. At that checkpoint the frozen
+`uncertainty_robustness.py` study/report layer, including conformal, stayed flat.
+Scientific policies, populations, seeds, algorithms, report schemas, and persistence
+identities are unchanged.
 
 Stage 8A places the intact Week-7 studies in `tcspc_toolkit.benchmarks.mismatch`
 and `tcspc_toolkit.benchmarks.timing`. Historical
@@ -99,7 +100,24 @@ model-conditional likelihood projection, not physical truth, a primary component
 or a posterior estimate. Credible intervals remain model/prior/fixed-IRF conditional.
 Persistence keeps seven study imports deferred and records the historical literal
 `tcspc_toolkit.bayesian_evaluation.Issue4Bayesian` unchanged. Benchmark initialization
-loads none of these studies or `emcee`. Uncertainty robustness and persistence remain flat.
+loads none of these studies or `emcee`. At that checkpoint uncertainty robustness
+and persistence remained flat.
+
+Stage 8C moves the intact frozen Week-9 study/report layer to
+`tcspc_toolkit.benchmarks.uncertainty`. Historical
+`tcspc_toolkit.uncertainty_robustness` directly re-exports its 28 supported names,
+including eleven legacy aliases, without wrappers or fabricated module identities.
+Reusable metrics/source carriers and ML/classical methods remain in
+`uncertainty.evaluation`, `uncertainty.ml`, and `uncertainty.classical`.
+Conformal stays inside this benchmark, together with frozen traversal, alignment,
+scorecards, classical coverage, and residual reports. There is no separate
+conformal module or change to populations, nominal levels, leakage policy, or
+scientific conclusions. The module retains its canonical generalization
+protocol/data/prepared-data dependencies; reusable layers do not import it.
+Persistence's two constant imports stay function-local, with no stored identity
+changes. Benchmark and uncertainty initializers remain docstring-only; evaluation
+remains diagnostics-only. See [the exact public/alias inventory](api.md#stage-8c-frozen-uncertainty-benchmark).
+Persistence has not moved.
 
 ```text
 frozen scientific benchmark definitions
@@ -130,7 +148,7 @@ legacy-compatible scientific reports
 | `benchmarks.mismatch`, `benchmarks.timing` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Separate Week-7 paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
 | `uncertainty.ml` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
 | `uncertainty.evaluation` | Interval/score source results, method/provenance definitions, development split, interval/quantile/score/selective metrics | Retains frozen protocol configuration for the provenance guard; separates intervals, heuristic scores and empirical reference variability from generic factual attachments. |
-| `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
+| `benchmarks.uncertainty` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
 | `uncertainty.classical` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
 | `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
 | `benchmarks.irf` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
@@ -842,8 +860,8 @@ unchanged interval, score, and classical metric policies
 legacy-compatible ML / classical scorecards and reports
 ```
 
-`uncertainty_robustness` now shares prepared ML condition inputs and the ordered
-condition traversal. The traversal accepts caller-supplied IDs and does not assign
+`benchmarks.uncertainty` (historical `uncertainty_robustness`) shares prepared ML
+condition inputs and the ordered traversal. The traversal accepts caller-supplied IDs and does not assign
 scientific meaning to their spelling; frozen wrappers still select A–F and retain
 their exact order. The A–E generating-mono versus F primary-component target choice
 remains an explicit frozen label at the scoring boundary, not an inferred property

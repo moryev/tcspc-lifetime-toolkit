@@ -51,6 +51,7 @@ TIMING = f"{BENCHMARKS}.timing"
 IRF_STUDY = f"{BENCHMARKS}.irf"
 BAYESIAN_CALIBRATION = f"{BENCHMARKS}.bayesian_calibration"
 BAYESIAN_MISMATCH = f"{BENCHMARKS}.bayesian_mismatch"
+UNCERTAINTY_BENCHMARK = f"{BENCHMARKS}.uncertainty"
 UNCERTAINTY = f"{PACKAGE}.uncertainty"
 UNCERTAINTY_EVALUATION = f"{UNCERTAINTY}.evaluation"
 UNCERTAINTY_ML = f"{UNCERTAINTY}.ml"
@@ -60,6 +61,29 @@ UNCERTAINTY_EVALUATION_IMPORTS = {
     GENERALIZATION_PROTOCOL,
 }
 BENCHMARK_IMPORTS = {
+    UNCERTAINTY_BENCHMARK: {
+        "__future__",
+        "collections.abc",
+        "dataclasses",
+        "math",
+        "typing",
+        "numpy",
+        "pandas",
+        "numpy.typing",
+        "tcspc_toolkit.evaluation.diagnostics",
+        "tcspc_toolkit.estimation.classical",
+        "tcspc_toolkit.uncertainty.classical",
+        "tcspc_toolkit.evaluation.core",
+        "tcspc_toolkit.benchmarks.generalization_protocol",
+        "tcspc_toolkit.benchmarks.generalization_datasets",
+        "tcspc_toolkit.benchmarks.generalization",
+        "tcspc_toolkit.evaluation.results",
+        "tcspc_toolkit.evaluation.attachments",
+        "tcspc_toolkit.irf.profiles",
+        "tcspc_toolkit.ml.evaluation",
+        "tcspc_toolkit.uncertainty.ml",
+        "tcspc_toolkit.uncertainty.evaluation",
+    },
     IRF_STUDY: {
         "__future__",
         "dataclasses",
@@ -187,6 +211,7 @@ MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
     "ml_uncertainty", "classical_uncertainty",
     "mismatch_evaluation", "timing_evaluation",
     "irf_evaluation", "bayesian_evaluation", "bayesian_mismatch_evaluation",
+    "uncertainty_robustness",
 )}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
@@ -575,6 +600,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     assert benchmark_edges(PERSISTENCE) == {
         ("deferred", GENERALIZATION_DATASETS), ("deferred", GENERALIZATION),
         ("deferred", BAYESIAN_CALIBRATION), ("deferred", BAYESIAN_MISMATCH),
+        ("deferred", UNCERTAINTY_BENCHMARK),
     }
     # Existing scientific provenance guard, not a protocol-independent metric layer.
     assert ("eager", GENERALIZATION_PROTOCOL, ("FINAL_ROBUSTNESS_TEST_IDS",)) in (
@@ -583,7 +609,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     assert benchmark_edges(GENERALIZATION) == {
         ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
     }
-    assert benchmark_edges(f"{PACKAGE}.uncertainty_robustness") == {
+    assert benchmark_edges(UNCERTAINTY_BENCHMARK) == {
         ("eager", GENERALIZATION_PROTOCOL), ("eager", GENERALIZATION_DATASETS),
         ("eager", GENERALIZATION),
     }
@@ -592,7 +618,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     facade = f"{PACKAGE}.generalization_evaluation"
     assert {(module, kind, names) for module, kind, names in consumers if module != facade} == {
         (UNCERTAINTY_ML, "typing", ("GeneralizationPreparedData",)),
-        (f"{PACKAGE}.uncertainty_robustness", "eager", ("GeneralizationPreparedData",)),
+        (UNCERTAINTY_BENCHMARK, "eager", ("GeneralizationPreparedData",)),
         (PERSISTENCE, "deferred", ("RobustnessMetrics",)),
     }
     assert {(module, kind) for module, kind, _ in consumers if module == facade} == {
@@ -622,7 +648,7 @@ blocked = [
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.generalization_evaluation',
     {GENERALIZATION!r},
     'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml',
-    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
     'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.benchmarks.irf', 'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.benchmarks.mismatch',
     'tcspc_toolkit.timing_evaluation', 'tcspc_toolkit.benchmarks.timing', 'tcspc_toolkit.bayesian_evaluation', 'tcspc_toolkit.benchmarks.bayesian_calibration',
     'tcspc_toolkit.bayesian_mismatch_evaluation', 'tcspc_toolkit.benchmarks.bayesian_mismatch',
@@ -670,7 +696,7 @@ blocked = {sorted(MIGRATED_SHIMS - {f"{PACKAGE}.generalization_evaluation"})!r} 
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.uncertainty_evaluation',
     'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml', 'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical',
-    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.benchmarks.irf',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty', 'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.benchmarks.irf',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.benchmarks.mismatch', 'tcspc_toolkit.timing_evaluation', 'tcspc_toolkit.benchmarks.timing',
     'tcspc_toolkit.bayesian_evaluation', 'tcspc_toolkit.benchmarks.bayesian_calibration', 'tcspc_toolkit.bayesian_mismatch_evaluation', 'tcspc_toolkit.benchmarks.bayesian_mismatch',
 ]
@@ -740,6 +766,7 @@ assert not set(blocked).intersection(sys.modules)
     ("irf_evaluation.py", IRF_STUDY, 18),
     ("bayesian_evaluation.py", BAYESIAN_CALIBRATION, 21),
     ("bayesian_mismatch_evaluation.py", BAYESIAN_MISMATCH, 23),
+    ("uncertainty_robustness.py", UNCERTAINTY_BENCHMARK, 28),
 ])
 def test_study_facades_contain_only_direct_compatibility_exports(filename, canonical, count):
     path = SOURCE_ROOT / filename
@@ -754,6 +781,84 @@ def test_study_facades_contain_only_direct_compatibility_exports(filename, canon
     assert exports.targets[0].id == "__all__"
     assert ast.literal_eval(exports.value) == tuple(alias.name for alias in imports[0].names)
     assert len(imports[0].names) == count
+
+
+def test_week9_benchmark_has_only_existing_eager_dependencies_and_local_consumers(package_imports):
+    records, _ = package_imports
+    assert {base for _, base, _ in records[UNCERTAINTY_BENCHMARK]} == BENCHMARK_IMPORTS[UNCERTAINTY_BENCHMARK]
+    assert all(kind == "eager" for kind, _, _ in records[UNCERTAINTY_BENCHMARK])
+    consumers = [(module, kind, names) for module, imports in records.items()
+                 for kind, base, names in imports
+                 if UNCERTAINTY_BENCHMARK in _targets(base, names, set(records))]
+    facade = f"{PACKAGE}.uncertainty_robustness"
+    assert {(module, kind) for module, kind, _ in consumers} == {
+        (facade, "eager"), (PERSISTENCE, "deferred"),
+    }
+    assert [(kind, names) for module, kind, names in consumers if module == PERSISTENCE] == [
+        ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
+        ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
+    ]
+    # This exact consumer set also forbids reverse edges from reusable layers.
+    assert len(consumers) == 3
+    assert not (SOURCE_ROOT / "uncertainty" / "conformal.py").exists()
+    tree = ast.parse((SOURCE_ROOT / "benchmarks" / "uncertainty.py").read_text(encoding="utf-8"))
+    definitions = {node.name for node in tree.body
+                   if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+    assert {
+        "ConformalizedQuantileCalibrationResult", "_finite_sample_conformal_quantile",
+        "conformalize_quantile_gradient_boosting", "ConformalizedQuantileExternalResult",
+        "evaluate_frozen_conformalized_quantile",
+    } <= definitions
+
+
+@pytest.mark.parametrize("module", [
+    UNCERTAINTY_BENCHMARK, f"{PACKAGE}.uncertainty_robustness",
+])
+def test_fresh_week9_benchmark_import_preserves_namespace_and_optional_boundaries(tmp_path, module):
+    blocked = sorted(MIGRATED_SHIMS - {module}) + [
+        PERSISTENCE, BAYESIAN, IRF_STUDY, BAYESIAN_CALIBRATION, BAYESIAN_MISMATCH,
+        MISMATCH, TIMING, "emcee", "sqlite3", "matplotlib",
+    ]
+    script = f"""
+import importlib
+import importlib.abc
+import sys
+attempts = []
+blocked = {blocked!r}
+class BoundaryGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
+            attempts.append(fullname)
+            raise ModuleNotFoundError(fullname, name=fullname)
+sys.meta_path.insert(0, BoundaryGuard())
+import tcspc_toolkit
+exports = tuple(tcspc_toolkit.__all__)
+assert len(exports) == 66
+inherited = set(sys.modules)
+# The root already loads sklearn. Each namespace adds only itself, no scientific
+# children or new sklearn/sampling/database/plotting dependencies.
+namespace = importlib.import_module({BENCHMARKS!r})
+assert set(sys.modules) - inherited == {{{BENCHMARKS!r}}}
+uncertainty = importlib.import_module({UNCERTAINTY!r})
+assert set(sys.modules) - inherited == {{{BENCHMARKS!r}, {UNCERTAINTY!r}}}
+importlib.import_module({module!r})
+assert {{n for n in sys.modules if n.startswith({BENCHMARKS + '.'!r})}} == {{
+    {UNCERTAINTY_BENCHMARK!r}, {GENERALIZATION!r},
+    {GENERALIZATION_PROTOCOL!r}, {GENERALIZATION_DATASETS!r},
+}}
+assert {{n for n in sys.modules if n.startswith({UNCERTAINTY + '.'!r})}} == {{
+    {UNCERTAINTY_EVALUATION!r}, {UNCERTAINTY_ML!r}, {UNCERTAINTY_CLASSICAL!r},
+}}
+assert not hasattr(namespace, 'ConformalizedQuantileCalibrationResult')
+assert not hasattr(uncertainty, 'ConformalizedQuantileCalibrationResult')
+assert tuple(tcspc_toolkit.__all__) == exports
+assert not attempts, attempts
+assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(package_imports):
@@ -772,7 +877,7 @@ def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(
         (f"{PACKAGE}.uncertainty_evaluation", "eager"),
         (UNCERTAINTY_ML, "eager"),
         (UNCERTAINTY_CLASSICAL, "eager"),
-        (f"{PACKAGE}.uncertainty_robustness", "eager"),
+        (UNCERTAINTY_BENCHMARK, "eager"),
         (PERSISTENCE, "deferred"),
     }
     assert len(consumers) == 12  # Facade, three eager consumers, eight local imports.
@@ -804,7 +909,7 @@ attempts = []
 blocked = {sorted(MIGRATED_SHIMS - {f"{PACKAGE}.uncertainty_evaluation"})!r} + [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.ml',
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml',
-    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
     'tcspc_toolkit.evaluation.attachments', {GENERALIZATION!r}, {GENERALIZATION_DATASETS!r},
     'tcspc_toolkit.irf_evaluation', 'tcspc_toolkit.benchmarks.irf', 'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.benchmarks.mismatch',
     'tcspc_toolkit.timing_evaluation', 'tcspc_toolkit.benchmarks.timing', 'tcspc_toolkit.bayesian_evaluation', 'tcspc_toolkit.benchmarks.bayesian_calibration',
@@ -920,7 +1025,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
         UNCERTAINTY_ML: {
             (f"{PACKAGE}.ml_uncertainty", "eager"),
             (IRF_STUDY, "eager"),
-            (f"{PACKAGE}.uncertainty_robustness", "eager"),
+            (UNCERTAINTY_BENCHMARK, "eager"),
             (PERSISTENCE, "deferred"),
         },
         UNCERTAINTY_CLASSICAL: {
@@ -928,7 +1033,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
             (BAYESIAN_CALIBRATION, "eager"),
             (BAYESIAN_MISMATCH, "eager"),
             (IRF_STUDY, "eager"),
-            (f"{PACKAGE}.uncertainty_robustness", "eager"),
+            (UNCERTAINTY_BENCHMARK, "eager"),
             (PERSISTENCE, "deferred"),
         },
     }
@@ -950,7 +1055,7 @@ def test_fresh_uncertainty_methods_do_not_load_studies_or_sibling(tmp_path, modu
     sibling = UNCERTAINTY_CLASSICAL if canonical == UNCERTAINTY_ML else UNCERTAINTY_ML
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
         sibling, GENERALIZATION, GENERALIZATION_DATASETS, PERSISTENCE,
-        f"{PACKAGE}.uncertainty_robustness", f"{PACKAGE}.irf_evaluation", f"{BENCHMARKS}.irf",
+        f"{PACKAGE}.uncertainty_robustness", UNCERTAINTY_BENCHMARK, f"{PACKAGE}.irf_evaluation", f"{BENCHMARKS}.irf",
         f"{PACKAGE}.bayesian_evaluation", f"{BENCHMARKS}.bayesian_calibration", f"{PACKAGE}.bayesian_mismatch_evaluation", f"{BENCHMARKS}.bayesian_mismatch",
         f"{PACKAGE}.mismatch_evaluation", MISMATCH, f"{PACKAGE}.timing_evaluation", TIMING,
         BAYESIAN, "emcee", "sqlite3",
@@ -1023,7 +1128,7 @@ def test_fresh_week7_studies_load_only_the_explicit_benchmark_child(tmp_path, mo
     sibling = TIMING if canonical == MISMATCH else MISMATCH
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
         sibling, GENERALIZATION_PROTOCOL, GENERALIZATION_DATASETS, GENERALIZATION,
-        UNCERTAINTY, f"{PACKAGE}.uncertainty_robustness",
+        UNCERTAINTY, f"{PACKAGE}.uncertainty_robustness", UNCERTAINTY_BENCHMARK,
         f"{PACKAGE}.irf_evaluation", f"{BENCHMARKS}.irf", f"{PACKAGE}.bayesian_evaluation", f"{BENCHMARKS}.bayesian_calibration",
         f"{PACKAGE}.bayesian_mismatch_evaluation", f"{BENCHMARKS}.bayesian_mismatch", BAYESIAN, PERSISTENCE,
         "emcee", "sqlite3",
@@ -1134,7 +1239,7 @@ def test_fresh_irf_bayesian_studies_preserve_optional_sampler_and_isolation(
     }[canonical]
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
         GENERALIZATION, GENERALIZATION_DATASETS, MISMATCH, TIMING,
-        f"{PACKAGE}.uncertainty_robustness", PERSISTENCE, "emcee", "sqlite3",
+        f"{PACKAGE}.uncertainty_robustness", UNCERTAINTY_BENCHMARK, PERSISTENCE, "emcee", "sqlite3",
     ]
     if canonical == IRF_STUDY:
         blocked += [BAYESIAN, BAYESIAN_CALIBRATION, BAYESIAN_MISMATCH]
@@ -1275,7 +1380,7 @@ blocked = [
     'tcspc_toolkit.estimation.bayesian', 'tcspc_toolkit.benchmarks', 'tcspc_toolkit.generalization',
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.uncertainty_evaluation', 'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml',
-    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 class BoundaryGuard(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -1331,7 +1436,7 @@ blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.benchmarks.mismatch', 'tcspc_toolkit.uncertainty_evaluation',
     'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml', 'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical',
-    'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 class BoundaryGuard(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -1389,7 +1494,7 @@ blocked = [
     'tcspc_toolkit.generalization_datasets', 'tcspc_toolkit.generalization_evaluation',
     'tcspc_toolkit.mismatch_evaluation', 'tcspc_toolkit.benchmarks.mismatch', 'tcspc_toolkit.uncertainty_evaluation',
     'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml', 'tcspc_toolkit.classical_uncertainty', 'tcspc_toolkit.uncertainty.classical',
-    'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 class BoundaryGuard(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -1490,7 +1595,7 @@ assert not attempts, attempts
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'emcee', 'sqlite3', 'tcspc_toolkit.persistence', 'tcspc_toolkit.bayesian_evaluation', 'tcspc_toolkit.benchmarks.bayesian_calibration',
     'tcspc_toolkit.bayesian_mismatch_evaluation', 'tcspc_toolkit.benchmarks.bayesian_mismatch', 'tcspc_toolkit.generalization_evaluation',
-    'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1549,7 +1654,7 @@ assert loaded == expected, loaded
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     {BAYESIAN!r}, 'emcee', 'sqlite3', 'tcspc_toolkit.persistence',
     'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.ml_uncertainty', 'tcspc_toolkit.uncertainty.ml',
-    'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
@@ -1634,7 +1739,7 @@ def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, gener
                                    "benchmarks.generalization",
                                    "benchmarks.mismatch", "benchmarks.timing",
                                    "benchmarks.irf", "benchmarks.bayesian_calibration",
-                                   "benchmarks.bayesian_mismatch",
+                                   "benchmarks.bayesian_mismatch", "benchmarks.uncertainty",
                                    "uncertainty", "uncertainty.evaluation",
                                    "uncertainty.ml", "uncertainty.classical"])
     if reverse:
@@ -1707,7 +1812,7 @@ assert normalize_counts is canonical_normalize
 assert CountNormalization is canonical_mode
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
-    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1752,7 +1857,7 @@ assert IRFProfile is canonical_profile
 assert normalize_irf is canonical_normalize
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
-    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1792,7 +1897,7 @@ for caller, imports in seen.items():
     assert imports <= allowed[caller], (caller, imports)
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.bayesian',
-    'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1836,7 +1941,7 @@ assert sample_photon_counts is canonical_sample
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.bayesian',
     'tcspc_toolkit.generalization_evaluation', 'tcspc_toolkit.ml_models',
-    'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1877,7 +1982,7 @@ for caller, imports in seen.items():
     assert imports <= allowed[caller], (caller, imports)
 blocked = {sorted(MIGRATED_SHIMS)!r} + [
     'tcspc_toolkit.persistence', 'emcee', 'tcspc_toolkit.generalization_evaluation',
-    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness',
+    'tcspc_toolkit.ml_models', 'tcspc_toolkit.uncertainty_robustness', 'tcspc_toolkit.benchmarks.uncertainty',
 ]
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
 """
@@ -1936,6 +2041,7 @@ assert not any(n == {BAYESIAN!r} or n.startswith({BAYESIAN + '.'!r}) for n in sy
 assert 'tcspc_toolkit.generalization_evaluation' not in sys.modules
 assert not any(n == {ML!r} or n.startswith({ML + '.'!r}) for n in sys.modules)
 assert 'tcspc_toolkit.uncertainty_robustness' not in sys.modules
+assert 'tcspc_toolkit.benchmarks.uncertainty' not in sys.modules
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
                                capture_output=True, text=True, timeout=60)

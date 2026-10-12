@@ -13,8 +13,8 @@ models/evaluation/cross-validation, historical evaluation diagnostics,
 factual point/reference/attachment contracts, conditional analysis, plotting,
 frozen Week-8 generalization protocol/data generation and execution/reporting,
 uncertainty source/metric/split/provenance contracts and ML/classical methods,
-the separate Week-7 mismatch/timing studies, and Issue-8 IRF/Issue-4 Bayesian studies;
-other modules remain flat.
+the separate Week-7 mismatch/timing studies, Issue-8 IRF/Issue-4 Bayesian studies,
+and frozen Week-9 uncertainty orchestration/reporting. Persistence remains flat.
 
 | Status | Surface |
 | --- | --- |
@@ -24,7 +24,7 @@ other modules remain flat.
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B); further moves remain separate reviewed stages. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B), and intact frozen Week-9 orchestration/reporting in `benchmarks.uncertainty` (Stage 8C); further moves remain separate reviewed stages. |
 
 ## Curated root API and supported module-qualified workflows
 
@@ -106,8 +106,9 @@ Important supported module-qualified workflows include:
   intervals, calibration, sensitivity, and disagreement-score workflows.
   Historical `classical_uncertainty` and `ml_uncertainty` imports remain
   direct-object compatibility facades.
-- `uncertainty_robustness`: the still-flat frozen Week-9 study/report layer,
-  including its existing conformal workflow.
+- `benchmarks.uncertainty`: the frozen Week-9 study/report layer, including its
+  existing conformal workflow. Historical `uncertainty_robustness` imports remain
+  a direct-object compatibility facade.
 - `estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
   `estimation.bayesian.predictive`: explicit priors, posterior/context,
   sampling, and predictive diagnostics. Flat `bayesian`, `bayesian_sampling`,
@@ -280,9 +281,9 @@ ML's three benchmark references remain under `TYPE_CHECKING`; private projection
 and reconstruction helpers stay private in the canonical implementation modules.
 Patches of implementation-owned bindings must target those modules, not the facades.
 
-`uncertainty_robustness.py` remains the frozen Week-9 study/report layer; conformal
-has not been extracted. Other studies and persistence remain in place, with applicable
-imports redirected and all eight changed persistence imports remaining function-local.
+At the Stage-7B checkpoint, `uncertainty_robustness.py` remained the frozen Week-9
+study/report layer, with conformal intact. All eight changed persistence imports
+remained function-local. Stage 8C below relocates that study without extraction.
 
 Stage 8A moves the intact Week-7 mismatch and timing studies:
 
@@ -334,8 +335,8 @@ Its schema-v1 source identity is still exactly
 `tcspc_toolkit.bayesian_evaluation.Issue4Bayesian`, independent of the relocated
 class's natural `__module__`. The four Issue-4 runner/audit scripts use canonical
 study imports. The benchmark initializer is docstring-only, no root exports are
-added, and importing any study does not require `emcee`. Neither persistence nor
-`uncertainty_robustness.py` has moved; conformal has not been extracted.
+added, and importing any study does not require `emcee`. At the Stage-8B checkpoint,
+persistence and uncertainty robustness remained flat; conformal had not been extracted.
 
 The exact supported surfaces are below. `FloatArray`, `IntArray`, `Mechanism`,
 `GeneratingModel`, and `ReferenceName` are existing typing aliases; there are no
@@ -566,6 +567,72 @@ and the existing array type aliases. Expected-count construction, Poisson
 sampling, seed/Generator handling, and random-draw ordering are unchanged.
 This is generic synthetic generation, not the frozen A–F protocol: the
 `generalization*` modules remain separate and have not moved in this stage.
+
+### Stage-8C frozen uncertainty benchmark
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.uncertainty` | `tcspc_toolkit.uncertainty_robustness` |
+
+The whole Week-9 orchestration/reporting module remains intact. It consumes reusable
+`uncertainty.evaluation`, `uncertainty.ml`, and `uncertainty.classical`; it does not
+replace their source carriers or generic factual attachments. Frozen A–F traversal,
+calibration/external separation, scorecard populations, residual diagnostics, and
+conformal calibration/external evaluation retain their existing policies. There is
+no separate conformal module. Repeated-Poisson variability remains an empirical
+reference, not a per-point attachment.
+
+All 28 supported names below are direct identical objects through both paths.
+They comprise six result/report classes, nine functions, two constants, and eleven
+legacy aliases (including the historical seed alias); there are no public typing
+aliases. The private `_Condition` TypeVar and helpers remain private. Tests that
+inspect or patch private implementation bindings use the canonical module.
+No production module consumes private robustness helpers.
+
+```text
+DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED
+CONFORMALIZED_QUANTILE_METHOD_ID
+ConformalizedQuantileCalibrationResult
+conformalize_quantile_gradient_boosting
+ConformalizedQuantileExternalResult
+evaluate_frozen_conformalized_quantile
+build_ml_interval_scorecard
+build_ml_uncertainty_scorecard
+MLUncertaintyRobustnessReport
+build_ml_uncertainty_robustness_report
+build_classical_uncertainty_scorecard
+build_classical_conditional_uncertainty_scorecard
+ClassicalUncertaintyRobustnessReport
+evaluate_classical_uncertainty_robustness
+ClassicalResidualMatrixResult
+ResidualMismatchReport
+evaluate_residual_mismatch_diagnostics
+DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED
+build_week9_interval_scorecard
+build_week9_score_only_scorecard
+Week9MLUncertaintyRobustnessReport
+build_week9_ml_uncertainty_robustness_report
+build_week9_classical_uncertainty_scorecard
+build_week9_classical_conditional_scorecard
+Week9ClassicalUncertaintyRobustnessReport
+evaluate_week9_classical_uncertainty_robustness
+Week9ResidualMismatchReport
+evaluate_week9_residual_mismatch_diagnostics
+```
+
+The eleven legacy aliases are the final eleven entries above and retain their
+existing canonical targets from the scientific-name mapping below. Historical
+class/function pickle lookup resolves through the facade without changing
+`__module__`.
+
+Persistence is the only implementation consumer: `record_prediction_intervals`
+and `record_conformal_intervals` import `CONFORMALIZED_QUANTILE_METHOD_ID` locally.
+Only those import paths change. No persisted qualified
+`tcspc_toolkit.uncertainty_robustness` string exists, and no mapping is introduced.
+The benchmark has eager canonical dependencies on the generalization protocol,
+datasets, and prepared-data implementation; it has no deferred or typing-only
+imports, no persistence dependency, and no reverse consumers in reusable layers.
+Both namespace initializers remain docstring-only; no root exports are added.
 
 ### Completed evaluation work and later gates
 
@@ -856,7 +923,7 @@ canonical counterpart, not a subclass or forwarding wrapper.
 | `evaluate_week9_paired_quantile_response` | `evaluate_paired_quantile_interval_response` |
 | `evaluate_week9_paired_ml_uncertainty_response` | `evaluate_paired_uncertainty_score_response` |
 
-### `uncertainty_robustness`
+### `benchmarks.uncertainty` (compatibility: `uncertainty_robustness`)
 
 | Legacy compatibility name | Canonical name |
 | --- | --- |

@@ -4054,7 +4054,7 @@ def record_prediction_intervals(
         PredictionIntervalResult, UncertaintyMethodDefinition,
         UncertaintyOutputKind,
     )
-    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
+    from tcspc_toolkit.benchmarks.uncertainty import CONFORMALIZED_QUANTILE_METHOD_ID
     from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
     from tcspc_toolkit.uncertainty.classical import CLASSICAL_UNCERTAINTY_METHODS
 
@@ -4161,7 +4161,7 @@ def record_conformal_intervals(
     """Record split-conformalized quantile intervals and calibration identity."""
     from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
     from tcspc_toolkit.uncertainty.evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
-    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
+    from tcspc_toolkit.benchmarks.uncertainty import CONFORMALIZED_QUANTILE_METHOD_ID
 
     correction = _finite_scalar(correction_ns, "correction_ns", nonnegative=True)
     n_scores = _integer(n_calibration_scores, "n_calibration_scores", minimum=1)

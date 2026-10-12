@@ -208,7 +208,7 @@ def test_conformal_workflow_projects_corrected_bounds_with_no_refit(monkeypatch)
         ),
         feature_names=("x",),
     )
-    import tcspc_toolkit.uncertainty_robustness as robustness
+    import tcspc_toolkit.benchmarks.uncertainty as robustness
 
     captured = []
     original = robustness._project_ml_interval_source

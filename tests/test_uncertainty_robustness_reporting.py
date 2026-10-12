@@ -19,7 +19,7 @@ from tcspc_toolkit.uncertainty_evaluation import (
     UncertaintyScoreResult,
     evaluate_prediction_intervals,
 )
-from tcspc_toolkit import uncertainty_robustness as robustness
+from tcspc_toolkit.benchmarks import uncertainty as robustness
 
 
 def _classical_rows() -> pd.DataFrame:
