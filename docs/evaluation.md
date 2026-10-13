@@ -929,6 +929,7 @@ scope/version/assumption labels are not substituted for database keys. Existing
 schema, source identities, uncertainty-method restrictions and duplicate policies
 are unchanged. Generic runtime attachments are not automatically persistable.
 
-Issue #3 owns physical package movement; Issue #12 owns the post-reorganization
+Issue #3 has completed physical package movement; see the
+[final architecture inventory](package_structure.md). Issue #12 owns the post-reorganization
 clean-environment, reference-workflow and cross-feature integration gate. Neither
 is part of Issue #11.

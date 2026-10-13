@@ -686,6 +686,275 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
     assert list(tmp_path.iterdir()) == []
 
 
+# Final Issue-#3 inventory. Namespace-only initializers count as support, not
+# scientific implementations. Historical facades remain supported through #12.
+CLOSURE_CANONICAL_FILES = {
+    "benchmarks/bayesian_calibration.py",
+    "benchmarks/bayesian_mismatch.py",
+    "benchmarks/generalization.py",
+    "benchmarks/generalization_datasets.py",
+    "benchmarks/generalization_protocol.py",
+    "benchmarks/irf.py",
+    "benchmarks/mismatch.py",
+    "benchmarks/timing.py",
+    "benchmarks/uncertainty.py",
+    "estimation/api.py",
+    "estimation/baselines.py",
+    "estimation/bayesian/posterior.py",
+    "estimation/bayesian/predictive.py",
+    "estimation/bayesian/sampling.py",
+    "estimation/classical.py",
+    "estimation/fitting.py",
+    "evaluation/attachments.py",
+    "evaluation/conditional.py",
+    "evaluation/core.py",
+    "evaluation/diagnostics.py",
+    "evaluation/plots.py",
+    "evaluation/results.py",
+    "irf/estimation.py",
+    "irf/preparation.py",
+    "irf/profiles.py",
+    "irf/selection.py",
+    "measurement/adapters.py",
+    "measurement/io.py",
+    "measurement/records.py",
+    "ml/cross_validation.py",
+    "ml/evaluation.py",
+    "ml/models.py",
+    "persistence/sqlite.py",
+    "physics/convolution.py",
+    "physics/forward_model.py",
+    "physics/models.py",
+    "preprocessing/features.py",
+    "preprocessing/histograms.py",
+    "preprocessing/representations.py",
+    "simulation/datasets.py",
+    "simulation/histograms.py",
+    "uncertainty/classical.py",
+    "uncertainty/evaluation.py",
+    "uncertainty/ml.py",
+}
+CLOSURE_SUPPORT_FILES = {
+    "__init__.py",
+    "__main__.py",
+    "benchmarks/__init__.py",
+    "cli.py",
+    "config.py",
+    "estimation/__init__.py",
+    "estimation/bayesian/__init__.py",
+    "exceptions.py",
+    "measurement/__init__.py",
+    "ml/__init__.py",
+    "physics/__init__.py",
+    "uncertainty/__init__.py",
+}
+CLOSURE_FACADES = {
+    "baselines": "estimation.baselines",
+    "bayesian": "estimation.bayesian.posterior",
+    "bayesian_evaluation": "benchmarks.bayesian_calibration",
+    "bayesian_mismatch_evaluation": "benchmarks.bayesian_mismatch",
+    "bayesian_predictive": "estimation.bayesian.predictive",
+    "bayesian_sampling": "estimation.bayesian.sampling",
+    "benchmark_plots": "evaluation.plots",
+    "classical_evaluation": "estimation.classical",
+    "classical_uncertainty": "uncertainty.classical",
+    "conditional_evaluation": "evaluation.conditional",
+    "convolution": "physics.convolution",
+    "cross_validation": "ml.cross_validation",
+    "datasets": "simulation.datasets",
+    "estimator_api": "estimation.api",
+    "evaluation": "evaluation.diagnostics",
+    "evaluation_core": "evaluation.core",
+    "evaluation_results": "evaluation.results",
+    "evaluation_uncertainty": "evaluation.attachments",
+    "experimental": "measurement.adapters",
+    "features": "preprocessing.features",
+    "fitting": "estimation.fitting",
+    "forward_model": "physics.forward_model",
+    "generalization": "benchmarks.generalization_protocol",
+    "generalization_datasets": "benchmarks.generalization_datasets",
+    "generalization_evaluation": "benchmarks.generalization",
+    "irf": "irf.profiles",
+    "irf_estimation": "irf.estimation",
+    "irf_evaluation": "benchmarks.irf",
+    "irf_preparation": "irf.preparation",
+    "measurement_io": "measurement.io",
+    "measurements": "measurement.records",
+    "mismatch_evaluation": "benchmarks.mismatch",
+    "ml_evaluation": "ml.evaluation",
+    "ml_models": "ml.models",
+    "ml_uncertainty": "uncertainty.ml",
+    "models": "physics.models",
+    "persistence": "persistence.sqlite",
+    "preprocessing": "preprocessing.histograms",
+    "representations": "preprocessing.representations",
+    "simulation": "simulation.histograms",
+    "timing_evaluation": "benchmarks.timing",
+    "uncertainty_evaluation": "uncertainty.evaluation",
+    "uncertainty_robustness": "benchmarks.uncertainty",
+}
+
+
+def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
+    facade_files = {
+        (name + "/__init__.py") if (SOURCE_ROOT / name).is_dir() else (name + ".py")
+        for name in CLOSURE_FACADES
+    }
+    expected = CLOSURE_CANONICAL_FILES | CLOSURE_SUPPORT_FILES | facade_files
+    actual = {path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")}
+    assert actual == expected
+    assert len(actual) == 99
+    assert len(CLOSURE_CANONICAL_FILES) == 44
+    assert len(CLOSURE_SUPPORT_FILES) == 12
+    assert len(facade_files) == 43
+    assert len(expected) == 44 + 12 + 43  # Each file belongs to exactly one class.
+    for relative in CLOSURE_SUPPORT_FILES:
+        if "/" in relative:
+            tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
+            assert len(tree.body) == 1 and ast.get_docstring(tree), relative
+
+
+def test_all_compatibility_facades_are_direct_exports_with_global_identity():
+    import pickle
+
+    for old_name, new_name in CLOSURE_FACADES.items():
+        old = importlib.import_module(f"{PACKAGE}.{old_name}")
+        new = importlib.import_module(f"{PACKAGE}.{new_name}")
+        tree = ast.parse(Path(old.__file__).read_text(encoding="utf-8"))
+        imported = set()
+        for node in tree.body:
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                assert isinstance(node.value.value, str)
+            elif isinstance(node, ast.ImportFrom):
+                base = node.module
+                if node.level:
+                    base = importlib.util.resolve_name("." * node.level + base, old.__package__)
+                assert base == new.__name__, old_name
+                for alias in node.names:
+                    assert alias.name != "*"
+                    name = alias.asname or alias.name
+                    assert getattr(old, name) is getattr(new, alias.name), (old_name, name)
+                    imported.add(name)
+            elif isinstance(node, ast.Assign):
+                assert len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                assert node.targets[0].id == "__all__"
+                assert tuple(ast.literal_eval(node.value)) == tuple(old.__all__)
+            else:
+                pytest.fail(f"Implementation logic in facade {old_name}: {ast.dump(node)}")
+        assert set(old.__all__) <= imported
+        for name in imported - {"__all__"}:
+            assert getattr(old, name) is getattr(new, name)
+            assert pickle.loads(f"c{old.__name__}\n{name}\n.".encode()) is getattr(new, name)
+    # The root's independently pinned ordered 66-name contract has canonical identity.
+    root = importlib.import_module(PACKAGE)
+    tree = ast.parse((SOURCE_ROOT / "__init__.py").read_text(encoding="utf-8"))
+    identities = {
+        alias.asname or alias.name: getattr(importlib.import_module(node.module), alias.name)
+        for node in tree.body if isinstance(node, ast.ImportFrom)
+        for alias in node.names
+    }
+    assert len(root.__all__) == 66
+    for name in root.__all__:
+        assert getattr(root, name) is identities[name]
+
+
+def test_no_production_module_fabricates_module_metadata():
+    for path in SOURCE_ROOT.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                assert not any(
+                    isinstance(target, ast.Attribute) and target.attr == "__module__"
+                    or isinstance(target, ast.Name) and target.id == "__module__"
+                    for target in targets
+                ), (path, node.lineno)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id == "setattr" and len(node.args) >= 2:
+                    assert not (isinstance(node.args[1], ast.Constant)
+                                and node.args[1].value == "__module__"), (path, node.lineno)
+
+
+def test_developer_scripts_use_canonical_imports_and_load_without_workflows(package_imports):
+    import runpy
+
+    records, _ = package_imports
+    for path in sorted((SOURCE_ROOT.parents[1] / "scripts").glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        for _, base, names in _imports(source, path.stem):
+            assert not (_targets(base, names, set(records)) & COMPATIBILITY_SURFACES), path
+            assert base not in COMPATIBILITY_SURFACES, path
+        # Loading definitions is not running main(), profiles, MCMC or corrections.
+        namespace = runpy.run_path(str(path), run_name="issue3_import_audit")
+        assert callable(namespace["main"])
+
+
+def test_correction_provenance_source_is_canonical_implementation():
+    script = SOURCE_ROOT.parents[1] / "scripts" / "correct_issue4_mismatch_references.py"
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    calls = [
+        value for node in ast.walk(tree) if isinstance(node, ast.Dict)
+        for key, value in zip(node.keys, node.values)
+        if isinstance(key, ast.Constant) and key.value == "correction_source_sha256"
+    ]
+    assert len(calls) == 1
+    call = calls[0]
+    assert isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+    assert call.func.id == "_sha256" and len(call.args) == 1 and not call.keywords
+    # Resolve only the literal path expression; never execute the correction workflow.
+    expression = call.args[0]
+    parts = []
+    while isinstance(expression, ast.BinOp) and isinstance(expression.op, ast.Div):
+        part = ast.literal_eval(expression.right)
+        assert isinstance(part, str)
+        parts.append(part)
+        expression = expression.left
+    assert isinstance(expression, ast.Name) and expression.id == "ROOT"
+    source = SOURCE_ROOT.parents[1].joinpath(*reversed(parts)).resolve()
+    canonical = importlib.import_module(BAYESIAN_MISMATCH)
+    assert source.is_file()
+    assert source == Path(canonical.__file__).resolve()
+    assert source != (SOURCE_ROOT / "bayesian_mismatch_evaluation.py").resolve()
+
+
+def test_no_test_patches_a_historical_facade_as_an_implementation(package_imports):
+    records, _ = package_imports
+    modules = set(records)
+    observed_exceptions = set()
+    for path in sorted(Path(__file__).parent.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        aliases = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                aliases.update({a.asname or a.name: a.name for a in node.names if a.name in modules})
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                aliases.update({
+                    a.asname or a.name: f"{node.module}.{a.name}"
+                    for a in node.names if f"{node.module}.{a.name}" in modules
+                })
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not node.args:
+                continue
+            operation = node.func.attr if isinstance(node.func, ast.Attribute) else (
+                node.func.id if isinstance(node.func, ast.Name) else ""
+            )
+            if operation not in {"setattr", "patch", "object"}:
+                continue
+            target = node.args[0]
+            owner = aliases.get(target.id) if isinstance(target, ast.Name) else None
+            if isinstance(target, ast.Constant) and isinstance(target.value, str):
+                candidates = [m for m in modules if target.value == m or target.value.startswith(m + ".")]
+                owner = max(candidates, key=len) if candidates else None
+            if owner not in COMPATIBILITY_SURFACES:
+                continue
+            attribute = node.args[1].value if len(node.args) > 1 and isinstance(node.args[1], ast.Constant) else None
+            seam = (path.name, owner, attribute)
+            # The public example itself calls store.connect_database: consumer seam,
+            # not an expectation that a facade proxies implementation globals.
+            assert seam == ("test_persistence_example.py", PERSISTENCE, "connect_database")
+            observed_exceptions.add(seam)
+    assert observed_exceptions == {("test_persistence_example.py", PERSISTENCE, "connect_database")}
+
+
 # Stage-8C persistence inventory, pinned independently of the package facade.
 PERSISTENCE_EXPORTS = (
     "SCHEMA_VERSION",

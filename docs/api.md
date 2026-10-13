@@ -4,7 +4,7 @@ This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
-layer beneath the existing scientific reports. Issue #3 has begun structural
+layer beneath the existing scientific reports. Issue #3 has completed structural
 relocation with estimator contracts/baselines, low-level physical primitives,
 histogram preprocessing/features/representations, IRF profiles/preparation/
 estimation, measurement records/I/O/adapters, generic histogram/dataset
@@ -25,6 +25,11 @@ frozen Week-9 uncertainty orchestration/reporting, and SQLite persistence.
 | Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
 | Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B), and intact frozen Week-9 orchestration/reporting in `benchmarks.uncertainty` (Stage 8C), and the intact SQLite implementation in `persistence.sqlite` with the historical/public `persistence` package facade (Stage 9). |
+
+The [final architecture inventory](package_structure.md) records every production
+module, compatibility facade, and dependency edge. All established historical
+imports remain supported through at least Issue #12; this is not a deprecation.
+Issue #12 acceptance is separate and has not begun.
 
 ## Persistence implementation and public package facade (Issue #3, Stage 9)
 
@@ -160,8 +165,8 @@ study-specific orchestration are not generic extension hooks.
 - Root exports are deliberate stability commitments, not an inventory of all
   implemented capabilities. Bayesian, CV, benchmark, evaluation, and persistence
   types remain supported through their documented module-qualified paths.
-- Issue #3 should preserve approved stable imports when implementations move;
-  compatibility shims must be deliberate, not created speculatively now.
+- Issue #3 preserves approved stable imports through deliberate direct-export
+  facades; removing them requires a separate compatibility decision.
 - Python naming changes must not reinterpret SQLite schema-v1 method/model
   identities, serialized provenance, or stored source-result-type strings.
 - Keep the Issue-#1 typing rule: suitable normalized inputs use `ArrayLike`;
@@ -438,7 +443,7 @@ evaluate_mismatch_workflow
 
 - Established flat module imports remain compatibility paths through at least
   Issue #12. Removal requires a separate explicit compatibility decision.
-  Canonical implementations will live in subpackages; old paths must re-export
+  Canonical implementations now live in subpackages; old paths re-export
   identical objects, not wrappers or parallel implementations. Issue-#2
   scientific names and direct Day/Week aliases retain the same policy.
 - New subpackage initializers stay minimal: do not eagerly import an entire
@@ -462,7 +467,7 @@ evaluate_mismatch_workflow
 
 The structural guards in `test_package_structure.py`, the exact root contract
 in `test_public_api.py`, legacy report-pickle/alias tests, and persistence
-source-identity tests are the incremental migration gate. The import graph
+source-identity tests form the structural closure gate. The import graph
 distinguishes eager, function-local, and `TYPE_CHECKING` dependencies; fresh
 processes also check real import order and side effects. The intentionally
 deferred Bayesian sampling relationship is not an eager cycle.
@@ -663,8 +668,8 @@ generic execution must not know Ridge/RF/HGB or canonical representation names.
   conditional, mismatch, and Week-9 reporting paths. Specialized Bayesian and
   experimental reports retain their context; no universal report or
   representation framework was introduced. See [evaluation.md](evaluation.md).
-- Issue #3: incrementally relocate remaining implementations; only the
-  `estimation`, `physics`, and `preprocessing` modules listed above have moved so far.
+- Issue #3: package restructuring is complete through Stage 10; see the
+  [final inventory](package_structure.md). Compatibility paths remain supported.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
 
@@ -999,5 +1004,5 @@ The Day/Week audit classifies the remaining occurrences as follows:
 | Legacy public imports | All 23 aliases above remain supported at least through Issue #12, without warnings. Removal is a separate future compatibility decision. |
 
 Issue #11 has since implemented the factual evaluation/reporting layer described
-in [evaluation.md](evaluation.md). Issue #3 will address physical package movement;
+in [evaluation.md](evaluation.md). Issue #3 has completed physical package movement;
 neither change was part of the Issue-#2 naming pass documented above.

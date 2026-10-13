@@ -20,14 +20,14 @@ from tcspc_toolkit.benchmarks.bayesian_calibration import (
     derive_issue4_seed,
     sample_issue4_observation,
 )
-from tcspc_toolkit.classical_evaluation import fit_single_reconvolution_curve
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
+from tcspc_toolkit.estimation.fitting import (
     _poisson_coordinate_descent_check,
     poisson_negative_log_likelihood,
 )
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
-from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.irf.profiles import generate_gaussian_irf_profile
+from tcspc_toolkit.irf.preparation import prepare_irf
 
 
 ROOT = Path(__file__).resolve().parents[1]
