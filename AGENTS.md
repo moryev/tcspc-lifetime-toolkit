@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, and #11 have been implemented, merged, and closed. Issue #3 package restructuring is complete through Stage 10 on the integration branch; user review, merge, and GitHub closure remain manual. Issue #12 (full integration/regression verification) is the next acceptance gate and has not begun.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is now the active acceptance gate. Work on #12 should verify clean installation, representative end-to-end workflows, cross-feature integration, reproducibility, and regression behavior without reopening the completed package restructuring unless a concrete integration defect requires it.
 
 ## Repository map
 
@@ -303,8 +303,8 @@ Current integration status:
 6. **#1** — standardize array input type annotations — **complete, merged, and closed**;
 7. **#2** — API stabilization and package hardening — **complete, merged, and closed**;
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
-9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **package restructuring complete through Stage 10; user review/merge/closure pending**;
-10. **#12** — full integration and regression verification — **next acceptance gate; not yet begun**;
+9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
+10. **#12** — full integration and regression verification — **active acceptance gate**;
 11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
@@ -318,7 +318,7 @@ Issue #2 established the current API-stability boundary:
 - Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical names remain compatibility aliases through at least Issue #12; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
-- Do not broaden the root export surface opportunistically during #3; preserve the reviewed public import contract unless the active issue explicitly changes it.
+- Do not broaden the root export surface opportunistically during #12; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
 Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next integration-verification phase.
 
@@ -340,7 +340,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, #1, #2, and #11 are complete. Do not reopen or redesign their established scientific, evaluation, or public-API contracts merely because package restructuring consumes their outputs.
+Issues #6, #8, #4, #9, #1, #2, #11, and #3 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, or public-API contracts merely because Issue #12 exercises them together.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -363,7 +363,7 @@ Issue #2 established the public API and estimator-extension boundary:
 - preserve scientific canonical names and the legacy Day/Week compatibility aliases introduced for existing callers;
 - preserve frozen benchmark defaults, stored method identities, and protocol strings despite Python-level naming cleanup.
 
-Issue #11 completed the Week-7–9 evaluation-architecture consolidation. Preserve its established boundaries during package restructuring:
+Issue #11 completed the Week-7–9 evaluation-architecture consolidation. Preserve its established boundaries during integration verification:
 
 - generic factual evaluation uses explicit method identity, optional lifetime references, canonical point results, and separate interval/score uncertainty attachments;
 - frozen A–F and Week-9 scientific configuration remains separate from generic evaluation machinery;
@@ -371,10 +371,12 @@ Issue #11 completed the Week-7–9 evaluation-architecture consolidation. Preser
 - conditional finite-invalid presentation, mismatch/degradation policies, and other documented metric-population differences are intentional compatibility/scientific boundaries;
 - legacy table-only compatibility paths may retain historical naming behavior, but new internal architecture must not infer scientific method family from estimator-name prefixes.
 
-Issue #3 package restructuring is complete through Stage 10. All 44 substantive
+Issue #3 package restructuring is complete, merged, and closed after Stage 10. All 44 substantive
 implementation files are inside coherent subpackages. The 38 root scientific
 files and five historical package initializers are direct compatibility facades;
 five genuine root support files and seven minimal namespace initializers remain.
+
+The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. Treat that as the pre-Issue-#12 repository baseline; new test counts may increase as #12 adds acceptance coverage.
 
 For future work:
 
@@ -389,4 +391,4 @@ For future work:
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
 Consult Issues #3, #5, #11, and #12 for history and acceptance boundaries.
-Do not start further package movement or Issue #12 work without an explicit task.
+Issue #12 is the active integration-verification task. Do not start further package movement; any structural change must be defect-driven and explicitly justified by Issue-#12 acceptance evidence.
