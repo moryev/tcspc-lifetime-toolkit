@@ -700,29 +700,35 @@ array `[1.5, 2.5]` ns; it is an API demonstration, not a TCSPC benchmark.
 
 ### Module-qualified advanced APIs
 
-Module-qualified does **not** mean unsupported or private. Use explicit modules
-for benchmark/generalization orchestration (`generalization_evaluation`),
-cross-validation (`cross_validation`), uncertainty (`ml_uncertainty`,
-`classical_uncertainty`, `uncertainty_robustness`), Bayesian inference
-(`bayesian`, `bayesian_sampling`, `bayesian_predictive`), persistence
-(`persistence`), and specialized scientific evaluation modules.
+Module-qualified does **not** mean unsupported or private. Canonical advanced
+implementations now live in responsibility-oriented subpackages, for example:
+
+- benchmark/generalization orchestration in `tcspc_toolkit.benchmarks`;
+- cross-validation in `tcspc_toolkit.ml.cross_validation`;
+- reusable uncertainty methods in `tcspc_toolkit.uncertainty`;
+- Bayesian inference in `tcspc_toolkit.estimation.bayesian`;
+- SQLite persistence in `tcspc_toolkit.persistence.sqlite`;
+- factual/diagnostic evaluation in `tcspc_toolkit.evaluation`.
+
+Historical flat module imports remain supported through compatibility facades
+through at least Issue #12.
 
 Canonical experiment configuration stays separate from generic execution:
 
 ```python
-from tcspc_toolkit.ml_models import make_canonical_ml_estimator_specs
+from tcspc_toolkit.ml.models import make_canonical_ml_estimator_specs
 ```
 
 User specifications extend the generic API; the canonical factory describes
 the toolkit's reproducible benchmark estimators and representations. Generic
 execution does not know their identities or redefine frozen A–F experiments.
 
-The explicit `tcspc_toolkit.__all__` defines the curated root contract, intended
-to remain stable through later evaluation consolidation (#11) and package
-reorganization (#3). Specialized APIs remain supported while that architecture
-evolves, with compatibility handled explicitly. Importing the root neither
-initializes persistence nor requires the optional `emcee` sampler.
-See the [API contract and legacy-name mapping](docs/api.md) for details.
+The explicit `tcspc_toolkit.__all__` defines the curated 66-name root contract.
+Issue #3 completed the package reorganization without changing that ordered
+surface. Importing the root neither initializes persistence nor requires the
+optional `emcee` sampler. See the
+[API contract and legacy-name mapping](docs/api.md) and
+[package-structure audit](docs/package_structure.md) for details.
 
 ## Minimal example
 
@@ -1331,6 +1337,12 @@ package initializers preserve their historical surfaces. Other namespace
 initializers stay docstring-only. See the [complete architecture inventory and
 dependency audit](docs/package_structure.md) and [API contract](docs/api.md).
 
+Issue #3 is complete and closed. The final architecture audit found 44 canonical
+implementation files, 43 compatibility facades, 12 support/namespace files,
+and no unexpected substantial scientific implementation remaining at package
+root. The final merged-main regression baseline was 1,721 passing tests with
+only the two known finite-invalid mismatch warnings.
+
 Supporting repository locations:
 
 * `configs/`: reproducible JSON manifests for simulation and the Issue-8 and Issue-4 scientific workflows;
@@ -1404,11 +1416,11 @@ The integration and release sequence is:
 7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —
    consolidation of the Week 7–9 evaluation architecture — merged and closed;
 8. [Issue #3](https://github.com/moryev/tcspc-lifetime-toolkit/issues/3) —
-   reorganization of `tcspc_toolkit` into coherent subpackages — complete through
-   Stage 10 on the integration branch; user review/merge/closure pending;
+   reorganization of `tcspc_toolkit` into coherent subpackages — complete,
+   merged, and closed;
 9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
    full integration and regression verification across the mature workflows —
-   next acceptance gate, not yet begun;
+   active acceptance gate;
 10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
     Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
 11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —
@@ -1474,11 +1486,12 @@ validated replacement for established experimental TCSPC-analysis software.
 
 Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
-inference, posterior diagnostics, and controlled model-mismatch evaluation
-and Notebook 17 are implemented; Issue #4 is complete and closed.
-Vendor formats, synthetic-to-real validation, broader decay-model
-inference, and package/API hardening remain future work. These post-release
-integrations do not change the v0.7.0 release version.
+inference, posterior diagnostics, controlled model-mismatch evaluation, and
+Notebook 17 are implemented. The package/API restructuring is complete and
+Issue #12 now verifies clean installation and mature cross-feature integration.
+Vendor formats, synthetic-to-real validation, and broader decay-model inference
+remain future work. These post-release integrations do not change the v0.7.0
+release version.
 
 ## Citation
 
