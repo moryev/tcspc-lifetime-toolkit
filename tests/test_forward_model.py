@@ -13,7 +13,7 @@ from tcspc_toolkit.irf import (
     normalize_irf,
     shift_irf,
 )
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit import prepare_irf
 from tcspc_toolkit.physics.models import monoexponential_decay
 from tcspc_toolkit.simulation import build_expected_counts_from_irf
 

@@ -29,7 +29,12 @@ frozen Week-9 uncertainty orchestration/reporting, and SQLite persistence.
 The [final architecture inventory](package_structure.md) records every production
 module, compatibility facade, and dependency edge. All established historical
 imports remain supported through at least Issue #12; this is not a deprecation.
-Issue #12 acceptance is separate and has not begun.
+Issue #12 acceptance is now active. Ordinary first-party consumers should use
+the curated root API for its reviewed exports, otherwise the canonical submodules
+listed here. The 38 flat compatibility modules remain available for compatibility
+verification through Issue #12, with retirement planned separately afterward.
+Reviewed package APIs such as `irf`, `simulation`, `evaluation`, and `persistence`
+are not flat-module retirement targets.
 
 ## Persistence implementation and public package facade (Issue #3, Stage 9)
 
@@ -135,7 +140,7 @@ Important supported module-qualified workflows include:
   sampling, and predictive diagnostics. Flat `bayesian`, `bayesian_sampling`,
   and `bayesian_predictive` remain direct-object compatibility paths through
   at least Issue #12. No Bayesian objects are root exports. Study orchestration
-  remains in `bayesian_evaluation` and `bayesian_mismatch_evaluation`.
+  remains in `benchmarks.bayesian_calibration` and `benchmarks.bayesian_mismatch`.
 - `persistence`: optional SQLite schema-v1 storage, scientific recording
   adapters, and read-only queries; see [persistence.md](persistence.md).
 - `evaluation.results`, `evaluation.core`, and `evaluation.attachments`:
@@ -936,7 +941,7 @@ canonical counterpart, not a subclass or forwarding wrapper.
 | `Week8RobustnessReport` | `GeneralizationRobustnessReport` |
 | `build_week8_robustness_report` | `build_generalization_robustness_report` |
 
-### `ml_uncertainty`
+### `uncertainty.ml`
 
 | Legacy compatibility name | Canonical name |
 | --- | --- |

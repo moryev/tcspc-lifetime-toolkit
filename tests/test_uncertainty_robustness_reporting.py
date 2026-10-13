@@ -6,15 +6,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
-from tcspc_toolkit.generalization import default_generalization_suite
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment, ScoreAttachment
+from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+from tcspc_toolkit.uncertainty.ml import (
     QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
     RANDOM_FOREST_TREE_SPREAD_METHOD_ID,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     PredictionIntervalResult,
     UncertaintyScoreResult,
     evaluate_prediction_intervals,

@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.conditional_evaluation import build_prediction_diagnostics
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import MethodDescriptor
-from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+from tcspc_toolkit.evaluation.conditional import build_prediction_diagnostics
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import MethodDescriptor
+from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.benchmarks.generalization import (
     _build_generalization_prediction_table, build_mae_degradation_table,
     _build_generalization_evaluation_batch, _project_generalization_predictions,

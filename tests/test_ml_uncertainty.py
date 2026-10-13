@@ -1,12 +1,12 @@
 from sklearn.decomposition import PCA
 
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     GeneralizationTestMeasurements,
 )
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     GeneralizationPreparedData,
 )
 
@@ -15,13 +15,13 @@ import pytest
 
 import pandas as pd
 
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_ridge_pipeline,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit.uncertainty.ml import (
     DEFAULT_BOOTSTRAP_REPLICATES,
     DEFAULT_LOWER_QUANTILE,
     DEFAULT_MEDIAN_QUANTILE,
@@ -46,7 +46,7 @@ from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScorePairedRobustnessResult,
     evaluate_paired_uncertainty_score_response,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     PredictionIntervalResult,
     UncertaintyDevelopmentSplit,
 )

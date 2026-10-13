@@ -2,17 +2,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     ReconvolutionBenchmarkResult,
     ReconvolutionBenchmarkSummary,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     BenchmarkSplit,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_ridge_pipeline,
 )
-from tcspc_toolkit.timing_evaluation import (
+from tcspc_toolkit.benchmarks.timing import (
     benchmark_fitted_regressor_runtime,
     benchmark_inference_runtime,
     benchmark_mean_arrival_runtime,

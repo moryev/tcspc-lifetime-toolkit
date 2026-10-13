@@ -12,7 +12,7 @@ import pytest
 import tcspc_toolkit.benchmarks.bayesian_mismatch as mismatch
 from scripts.run_issue4_bayesian_mismatch_benchmarks import _json_safe
 from scripts.correct_issue4_mismatch_references import _comparison_from_saved_row
-from tcspc_toolkit.bayesian_sampling import BayesianSamplingStatus
+from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingStatus
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -187,8 +187,8 @@ def test_reference_strict_probe_rejects_historical_biexponential_descent(workflo
     condition = next(item for item in workflow.conditions if item.condition_id == "weak_biexponential")
     assumed = condition.assumptions[0]
     expected = mismatch.build_mismatch_expected_counts(condition).expected_counts
-    from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
-    from tcspc_toolkit.fitting import poisson_negative_log_likelihood
+    from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+    from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
 
     historical = dict(amplitude=2396.745151866371, lifetime=2.074616201952051,
                       background=0.507794164681629, temporal_shift=0.0383308543116744)

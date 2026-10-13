@@ -11,8 +11,8 @@ from tcspc_toolkit.estimation.baselines import (
 )
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.estimation.api import EstimatorSpec
-from tcspc_toolkit.generalization import FINAL_ROBUSTNESS_TEST_IDS
-from tcspc_toolkit.generalization_datasets import generate_generalization_test_suite
+from tcspc_toolkit.benchmarks.generalization_protocol import FINAL_ROBUSTNESS_TEST_IDS
+from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
 from tcspc_toolkit.benchmarks.generalization import (
     GeneralizationABPreparedData,
     _evaluate_principal_nonclassical_estimators,
@@ -29,7 +29,7 @@ from tcspc_toolkit.benchmarks.generalization import (
     prepare_generalization_data,
     summarize_generalization_predictions,
 )
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,

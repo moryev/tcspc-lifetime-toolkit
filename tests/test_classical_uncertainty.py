@@ -1,10 +1,10 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_familiar_simulation_domain,
 )
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     estimate_parametric_poisson_bootstrap,
     estimate_poisson_reconvolution_local_covariance,
     evaluate_repeated_poisson_uncertainty,

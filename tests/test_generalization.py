@@ -1,7 +1,7 @@
 import pytest
 from dataclasses import replace
 
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     DEVELOPMENT_ONLY_OPERATIONS,
     FINAL_ROBUSTNESS_TEST_IDS,
     DEFAULT_DEVELOPMENT_REFERENCE,

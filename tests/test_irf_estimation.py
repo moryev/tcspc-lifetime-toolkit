@@ -13,8 +13,8 @@ from tcspc_toolkit.irf.profiles import (
 )
 from tcspc_toolkit.irf.estimation import estimate_irf_from_leading_edge
 from tcspc_toolkit.irf.preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit import monoexponential_decay
 from tcspc_toolkit.preprocessing import estimate_background, subtract_background
 from tcspc_toolkit.simulation import build_expected_counts_from_irf, sample_photon_counts
 

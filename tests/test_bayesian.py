@@ -25,8 +25,8 @@ from tcspc_toolkit.estimation.bayesian.posterior import (
     sampling_to_physical_parameters,
 )
 from tcspc_toolkit.exceptions import InvalidMeasurementError
-from tcspc_toolkit.fitting import poisson_negative_log_likelihood
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import (
     IRFSourceKind,
     generate_emg_irf_profile,
@@ -34,9 +34,9 @@ from tcspc_toolkit.irf import (
     generate_gaussian_irf_profile,
     normalize_irf,
 )
-from tcspc_toolkit.irf_estimation import estimate_irf_from_leading_edge
-from tcspc_toolkit.irf_preparation import irf_profile_from_sampled_irf, prepare_irf
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit import estimate_irf_from_leading_edge
+from tcspc_toolkit import irf_profile_from_sampled_irf, prepare_irf
+from tcspc_toolkit import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,

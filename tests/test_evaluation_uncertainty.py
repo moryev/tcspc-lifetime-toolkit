@@ -4,12 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.classical_uncertainty import ParametricPoissonBootstrapResult
-from tcspc_toolkit.bayesian_sampling import BayesianParameterSummary
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment, ScoreAttachment
-from tcspc_toolkit.uncertainty_evaluation import PredictionIntervalResult, UncertaintyScoreResult
+from tcspc_toolkit.uncertainty.classical import ParametricPoissonBootstrapResult
+from tcspc_toolkit.estimation.bayesian.sampling import BayesianParameterSummary
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment, ScoreAttachment
+from tcspc_toolkit.uncertainty.evaluation import PredictionIntervalResult, UncertaintyScoreResult
 
 
 def _points():

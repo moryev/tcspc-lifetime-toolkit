@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.features import FEATURE_NAMES
+from tcspc_toolkit import FEATURE_NAMES
 from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
     BenchmarkSplit,

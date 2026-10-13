@@ -10,11 +10,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.evaluation_core import (
+from tcspc_toolkit.evaluation.core import (
     build_point_evaluation, calculate_degradation_ratio, calculate_reference_errors,
     summarize_point_errors,
 )
-from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
+from tcspc_toolkit.evaluation.results import EvaluationBatch, LifetimeReference, MethodDescriptor
 
 
 def test_neutral_point_schema_preserves_failed_and_nonpositive_estimates_without_reference():
@@ -173,8 +173,8 @@ class Block(importlib.abc.MetaPathFinder):
         if any(fullname == p or fullname.startswith(p + '.') for p in blocked):
             raise AssertionError('Forbidden dependency: ' + fullname)
 sys.meta_path.insert(0, Block())
-import tcspc_toolkit.evaluation_results
-import tcspc_toolkit.evaluation_core
+import tcspc_toolkit.evaluation.results
+import tcspc_toolkit.evaluation.core
 import tcspc_toolkit.evaluation.results
 import tcspc_toolkit.evaluation.core
 assert not blocked.intersection(sys.modules)

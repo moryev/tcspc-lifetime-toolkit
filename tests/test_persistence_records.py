@@ -14,22 +14,22 @@ import pytest
 
 from tcspc_toolkit import persistence
 from tcspc_toolkit.persistence import sqlite as persistence_impl
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
 )
-from tcspc_toolkit.bayesian_evaluation import BayesianClassicalCondition
-from tcspc_toolkit.bayesian_mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import BayesianClassicalCondition
+from tcspc_toolkit.benchmarks.bayesian_mismatch import (
     MismatchAssumption, MismatchCondition, PseudoTrueReference,
 )
-from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
-from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
+from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.irf import (
     IRFProfile, IRFSourceKind, generate_emg_irf_profile, generate_gaussian_irf_profile,
 )
-from tcspc_toolkit.irf_estimation import estimate_irf_from_leading_edge
-from tcspc_toolkit.irf_preparation import irf_profile_from_sampled_irf, prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, SampledIRF, TCSPCMeasurement
-from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements, BenchmarkDataset
+from tcspc_toolkit import estimate_irf_from_leading_edge
+from tcspc_toolkit import irf_profile_from_sampled_irf, prepare_irf
+from tcspc_toolkit import MeasurementDataKind, SampledIRF, TCSPCMeasurement
+from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements, BenchmarkDataset
 
 
 _STAMP = "2026-10-01T10:00:00+00:00"

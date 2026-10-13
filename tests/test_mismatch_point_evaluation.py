@@ -8,9 +8,9 @@ import pytest
 
 from tcspc_toolkit.benchmarks import mismatch
 from tcspc_toolkit.ml import evaluation as ml
-from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary
-from tcspc_toolkit.evaluation_core import build_point_evaluation, combine_point_evaluations
-from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
+from tcspc_toolkit.estimation.classical import ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary
+from tcspc_toolkit.evaluation.core import build_point_evaluation, combine_point_evaluations
+from tcspc_toolkit.evaluation.results import EvaluationBatch, LifetimeReference, MethodDescriptor
 
 
 TARGETS = np.array([1.0, 2.0, 4.0])

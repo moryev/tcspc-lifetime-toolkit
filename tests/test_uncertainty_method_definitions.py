@@ -1,10 +1,10 @@
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     CLASSICAL_UNCERTAINTY_METHODS,
 )
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit.uncertainty.ml import (
     ML_UNCERTAINTY_METHODS,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     UncertaintyOutputKind,
 )
 

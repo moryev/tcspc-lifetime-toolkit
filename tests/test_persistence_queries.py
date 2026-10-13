@@ -15,8 +15,8 @@ import pytest
 from tcspc_toolkit import persistence as store
 from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, SampledIRF, TCSPCMeasurement
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, SampledIRF, TCSPCMeasurement
 
 
 def _insert(db, table, **values):

@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     GeneralizationTestMeasurements,
     generate_generalization_test_suite,
 )
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     evaluate_classical_instrument_acquisition_benchmark,
 )
 

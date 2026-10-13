@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit.config import CountNormalization, FeatureConfig, PreprocessingConfig
-from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit import convolve_decay_with_irf
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.measurement.adapters import (
     evaluate_estimate_against_reference,
@@ -14,7 +14,7 @@ from tcspc_toolkit.measurement.adapters import (
     measurement_to_feature_table,
     measurement_to_histogram_batch,
 )
-from tcspc_toolkit.features import FEATURE_NAMES, extract_features
+from tcspc_toolkit import FEATURE_NAMES, extract_features
 from tcspc_toolkit.irf import (
     IRFProfile,
     generate_emg_irf_profile,
@@ -22,15 +22,15 @@ from tcspc_toolkit.irf import (
     generate_gaussian_irf_profile,
     normalize_irf,
 )
-from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf
+from tcspc_toolkit import PreparedIRF, prepare_irf
 from tcspc_toolkit.measurement.io import load_sampled_irf_csv, load_tcspc_measurement_csv
 from tcspc_toolkit.measurement.records import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,
 )
-from tcspc_toolkit.ml_models import make_pca_histogram_ridge_pipeline
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.ml.models import make_pca_histogram_ridge_pipeline
+from tcspc_toolkit import monoexponential_decay
 from tcspc_toolkit.preprocessing import (
     crop_time_window,
     detect_peak,
@@ -38,7 +38,7 @@ from tcspc_toolkit.preprocessing import (
     normalize_counts,
     subtract_background,
 )
-from tcspc_toolkit.representations import normalize_histogram_batch
+from tcspc_toolkit import normalize_histogram_batch
 from tcspc_toolkit.simulation import (
     build_expected_counts_from_irf,
     simulate_irf_convolved_histogram,

@@ -25,7 +25,7 @@ from tcspc_toolkit.ml.models import (
 from tcspc_toolkit.config import (
     CountNormalization,
 )
-from tcspc_toolkit.representations import (
+from tcspc_toolkit import (
     normalize_histogram_batch,
 )
 

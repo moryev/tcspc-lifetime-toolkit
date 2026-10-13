@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.evaluation_core import build_point_evaluation, combine_point_evaluations
-from tcspc_toolkit.evaluation_results import (
+from tcspc_toolkit.evaluation.core import build_point_evaluation, combine_point_evaluations
+from tcspc_toolkit.evaluation.results import (
     EvaluationBatch, LifetimeReference, MethodDescriptor, PointEvaluationResult,
 )
 

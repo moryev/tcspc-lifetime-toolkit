@@ -15,11 +15,11 @@ import pytest
 from sklearn.decomposition import PCA
 
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.features import extract_features
-from tcspc_toolkit.generalization import default_generalization_suite
-from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+from tcspc_toolkit import extract_features
+from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.benchmarks import generalization as evaluation
-from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements
+from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements
 
 
 CONFIG = FeatureConfig(tail_start_ns=2.0, early_stop_ns=2.0, late_start_ns=3.0)

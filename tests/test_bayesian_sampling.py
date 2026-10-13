@@ -23,10 +23,10 @@ from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianSamplingStatus,
 )
 from tcspc_toolkit.exceptions import InvalidMeasurementError
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import generate_emg_irf_profile, generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, SampledIRF, TCSPCMeasurement
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, SampledIRF, TCSPCMeasurement
 
 
 def _fixture(*, free_shift: bool, emg: bool = False):
@@ -334,7 +334,7 @@ from tcspc_toolkit.estimation.bayesian.posterior import (
     fit_bayesian_monoexponential_reconvolution,
 )
 from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
-from tcspc_toolkit.measurements import TCSPCMeasurement, SampledIRF, MeasurementDataKind
+from tcspc_toolkit import TCSPCMeasurement, SampledIRF, MeasurementDataKind
 time = np.linspace(0.0, 2.0, 11)
 measurement = TCSPCMeasurement(
     time_ns=time, values=np.ones(time.size, dtype=int),

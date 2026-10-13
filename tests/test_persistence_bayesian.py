@@ -14,21 +14,21 @@ import pytest
 
 from tcspc_toolkit import persistence as store
 from tcspc_toolkit.persistence import sqlite as persistence_impl
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianModelContext, BayesianPriorConfig, BoundedUniformPrior, GammaPrior,
     IRFModelRelation, LogNormalPrior,
 )
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalRealizationResult, Issue4Bayesian, Issue4RealizationSeeds,
 )
-from tcspc_toolkit.bayesian_mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_mismatch import (
     MismatchInferenceRecord, MismatchPredictiveSummary, MismatchSeeds,
 )
-from tcspc_toolkit.bayesian_predictive import (
+from tcspc_toolkit.estimation.bayesian.predictive import (
     BayesianPosteriorPredictiveResult,
     calculate_bayesian_posterior_predictive_diagnostics, summarize_predictive_band,
 )
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianInferenceRun, BayesianModelContextSummary, BayesianParameterSummary,
     BayesianPosteriorSamples, BayesianReconvolutionResult, BayesianRuntime,
     BayesianSamplingConfig, BayesianSamplingDiagnostics, BayesianSamplingStatus,
@@ -36,8 +36,8 @@ from tcspc_toolkit.bayesian_sampling import (
 from tcspc_toolkit.irf import (
     IRFSourceKind, generate_emg_irf_profile, generate_gaussian_irf_profile,
 )
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
 
 
 _SEED = 2**64 - 1

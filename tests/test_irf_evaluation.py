@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.irf_evaluation import (
+from tcspc_toolkit.benchmarks.irf import (
     IRFShapeMismatchConfig,
     LeadingEdgeFailureConfig,
     evaluate_gaussian_trained_irf_transfer,
