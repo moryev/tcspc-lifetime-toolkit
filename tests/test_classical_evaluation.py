@@ -15,20 +15,20 @@ from tcspc_toolkit.estimation.classical import (
     evaluate_reconvolution_benchmark,
     fit_single_reconvolution_curve,
 )
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalCondition,
     build_issue4_expected_counts,
     derive_issue4_seed,
     sample_issue4_observation,
 )
 from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     generate_gaussian_irf_profile,
     normalize_irf,
 )
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit import prepare_irf
 from tcspc_toolkit.simulation import (
     simulate_irf_convolved_histogram,
 )

@@ -795,6 +795,185 @@ CLOSURE_FACADES = {
 }
 
 
+# Issue-12 Stage 1A: interim Python-consumer retirement readiness only.
+# These five reviewed package APIs are NOT removable flat .py facades.
+REMOVABLE_FLAT_FACADES = set(CLOSURE_FACADES) - {
+    "irf", "preprocessing", "simulation", "evaluation", "persistence",
+}
+
+
+def _python_flat_facade_dependencies(source, package=None):
+    """Find imports, embedded Python and literal patch/import targets, not labels.
+
+    This deliberately does not scan notebooks yet (Stage 1B). Historical SQL
+    provenance labels and negative import guards are not executable imports.
+    Dynamic compatibility registries retain their separate identity/pickle tests.
+    """
+    import re
+    import textwrap
+
+    found = []
+
+    def facade(name):
+        prefix, separator, rest = name.partition(".")
+        first = rest.split(".")[0]
+        return first if separator and prefix == PACKAGE and first in REMOVABLE_FLAT_FACADES else None
+
+    class Visitor(ast.NodeVisitor):
+        scope = "<module>"
+        offset = 0
+        embedded = False
+
+        def record(self, node, kind, target, names=()):
+            old = facade(target)
+            if old:
+                found.append((self.scope, kind, old, names, self.offset + node.lineno))
+
+        def visit_FunctionDef(self, node):
+            previous = self.scope
+            self.scope = node.name
+            self.generic_visit(node)
+            self.scope = previous
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_Import(self, node):
+            for alias in node.names:
+                self.record(node, "embedded-import" if self.embedded else "import", alias.name)
+
+        def visit_ImportFrom(self, node):
+            base = node.module or ""
+            if node.level:
+                if package is None:
+                    return
+                base = importlib.util.resolve_name("." * node.level + base, package)
+            names = tuple((alias.name, alias.asname) for alias in node.names)
+            kind = "embedded-import" if self.embedded else "import"
+            self.record(node, kind, base, names)
+            if base == PACKAGE:
+                for alias in node.names:
+                    self.record(node, kind, f"{base}.{alias.name}", names)
+
+        def visit_Call(self, node):
+            operation = node.func.attr if isinstance(node.func, ast.Attribute) else (
+                node.func.id if isinstance(node.func, ast.Name) else ""
+            )
+            if operation in {"setattr", "delattr", "patch", "object", "import_module", "__import__"}:
+                targets = node.args[:1] + [k.value for k in node.keywords if k.arg == "target"]
+                for target in targets:
+                    if isinstance(target, ast.Constant) and isinstance(target.value, str):
+                        self.record(node, "string-target", target.value)
+            self.generic_visit(node)
+
+        def visit_Constant(self, node):
+            if not isinstance(node.value, str):
+                return
+            # Includes concatenated subprocess strings, without executing them.
+            if not re.search(r"(?m)^\s*(?:from|import)\s+", node.value):
+                return
+            try:
+                snippet = ast.parse(textwrap.dedent(node.value))
+            except SyntaxError:
+                # F-string fragments can be incomplete Python. Inspect complete
+                # literal import statements, not strings in their deny lists.
+                statements = []
+                pattern = r"(?m)^[ \t]*(?:from\s+[\w.]+\s+import\s+(?:\([^)]*\)|[^\n]+)|import\s+[^\n]+)"
+                for match in re.finditer(pattern, node.value):
+                    try:
+                        statement = ast.parse(textwrap.dedent(match.group()))
+                    except SyntaxError:
+                        continue  # Dynamically assembled module name, not a literal import.
+                    ast.increment_lineno(statement, node.value[:match.start()].count("\n"))
+                    statements.extend(statement.body)
+                snippet = ast.Module(body=statements, type_ignores=[])
+            previous = self.offset, self.embedded
+            self.offset += node.lineno - 1
+            self.embedded = True
+            self.visit(snippet)
+            self.offset, self.embedded = previous
+
+    Visitor().visit(ast.parse(source))
+    return found
+
+
+def test_interim_python_consumers_are_ready_for_flat_facade_retirement():
+    """No ordinary Python consumer depends on the 38 future deletion targets."""
+    assert len(REMOVABLE_FLAT_FACADES) == 38
+    repository = SOURCE_ROOT.parents[1]
+    # Exact imports/lookups belonging to dedicated compatibility coverage.
+    # No whole test directory or compatibility-test file is excluded.
+    allowed = {
+        ("tests/test_api_name_compatibility.py", "<module>", "import", "uncertainty_robustness",
+         (("DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED", None),
+          ("DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED", None),
+          ("evaluate_classical_uncertainty_robustness", None))),
+        ("tests/test_public_api.py",
+         "test_generalization_historical_pickle_globals_resolve_without_fabricated_modules",
+         "string-target", "generalization_evaluation", ()),
+        ("tests/test_public_api.py",
+         "test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_lookup",
+         "string-target", "uncertainty_evaluation", ()),
+    }
+    observed = []
+    violations = []
+    for directory in (SOURCE_ROOT, repository / "scripts", repository / "examples", repository / "tests"):
+        for path in sorted(directory.rglob("*.py")):
+            relative = path.relative_to(repository).as_posix()
+            package = None
+            if path.is_relative_to(SOURCE_ROOT):
+                package = ".".join((PACKAGE, *path.relative_to(SOURCE_ROOT).parent.parts))
+            for scope, kind, old, names, line in _python_flat_facade_dependencies(
+                path.read_text(encoding="utf-8"), package,
+            ):
+                key = (relative, scope, kind, old, names)
+                if key in allowed:
+                    observed.append(key)
+                else:
+                    violations.append((relative, line, scope, kind, old))
+    assert not violations, violations
+    assert set(observed) == allowed and len(observed) == len(allowed), (
+        "Review changed/duplicate compatibility exceptions explicitly", observed,
+    )
+
+
+@pytest.mark.parametrize("template", [
+    "import {package}.fitting",
+    "import {package}.fitting as fits",
+    "from {package}.fitting import ReconvolutionFitResult",
+    "from {package} import fitting as fits",
+    "from {package} import (\n    fitting,\n)",
+    "from . import fitting",
+    "from .fitting import ReconvolutionFitResult",
+    "code = 'import {package}.fitting'",
+    "code = ('from {package}.fitting import '\n        'ReconvolutionFitResult\\n')",
+    "code = '''import {package}.fitting\nnot yet formatted ?'''",
+    'monkeypatch.setattr("{package}.fitting.curve_fit", replacement)',
+    'mock.patch("{package}.fitting.curve_fit")',
+    'mock.patch(target="{package}.fitting.curve_fit")',
+    'importlib.import_module("{package}.fitting")',
+])
+def test_python_retirement_guard_detects_executable_flat_dependencies(template):
+    source = template.format(package=PACKAGE)
+    assert _python_flat_facade_dependencies(source, PACKAGE)
+
+
+@pytest.mark.parametrize("template", [
+    "from {package} import fit_monoexponential_reconvolution",
+    "from {package} import persistence as store",
+    "from {package}.irf import generate_gaussian_irf",
+    "from {package}.preprocessing import validate_histogram",
+    "from {package}.simulation import sample_photon_counts",
+    "from {package}.evaluation import calculate_residuals",
+    "from {package}.persistence import connect_database",
+    "from {package}.estimation.fitting import ReconvolutionFitResult",
+    'source_type = "{package}.fitting.ReconvolutionFitResult"',
+    'blocked = ["{package}.fitting", "{package}.ml_models"]',
+    'monkeypatch.setattr("{package}.estimation.fitting.curve_fit", replacement)',
+])
+def test_python_retirement_guard_preserves_root_package_and_provenance_contracts(template):
+    assert not _python_flat_facade_dependencies(template.format(package=PACKAGE), PACKAGE)
+
+
 def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
     facade_files = {
         (name + "/__init__.py") if (SOURCE_ROOT / name).is_dir() else (name + ".py")

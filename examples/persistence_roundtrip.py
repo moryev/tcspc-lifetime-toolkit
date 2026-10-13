@@ -22,29 +22,29 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from tcspc_toolkit import persistence as store
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianModelContext, BayesianPriorConfig, BoundedUniformPrior, GammaPrior,
     IRFModelRelation, LogNormalPrior,
 )
-from tcspc_toolkit.bayesian_predictive import (
+from tcspc_toolkit.estimation.bayesian.predictive import (
     BayesianPosteriorPredictiveResult,
     calculate_bayesian_posterior_predictive_diagnostics, summarize_predictive_band,
 )
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianModelContextSummary, BayesianParameterSummary, BayesianReconvolutionResult,
     BayesianRuntime, BayesianSamplingConfig, BayesianSamplingDiagnostics,
     BayesianSamplingStatus,
 )
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     DEFAULT_INFORMATION_CONDITION_LIMIT, DEFAULT_LOCAL_COVARIANCE_RELATIVE_STEP,
     estimate_poisson_reconvolution_local_covariance,
 )
-from tcspc_toolkit.fitting import fit_monoexponential_reconvolution
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
-from tcspc_toolkit.generalization_evaluation import calculate_robustness_metrics
+from tcspc_toolkit import fit_monoexponential_reconvolution
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.benchmarks.generalization import calculate_robustness_metrics
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit import PreparedIRF, prepare_irf
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.simulation import sample_photon_counts
 
 if TYPE_CHECKING:

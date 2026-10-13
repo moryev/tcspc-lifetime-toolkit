@@ -28,10 +28,10 @@ from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianSamplingConfig,
 )
 from tcspc_toolkit.evaluation import calculate_poisson_deviance_residuals
-from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import generate_emg_irf_profile, generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import (
     MeasurementDataKind, SampledIRF, TCSPCMeasurement,
 )
 from tcspc_toolkit.simulation import sample_photon_counts
@@ -396,7 +396,7 @@ builtins.__import__ = blocked_import
 import numpy as np
 from tcspc_toolkit.estimation.bayesian.posterior import BayesianModelContext, BayesianPriorConfig, GammaPrior, LogNormalPrior
 from tcspc_toolkit.estimation.bayesian.predictive import sample_bayesian_prior_predictive
-from tcspc_toolkit.measurements import TCSPCMeasurement, SampledIRF, MeasurementDataKind
+from tcspc_toolkit import TCSPCMeasurement, SampledIRF, MeasurementDataKind
 time = np.linspace(0.0, 2.0, 11)
 measurement = TCSPCMeasurement(
     time_ns=time, values=np.ones(time.size, dtype=int),

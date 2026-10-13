@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     ClassicalGeneralizationSuiteBenchmarkResult,
     GeneralizationSuiteBenchmarkResult,
     build_reference_mae_degradation_table,

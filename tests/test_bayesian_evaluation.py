@@ -11,8 +11,8 @@ import numpy as np
 import pytest
 
 import tcspc_toolkit.benchmarks.bayesian_calibration as evaluation
-from tcspc_toolkit.bayesian import BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.estimation.bayesian.posterior import BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalCondition,
     BayesianClassicalEvaluationConfig,
     BayesianClassicalRealizationResult,
@@ -28,14 +28,14 @@ from tcspc_toolkit.bayesian_evaluation import (
     sample_issue4_observation,
     summarize_issue4_condition,
 )
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianParameterSummary, BayesianRuntime, BayesianSamplingConfig, BayesianSamplingStatus,
 )
-from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
+from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
 
 
 def _condition_and_config():

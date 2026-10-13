@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     PredictionIntervalResult,
     QuantileIntervalEvaluationMetrics,
     UncertaintyDataProvenance,

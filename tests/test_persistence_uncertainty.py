@@ -15,24 +15,24 @@ import pytest
 from sklearn.dummy import DummyRegressor
 
 from tcspc_toolkit import persistence as store
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.uncertainty.classical import (
     CLASSICAL_UNCERTAINTY_METHODS, ParametricPoissonBootstrapResult,
     PoissonLocalCovarianceResult,
     RepeatedPoissonUncertaintyResult,
 )
-from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkSummary
-from tcspc_toolkit.fitting import ReconvolutionFitResult
+from tcspc_toolkit.estimation.classical import ReconvolutionBenchmarkSummary
+from tcspc_toolkit import ReconvolutionFitResult
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit.uncertainty.ml import (
     BootstrapPredictionSpreadEstimator, DEFAULT_QUANTILE_NOMINAL_COVERAGE,
     ML_UNCERTAINTY_METHODS, RandomForestTreeSpreadEstimator,
     evaluate_frozen_quantile_gradient_boosting,
 )
-from tcspc_toolkit.generalization_evaluation import RobustnessMetrics
-from tcspc_toolkit.ml_evaluation import RegressionMetrics
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import RobustnessMetrics
+from tcspc_toolkit.ml.evaluation import RegressionMetrics
+from tcspc_toolkit.uncertainty.evaluation import (
     IntervalEvaluationMetrics, PredictionIntervalResult,
     QuantileIntervalEvaluationMetrics, UncertaintyScoreMetrics,
     SelectivePredictionMetrics, UncertaintyScoreResult,

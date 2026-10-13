@@ -4,11 +4,11 @@ from tcspc_toolkit.config import (
     CountNormalization,
     FeatureConfig,
 )
-from tcspc_toolkit.features import (
+from tcspc_toolkit import (
     FEATURE_NAMES,
     extract_feature_table,
 )
-from tcspc_toolkit.representations import (
+from tcspc_toolkit import (
     fit_pca_representation,
     normalize_histogram_batch,
     transform_pca_representation,

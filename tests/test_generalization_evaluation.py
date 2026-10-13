@@ -4,10 +4,10 @@ import pytest
 from dataclasses import replace
 
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     generate_generalization_test,
     GeneralizationTestMeasurements,
 )
@@ -15,7 +15,7 @@ from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
 )
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     calculate_mae_degradation,
     calculate_robustness_metrics,
     DEFAULT_DEVELOPMENT_RANDOM_SEED,

@@ -11,10 +11,10 @@ import pandas as pd
 import pytest
 
 from tcspc_toolkit.benchmarks import generalization as evaluation
-from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary
+from tcspc_toolkit.estimation.classical import ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.evaluation_core import combine_point_evaluations
-from tcspc_toolkit.generalization_datasets import generate_generalization_test_suite
+from tcspc_toolkit.evaluation.core import combine_point_evaluations
+from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
 
 
 @pytest.fixture(scope="module")

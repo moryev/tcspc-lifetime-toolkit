@@ -5,9 +5,9 @@ import pytest
 from numpy.typing import NDArray
 
 from tcspc_toolkit.config import CountNormalization
-from tcspc_toolkit.convolution import convolve_decay_with_irf
-from tcspc_toolkit.fitting import fit_monoexponential_reconvolution
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit import convolve_decay_with_irf
+from tcspc_toolkit import fit_monoexponential_reconvolution
+from tcspc_toolkit import monoexponential_decay
 from tcspc_toolkit.preprocessing import (
     align_to_irf,
     crop_time_window,

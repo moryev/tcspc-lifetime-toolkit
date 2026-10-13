@@ -4,13 +4,13 @@ import pytest
 from tcspc_toolkit.config import (
     FeatureConfig,
 )
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     generate_generalization_test_suite,
 )
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     build_generalization_development_measurements,
     evaluate_instrument_acquisition_benchmark,
     fit_generalization_ml_estimators,

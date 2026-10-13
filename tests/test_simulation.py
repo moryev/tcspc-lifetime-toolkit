@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit import convolve_decay_with_irf
 from tcspc_toolkit.irf import (
     generate_emg_irf_profile,
     generate_gaussian_irf,
@@ -9,8 +9,8 @@ from tcspc_toolkit.irf import (
     normalize_irf,
     shift_irf,
 )
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import monoexponential_decay
 from tcspc_toolkit.simulation.histograms import (
     build_expected_counts_from_irf,
     sample_photon_counts,

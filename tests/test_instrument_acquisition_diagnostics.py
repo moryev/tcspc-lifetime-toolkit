@@ -1,6 +1,6 @@
 import numpy as np
 
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     build_instrument_representation_comparison,
     build_test_c_paired_irf_diagnostics,
     summarize_test_e_temporal_shift_recovery,

@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
-from tcspc_toolkit.classical_uncertainty import (
+from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
+from tcspc_toolkit.uncertainty.classical import (
     CLASSICAL_UNCERTAINTY_METHODS,
     PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
     POISSON_LOCAL_COVARIANCE_METHOD_ID,
@@ -18,11 +18,11 @@ from tcspc_toolkit.classical_uncertainty import (
     project_parametric_poisson_bootstrap_interval,
     project_poisson_local_covariance_interval,
 )
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
-from tcspc_toolkit.evaluation_uncertainty import IntervalAttachment
-from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.evaluation.attachments import IntervalAttachment
+from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
+from tcspc_toolkit.uncertainty.evaluation import (
     PredictionIntervalResult, UncertaintyOutputKind, evaluate_prediction_intervals,
 )
 from tcspc_toolkit.benchmarks.uncertainty import (

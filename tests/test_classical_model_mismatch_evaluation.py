@@ -1,6 +1,6 @@
 import numpy as np
 
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.benchmarks.generalization import (
     build_classical_af_paired_diagnostics,
     summarize_classical_test_f_model_mismatch,
 )

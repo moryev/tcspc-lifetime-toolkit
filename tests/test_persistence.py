@@ -1161,7 +1161,7 @@ def test_scientific_import_does_not_import_or_initialize_persistence(tmp_path):
         "    raise AssertionError('unexpected database connection')\n"
         "sqlite3.connect = forbidden\n"
         "import tcspc_toolkit\n"
-        "import tcspc_toolkit.forward_model\n"
+        "import tcspc_toolkit.physics.forward_model\n"
         "assert 'tcspc_toolkit.persistence' not in sys.modules\n"
     )
     completed = subprocess.run(

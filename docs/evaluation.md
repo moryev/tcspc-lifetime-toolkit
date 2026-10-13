@@ -137,14 +137,14 @@ legacy-compatible scientific reports
 
 | Current location | Carriers / entry points | Responsibility and consolidation boundary |
 |---|---|---|
-| `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
+| `ml.evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
 | `benchmarks.generalization_protocol`, `benchmarks.generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
 | `benchmarks.generalization` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
-| `ml_evaluation`, `benchmarks.mismatch` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
+| `ml.evaluation`, `benchmarks.mismatch` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
 | `benchmarks.generalization` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
 | `evaluation.conditional` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
-| `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
-| `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
+| `estimation.classical` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
+| `ml.cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
 | `benchmarks.mismatch`, `benchmarks.timing` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Separate Week-7 paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
 | `uncertainty.ml` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
 | `uncertainty.evaluation` | Interval/score source results, method/provenance definitions, development split, interval/quantile/score/selective metrics | Retains frozen protocol configuration for the provenance guard; separates intervals, heuristic scores and empirical reference variability from generic factual attachments. |
@@ -152,13 +152,13 @@ legacy-compatible scientific reports
 | `uncertainty.classical` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
 | `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
 | `benchmarks.irf` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
-| `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
+| `measurement.adapters` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
 | `estimation.bayesian.*`; `benchmarks.bayesian_calibration`, `benchmarks.bayesian_mismatch` | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results; `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Estimator implementations versus matched/mismatch studies. Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
 | `persistence` | Point, uncertainty, metric and scientific recording adapters | External consumer of existing concrete types and identities. Schema v1, source-result identities and duplicate semantics remain unchanged. |
 
-The reusable estimator boundary remains `estimator_api`: structural `fit`/`predict`,
+The reusable estimator boundary remains `estimation.api`: structural `fit`/`predict`,
 factory-created state and caller-prepared matrices. Canonical specifications remain
-in `ml_models`. Neither new evaluation module imports those canonical definitions.
+in `ml.models`. Neither new evaluation module imports those canonical definitions.
 
 ## Shared preparation mechanics (Stage 2)
 
@@ -766,7 +766,7 @@ canonical point identities; existing Week-9 reports still own their metrics.
 
 ### ML uncertainty projections (Stage 8)
 
-`ml_uncertainty.py` projects source `PredictionIntervalResult` and
+`uncertainty.ml` projects source `PredictionIntervalResult` and
 `UncertaintyScoreResult` objects onto the attachments. Quantile median, RF
 tree-mean and bootstrap reference predictions are separate point methods. Raw
 quantile and conformal bounds have distinct uncertainty methods and interval
@@ -800,7 +800,7 @@ classical or Bayesian uncertainty.
 
 ### Classical statistical interval projections (Stage 9)
 
-`classical_uncertainty.py` projects one `PoissonLocalCovarianceResult` or
+`uncertainty.classical` projects one `PoissonLocalCovarianceResult` or
 `ParametricPoissonBootstrapResult` onto the exact Stage-4 classical point key.
 The caller supplies an explicit classical `MethodDescriptor`, evaluation and
 sample identity, and the source reconvolution curve. The adapters reject a

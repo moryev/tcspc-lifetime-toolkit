@@ -381,6 +381,7 @@ The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 fa
 For future work:
 
 - Use canonical submodule imports inside implementations and developer scripts.
+- Ordinary first-party tests, examples, and current documentation should use the curated root API or canonical submodules. Retain the 38 flat compatibility modules for Issue-12 compatibility verification; their planned post-Issue-12 retirement is separate from the reviewed package-initializer APIs. Notebook import migration is deferred to Stage 1B.
 - Preserve all established historical imports and direct Day/Week aliases through at least Issue #12. Do not remove facades, add deprecation warnings, or fake `__module__` without a separate explicit compatibility decision.
 - Keep the exact ordered 66-name root API. Do not broaden package initializers into convenience APIs.
 - Keep `benchmarks`, `uncertainty`, `measurement`, `physics`, `ml`, `estimation`, and `estimation.bayesian` initializers docstring-only. Historical `irf`, `preprocessing`, `simulation`, `evaluation`, and `persistence` initializers re-export only their reviewed surfaces.

@@ -15,12 +15,12 @@ from tcspc_toolkit.estimation.fitting import (
     fit_monoexponential_reconvolution,
     poisson_negative_log_likelihood
 )
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit import monoexponential_decay
 from tcspc_toolkit.simulation import (
     sample_photon_counts,
     simulate_monoexponential_decay,
 )
-from tcspc_toolkit.convolution import convolve_decay_with_irf
+from tcspc_toolkit import convolve_decay_with_irf
 
 
 def test_fit_returns_lifetime_fit_result() -> None:

@@ -12,7 +12,7 @@ from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf_profile,
 )
 from tcspc_toolkit.irf.preparation import irf_profile_from_sampled_irf
-from tcspc_toolkit.measurements import SampledIRF
+from tcspc_toolkit import SampledIRF
 
 
 def test_gaussian_profile_retains_source_scale_on_nonuniform_grid() -> None:

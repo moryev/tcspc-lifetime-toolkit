@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.generalization import (
+from tcspc_toolkit.benchmarks.generalization_protocol import (
     default_generalization_suite,
 )
-from tcspc_toolkit.generalization_datasets import (
+from tcspc_toolkit.benchmarks.generalization_datasets import (
     PAIR_VARIANTS_PER_CONDITION,
     build_generalization_suite_manifest,
     build_generalization_time_axis,

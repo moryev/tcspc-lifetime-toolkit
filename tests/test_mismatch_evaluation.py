@@ -2,12 +2,12 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit.config import FeatureConfig
-from tcspc_toolkit.mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.mismatch import (
     evaluate_ml_mismatch_benchmark,
     generate_matched_biexponential_mismatch_dataset,
     summarize_mismatch_benchmark,
 )
-from tcspc_toolkit.ml_evaluation import (
+from tcspc_toolkit.ml.evaluation import (
     build_benchmark_dataset,
     generate_benchmark_measurements,
     split_benchmark_dataset,

@@ -6,6 +6,13 @@ Issue #3 Stage 10 completes package restructuring on
 This is an architecture/compatibility audit, not Issue #12 acceptance, a release,
 or a scientific reanalysis. Merge and GitHub closure remain user actions.
 
+Current Issue-12 status: Issue #3 has since been merged and closed. The inventory
+and checkpoint results below preserve its historical audit. Ordinary first-party
+Python consumers now use the curated root API or canonical submodules; dedicated
+compatibility checks still exercise the 38 flat facades through Issue #12.
+Notebook import migration is deferred to Issue-12 Stage 1B. The five reviewed
+package-level facades are not flat-file retirement candidates.
+
 ## Canonical tree and ownership
 
 ```text
@@ -385,12 +392,12 @@ target. `test_persistence_example.py` intentionally patches the public
 is preserved. Canonical `irf.estimation.savgol_filter` is not a patch of the
 historical `irf` facade.
 
-The correction script's pre-existing `correction_source_sha256` file lookup still
-names `bayesian_mismatch_evaluation.py`. It now hashes the facade, not the
-relocated algorithm. This is not an executable import or a persisted schema-v1
-identity; changing future correction provenance needs an explicit decision
-outside the import-only script reconciliation. The script and saved correction
-artifacts were not run or rewritten here.
+The initial Stage-10 audit found that `correction_source_sha256` still hashed
+`bayesian_mismatch_evaluation.py`, then a compatibility facade. A subsequently
+approved Stage-10 correction changed only that lookup to the canonical scientific
+implementation, `src/tcspc_toolkit/benchmarks/bayesian_mismatch.py`. This is the
+current provenance source, protected by a structural regression test. No saved
+correction artifact was regenerated, and no persisted schema-v1 identity changed.
 
 ### Unchanged notebook imports
 

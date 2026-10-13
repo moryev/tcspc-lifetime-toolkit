@@ -4,12 +4,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.evaluation_core import build_point_evaluation
-from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
-from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
+from tcspc_toolkit.evaluation.core import build_point_evaluation
+from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor
+from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.benchmarks.generalization import _build_generalization_evaluation_batch
-from tcspc_toolkit.ml_evaluation import BenchmarkDataset
-from tcspc_toolkit.ml_uncertainty import (
+from tcspc_toolkit.ml.evaluation import BenchmarkDataset
+from tcspc_toolkit.uncertainty.ml import (
     MLUncertaintyScoreCalibrationResult,
     QuantileGradientBoostingCalibrationResult,
     evaluate_frozen_ml_uncertainty_score,
@@ -21,12 +21,12 @@ from tcspc_toolkit.uncertainty.ml import (
     _development_calibration_batch,
     _frozen_ml_uncertainty_batch,
 )
-from tcspc_toolkit.uncertainty_evaluation import (
+from tcspc_toolkit.uncertainty.evaluation import (
     PredictionIntervalResult, UncertaintyDevelopmentSplit, UncertaintyScoreResult,
     evaluate_prediction_intervals, evaluate_quantile_prediction_intervals,
     evaluate_uncertainty_scores,
 )
-from tcspc_toolkit.uncertainty_robustness import (
+from tcspc_toolkit.benchmarks.uncertainty import (
     conformalize_quantile_gradient_boosting,
     evaluate_frozen_conformalized_quantile,
 )

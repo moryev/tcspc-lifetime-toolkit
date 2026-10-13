@@ -15,12 +15,12 @@ from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival, predict_constant_mean_baseline,
 )
-from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
-from tcspc_toolkit.fitting import ReconvolutionFitResult
+from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
+from tcspc_toolkit import ReconvolutionFitResult
 from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
-from tcspc_toolkit.ml_evaluation import RegressionBenchmarkResult, RegressionMetrics
+from tcspc_toolkit import prepare_irf
+from tcspc_toolkit import MeasurementDataKind, TCSPCMeasurement
+from tcspc_toolkit.ml.evaluation import RegressionBenchmarkResult, RegressionMetrics
 
 
 @pytest.fixture

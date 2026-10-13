@@ -14,13 +14,13 @@ from tcspc_toolkit.estimation.api import (
     predict_regressors,
 )
 
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     make_canonical_ml_estimator_specs,
     make_hist_gradient_boosting_pipeline,
     make_random_forest_pipeline,
     make_ridge_pipeline,
 )
-from tcspc_toolkit.representations import (
+from tcspc_toolkit import (
     fit_pca_representation,
     normalize_histogram_batch,
     transform_pca_representation,

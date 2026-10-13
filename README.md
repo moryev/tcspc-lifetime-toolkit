@@ -772,7 +772,7 @@ from tcspc_toolkit.evaluation import (
     calculate_residuals,
     generate_fitted_signal,
 )
-from tcspc_toolkit.fitting import fit_monoexponential_decay
+from tcspc_toolkit import fit_monoexponential_decay
 
 true_lifetime_ns = 2.5
 
@@ -839,8 +839,8 @@ nanoseconds; both become nanoseconds internally. A real measurement must use
 its own compatible acquired IRF and documented acquisition conditions.
 
 ```python
-from tcspc_toolkit.experimental import fit_experimental_reconvolution
-from tcspc_toolkit.measurement_io import (
+from tcspc_toolkit import fit_experimental_reconvolution
+from tcspc_toolkit import (
     load_sampled_irf_csv,
     load_tcspc_measurement_csv,
 )

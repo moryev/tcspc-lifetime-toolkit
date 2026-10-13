@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.conditional_evaluation import (
+from tcspc_toolkit.evaluation.conditional import (
     add_benchmark_regimes,
     assign_numeric_regimes,
     build_prediction_diagnostics,
