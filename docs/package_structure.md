@@ -10,8 +10,13 @@ Current Issue-12 status: Issue #3 has since been merged and closed. The inventor
 and checkpoint results below preserve its historical audit. Ordinary first-party
 Python consumers now use the curated root API or canonical submodules; dedicated
 compatibility checks still exercise the 38 flat facades through Issue #12.
-Notebook import migration is deferred to Issue-12 Stage 1B. The five reviewed
-package-level facades are not flat-file retirement candidates.
+Issue-12 Stage 1B also migrated notebook code-cell imports, without executing
+notebooks or changing their saved outputs, metadata, or scientific Markdown.
+The readiness guards now cover ordinary Python consumers, notebook code cells,
+and current documentation import examples. Historical mapping/provenance text
+and dedicated compatibility tests remain intentional exceptions. The notebook
+inventory below records the earlier Issue-3 checkpoint, not current dependencies.
+The five reviewed package-level facades are not flat-file retirement candidates.
 
 ## Canonical tree and ownership
 
