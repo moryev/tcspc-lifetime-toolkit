@@ -795,7 +795,7 @@ CLOSURE_FACADES = {
 }
 
 
-# Issue-12 Stage 1A: interim Python-consumer retirement readiness only.
+# Issue-12 first-party retirement readiness (Python, notebooks and docs).
 # These five reviewed package APIs are NOT removable flat .py facades.
 REMOVABLE_FLAT_FACADES = set(CLOSURE_FACADES) - {
     "irf", "preprocessing", "simulation", "evaluation", "persistence",
@@ -805,8 +805,8 @@ REMOVABLE_FLAT_FACADES = set(CLOSURE_FACADES) - {
 def _python_flat_facade_dependencies(source, package=None):
     """Find imports, embedded Python and literal patch/import targets, not labels.
 
-    This deliberately does not scan notebooks yet (Stage 1B). Historical SQL
-    provenance labels and negative import guards are not executable imports.
+    Notebook callers supply code-cell source only, never saved outputs.
+    Historical SQL provenance labels and negative guards are not imports.
     Dynamic compatibility registries retain their separate identity/pickle tests.
     """
     import re
@@ -896,7 +896,7 @@ def _python_flat_facade_dependencies(source, package=None):
     return found
 
 
-def test_interim_python_consumers_are_ready_for_flat_facade_retirement():
+def test_python_consumers_are_ready_for_flat_facade_retirement():
     """No ordinary Python consumer depends on the 38 future deletion targets."""
     assert len(REMOVABLE_FLAT_FACADES) == 38
     repository = SOURCE_ROOT.parents[1]
@@ -972,6 +972,152 @@ def test_python_retirement_guard_detects_executable_flat_dependencies(template):
 ])
 def test_python_retirement_guard_preserves_root_package_and_provenance_contracts(template):
     assert not _python_flat_facade_dependencies(template.format(package=PACKAGE), PACKAGE)
+
+
+def _notebook_code_sources(document):
+    """Ignore outputs/metadata and scientific Markdown, without executing cells."""
+    for index, cell in enumerate(document["cells"], start=1):
+        if cell["cell_type"] == "code":
+            yield index, "".join(cell["source"])
+
+
+@pytest.mark.parametrize("path", sorted(SOURCE_ROOT.parents[1].joinpath("notebooks").glob("*.ipynb")),
+                         ids=lambda path: path.stem)
+def test_notebook_code_compiles_and_is_ready_for_flat_facade_retirement(path):
+    import json
+
+    cells = list(_notebook_code_sources(json.loads(path.read_text(encoding="utf-8"))))
+    assert cells
+    for index, source in cells:
+        compile(source, f"{path.name}:cell {index}", "exec")  # Compilation only.
+        assert not _python_flat_facade_dependencies(source), (path.name, index)
+
+
+def test_notebook_imports_resolve_in_fresh_processes_without_running_workflows(tmp_path):
+    import json
+
+    for path in sorted(SOURCE_ROOT.parents[1].joinpath("notebooks").glob("*.ipynb")):
+        imports = []
+        for _, source in _notebook_code_sources(json.loads(path.read_text(encoding="utf-8"))):
+            for node in ast.walk(ast.parse(source)):
+                if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(PACKAGE):
+                    imports.append(ast.unparse(node))
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name == PACKAGE or alias.name.startswith(PACKAGE + "."):
+                            imports.append(ast.unparse(ast.Import(names=[alias])))
+        assert imports, path.name
+        # Execute ONLY selected import statements, not setup/configuration code,
+        # fitting, plotting, file I/O, Week-9 cache writes or Bayesian sampling.
+        script = "\n".join([
+            "import sys, importlib.abc",
+            "class NoEmcee(importlib.abc.MetaPathFinder):",
+            "    def find_spec(self, fullname, path=None, target=None):",
+            "        if fullname == 'emcee' or fullname.startswith('emcee.'):",
+            "            raise AssertionError('Notebook imports must not load emcee')",
+            "sys.meta_path.insert(0, NoEmcee())",
+            *imports,
+            "assert 'emcee' not in sys.modules",
+        ])
+        completed = subprocess.run([sys.executable, "-B", "-c", script], cwd=tmp_path,
+                                   capture_output=True, text=True, timeout=60)
+        assert completed.returncode == 0, (path.name, completed.stdout, completed.stderr)
+        assert list(tmp_path.iterdir()) == [], path.name
+
+
+def test_notebook_readiness_scans_code_not_saved_outputs_or_markdown():
+    historical = "from {package}.fitting import ReconvolutionFitResult".format(package=PACKAGE)
+    document = {"cells": [
+        {"cell_type": "markdown", "source": [historical]},
+        {"cell_type": "code", "source": ["from tcspc_toolkit import fit_monoexponential_decay"],
+         "outputs": [{"text": historical}], "metadata": {"historical_note": historical}},
+        {"cell_type": "code", "source": [historical]},
+    ]}
+    sources = list(_notebook_code_sources(document))
+    assert [index for index, _ in sources] == [2, 3]
+    assert not _python_flat_facade_dependencies(sources[0][1])
+    assert _python_flat_facade_dependencies(sources[1][1])
+
+
+def _markdown_flat_facade_dependencies(source):
+    """Inspect Python fences/inline import examples, not mapping/history prose.
+
+    Historical names in tables, release notes and frozen provenance labels are
+    not executable examples. Any historical *import example* needs a precise
+    reviewed exception in the repository test, not a blanket docs exclusion.
+    """
+    import re
+    import textwrap
+
+    snippets = []
+    fence = None
+    lines = source.splitlines(keepends=True)
+    for index, line in enumerate(lines, start=1):
+        marker = re.match(r"^\s*(`{3,}|~{3,})(.*)$", line)
+        if fence:
+            delimiter, language, start, body = fence
+            if marker and marker[1][0] == delimiter[0] and len(marker[1]) >= len(delimiter):
+                if language in {"", "python", "py", "pycon", "python3"}:
+                    snippets.append((start, "".join(body)))
+                fence = None
+            else:
+                body.append(line)
+        elif marker:
+            fence = (marker[1], marker[2].strip().lower(), index + 1, [])
+        else:
+            for inline in re.finditer(r"`([^`\n]+)`", line):
+                if re.match(r"(?:from|import)\s+", inline[1]):
+                    snippets.append((index, inline[1]))
+    assert fence is None, "Unclosed documentation fence"
+    found = []
+    for start, snippet in snippets:
+        snippet = textwrap.dedent(snippet)
+        snippet = re.sub(r"(?m)^(?:>>> |\.\.\. )", "", snippet)
+        try:
+            ast.parse(snippet)
+        except SyntaxError:
+            # Incomplete examples/REPL output: reuse the embedded-import parser.
+            snippet = f"example = {snippet!r}"
+        for scope, kind, old, names, line in _python_flat_facade_dependencies(snippet):
+            found.append((start + line - 1, scope, kind, old, names))
+    return found
+
+
+def test_current_documentation_examples_are_ready_for_flat_facade_retirement():
+    repository = SOURCE_ROOT.parents[1]
+    paths = sorted(set(repository.glob("*.md")) | set(repository.joinpath("docs").rglob("*.md")))
+    assert paths
+    violations = []
+    for path in paths:
+        violations.extend((path.relative_to(repository).as_posix(), *item)
+                          for item in _markdown_flat_facade_dependencies(path.read_text(encoding="utf-8")))
+    # No current executable documentation example needs a historical exception.
+    assert not violations, violations
+
+
+@pytest.mark.parametrize("template", [
+    "```python\nfrom {package}.fitting import ReconvolutionFitResult\n```",
+    "~~~py\nfrom {package} import fitting\n~~~",
+    "```pycon\n>>> import {package}.fitting\n>>> result\n<result>\n```",
+    "```\nfrom {package}.fitting import (\n    ReconvolutionFitResult,\n)\n```",
+    "Use `from {package}.fitting import ReconvolutionFitResult` here.",
+    '```python\nimportlib.import_module("{package}.fitting")\n```',
+    '```python\nmonkeypatch.setattr("{package}.fitting.curve_fit", replacement)\n```',
+])
+def test_documentation_readiness_detects_active_examples(template):
+    assert _markdown_flat_facade_dependencies(template.format(package=PACKAGE))
+
+
+@pytest.mark.parametrize("template", [
+    "Historical mapping: `{package}.fitting` -> `estimation.fitting`.",
+    "| Historical | Canonical |\n| `{package}.fitting` | `estimation.fitting` |",
+    "```text\n{package}.fitting.ReconvolutionFitResult\n```",
+    '```python\nsource_type = "{package}.fitting.ReconvolutionFitResult"\n```',
+    "```python\nfrom {package} import fit_monoexponential_reconvolution\n```",
+    "```python\nfrom {package}.persistence import connect_database\n```",
+])
+def test_documentation_readiness_preserves_historical_labels_and_public_apis(template):
+    assert not _markdown_flat_facade_dependencies(template.format(package=PACKAGE))
 
 
 def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
