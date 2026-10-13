@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit.exceptions import InvalidMeasurementError
-from tcspc_toolkit.measurement_io import (
+from tcspc_toolkit.measurement.io import (
     load_sampled_irf_csv,
     load_tcspc_measurement_csv,
 )
-from tcspc_toolkit.measurements import MeasurementDataKind
+from tcspc_toolkit.measurement.records import MeasurementDataKind
 
 
 def _csv(tmp_path: Path, content: str, name: str = "measurement.csv") -> Path:

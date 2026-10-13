@@ -15,7 +15,7 @@ from tcspc_toolkit.irf_evaluation import (
     summarize_irf_shape_classical,
     summarize_leading_edge_regimes,
 )
-from tcspc_toolkit.irf_preparation import _sampled_fwhm
+from tcspc_toolkit.irf.preparation import _sampled_fwhm
 
 
 @pytest.fixture(scope="module")
@@ -121,7 +121,7 @@ def test_same_emg_histogram_fit_twice_and_control_kept_separate(
 
 
 def test_classical_assumptions_receive_identical_emg_counts(monkeypatch, shape_dataset):
-    import tcspc_toolkit.irf_evaluation as module
+    import tcspc_toolkit.benchmarks.irf as module
 
     original = module.fit_experimental_reconvolution
     fitted_counts = []
@@ -193,7 +193,7 @@ def test_gaussian_trained_ml_transfer_population_labels_and_scores(shape_dataset
 
 
 def test_ml_fits_only_gaussian_development_population(monkeypatch, shape_dataset):
-    import tcspc_toolkit.irf_evaluation as module
+    import tcspc_toolkit.benchmarks.irf as module
 
     fit_sizes = []
     original_ridge = module.make_ridge_pipeline

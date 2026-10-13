@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from tcspc_toolkit import persistence
+from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.bayesian import (
     BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
 )
@@ -413,7 +414,7 @@ def test_imported_attached_irf_and_synthetic_source_kinds(db):
         "WHERE irf_source_id = ?", (attached_id,),
     ).fetchone()
     assert attached[:2] == ("sampled_irf", "imported_sampled")
-    assert attached[2] == persistence._hash_irf_source_values(sampled.values)
+    assert attached[2] == persistence_impl._hash_irf_source_values(sampled.values)
 
     gaussian_id = persistence.record_irf_source(db, _profile(), source_key="gaussian")
     emg = generate_emg_irf_profile(

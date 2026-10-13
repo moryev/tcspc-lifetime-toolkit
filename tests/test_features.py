@@ -10,7 +10,7 @@ from tcspc_toolkit.exceptions import (
     FeatureExtractionError,
     InvalidHistogramError,
 )
-from tcspc_toolkit.features import (
+from tcspc_toolkit.preprocessing.features import (
     FEATURE_NAMES,
     early_late_count_ratio,
     extract_feature_table,

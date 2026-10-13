@@ -8,7 +8,7 @@ import pytest
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 
-from tcspc_toolkit.estimator_api import (
+from tcspc_toolkit.estimation.api import (
     EstimatorSpec,
     fit_regressors,
     predict_regressors,

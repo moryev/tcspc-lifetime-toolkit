@@ -1319,7 +1319,7 @@ def _require_row(connection: sqlite3.Connection, table: str, id_column: str, row
 
 
 def _uniform_grid(time_ns: ArrayLike) -> tuple[np.ndarray, int, float, float, str]:
-    from tcspc_toolkit.preprocessing import validate_time_axis
+    from tcspc_toolkit.preprocessing.histograms import validate_time_axis
 
     time = validate_time_axis(time_ns)
     return time, int(time.size), float(time[0]), float(np.diff(time)[0]), _hash_time_grid_ns(time)
@@ -1463,9 +1463,9 @@ def record_irf_source(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a SampledIRF, IRFProfile or successful leading-edge result."""
-    from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
-    from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
-    from tcspc_toolkit.measurements import SampledIRF
+    from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
+    from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
+    from tcspc_toolkit.measurement.records import SampledIRF
 
     supplied_source = source
     estimate_diagnostics = None
@@ -1571,9 +1571,9 @@ def record_legacy_irf_source(
 def _verify_irf_source(
     connection: sqlite3.Connection, source_id: int, source: Any,
 ) -> None:
-    from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
-    from tcspc_toolkit.irf_estimation import LeadingEdgeIRFResult
-    from tcspc_toolkit.measurements import SampledIRF
+    from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
+    from tcspc_toolkit.irf.estimation import LeadingEdgeIRFResult
+    from tcspc_toolkit.measurement.records import SampledIRF
 
     diagnostics = None
     if isinstance(source, LeadingEdgeIRFResult):
@@ -1628,7 +1628,7 @@ def _verify_irf_source(
 def _verify_prepared_irf(
     connection: sqlite3.Connection, prepared_id: int, prepared: Any,
 ) -> None:
-    from tcspc_toolkit.irf_preparation import PreparedIRF
+    from tcspc_toolkit.irf.preparation import PreparedIRF
 
     if not isinstance(prepared, PreparedIRF):
         raise TypeError("prepared must be a PreparedIRF")
@@ -1733,7 +1733,7 @@ def record_prepared_irf(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a PreparedIRF and, when keyed, its source in one transaction."""
-    from tcspc_toolkit.irf_preparation import PreparedIRF
+    from tcspc_toolkit.irf.preparation import PreparedIRF
 
     if not isinstance(prepared, PreparedIRF):
         raise TypeError("prepared must be a PreparedIRF")
@@ -1862,8 +1862,8 @@ def record_issue4_condition(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Adapt matched-model or mismatch Issue-4 generating-condition objects."""
-    from tcspc_toolkit.bayesian_evaluation import BayesianClassicalCondition
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchCondition
+    from tcspc_toolkit.benchmarks.bayesian_calibration import BayesianClassicalCondition
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchCondition
 
     if not isinstance(condition, (BayesianClassicalCondition, MismatchCondition)):
         raise TypeError("condition must be an Issue-4 generating condition")
@@ -1911,7 +1911,7 @@ def _record_observation(
     metadata: Mapping[str, Any] | None, provenance: Mapping[str, Any] | None,
     on_duplicate: DuplicatePolicy,
 ) -> int:
-    from tcspc_toolkit.preprocessing import validate_histogram
+    from tcspc_toolkit.preprocessing.histograms import validate_histogram
 
     time, n_bins, time_start, time_step, grid_sha = _uniform_grid(time_ns)
     if data_kind == "raw_counts":
@@ -1978,7 +1978,7 @@ def record_measurement(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record a TCSPCMeasurement with its explicit raw or processed meaning."""
-    from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
+    from tcspc_toolkit.measurement.records import MeasurementDataKind, TCSPCMeasurement
 
     if not isinstance(measurement, TCSPCMeasurement):
         raise TypeError("measurement must be a TCSPCMeasurement")
@@ -2054,8 +2054,8 @@ def record_benchmark_observation(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Select one documented raw observation from a benchmark measurement carrier."""
-    from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-    from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements
+    from tcspc_toolkit.benchmarks.generalization_datasets import GeneralizationTestMeasurements
+    from tcspc_toolkit.ml.evaluation import BenchmarkMeasurements
 
     if not isinstance(measurements, (BenchmarkMeasurements, GeneralizationTestMeasurements)):
         raise TypeError("expected BenchmarkMeasurements or GeneralizationTestMeasurements")
@@ -2100,8 +2100,8 @@ def link_run_measurement(
 
 def bayesian_model_configuration(priors: Any, sampler: Any) -> dict[str, Any]:
     """Build reusable Bayesian configuration, excluding execution random seed."""
-    from tcspc_toolkit.bayesian import BayesianPriorConfig
-    from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.posterior import BayesianPriorConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
 
     if not isinstance(priors, BayesianPriorConfig) or not isinstance(sampler, BayesianSamplingConfig):
         raise TypeError("expected BayesianPriorConfig and BayesianSamplingConfig")
@@ -2110,7 +2110,7 @@ def bayesian_model_configuration(priors: Any, sampler: Any) -> dict[str, Any]:
 
 def _without_bayesian_sampling_seed(value: Any) -> dict[str, Any]:
     """Omit only the recognized Bayesian sampler execution-seed field."""
-    from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
 
     normalized = _json_value(value)
     if not isinstance(normalized, dict):
@@ -2188,7 +2188,7 @@ def record_model_assumption(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record physical inference assumptions independently of estimator priors."""
-    from tcspc_toolkit.bayesian import BayesianPriorConfig
+    from tcspc_toolkit.estimation.bayesian.posterior import BayesianPriorConfig
 
     decay = _required_text(assumed_decay_model, "assumed_decay_model")
     observation = _required_text(observation_model, "observation_model")
@@ -2419,7 +2419,7 @@ def record_issue4_pseudo_true_reference(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record an Issue-4 projection with its scoped IDs and numerical audit."""
-    from tcspc_toolkit.bayesian_mismatch_evaluation import PseudoTrueReference
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import PseudoTrueReference
 
     if not isinstance(reference, PseudoTrueReference):
         raise TypeError("reference must be a PseudoTrueReference")
@@ -2629,8 +2629,8 @@ def _classical_fit_payloads(
     assumption_id: int, analysis_key: str, irf_model_relation: str,
     execution: Mapping[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
-    from tcspc_toolkit.fitting import ReconvolutionFitResult
+    from tcspc_toolkit.estimation.classical import ReconvolutionCurveResult
+    from tcspc_toolkit.estimation.fitting import ReconvolutionFitResult
 
     if isinstance(result, ReconvolutionFitResult):
         valid = _result_flag(result.success, "success")
@@ -2889,10 +2889,10 @@ def _bayesian_model_context(
     sampling_seed: int | str,
 ) -> tuple[dict[str, Any], dict[str, Any], sqlite3.Row | tuple]:
     """Validate the reusable prior and the separately persisted physical model."""
-    from tcspc_toolkit.bayesian import (
+    from tcspc_toolkit.estimation.bayesian.posterior import (
         BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
     )
-    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingConfig
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianReconvolutionResult, BayesianSamplingConfig
 
     model = connection.execute(
         "SELECT family, estimator_name, configuration_json, prior_policy_id "
@@ -3065,8 +3065,8 @@ def _bayesian_predictive_payload(
     predictive: Any | None, *, ppc_seed: int | str | None,
     nonfinite: dict[str, str],
 ) -> dict[str, Any]:
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchPredictiveSummary
-    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchPredictiveSummary
+    from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
 
     if predictive is None:
         if ppc_seed is not None:
@@ -3172,8 +3172,8 @@ def _bayesian_payloads(
     valid_retained_samples: int | None, execution: Mapping[str, Any] | None,
     sampling_seed: int | str, assumption: sqlite3.Row | tuple,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    from tcspc_toolkit.bayesian_evaluation import Issue4Bayesian
-    from tcspc_toolkit.bayesian_sampling import BayesianReconvolutionResult, BayesianSamplingStatus
+    from tcspc_toolkit.benchmarks.bayesian_calibration import Issue4Bayesian
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianReconvolutionResult, BayesianSamplingStatus
 
     if not isinstance(source, (BayesianReconvolutionResult, Issue4Bayesian)):
         raise TypeError("Bayesian source must be a full sampler result or Issue4Bayesian")
@@ -3483,7 +3483,7 @@ def _record_bayesian_composed(
         connection, model_id=model, assumption_id=assumed,
         measurement_id=measured, source=source, context=context, sampling_seed=sampling_seed,
     )
-    from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+    from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
 
     if isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
         _bayesian_model_context(
@@ -3550,7 +3550,7 @@ def record_bayesian_result(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record one completed Bayesian sampler result and optional PPC summary."""
-    from tcspc_toolkit.bayesian_sampling import BayesianInferenceRun, BayesianReconvolutionResult
+    from tcspc_toolkit.estimation.bayesian.sampling import BayesianInferenceRun, BayesianReconvolutionResult
 
     if isinstance(result, BayesianInferenceRun):
         source, context = result.result, result.context
@@ -3567,7 +3567,7 @@ def record_bayesian_result(
     else:
         raise TypeError("result must be BayesianReconvolutionResult or BayesianInferenceRun")
     if posterior_predictive is not None:
-        from tcspc_toolkit.bayesian_predictive import BayesianPosteriorPredictiveResult
+        from tcspc_toolkit.estimation.bayesian.predictive import BayesianPosteriorPredictiveResult
         if not isinstance(posterior_predictive, BayesianPosteriorPredictiveResult):
             raise TypeError("posterior_predictive must be BayesianPosteriorPredictiveResult")
         if posterior_predictive.inference_sampling_status is not source.status or (
@@ -3600,8 +3600,8 @@ def record_issue4_bayesian_result(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Record the compact matched or mismatch Issue-4 Bayesian realization."""
-    from tcspc_toolkit.bayesian_evaluation import BayesianClassicalRealizationResult
-    from tcspc_toolkit.bayesian_mismatch_evaluation import MismatchInferenceRecord
+    from tcspc_toolkit.benchmarks.bayesian_calibration import BayesianClassicalRealizationResult
+    from tcspc_toolkit.benchmarks.bayesian_mismatch import MismatchInferenceRecord
 
     if not isinstance(record, (BayesianClassicalRealizationResult, MismatchInferenceRecord)):
         raise TypeError("record must be an Issue-4 Bayesian evaluation realization")
@@ -3775,7 +3775,7 @@ def record_regression_predictions(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record ordered RegressionBenchmarkResult predictions, never its metrics."""
-    from tcspc_toolkit.ml_evaluation import RegressionBenchmarkResult
+    from tcspc_toolkit.ml.evaluation import RegressionBenchmarkResult
 
     if not isinstance(result, RegressionBenchmarkResult):
         raise TypeError("result must be a RegressionBenchmarkResult")
@@ -4050,13 +4050,13 @@ def record_prediction_intervals(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Attach ordered source prediction intervals to existing point results."""
-    from tcspc_toolkit.uncertainty_evaluation import (
+    from tcspc_toolkit.uncertainty.evaluation import (
         PredictionIntervalResult, UncertaintyMethodDefinition,
         UncertaintyOutputKind,
     )
-    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
-    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
-    from tcspc_toolkit.classical_uncertainty import CLASSICAL_UNCERTAINTY_METHODS
+    from tcspc_toolkit.benchmarks.uncertainty import CONFORMALIZED_QUANTILE_METHOD_ID
+    from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty.classical import CLASSICAL_UNCERTAINTY_METHODS
 
     if not isinstance(intervals, PredictionIntervalResult):
         raise TypeError("intervals must be a PredictionIntervalResult")
@@ -4129,7 +4129,7 @@ def record_quantile_intervals(
     result_ids: Sequence[int], on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the current q05/q50/q95 interval without creating a median point."""
-    from tcspc_toolkit.ml_uncertainty import (
+    from tcspc_toolkit.uncertainty.ml import (
         DEFAULT_LOWER_QUANTILE, DEFAULT_MEDIAN_QUANTILE, DEFAULT_UPPER_QUANTILE,
         ML_UNCERTAINTY_METHODS, QUANTILE_GRADIENT_BOOSTING_METHOD_ID,
     )
@@ -4159,9 +4159,9 @@ def record_conformal_intervals(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record split-conformalized quantile intervals and calibration identity."""
-    from tcspc_toolkit.ml_uncertainty import ML_UNCERTAINTY_METHODS
-    from tcspc_toolkit.uncertainty_evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
-    from tcspc_toolkit.uncertainty_robustness import CONFORMALIZED_QUANTILE_METHOD_ID
+    from tcspc_toolkit.uncertainty.ml import ML_UNCERTAINTY_METHODS
+    from tcspc_toolkit.uncertainty.evaluation import UncertaintyMethodDefinition, UncertaintyOutputKind
+    from tcspc_toolkit.benchmarks.uncertainty import CONFORMALIZED_QUANTILE_METHOD_ID
 
     correction = _finite_scalar(correction_ns, "correction_ns", nonnegative=True)
     n_scores = _integer(n_calibration_scores, "n_calibration_scores", minimum=1)
@@ -4193,10 +4193,10 @@ def record_uncertainty_scores(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Attach score-only ensemble or bootstrap spread without interval claims."""
-    from tcspc_toolkit.uncertainty_evaluation import (
+    from tcspc_toolkit.uncertainty.evaluation import (
         UncertaintyMethodDefinition, UncertaintyOutputKind, UncertaintyScoreResult,
     )
-    from tcspc_toolkit.ml_uncertainty import (
+    from tcspc_toolkit.uncertainty.ml import (
         ML_TRAINING_BOOTSTRAP_METHOD_ID, ML_UNCERTAINTY_METHODS,
         RANDOM_FOREST_TREE_SPREAD_METHOD_ID,
     )
@@ -4247,7 +4247,7 @@ def record_classical_covariance_uncertainty(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Store a per-fit Poisson/Fisher local summary, never empirical variability."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         CLASSICAL_UNCERTAINTY_METHODS, POISSON_LOCAL_COVARIANCE_METHOD_ID,
         PoissonLocalCovarianceResult,
     )
@@ -4297,7 +4297,7 @@ def record_parametric_bootstrap_uncertainty(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> int:
     """Store one Poisson refit-bootstrap interval and std in the same row."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         CLASSICAL_UNCERTAINTY_METHODS, PARAMETRIC_POISSON_BOOTSTRAP_METHOD_ID,
         ParametricPoissonBootstrapResult,
     )
@@ -4709,7 +4709,7 @@ def record_interval_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record aggregate interval calibration/sharpness with source denominators."""
-    from tcspc_toolkit.uncertainty_evaluation import IntervalEvaluationMetrics
+    from tcspc_toolkit.uncertainty.evaluation import IntervalEvaluationMetrics
 
     if not isinstance(metrics, IntervalEvaluationMetrics):
         raise TypeError("metrics must be IntervalEvaluationMetrics")
@@ -4743,7 +4743,7 @@ def record_quantile_interval_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record quantile pinball losses and crossing rate, not point intervals."""
-    from tcspc_toolkit.uncertainty_evaluation import QuantileIntervalEvaluationMetrics
+    from tcspc_toolkit.uncertainty.evaluation import QuantileIntervalEvaluationMetrics
 
     if not isinstance(metrics, QuantileIntervalEvaluationMetrics):
         raise TypeError("metrics must be QuantileIntervalEvaluationMetrics")
@@ -4769,7 +4769,7 @@ def record_uncertainty_score_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record aggregate score/error ranking; tail subset sizes remain unknown."""
-    from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreMetrics
+    from tcspc_toolkit.uncertainty.evaluation import UncertaintyScoreMetrics
 
     if not isinstance(metrics, UncertaintyScoreMetrics):
         raise TypeError("metrics must be UncertaintyScoreMetrics")
@@ -4795,7 +4795,7 @@ def record_uncertainty_score_metrics(
         ("tail_fraction", "fraction", fraction, valid, valid, "valid_scores"),
     ]
     if scores is not None:
-        from tcspc_toolkit.uncertainty_evaluation import UncertaintyScoreResult
+        from tcspc_toolkit.uncertainty.evaluation import UncertaintyScoreResult
         if not isinstance(scores, UncertaintyScoreResult):
             raise TypeError("scores must be UncertaintyScoreResult")
         if scores.method_id != scope.method_id or len(scores.prediction) != attempted or (
@@ -4815,7 +4815,7 @@ def record_selective_prediction_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the existing selective-rejection evaluation at a stated population."""
-    from tcspc_toolkit.uncertainty_evaluation import SelectivePredictionMetrics
+    from tcspc_toolkit.uncertainty.evaluation import SelectivePredictionMetrics
 
     if not isinstance(metrics, SelectivePredictionMetrics):
         raise TypeError("metrics must be SelectivePredictionMetrics")
@@ -4852,7 +4852,7 @@ def record_repeated_poisson_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record empirical sampling variability and method comparisons as facts."""
-    from tcspc_toolkit.classical_uncertainty import (
+    from tcspc_toolkit.uncertainty.classical import (
         REPEATED_POISSON_REFERENCE_METHOD_ID, RepeatedPoissonUncertaintyResult,
     )
 
@@ -4942,7 +4942,7 @@ def record_regression_metrics(
     on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record an existing ML regression summary over an explicit test population."""
-    from tcspc_toolkit.ml_evaluation import RegressionMetrics
+    from tcspc_toolkit.ml.evaluation import RegressionMetrics
 
     if not isinstance(metrics, RegressionMetrics):
         raise TypeError("metrics must be RegressionMetrics")
@@ -4965,7 +4965,7 @@ def record_robustness_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record the existing generalization-summary fields for one selected test."""
-    from tcspc_toolkit.generalization_evaluation import RobustnessMetrics
+    from tcspc_toolkit.benchmarks.generalization import RobustnessMetrics
 
     if not isinstance(metrics, RobustnessMetrics):
         raise TypeError("metrics must be RobustnessMetrics")
@@ -4988,7 +4988,7 @@ def record_reconvolution_benchmark_metrics(
     scope: BenchmarkMetricScope, on_duplicate: DuplicatePolicy = "raise",
 ) -> tuple[int, ...]:
     """Record classical fit success, error, and runtime summary fields."""
-    from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkSummary
+    from tcspc_toolkit.estimation.classical import ReconvolutionBenchmarkSummary
 
     if not isinstance(summary, ReconvolutionBenchmarkSummary):
         raise TypeError("summary must be ReconvolutionBenchmarkSummary")

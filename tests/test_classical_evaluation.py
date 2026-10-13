@@ -8,9 +8,9 @@ import pytest
 from numpy.typing import NDArray
 from scipy.optimize import OptimizeResult
 
-import tcspc_toolkit.fitting as fitting
+import tcspc_toolkit.estimation.fitting as fitting
 
-from tcspc_toolkit.classical_evaluation import (
+from tcspc_toolkit.estimation.classical import (
     estimate_reconvolution_initial_guess,
     evaluate_reconvolution_benchmark,
     fit_single_reconvolution_curve,
@@ -21,7 +21,7 @@ from tcspc_toolkit.bayesian_evaluation import (
     derive_issue4_seed,
     sample_issue4_observation,
 )
-from tcspc_toolkit.fitting import poisson_negative_log_likelihood
+from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
 from tcspc_toolkit.forward_model import monoexponential_reconvolution_expected_counts
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,

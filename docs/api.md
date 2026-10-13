@@ -4,18 +4,48 @@ This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
 configuration. Issue #11 has since added a module-qualified factual evaluation
-layer beneath the existing scientific reports; physical package movement (#3)
-remains separate work.
+layer beneath the existing scientific reports. Issue #3 has completed structural
+relocation with estimator contracts/baselines, low-level physical primitives,
+histogram preprocessing/features/representations, IRF profiles/preparation/
+estimation, measurement records/I/O/adapters, generic histogram/dataset
+simulation, core classical fitting/execution, Bayesian inference, ML
+models/evaluation/cross-validation, historical evaluation diagnostics,
+factual point/reference/attachment contracts, conditional analysis, plotting,
+frozen Week-8 generalization protocol/data generation and execution/reporting,
+uncertainty source/metric/split/provenance contracts and ML/classical methods,
+the separate Week-7 mismatch/timing studies, Issue-8 IRF/Issue-4 Bayesian studies,
+frozen Week-9 uncertainty orchestration/reporting, and SQLite persistence.
 
 | Status | Surface |
 | --- | --- |
-| Generic extension API | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, and `predict_regressors` are root exports; their `estimator_api` imports resolve to the same objects. |
+| Generic extension API | `RegressorProtocol`, `EstimatorSpec`, `fit_regressors`, and `predict_regressors` are root exports; canonical `estimation.api` and compatibility `estimator_api` imports resolve to the same objects. |
 | Stage-2 integration | Generalization ML fitting and shared final-test prediction consume that API; only the A-F suite entry point gains explicit custom test mappings. |
 | Stage-3 naming | Scientific module-qualified names below are canonical; historical Day/Week names remain direct compatibility aliases. |
 | Existing APIs | Current root exports and documented module-qualified workflows, preserved rather than globally restabilized in this pass. |
-| Frozen configuration | `ml_models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
+| Frozen configuration | `ml.models.make_canonical_ml_estimator_specs()` describes the established estimator/representation matrix, not a restriction on generic execution. |
 | Evaluation architecture | Issue #11 adds module-qualified point/reference facts and interval/score attachments beneath legacy-compatible scientific reports; see [the evaluation contract](evaluation.md). These are not new root exports. |
-| Deferred package movement | Issue #3 will move files into subpackages; no physical relocation has occurred. |
+| Package movement | Issue #3 places estimator contracts/baselines in `estimation` (Stage 1), physical primitives in `physics` (Stage 2A), histogram operations/features/representations in `preprocessing` (Stage 2B), IRF profiles/preparation/estimation in `irf` (Stage 3A), records/I/O/experimental adapters in `measurement` (Stage 3B), generic histogram/dataset generation in `simulation` (Stage 3C), core classical fitting/execution in `estimation` (Stage 4A), Bayesian inference in `estimation.bayesian` (Stage 4B), ML models/evaluation/cross-validation in `ml` (Stage 4C), historical diagnostics in `evaluation.diagnostics` (Stage 5A), factual contracts/builders/attachments in explicit `evaluation` submodules (Stage 5B), conditional analysis/plotting in `evaluation.conditional` and `evaluation.plots` (Stage 5C), and frozen Week-8 protocol/data generation in explicit `benchmarks` submodules (Stage 6A), and the intact generalization execution/reporting module in `benchmarks.generalization` (Stage 6B), and uncertainty source/metric/split/provenance contracts in `uncertainty.evaluation` (Stage 7A), and intact ML/classical uncertainty in `uncertainty.ml` and `uncertainty.classical` (Stage 7B), and Week-7 mismatch/timing studies in `benchmarks.mismatch` and `benchmarks.timing` (Stage 8A), and Issue-8 IRF/Issue-4 calibration and mismatch studies in `benchmarks.irf`, `benchmarks.bayesian_calibration`, and `benchmarks.bayesian_mismatch` (Stage 8B), and intact frozen Week-9 orchestration/reporting in `benchmarks.uncertainty` (Stage 8C), and the intact SQLite implementation in `persistence.sqlite` with the historical/public `persistence` package facade (Stage 9). |
+
+The [final architecture inventory](package_structure.md) records every production
+module, compatibility facade, and dependency edge. All established historical
+imports remain supported through at least Issue #12; this is not a deprecation.
+Issue #12 acceptance is separate and has not begun.
+
+## Persistence implementation and public package facade (Issue #3, Stage 9)
+
+Canonical implementation: `tcspc_toolkit.persistence.sqlite`.
+Historical/public compatibility: `tcspc_toolkit.persistence`.
+
+The new package initializer directly re-exports all 62 supported names, including
+`DuplicatePolicy` and the two Week-9 compatibility aliases. Old/new objects have
+direct identity; the exact inventory is in the
+[persistence contract](persistence.md#package-layout-and-compatibility-issue-3-stage-9).
+Unlike the explicit-only benchmark/uncertainty namespaces, this initializer is
+intentionally a public facade. It contains no SQL or database-opening logic.
+Scientific adapter imports and pandas remain deferred in the single SQLite
+implementation. Schema v1, its fingerprint, all seven historical stored type
+strings, and the exact 66-name root API remain unchanged. No persistence names
+are added to the root, and existing public-import examples remain supported.
 
 ## Curated root API and supported module-qualified workflows
 
@@ -45,27 +75,78 @@ or require the optional `emcee` sampler. Bayesian sampling remains an explicit
 module-qualified operation requiring the `bayesian` extra; deterministic
 Bayesian APIs also remain module-qualified.
 
-Important module-qualified workflows remain in their existing flat modules:
+Important supported module-qualified workflows include:
 
-- `ml_models`, `ml_evaluation`, `cross_validation`, and `representations`:
+- `physics.models`, `physics.convolution`, and `physics.forward_model`:
+  decay models, numerical convolution, and the shared deterministic
+  reconvolution expected-count model. Flat `models`, `convolution`, and
+  `forward_model` imports remain direct-object compatibility paths.
+- `estimation.api` and `estimation.baselines`: canonical generic estimator
+  execution and baseline implementations. `estimator_api` and `baselines` remain
+  direct-object compatibility paths through at least Issue #12.
+- `estimation.fitting` and `estimation.classical`: classical fitting,
+  initialization, per-curve execution, batch benchmarks, and fit diagnostics.
+  Flat `fitting` and `classical_evaluation` remain direct-object compatibility
+  paths through at least Issue #12; these are not generic factual evaluation.
+- `simulation.histograms` and `simulation.datasets`: deterministic expected
+  counts, Poisson sampling, and ordinary/grouped synthetic datasets. Historical
+  `simulation` and `datasets` imports remain direct-object compatibility paths;
+  the `simulation` facade does not aggregate dataset or frozen benchmark APIs.
+- `irf.profiles`, `irf.preparation`, and `irf.estimation`: source profiles,
+  explicit prepared kernels, and failure-aware leading-edge proxies. Historical
+  `irf`, `irf_preparation`, and `irf_estimation` imports remain supported;
+  the `irf` package facade exposes only the former profile-level API.
+- `measurement.records`, `measurement.io`, and `measurement.adapters`:
+  observation/provenance carriers, explicit-unit CSV import, and higher-level
+  experimental fitting/features/reference comparison. Flat `measurements`,
+  `measurement_io`, and `experimental` remain direct-object compatibility paths.
+- `preprocessing.histograms`, `preprocessing.features`, and
+  `preprocessing.representations`: histogram/time-grid operations, engineered
+  features, normalization, PCA, and count augmentation. The historical
+  `preprocessing`, `features`, and `representations` paths remain supported.
+- `ml.models`, `ml.evaluation`, `ml.cross_validation`, and `preprocessing.representations`:
   estimator factories (including `make_canonical_ml_estimator_specs()`),
   point-estimate evaluation, repeated CV and its configuration/result types,
-  and transforms.
-- `generalization`, `generalization_datasets`, `generalization_evaluation`,
-  `classical_evaluation`, `conditional_evaluation`, `irf_evaluation`,
-  `mismatch_evaluation`, and `timing_evaluation`: scientific protocols and
+  and transforms. Flat `ml_models`, `ml_evaluation`, and `cross_validation`
+  remain direct-object compatibility paths through at least Issue #12.
+- `benchmarks.generalization_protocol` and `benchmarks.generalization_datasets`:
+  frozen Week-8 A–F definitions and paired observation generation. Flat
+  `generalization` and `generalization_datasets` remain direct-object
+  compatibility paths through at least Issue #12.
+- `benchmarks.generalization` (historical `generalization_evaluation`),
+  `benchmarks.irf`, `benchmarks.bayesian_calibration`, `benchmarks.bayesian_mismatch`,
+  `benchmarks.mismatch`, and `benchmarks.timing`: scientific protocols and
   specialized evaluation/reporting paths and report/result classes, not a
   unified generic interface. Prepared-data carriers remain workflow-specific,
   not package-root abstractions.
-- `classical_uncertainty`, `ml_uncertainty`, `uncertainty_evaluation`, and
-  `uncertainty_robustness`: distinct model-conditional intervals, calibration,
-  sensitivity, and disagreement-score workflows.
-- `bayesian`, `bayesian_sampling`, `bayesian_predictive`, `bayesian_evaluation`,
-  and `bayesian_mismatch_evaluation`: explicit priors, inference, diagnostics,
-  and study-specific comparisons. Their configuration/result types are not
-  newly promoted to the root.
+- `uncertainty.evaluation`: source interval/score carriers, uncertainty metrics,
+  and development/calibration split and provenance policy. The historical
+  `uncertainty_evaluation` path remains a direct-object compatibility facade.
+  Its existing A–F provenance guard depends on frozen benchmark protocol configuration.
+- `uncertainty.classical` and `uncertainty.ml`: distinct model-conditional
+  intervals, calibration, sensitivity, and disagreement-score workflows.
+  Historical `classical_uncertainty` and `ml_uncertainty` imports remain
+  direct-object compatibility facades.
+- `benchmarks.uncertainty`: the frozen Week-9 study/report layer, including its
+  existing conformal workflow. Historical `uncertainty_robustness` imports remain
+  a direct-object compatibility facade.
+- `estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
+  `estimation.bayesian.predictive`: explicit priors, posterior/context,
+  sampling, and predictive diagnostics. Flat `bayesian`, `bayesian_sampling`,
+  and `bayesian_predictive` remain direct-object compatibility paths through
+  at least Issue #12. No Bayesian objects are root exports. Study orchestration
+  remains in `bayesian_evaluation` and `bayesian_mismatch_evaluation`.
 - `persistence`: optional SQLite schema-v1 storage, scientific recording
   adapters, and read-only queries; see [persistence.md](persistence.md).
+- `evaluation.results`, `evaluation.core`, and `evaluation.attachments`:
+  factual point/reference contracts, explicit-population primitives, and separate
+  interval/score attachments. Flat `evaluation_results`, `evaluation_core`,
+  and `evaluation_uncertainty` remain direct-object compatibility paths through
+  at least Issue #12. These objects are not root or diagnostics-facade exports.
+- `evaluation.conditional` and `evaluation.plots`: reusable TCSPC conditional
+  analysis and diagnostic-table plotting. Flat `conditional_evaluation` and
+  `benchmark_plots` remain direct-object compatibility paths through at least
+  Issue #12. Neither module is aggregated by the diagnostics facade.
 
 This inventory does not promote every implementation helper to public API.
 Private validation, prediction-table construction, SQL internals, and
@@ -84,8 +165,8 @@ study-specific orchestration are not generic extension hooks.
 - Root exports are deliberate stability commitments, not an inventory of all
   implemented capabilities. Bayesian, CV, benchmark, evaluation, and persistence
   types remain supported through their documented module-qualified paths.
-- Issue #3 should preserve approved stable imports when implementations move;
-  compatibility shims must be deliberate, not created speculatively now.
+- Issue #3 preserves approved stable imports through deliberate direct-export
+  facades; removing them requires a separate compatibility decision.
 - Python naming changes must not reinterpret SQLite schema-v1 method/model
   identities, serialized provenance, or stored source-result-type strings.
 - Keep the Issue-#1 typing rule: suitable normalized inputs use `ArrayLike`;
@@ -93,6 +174,488 @@ study-specific orchestration are not generic extension hooks.
   retain their intentional contracts. There is no new package-wide typing sweep.
 
 ## Boundaries and deferred work
+
+### Issue-#3 structural migration contract
+
+Package relocation preserves the exact 66-name root `__all__`, including its
+current order. It changes implementation locations, not scientific behavior,
+Issue-#11 evaluation semantics, frozen protocols/seeds, or schema-v1 identities.
+Stage 0 established the structural guards; Stage 1 moved the generic estimator
+API and baselines; Stage 2A moved models, convolution, and the forward model;
+Stage 2B converted histogram preprocessing into a package and relocated features
+and representations beneath it; Stage 3A similarly moved IRF profiles,
+preparation, and estimation. Stage 3B moved measurement records, I/O, and
+experimental adapters and extracted their shared fixed-IRF selection helper.
+Stage 3C converted histogram simulation into a package and relocated ordinary
+synthetic dataset generation beneath it.
+Stage 4A moved core classical fitting/execution into `estimation.fitting` and
+`estimation.classical`. Stage 4B moved Bayesian inference into
+`estimation.bayesian.posterior`, `estimation.bayesian.sampling`, and
+`estimation.bayesian.predictive`, without moving Bayesian studies, ML, or
+uncertainty modules. Both estimation initializers remain minimal. The posterior
+sampling entry point still imports sampling only when called; importing the
+posterior, sampling, or predictive module does not require `emcee`. Executing
+MCMC retains the existing optional-extra requirement.
+
+Stage 4C moved ML factories, benchmark evaluation, and repeated CV into
+`ml.models`, `ml.evaluation`, and `ml.cross_validation`. The `ml` initializer
+does not aggregate these modules. Concrete sklearn factories remain separate
+from generic `estimation.api`; factual dependencies now use
+`evaluation.core` and `evaluation.results` after Stage 5B.
+Frozen generalization and uncertainty orchestration remain in their existing
+modules.
+
+Stage 5A converted the historical `evaluation.py` module into a package.
+Its canonical implementation is `tcspc_toolkit.evaluation.diagnostics`;
+`tcspc_toolkit.evaluation` directly re-exports only the seven historical functions:
+`generate_fitted_signal`, `calculate_residuals`, `calculate_reduced_residuals`,
+`calculate_absolute_lifetime_error`, `calculate_relative_lifetime_error`,
+`calculate_poisson_deviance_residuals`, and `calculate_lifetime_errors`.
+The compatibility path remains supported through at least Issue #12.
+The initializer does not aggregate factual results, attachments, conditional
+analysis, plots, uncertainty, or benchmark reports. The existing diagnostics
+dependency on `estimation.fitting.LifetimeFitResult` remains; parent-package
+initialization costs must not be mistaken for imports owned by factual modules.
+No root exports were added.
+
+Stage 5B moved the Issue-#11 factual implementations into explicit submodules:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.evaluation.results` | `tcspc_toolkit.evaluation_results` |
+| `tcspc_toolkit.evaluation.core` | `tcspc_toolkit.evaluation_core` |
+| `tcspc_toolkit.evaluation.attachments` | `tcspc_toolkit.evaluation_uncertainty` |
+
+The results source has no package-internal dependency; core and attachments
+depend only on results. They do not import diagnostics, estimators, uncertainty
+algorithms, benchmarks, or persistence. Importing them still executes the
+historical diagnostics package facade first; that inherited initialization cost
+does not change their source-level dependency boundary. Field/reference/validity
+semantics, caller-selected metric populations, and attachment identities are
+unchanged. The `evaluation` initializer still exports only the seven diagnostics.
+
+Stage 5C moved reusable conditional analysis and plotting without changing their
+populations, reference selection, regime boundaries, table schemas, or visuals:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.evaluation.conditional` | `tcspc_toolkit.conditional_evaluation` |
+| `tcspc_toolkit.evaluation.plots` | `tcspc_toolkit.benchmark_plots` |
+
+Conditional analysis retains both legacy-result adapters and explicit factual
+paths; it does not select frozen A–F conditions. Plotting remains a separate
+explicit import: importing `tcspc_toolkit.evaluation` does not load conditional
+analysis or Matplotlib. Benchmark, uncertainty, and persistence modules have
+not moved in these stages.
+
+Stage 6A creates the docstring-only `benchmarks` namespace and moves
+the frozen Week-8 protocol/configuration and dataset-generation implementations.
+Stage 6B relocates generalization preparation, execution, and reporting intact:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.generalization_protocol` | `tcspc_toolkit.generalization` |
+| `tcspc_toolkit.benchmarks.generalization_datasets` | `tcspc_toolkit.generalization_datasets` |
+| `tcspc_toolkit.benchmarks.generalization` | `tcspc_toolkit.generalization_evaluation` |
+
+The initializer imports no children. Protocol definitions, A–F ordering, seeds,
+paired designs, RNG behavior, and development/external roles are unchanged.
+The single `benchmarks.generalization` implementation retains all preparation,
+execution, private helpers, result/report carriers, table compatibility policies,
+and seven Day/Week aliases. Its historical facade directly re-exports the 61
+supported names; implementation-owned monkeypatches target the canonical module.
+PCA and estimators still fit only on development data and reuse fitted artifacts
+on external A–F tests. None of these names is added to the 66-name root API.
+Other benchmark studies, uncertainty implementations, and persistence remain
+in their existing locations. The uncertainty provenance guard still depends
+explicitly on the frozen protocol; ML uncertainty's protocol/data/prepared-data
+annotations remain typing-only imports. Uncertainty robustness imports the
+canonical prepared-data carrier eagerly; persistence imports `RobustnessMetrics`
+locally, preserving schema v1 and stored identities. All three flat paths remain supported
+through at least Issue #12.
+
+Stages 7A–7B retain the docstring-only `uncertainty` namespace and place
+three intact implementations in explicit submodules:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.uncertainty.evaluation` | `tcspc_toolkit.uncertainty_evaluation` |
+| `tcspc_toolkit.uncertainty.ml` | `tcspc_toolkit.ml_uncertainty` |
+| `tcspc_toolkit.uncertainty.classical` | `tcspc_toolkit.classical_uncertainty` |
+
+The 19 uncertainty-evaluation names retain their identity through the facade. Source carriers
+such as `PredictionIntervalResult` and `UncertaintyScoreResult`, uncertainty
+metrics, split/provenance policy, and `WEEK9_HYPOTHESES` stay together unchanged.
+They remain separate from the generic point-linked `IntervalAttachment` and
+`ScoreAttachment` contracts in `evaluation.attachments`.
+
+The implementation retains its explicit `FINAL_ROBUSTNESS_TEST_IDS` dependency
+on `benchmarks.generalization_protocol` for the A–F provenance restriction;
+it does not import benchmark execution or datasets. The initializer imports
+no children and adds no scientific imports beyond the existing root initialization
+(which already loads scikit-learn). None of these names is root-exported.
+Stage 7B preserves all 34 ML names (including three Week-9 aliases) and 18 classical
+names by direct identity. Quantile, RF-spread, training-bootstrap, local covariance,
+parametric-bootstrap, and repeated-Poisson implementations are not repartitioned.
+Repeated-Poisson variability remains an empirical reference, not a per-point attachment.
+ML's three benchmark references remain under `TYPE_CHECKING`; private projection
+and reconstruction helpers stay private in the canonical implementation modules.
+Patches of implementation-owned bindings must target those modules, not the facades.
+
+At the Stage-7B checkpoint, `uncertainty_robustness.py` remained the frozen Week-9
+study/report layer, with conformal intact. All eight changed persistence imports
+remained function-local. Stage 8C below relocates that study without extraction.
+
+Stage 8A moves the intact Week-7 mismatch and timing studies:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.mismatch` | `tcspc_toolkit.mismatch_evaluation` |
+| `tcspc_toolkit.benchmarks.timing` | `tcspc_toolkit.timing_evaluation` |
+
+Mismatch retains its six public names and its paired mono-/bi-exponential design.
+It is not frozen Week-8 Test F and imports no generalization protocol or execution
+module. Paired ML factual references remain `generating_mono` and
+`primary_component`; no pseudo-true reference is introduced.
+
+Timing retains eight public names, including the `FloatArray` typing alias.
+`repeated_batch` prediction timing excludes fitting and warmup measurements;
+`per_curve_optimization` reuses existing reconvolution runtimes. Their units,
+aggregation, ordering, and table schemas are unchanged.
+
+Both historical paths directly re-export identical objects, with no new root
+exports. The benchmark initializer remains docstring-only. Neither study has
+production consumers or persistence-local imports. At the Stage-8A checkpoint,
+IRF/Bayesian studies, uncertainty robustness, and persistence remained in place.
+
+Stage 8B moves three intact scientific-study modules:
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.irf` | `tcspc_toolkit.irf_evaluation` |
+| `tcspc_toolkit.benchmarks.bayesian_calibration` | `tcspc_toolkit.bayesian_evaluation` |
+| `tcspc_toolkit.benchmarks.bayesian_mismatch` | `tcspc_toolkit.bayesian_mismatch_evaluation` |
+
+`estimation.bayesian.*` remains the Bayesian estimator implementation;
+`benchmarks.bayesian_*` owns the matched-model calibration/comparison and separate
+model-mismatch studies. Priors, named streams, inference, PPC, and report schemas
+are unchanged. Credible intervals remain conditional on the model, prior, and
+fixed assumed IRF. The deterministic, prior-free `pseudo_true_mono` likelihood
+projection remains separate from `generating_mono` and `primary_component`.
+
+The IRF study retains source-profile, prepared-kernel, assumed-kernel, and
+leading-edge-proxy distinctions. It has no direct frozen A–F dependency; existing
+uncertainty dependencies can transitively load protocol configuration. Bayesian
+mismatch eagerly imports the private `_match_gaussian_to_emg_profile` from
+`benchmarks.irf` and `_unavailable_bootstrap`/`_unavailable_covariance` plus four
+compact result carriers from `benchmarks.bayesian_calibration`. These helpers
+remain private and are neither copied nor extracted.
+
+Persistence's three calibration and four mismatch imports remain function-local.
+Its schema-v1 source identity is still exactly
+`tcspc_toolkit.bayesian_evaluation.Issue4Bayesian`, independent of the relocated
+class's natural `__module__`. The four Issue-4 runner/audit scripts use canonical
+study imports. The benchmark initializer is docstring-only, no root exports are
+added, and importing any study does not require `emcee`. At the Stage-8B checkpoint,
+persistence and uncertainty robustness remained flat; conformal had not been extracted.
+
+The exact supported surfaces are below. `FloatArray`, `IntArray`, `Mechanism`,
+`GeneratingModel`, and `ReferenceName` are existing typing aliases; there are no
+additional historical callable aliases. Incidental imports and private helpers
+are not added to the facades.
+
+`benchmarks.irf` (18 names):
+
+```text
+FloatArray
+IntArray
+IRFShapeMismatchConfig
+IRFShapeMismatchDataset
+generate_irf_shape_mismatch_dataset
+IRFClassicalPair
+IRFClassicalEvaluation
+evaluate_irf_shape_classical
+summarize_irf_shape_classical
+IRFConditionalUncertaintyEvaluation
+evaluate_irf_shape_conditional_uncertainty
+IRFMLTransferEvaluation
+evaluate_gaussian_trained_irf_transfer
+LeadingEdgeFailureConfig
+LeadingEdgeRegimeResult
+LeadingEdgeFailureEvaluation
+evaluate_leading_edge_failure_regimes
+summarize_leading_edge_regimes
+```
+
+`benchmarks.bayesian_calibration` (21 names):
+
+```text
+BayesianClassicalCondition
+BayesianClassicalEvaluationConfig
+Issue4RealizationSeeds
+derive_issue4_seed
+issue4_realization_seeds
+build_issue4_expected_counts
+sample_issue4_observation
+Issue4ClassicalFit
+Issue4Covariance
+Issue4Bootstrap
+Issue4Bayesian
+BayesianClassicalRealizationResult
+evaluate_issue4_realization
+Issue4IntervalCoverage
+Issue4EstimatorSpread
+Issue4RuntimeSummary
+Issue4UncertaintyScaleComparison
+BayesianClassicalConditionSummary
+BayesianCalibrationReport
+summarize_issue4_condition
+evaluate_issue4_condition
+```
+
+`benchmarks.bayesian_mismatch` (23 names):
+
+```text
+Mechanism
+GeneratingModel
+ReferenceName
+MismatchAssumption
+MismatchCondition
+MismatchEvaluationConfig
+MismatchWorkflow
+build_mismatch_workflow
+MismatchSeeds
+mismatch_seeds
+GeneratingCounts
+build_mismatch_expected_counts
+PseudoTrueReference
+construct_pseudo_true_reference
+MismatchReferenceComparison
+MismatchPredictiveSummary
+MismatchInferenceRecord
+MismatchGroupSummary
+MismatchReport
+sample_mismatch_observation
+evaluate_mismatch_inference
+summarize_mismatch_records
+evaluate_mismatch_workflow
+```
+
+- Established flat module imports remain compatibility paths through at least
+  Issue #12. Removal requires a separate explicit compatibility decision.
+  Canonical implementations now live in subpackages; old paths re-export
+  identical objects, not wrappers or parallel implementations. Issue-#2
+  scientific names and direct Day/Week aliases retain the same policy.
+- New subpackage initializers stay minimal: do not eagerly import an entire
+  subtree. For existing names that become packages (`irf`, `simulation`,
+  `preprocessing`, `evaluation`, `persistence`), the new `__init__.py` must also
+  provide the reviewed old-path facade. Do not leave competing `name.py` and
+  `name/` implementations whose import precedence obscures ownership.
+- Existing serialized class references must resolve through old paths.
+  Canonical classes may acquire their new implementation `__module__`; do not
+  fake historical metadata. Persisted `source_result_type` strings are instead
+  historical schema-v1 provenance identities, not dynamically resolved import
+  paths, and must not be mechanically rewritten during moves.
+- Import compatibility does not promise arbitrary module-global monkeypatch
+  compatibility. Tests that replace an implementation dependency should patch
+  its canonical implementation module after relocation, not a re-export shim.
+- Generic estimator execution remains independent of sklearn/canonical model
+  factories. Generic factual evaluation remains independent of estimators,
+  frozen orchestration, Bayesian sampling, and persistence. Physical primitives
+  stay below reporting; scientific computation must not depend on persistence.
+  Root imports must neither require `emcee` nor initialize persistence/SQLite.
+
+The structural guards in `test_package_structure.py`, the exact root contract
+in `test_public_api.py`, legacy report-pickle/alias tests, and persistence
+source-identity tests form the structural closure gate. The import graph
+distinguishes eager, function-local, and `TYPE_CHECKING` dependencies; fresh
+processes also check real import order and side effects. The intentionally
+deferred Bayesian sampling relationship is not an eager cycle.
+
+The implemented slices have these paths:
+
+| Canonical implementation | Compatibility import |
+| --- | --- |
+| `tcspc_toolkit.evaluation.diagnostics` | `tcspc_toolkit.evaluation` (seven-function diagnostics facade) |
+| `tcspc_toolkit.estimation.api` | `tcspc_toolkit.estimator_api` |
+| `tcspc_toolkit.estimation.baselines` | `tcspc_toolkit.baselines` |
+| `tcspc_toolkit.estimation.fitting` | `tcspc_toolkit.fitting` |
+| `tcspc_toolkit.estimation.classical` | `tcspc_toolkit.classical_evaluation` |
+| `tcspc_toolkit.physics.models` | `tcspc_toolkit.models` |
+| `tcspc_toolkit.physics.convolution` | `tcspc_toolkit.convolution` |
+| `tcspc_toolkit.physics.forward_model` | `tcspc_toolkit.forward_model` |
+| `tcspc_toolkit.preprocessing.histograms` | `tcspc_toolkit.preprocessing` |
+| `tcspc_toolkit.preprocessing.features` | `tcspc_toolkit.features` |
+| `tcspc_toolkit.preprocessing.representations` | `tcspc_toolkit.representations` |
+| `tcspc_toolkit.irf.profiles` | `tcspc_toolkit.irf` |
+| `tcspc_toolkit.irf.preparation` | `tcspc_toolkit.irf_preparation` |
+| `tcspc_toolkit.irf.estimation` | `tcspc_toolkit.irf_estimation` |
+| `tcspc_toolkit.measurement.records` | `tcspc_toolkit.measurements` |
+| `tcspc_toolkit.measurement.io` | `tcspc_toolkit.measurement_io` |
+| `tcspc_toolkit.measurement.adapters` | `tcspc_toolkit.experimental` |
+| `tcspc_toolkit.simulation.histograms` | `tcspc_toolkit.simulation` |
+| `tcspc_toolkit.simulation.datasets` | `tcspc_toolkit.datasets` |
+
+The `estimation` initializer imports nothing. The generic API has no sklearn or
+package-internal dependency. Baselines retain the existing sklearn
+`DummyRegressor` implementation; this move does not replace its arithmetic.
+A normal dotted import still initializes the existing package root, which
+already imports fitting and sklearn-backed representations. These inherited
+root dependencies are not new dependencies of the `estimation` initializer.
+Direct old/new/root identity, natural canonical `__module__`, historical path
+resolution, and unchanged baseline/estimator behavior are tested. Future
+moves must extend these cases and update responsibility path sets deliberately.
+
+The fitting and classical execution implementations do not broaden
+`estimation/__init__.py`; request their modules explicitly. Fitting uses the
+shared `physics.forward_model`. Classical execution retains its existing
+`evaluation.py` dependency for Poisson-deviance diagnostics; that legacy
+diagnostic module remains flat until its own migration. The generic factual
+evaluation contracts do not depend on these estimators. Optimizers, objectives,
+initialization, validity/failure policy, diagnostics, and timing are unchanged.
+Schema-v1 source identities remain
+`tcspc_toolkit.fitting.ReconvolutionFitResult` and
+`tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult`, despite executable
+imports and natural `__module__` values moving to their canonical locations.
+Historical class paths still resolve through the direct-reexport facades.
+
+The `physics` initializer also imports nothing. Its implementations retain only
+their existing NumPy/SciPy and low-level physical dependencies. The forward
+model uses canonical `physics.models`/`physics.convolution` and
+`irf.profiles.shift_irf`; classical and Bayesian inference remain consumers, not
+dependencies. Root convenience exports remain exactly the reviewed 66 names;
+the forward-model function is still module-qualified.
+
+Unlike the import-free initializers above, `preprocessing/__init__.py` preserves
+the former histogram module's supported API through direct re-exports from
+`preprocessing.histograms`: `validate_time_axis`, `time_axes_compatible`,
+`validate_histogram`, `estimate_background`, `subtract_background`, `detect_peak`,
+`align_to_irf`, `crop_time_window`, `rebin_histogram`, and `normalize_counts`.
+It also retains the historically imported `CountNormalization` alias, whose
+definition remains in `config`. Private validators/tolerances, the logger, and
+incidental numerical/type imports are not facade APIs.
+
+The old `preprocessing.py` no longer competes with this package. Its initializer
+does not import features or representations; callers request those submodules
+explicitly. Normal root initialization already imports them for the established
+root API, so initializer-isolation tests trace the actual importing module.
+Canonical consumers use the implementation submodules, not the compatibility
+facades. Histogram, feature, normalization, PCA, and augmentation algorithms are
+unchanged. Measurement/IRF validation consumers still use the same histogram
+helpers; their validation responsibility has not changed.
+
+The `irf` module-to-package conversion follows the same narrow-facade policy.
+`irf/__init__.py` directly re-exports only `IRFSourceKind`, `IRFProfile`,
+`generate_gaussian_irf`, `generate_emg_irf`, `generate_gaussian_irf_profile`,
+`generate_emg_irf_profile`, `normalize_irf`, and `shift_irf` from `irf.profiles`.
+It does not import or expose preparation/estimation APIs; request those canonical
+submodules (or their flat compatibility facades) explicitly. The old `irf.py`
+no longer competes with the package. Root initialization already exposes the
+reviewed preparation/estimation objects, independently of this narrow facade.
+
+Measurement records depend only on IRF profiles; preparation consumes canonical
+`measurement.records` and profiles. Keeping preparation out of the initializer
+preserves that direction without a cycle. Source profiles, derived prepared
+kernels, assumed inference kernels, and approximate leading-edge proxies remain
+distinct, as do source provenance, preparation history, and inference assumptions.
+Profile, preparation, and proxy algorithms are unchanged apart from imports.
+
+The `measurement` initializer is docstring-only, not an aggregate API.
+`measurement.records` retains observations and provenance without intrinsic
+truth; raw counts and processed intensity remain distinct, with the same
+Poisson-method guard. I/O still requires explicit units. Trusted references
+remain separately and explicitly supplied to the higher-level adapters.
+
+Stage 3B extracted the unchanged private `_resolve_reconvolution_irf` into
+`irf.selection`. Both `measurement.adapters` and Bayesian model construction
+use this internal fixed-assumption selector; Bayesian construction no longer
+depends on the experimental adapter. It selects an explicit `PreparedIRF`
+over an attached `SampledIRF`, validates the prepared grid/kernel, or normalizes
+the attached trace. It does not prepare/resample implicitly, fit, or infer source
+meaning. Its dependencies are IRF/measurement foundations, not adapters or
+estimators. Selection is neither a new public/root API nor an export of
+`irf/__init__.py`. The resolver body, including historical errors, is unchanged.
+
+The `simulation` facade directly re-exports the former histogram module's seven
+functions: `sample_photon_counts`, `build_expected_counts_from_irf`,
+`simulate_irf_convolved_histogram`, `simulate_irf_convolved_biexponential_histogram`,
+`simulate_monoexponential_decay`, `simulate_biexponential_decay`, and
+`simulate_multiexponential_decay`. The old `simulation.py` no longer competes
+with the package. The initializer imports only `simulation.histograms`, not
+`simulation.datasets`; the root's existing dataset exports are a separate edge.
+Flat `datasets` directly re-exports `SyntheticDataset`, both dataset generators,
+and the existing array type aliases. Expected-count construction, Poisson
+sampling, seed/Generator handling, and random-draw ordering are unchanged.
+This is generic synthetic generation, not the frozen A–F protocol: the
+`generalization*` modules remain separate and have not moved in this stage.
+
+### Stage-8C frozen uncertainty benchmark
+
+| Canonical implementation | Historical direct-export facade |
+| --- | --- |
+| `tcspc_toolkit.benchmarks.uncertainty` | `tcspc_toolkit.uncertainty_robustness` |
+
+The whole Week-9 orchestration/reporting module remains intact. It consumes reusable
+`uncertainty.evaluation`, `uncertainty.ml`, and `uncertainty.classical`; it does not
+replace their source carriers or generic factual attachments. Frozen A–F traversal,
+calibration/external separation, scorecard populations, residual diagnostics, and
+conformal calibration/external evaluation retain their existing policies. There is
+no separate conformal module. Repeated-Poisson variability remains an empirical
+reference, not a per-point attachment.
+
+All 28 supported names below are direct identical objects through both paths.
+They comprise six result/report classes, nine functions, two constants, and eleven
+legacy aliases (including the historical seed alias); there are no public typing
+aliases. The private `_Condition` TypeVar and helpers remain private. Tests that
+inspect or patch private implementation bindings use the canonical module.
+No production module consumes private robustness helpers.
+
+```text
+DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED
+CONFORMALIZED_QUANTILE_METHOD_ID
+ConformalizedQuantileCalibrationResult
+conformalize_quantile_gradient_boosting
+ConformalizedQuantileExternalResult
+evaluate_frozen_conformalized_quantile
+build_ml_interval_scorecard
+build_ml_uncertainty_scorecard
+MLUncertaintyRobustnessReport
+build_ml_uncertainty_robustness_report
+build_classical_uncertainty_scorecard
+build_classical_conditional_uncertainty_scorecard
+ClassicalUncertaintyRobustnessReport
+evaluate_classical_uncertainty_robustness
+ClassicalResidualMatrixResult
+ResidualMismatchReport
+evaluate_residual_mismatch_diagnostics
+DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED
+build_week9_interval_scorecard
+build_week9_score_only_scorecard
+Week9MLUncertaintyRobustnessReport
+build_week9_ml_uncertainty_robustness_report
+build_week9_classical_uncertainty_scorecard
+build_week9_classical_conditional_scorecard
+Week9ClassicalUncertaintyRobustnessReport
+evaluate_week9_classical_uncertainty_robustness
+Week9ResidualMismatchReport
+evaluate_week9_residual_mismatch_diagnostics
+```
+
+The eleven legacy aliases are the final eleven entries above and retain their
+existing canonical targets from the scientific-name mapping below. Historical
+class/function pickle lookup resolves through the facade without changing
+`__module__`.
+
+Persistence is the only implementation consumer: `record_prediction_intervals`
+and `record_conformal_intervals` import `CONFORMALIZED_QUANTILE_METHOD_ID` locally.
+Only those import paths change. No persisted qualified
+`tcspc_toolkit.uncertainty_robustness` string exists, and no mapping is introduced.
+The benchmark has eager canonical dependencies on the generalization protocol,
+datasets, and prepared-data implementation; it has no deferred or typing-only
+imports, no persistence dependency, and no reverse consumers in reusable layers.
+Both namespace initializers remain docstring-only; no root exports are added.
+
+### Completed evaluation work and later gates
 
 Stage 1 established a generic estimator execution interface and a separate
 canonical specification factory. Stage 2 connects the generalization fitting
@@ -105,7 +668,8 @@ generic execution must not know Ridge/RF/HGB or canonical representation names.
   conditional, mismatch, and Week-9 reporting paths. Specialized Bayesian and
   experimental reports retain their context; no universal report or
   representation framework was introduced. See [evaluation.md](evaluation.md).
-- Issue #3: move files and introduce subpackages. No relocation occurs here.
+- Issue #3: package restructuring is complete through Stage 10; see the
+  [final inventory](package_structure.md). Compatibility paths remain supported.
 - Issue #12: perform full post-refactor integration and scientific-reference
   verification; the small equivalence tests below do not replace it.
 
@@ -136,8 +700,10 @@ from tcspc_toolkit import (
 )
 ```
 
-Imports from `tcspc_toolkit.estimator_api` remain supported and resolve to the
-same canonical objects. Their signatures are:
+The canonical module-qualified path is `tcspc_toolkit.estimation.api`, for
+example `from tcspc_toolkit.estimation.api import EstimatorSpec`. Imports from
+`tcspc_toolkit.estimator_api` remain supported through at least Issue #12 and
+resolve to the same objects. Their signatures are:
 
 ```python
 class RegressorProtocol(Protocol):
@@ -241,7 +807,7 @@ Canonical benchmark configuration is deliberately module-qualified, not a
 root convenience export. User-defined specifications can use the generic
 execution API directly without importing canonical experiment definitions.
 
-`tcspc_toolkit.ml_models.make_canonical_ml_estimator_specs()` returns an ordered
+`tcspc_toolkit.ml.models.make_canonical_ml_estimator_specs()` returns an ordered
 tuple with these definitions, all selecting
 `("engineered_features", "normalized_histogram", "pca_histogram")`:
 
@@ -262,7 +828,7 @@ with those other paths.
 
 ## Generalization point-estimator integration (Stage 2)
 
-The existing `tcspc_toolkit.generalization_evaluation` entry points now accept:
+The existing `tcspc_toolkit.benchmarks.generalization` entry points now accept:
 
 ```python
 def fit_generalization_ml_estimators(
@@ -296,8 +862,8 @@ For example, given an existing `GeneralizationPreparedData` named `prepared`:
 
 ```python
 from sklearn.linear_model import LinearRegression
-from tcspc_toolkit.estimator_api import EstimatorSpec
-from tcspc_toolkit.generalization_evaluation import (
+from tcspc_toolkit.estimation.api import EstimatorSpec
+from tcspc_toolkit.benchmarks.generalization import (
     fit_generalization_ml_estimators, evaluate_generalization_suite_benchmark,
 )
 
@@ -354,11 +920,11 @@ snapshot, new frozen protocol, representation framework, or reporting object.
 
 ## Scientific API names (Stage 3)
 
-Use these canonical names from their existing flat modules; none is newly
+Use these canonical names from the modules listed below; none is newly
 exported at the package root. Each legacy name is the **same object** as its
 canonical counterpart, not a subclass or forwarding wrapper.
 
-### `generalization_evaluation`
+### `benchmarks.generalization`
 
 | Legacy compatibility name | Canonical name |
 | --- | --- |
@@ -378,7 +944,7 @@ canonical counterpart, not a subclass or forwarding wrapper.
 | `evaluate_week9_paired_quantile_response` | `evaluate_paired_quantile_interval_response` |
 | `evaluate_week9_paired_ml_uncertainty_response` | `evaluate_paired_uncertainty_score_response` |
 
-### `uncertainty_robustness`
+### `benchmarks.uncertainty` (compatibility: `uncertainty_robustness`)
 
 | Legacy compatibility name | Canonical name |
 | --- | --- |
@@ -438,5 +1004,5 @@ The Day/Week audit classifies the remaining occurrences as follows:
 | Legacy public imports | All 23 aliases above remain supported at least through Issue #12, without warnings. Removal is a separate future compatibility decision. |
 
 Issue #11 has since implemented the factual evaluation/reporting layer described
-in [evaluation.md](evaluation.md). Issue #3 will address physical package movement;
+in [evaluation.md](evaluation.md). Issue #3 has completed physical package movement;
 neither change was part of the Issue-#2 naming pass documented above.

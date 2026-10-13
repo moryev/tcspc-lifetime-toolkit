@@ -1,14 +1,14 @@
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tcspc_toolkit.convolution import convolve_decay_with_irf
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
+from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
     shift_irf,
 )
-from tcspc_toolkit.irf_preparation import PreparedIRF
-from tcspc_toolkit.models import (
+from tcspc_toolkit.irf.preparation import PreparedIRF
+from tcspc_toolkit.physics.models import (
     biexponential_decay,
     monoexponential_decay,
     multiexponential_decay,

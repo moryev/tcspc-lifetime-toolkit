@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     IRFProfile,
     IRFSourceKind,
     generate_emg_irf,
@@ -11,7 +11,7 @@ from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     generate_gaussian_irf_profile,
 )
-from tcspc_toolkit.irf_preparation import irf_profile_from_sampled_irf
+from tcspc_toolkit.irf.preparation import irf_profile_from_sampled_irf
 from tcspc_toolkit.measurements import SampledIRF
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.models import (
+from tcspc_toolkit.physics.models import (
     biexponential_decay,
     monoexponential_decay,
     multiexponential_decay,

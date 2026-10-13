@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit import conditional_evaluation as conditional
+import tcspc_toolkit.evaluation.conditional as conditional
 from tcspc_toolkit.classical_evaluation import (
     ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary,
 )
 from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor
-from tcspc_toolkit.generalization_evaluation import _project_generalization_predictions
+from tcspc_toolkit.benchmarks.generalization import _project_generalization_predictions
 from tcspc_toolkit.ml_evaluation import (
     BenchmarkSplit, RegressionBenchmarkResult, RegressionMetrics,
 )

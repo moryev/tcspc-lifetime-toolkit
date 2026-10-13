@@ -25,7 +25,7 @@ from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult, UncertaintyOutputKind, evaluate_prediction_intervals,
 )
-from tcspc_toolkit.uncertainty_robustness import (
+from tcspc_toolkit.benchmarks.uncertainty import (
     _evaluate_classical_uncertainty_test, build_classical_uncertainty_scorecard,
 )
 
@@ -207,7 +207,7 @@ def test_repeated_poisson_is_an_empirical_reference_not_an_attachment_method():
 
 
 def test_frozen_classical_curve_projects_sources_without_changing_legacy_scorecard(monkeypatch):
-    import tcspc_toolkit.uncertainty_robustness as robustness
+    import tcspc_toolkit.benchmarks.uncertainty as robustness
 
     curve, covariance, bootstrap = _curve(), _covariance(), _bootstrap()
     test = GeneralizationTestMeasurements(

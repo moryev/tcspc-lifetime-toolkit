@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from tcspc_toolkit.bayesian_mismatch_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_mismatch import (
     MismatchReferenceComparison,
     build_mismatch_workflow,
     construct_pseudo_true_reference,
@@ -236,7 +236,7 @@ def main() -> None:
             "manifest_sha256": manifest_hash,
             "historical_scientific_code_revision": original["code_revision"],
             "correction_git_head": _revision(),
-            "correction_source_sha256": _sha256(ROOT / "src" / "tcspc_toolkit" / "bayesian_mismatch_evaluation.py"),
+            "correction_source_sha256": _sha256(ROOT / "src" / "tcspc_toolkit" / "benchmarks" / "bayesian_mismatch.py"),
             "correction_script_sha256": _sha256(Path(__file__)),
             "package_versions": {name: version(name) for name in
                                  ("tcspc-lifetime-toolkit", "numpy", "scipy")},

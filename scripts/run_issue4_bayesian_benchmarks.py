@@ -15,17 +15,17 @@ from pathlib import Path
 
 import numpy as np
 
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianPriorConfig, BoundedUniformPrior, GammaPrior, LogNormalPrior,
 )
-from tcspc_toolkit.bayesian_evaluation import (
+from tcspc_toolkit.benchmarks.bayesian_calibration import (
     BayesianClassicalCondition,
     BayesianClassicalEvaluationConfig,
     evaluate_issue4_condition,
 )
-from tcspc_toolkit.bayesian_sampling import BayesianSamplingConfig
-from tcspc_toolkit.irf import generate_gaussian_irf_profile
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.estimation.bayesian.sampling import BayesianSamplingConfig
+from tcspc_toolkit.irf.profiles import generate_gaussian_irf_profile
+from tcspc_toolkit.irf.preparation import prepare_irf
 
 
 ROOT = Path(__file__).resolve().parents[1]

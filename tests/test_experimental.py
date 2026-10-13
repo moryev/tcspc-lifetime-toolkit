@@ -8,7 +8,7 @@ import pytest
 from tcspc_toolkit.config import CountNormalization, FeatureConfig, PreprocessingConfig
 from tcspc_toolkit.convolution import convolve_decay_with_irf
 from tcspc_toolkit.exceptions import InvalidMeasurementError
-from tcspc_toolkit.experimental import (
+from tcspc_toolkit.measurement.adapters import (
     evaluate_estimate_against_reference,
     fit_experimental_reconvolution,
     measurement_to_feature_table,
@@ -23,8 +23,8 @@ from tcspc_toolkit.irf import (
     normalize_irf,
 )
 from tcspc_toolkit.irf_preparation import PreparedIRF, prepare_irf
-from tcspc_toolkit.measurement_io import load_sampled_irf_csv, load_tcspc_measurement_csv
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit.measurement.io import load_sampled_irf_csv, load_tcspc_measurement_csv
+from tcspc_toolkit.measurement.records import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,
@@ -135,7 +135,7 @@ def test_attached_sampled_irf_still_passes_normalized_copy_to_poisson_fitter(
         return sentinel
 
     monkeypatch.setattr(
-        "tcspc_toolkit.experimental.fit_single_reconvolution_curve", capture_fit
+        "tcspc_toolkit.measurement.adapters.fit_single_reconvolution_curve", capture_fit
     )
     result = fit_experimental_reconvolution(
         measurement, temporal_shift_bounds_ns=(-0.5, 0.5)
@@ -273,7 +273,7 @@ def test_shift_bounds_excluding_zero_fail_before_low_level_fitter(
         raise AssertionError("low-level fitter must not be called")
 
     monkeypatch.setattr(
-        "tcspc_toolkit.experimental.fit_single_reconvolution_curve", unexpected_fit
+        "tcspc_toolkit.measurement.adapters.fit_single_reconvolution_curve", unexpected_fit
     )
     with pytest.raises(InvalidMeasurementError, match="must include 0.0 ns"):
         fit_experimental_reconvolution(

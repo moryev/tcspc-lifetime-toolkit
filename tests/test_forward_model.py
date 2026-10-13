@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.convolution import convolve_decay_with_irf
-from tcspc_toolkit.fitting import _reconvolution_model
-from tcspc_toolkit.forward_model import (
+from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
+from tcspc_toolkit.estimation.fitting import _reconvolution_model
+from tcspc_toolkit.physics.forward_model import (
     monoexponential_reconvolution_expected_counts,
 )
 from tcspc_toolkit.irf import (
@@ -14,7 +14,7 @@ from tcspc_toolkit.irf import (
     shift_irf,
 )
 from tcspc_toolkit.irf_preparation import prepare_irf
-from tcspc_toolkit.models import monoexponential_decay
+from tcspc_toolkit.physics.models import monoexponential_decay
 from tcspc_toolkit.simulation import build_expected_counts_from_irf
 
 

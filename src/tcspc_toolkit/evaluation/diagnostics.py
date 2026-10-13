@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from tcspc_toolkit.models import monoexponential_decay
-from tcspc_toolkit.fitting import LifetimeFitResult
+from tcspc_toolkit.physics.models import monoexponential_decay
+from tcspc_toolkit.estimation.fitting import LifetimeFitResult
 
 
 def generate_fitted_signal(

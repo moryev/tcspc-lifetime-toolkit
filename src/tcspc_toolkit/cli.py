@@ -4,10 +4,10 @@ from pathlib import Path
 
 import numpy as np
 
-from tcspc_toolkit.fitting import fit_monoexponential_decay
-from tcspc_toolkit.measurement_io import load_tcspc_measurement_csv
-from tcspc_toolkit.measurements import MeasurementDataKind, TimeUnit
-from tcspc_toolkit.simulation import simulate_monoexponential_decay
+from tcspc_toolkit.estimation.fitting import fit_monoexponential_decay
+from tcspc_toolkit.measurement.io import load_tcspc_measurement_csv
+from tcspc_toolkit.measurement.records import MeasurementDataKind, TimeUnit
+from tcspc_toolkit.simulation.histograms import simulate_monoexponential_decay
 
 
 def run_simulation(args: Namespace) -> None:

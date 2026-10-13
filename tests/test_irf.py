@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     generate_gaussian_irf,
     normalize_irf,
     shift_irf

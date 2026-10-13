@@ -9,7 +9,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from tcspc_toolkit.bayesian import (
+from tcspc_toolkit.estimation.bayesian.posterior import (
     BayesianModelContext,
     BayesianPriorConfig,
     BoundedUniformPrior,
@@ -17,13 +17,13 @@ from tcspc_toolkit.bayesian import (
     LogNormalPrior,
     fit_bayesian_monoexponential_reconvolution,
 )
-from tcspc_toolkit.bayesian_predictive import (
+from tcspc_toolkit.estimation.bayesian.predictive import (
     calculate_bayesian_posterior_predictive_diagnostics,
     sample_bayesian_posterior_predictive,
     sample_bayesian_prior_predictive,
     summarize_predictive_band,
 )
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianPosteriorSamples,
     BayesianSamplingConfig,
 )
@@ -394,8 +394,8 @@ def blocked_import(name, *args, **kwargs):
     return original_import(name, *args, **kwargs)
 builtins.__import__ = blocked_import
 import numpy as np
-from tcspc_toolkit.bayesian import BayesianModelContext, BayesianPriorConfig, GammaPrior, LogNormalPrior
-from tcspc_toolkit.bayesian_predictive import sample_bayesian_prior_predictive
+from tcspc_toolkit.estimation.bayesian.posterior import BayesianModelContext, BayesianPriorConfig, GammaPrior, LogNormalPrior
+from tcspc_toolkit.estimation.bayesian.predictive import sample_bayesian_prior_predictive
 from tcspc_toolkit.measurements import TCSPCMeasurement, SampledIRF, MeasurementDataKind
 time = np.linspace(0.0, 2.0, 11)
 measurement = TCSPCMeasurement(

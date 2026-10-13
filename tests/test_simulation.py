@@ -11,7 +11,7 @@ from tcspc_toolkit.irf import (
 )
 from tcspc_toolkit.irf_preparation import prepare_irf
 from tcspc_toolkit.models import monoexponential_decay
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     build_expected_counts_from_irf,
     sample_photon_counts,
     simulate_biexponential_decay,
@@ -696,5 +696,4 @@ def test_irf_convolved_biexponential_histogram_rejects_invalid_fraction(
             irf_shift_ns=0.0,
             rng=np.random.default_rng(42),
         )
-
 

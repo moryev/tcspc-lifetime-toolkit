@@ -5,7 +5,7 @@ import pytest
 
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.irf import normalize_irf
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit.measurement.records import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,

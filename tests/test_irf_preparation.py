@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from tcspc_toolkit.irf import IRFProfile, IRFSourceKind
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
+from tcspc_toolkit.irf.preparation import prepare_irf
 
 
 def _profile(time, values) -> IRFProfile:

@@ -3,7 +3,7 @@ import pytest
 from sklearn.decomposition import PCA
 
 from tcspc_toolkit.config import CountNormalization
-from tcspc_toolkit.representations import (
+from tcspc_toolkit.preprocessing.representations import (
     augment_with_total_counts,
     cumulative_explained_variance,
     fit_pca_representation,

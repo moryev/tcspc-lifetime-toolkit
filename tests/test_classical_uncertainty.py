@@ -9,7 +9,7 @@ from tcspc_toolkit.classical_uncertainty import (
     estimate_poisson_reconvolution_local_covariance,
     evaluate_repeated_poisson_uncertainty,
 )
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.fitting import (
     ReconvolutionFitResult,
     _reconvolution_model,
 )

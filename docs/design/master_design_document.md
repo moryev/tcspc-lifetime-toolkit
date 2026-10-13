@@ -1,7 +1,7 @@
 # Design principles
 
-1. Mathematical models belong in models.py.
-2. Simulation workflows belong in simulation.py.
+1. Mathematical models belong in `physics.models`.
+2. Simulation workflows belong in `simulation.histograms` and `simulation.datasets`.
 3. IRFs are generated independently from decay models.
 4. Convolution is an independent operation.
 5. Noise sampling is independent from signal generation.
@@ -28,9 +28,9 @@ canonical benchmark estimator specifications
 generic estimator execution
 ```
 
-`estimator_api.py` defines the structural `RegressorProtocol`, immutable
+`estimation.api` defines the structural `RegressorProtocol`, immutable
 `EstimatorSpec`, and generic fitting/prediction functions. It does not know
-canonical estimator identities or representation names. `ml_models.py`
+canonical estimator identities or representation names. `ml.models`
 constructs canonical specifications from the existing factories, preserving
 hyperparameters and seeds; generalization orchestration uses them by default.
 User-defined specifications can also call generic execution directly.
@@ -39,8 +39,10 @@ Callers own prepared representations, feature meanings, positional sample
 alignment, and train/calibration/test roles. Generic execution neither fits
 representations nor computes benchmark metrics. The curated root API and
 supported module-qualified workflows are documented in [the API contract](../api.md).
-This boundary does not consolidate evaluation/report types (#11) or move
-package files (#3).
+Issue #11 settled evaluation/report responsibilities; Issue #3 completed their
+physical relocation without changing this boundary. See the
+[final package inventory](../package_structure.md). Historical paths remain
+supported through at least Issue #12.
 
 ## Generalized IRFs — Issue #8
 
@@ -66,7 +68,7 @@ metadata, and provenance without numerical transformation. Its
 `imported_sampled` classification does not establish independent physical
 measurement of an IRF.
 
-`IRFProfile` is the generalized sampled source representation in `irf.py`.
+`IRFProfile` is the generalized sampled source representation in `irf.profiles`.
 Its source kind distinguishes `synthetic_gaussian`, `synthetic_emg`,
 `imported_sampled`, and `leading_edge_estimate`. It validates finite,
 strictly increasing coordinates, finite nonnegative samples, and positive
@@ -83,7 +85,7 @@ and operation order are unchanged.
 
 ### Explicit preparation
 
-`prepare_irf()` in `irf_preparation.py` validates the source and uniform target
+`prepare_irf()` in `irf.preparation` validates the source and uniform target
 grid, applies caller-supplied registration to source coordinates, checks grid
 compatibility or explicitly resamples, calculates diagnostics, and normalizes
 the derived target-grid kernel with `normalize_irf()`.
@@ -111,7 +113,7 @@ shift semantics, and never calls automatic peak alignment.
 
 ### Forward-model boundaries
 
-`build_expected_counts_from_irf()` in `simulation.py` unwraps a prepared
+`build_expected_counts_from_irf()` in `simulation.histograms` unwraps a prepared
 kernel for the existing array-based convolution, scales the finite-window
 signal sum to `signal_photon_count`, and adds `background_per_bin`.
 `sample_photon_counts()` remains a separate Poisson-sampling operation.
@@ -122,11 +124,11 @@ target grid must already match the measurement; this adapter never prepares,
 resamples, or registers an IRF. With no explicit prepared kernel, the original
 Issue-#6 path normalizes a derived copy of the attached IRF as before.
 Raw-count guards, original measurements, provenance, and result types remain
-unchanged. `convolution.py` and `fitting.py` consume arrays, not IRF objects.
+unchanged. `physics.convolution` and `estimation.fitting` consume arrays, not IRF objects.
 
 ### Explicit approximate estimation and scientific evaluation
 
-`estimate_irf_from_leading_edge()` in `irf_estimation.py` requires raw counts,
+`estimate_irf_from_leading_edge()` in `irf.estimation` requires raw counts,
 a uniform grid, explicit half-open background/rising-edge windows, and
 explicit Savitzky–Golay settings. It preserves negative background-subtracted
 fluctuations through smoothing, constructs a nonnegative pre-peak derivative
@@ -138,7 +140,7 @@ For mono-exponential fluorescence, `S'(t) = A h(t) - S(t)/tau`; the omitted
 or measured IRF. The caller must explicitly estimate, prepare, and supply it
 to a fitter. **No automatic leading-edge fallback occurs.**
 
-`irf_evaluation.py` composes existing simulation, classical fitting, metrics,
+`benchmarks.irf` composes existing simulation, classical fitting, metrics,
 ML, and Week-9 uncertainty APIs for paired shape-family mismatch and proxy
 failure studies. It uses generic benchmark carriers, not frozen Week-8 A–F
 definitions. Gaussian comparison kernels are matched to noiseless EMG peak
@@ -151,5 +153,6 @@ Notebook 16 is presentation and orchestration of these library APIs. Its
 plain JSON manifest, `configs/issue8_irf_workflow.json`, fixes the audited
 demonstration settings without adding a configuration framework. Detailed
 results and fixture limitations belong in `docs/scientific_findings.md`.
-Issue #2 stabilizes the API and extension contracts described above;
-evaluation consolidation remains Issue #11.
+Issues #2 and #11 established the API and evaluation contracts above. Issue #3
+package restructuring is complete; Issue #12 is the separate next integration
+acceptance gate, not another module-migration phase.

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from tcspc_toolkit.uncertainty_robustness import (
+from tcspc_toolkit.benchmarks.uncertainty import (
     _finite_sample_conformal_quantile,
     _summarize_signed_residual_profile,
     build_classical_uncertainty_scorecard,

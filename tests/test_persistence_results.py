@@ -11,7 +11,8 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit import persistence
-from tcspc_toolkit.baselines import (
+from tcspc_toolkit.persistence import sqlite as persistence_impl
+from tcspc_toolkit.estimation.baselines import (
     estimate_lifetime_from_mean_arrival, predict_constant_mean_baseline,
 )
 from tcspc_toolkit.classical_evaluation import ReconvolutionCurveResult
@@ -218,7 +219,9 @@ def test_lower_level_reconvolution_preserves_only_available_fields(db):
         "SELECT * FROM fit_details WHERE result_id = ?", (result_id,),
     ).fetchone()
     assert point["lifetime_estimate_ns"] == 1.7
-    assert point["source_result_type"].endswith(".ReconvolutionFitResult")
+    # Schema-v1 provenance is a historical identity, not the implementation's
+    # current __module__. Structural moves must not mechanically rewrite it.
+    assert point["source_result_type"] == "tcspc_toolkit.fitting.ReconvolutionFitResult"
     assert point["runtime_seconds"] is None and point["random_seed_decimal"] is None
     assert details["source_success"] == 1
     assert details["optimizer_reported_success"] == 1
@@ -287,7 +290,7 @@ def test_curve_reconvolution_diagnostics_runtime_and_failure_states(db):
     )
     assert point["runtime_seconds"] == pytest.approx(0.0025)
     assert point["runtime_scope"] == "curve_fit_phase_after_initialization"
-    assert point["source_result_type"].endswith(".ReconvolutionCurveResult")
+    assert point["source_result_type"] == "tcspc_toolkit.classical_evaluation.ReconvolutionCurveResult"
     assert details["initial_lifetime_ns"] == 1.5
     assert details["poisson_nll"] == 25.0
     assert details["poisson_deviance"] == 3.2
@@ -396,7 +399,7 @@ def test_classical_reuse_checks_extension_and_composed_write_rolls_back(db, monk
         "SELECT optimizer_nfev FROM fit_details WHERE result_id = ?", (result_id,),
     ).fetchone()[0] == 25
 
-    original_record_row = persistence._record_row
+    original_record_row = persistence_impl._record_row
 
     def fail_fit_details(*args, **kwargs):
         if kwargs.get("table") == "fit_details":
@@ -404,7 +407,7 @@ def test_classical_reuse_checks_extension_and_composed_write_rolls_back(db, monk
         return original_record_row(*args, **kwargs)
 
     with monkeypatch.context() as patcher:
-        patcher.setattr(persistence, "_record_row", fail_fit_details)
+        patcher.setattr(persistence_impl, "_record_row", fail_fit_details)
         with pytest.raises(RuntimeError, match="injected extension failure"):
             persistence.record_reconvolution_fit(
                 db, result, run_id=run_id, measurement_id=measurement_id,
@@ -864,7 +867,7 @@ def test_regression_batch_preserves_order_finite_values_and_model_identity(db):
     ]
     assert [json.loads(row[7])["prediction_index"] for row in rows] == [0, 1, 2]
     assert all(row[3] is None and row[4] is None and row[5] is None for row in rows)
-    assert all(row[6].endswith(".RegressionBenchmarkResult") for row in rows)
+    assert all(row[6] == "tcspc_toolkit.ml_evaluation.RegressionBenchmarkResult" for row in rows)
     assert all(row[8] == "feature-set-v2" for row in rows)
     assert db.execute("SELECT COUNT(*) FROM fit_details").fetchone()[0] == 0
     assert db.execute("SELECT COUNT(*) FROM benchmark_metrics").fetchone()[0] == 0

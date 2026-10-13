@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from tcspc_toolkit import persistence as store
+from tcspc_toolkit.persistence import sqlite as persistence_impl
 from tcspc_toolkit.bayesian import (
     BayesianModelContext, BayesianPriorConfig, BoundedUniformPrior, GammaPrior,
     IRFModelRelation, LogNormalPrior,
@@ -281,6 +282,9 @@ def test_bayesian_point_summary_diagnostics_and_immutable_reuse(context):
         "SELECT * FROM bayesian_summaries WHERE result_id = ?", (result_id,),
     ).fetchone()
     assert point["point_summary"] == "posterior_median"
+    assert point["source_result_type"] == (
+        "tcspc_toolkit.bayesian_sampling.BayesianReconvolutionResult"
+    )
     assert point["lifetime_estimate_ns"] == source.parameter_summaries[1].median
     assert point["random_seed_decimal"] == str(_SEED)
     assert point["irf_model_relation"] == "matched"
@@ -532,18 +536,18 @@ def test_ppc_summary_artifacts_and_duplicate_payload(context, tmp_path):
 
 def test_composed_write_rolls_back_and_existing_point_can_gain_summary(context, monkeypatch):
     db = context[0]
-    original = store._record_row
+    original = persistence_impl._record_row
 
     def fail_summary(*args, **kwargs):
         if kwargs.get("table") == "bayesian_summaries":
             raise RuntimeError("summary insert failed")
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(store, "_record_row", fail_summary)
+    monkeypatch.setattr(persistence_impl, "_record_row", fail_summary)
     with pytest.raises(RuntimeError, match="summary insert failed"):
         _write(context)
     assert db.execute("SELECT COUNT(*) FROM estimator_results").fetchone()[0] == 0
-    monkeypatch.setattr(store, "_record_row", original)
+    monkeypatch.setattr(persistence_impl, "_record_row", original)
     result_id = _write(context)
     db.execute("DELETE FROM bayesian_summaries WHERE result_id = ?", (result_id,))
     assert _write(context, on_duplicate="reuse_identical") == result_id
@@ -594,6 +598,7 @@ def test_full_inference_run_checks_observation_and_counts_finite_draws(context):
 def test_compact_matched_and_mismatch_share_posterior_median_convention(context):
     db, run_id, measurement_id, model_id, assumption_id, *_ = context
     matched = _matched_record(context)
+    assert type(matched.bayesian).__module__ == "tcspc_toolkit.benchmarks.bayesian_calibration"
     matched_id = store.record_issue4_bayesian_result(
         db, matched, run_id=run_id, measurement_id=measurement_id,
         model_id=model_id, assumption_id=assumption_id,
@@ -613,6 +618,11 @@ def test_compact_matched_and_mismatch_share_posterior_median_convention(context)
             "FROM estimator_results WHERE result_id = ?", (result_id,),
         ).fetchone()
         assert point[:] == ("posterior_median", 1.8, str(_SEED))
+        # Schema-v1 provenance stays historical despite the canonical class move.
+        assert db.execute(
+            "SELECT source_result_type FROM estimator_results WHERE result_id = ?",
+            (result_id,),
+        ).fetchone()[0] == "tcspc_toolkit.bayesian_evaluation.Issue4Bayesian"
         summary = db.execute(
             "SELECT lifetime_mean_ns, ppc_status, ppc_n_draws, ppc_deviance_tail_probability, "
             "ppc_discrepancies_json FROM bayesian_summaries WHERE result_id = ?",
@@ -1051,9 +1061,9 @@ def test_emg_generation_with_matched_and_gaussian_assumed_kernels(context):
         record = replace(
             _mismatch_record(emg_context, assumption_label=label),
             generating_irf_id="emg", assumed_irf_id=label,
-            time_grid_sha256=store._hash_legacy_issue4_float64_array(measurement.time_ns),
-            generating_irf_sha256=store._hash_legacy_issue4_float64_array(emg_prepared.kernel),
-            assumed_irf_sha256=store._hash_legacy_issue4_float64_array(prepared.kernel),
+            time_grid_sha256=persistence_impl._hash_legacy_issue4_float64_array(measurement.time_ns),
+            generating_irf_sha256=persistence_impl._hash_legacy_issue4_float64_array(emg_prepared.kernel),
+            assumed_irf_sha256=persistence_impl._hash_legacy_issue4_float64_array(prepared.kernel),
         )
         result_ids.append(store.record_issue4_bayesian_result(
             db, record, run_id=run_id, measurement_id=measured, model_id=model,

@@ -17,6 +17,108 @@ Bayesian and experimental runtime reports retain their specialized scientific
 context; the factual contracts support them compositionally without migrating
 those study workflows. The 66-name root API and notebooks are unchanged.
 
+Issue #3 Stage 5B places the factual implementations in
+`tcspc_toolkit.evaluation.results`, `tcspc_toolkit.evaluation.core`, and
+`tcspc_toolkit.evaluation.attachments`. Historical `evaluation_results`,
+`evaluation_core`, and `evaluation_uncertainty` imports remain direct-object
+compatibility paths through at least Issue #12. Import factual APIs from those
+explicit submodules: `tcspc_toolkit.evaluation` remains the historical
+seven-function diagnostics facade, not an aggregate factual/reporting API.
+Its inherited initialization of diagnostics/fitting is separate from the
+estimator-independent source dependencies of the factual modules.
+
+Stage 5C adds canonical `tcspc_toolkit.evaluation.conditional` and
+`tcspc_toolkit.evaluation.plots`. Historical `conditional_evaluation` and
+`benchmark_plots` remain direct-object compatibility paths through at least
+Issue #12. These explicit submodules preserve the existing conditional
+populations, legacy adapters, caller-selected references/regimes, and plotting
+schemas. The diagnostics facade imports neither module nor Matplotlib.
+
+Stage 6A places only frozen Week-8 protocol/configuration and paired dataset
+generation in `tcspc_toolkit.benchmarks.generalization_protocol` and
+`tcspc_toolkit.benchmarks.generalization_datasets`. Historical `generalization`
+and `generalization_datasets` remain direct-object compatibility paths through
+at least Issue #12. The benchmark initializer imports no children.
+Stage 6B moves the entire preparation/execution/reporting implementation to
+`tcspc_toolkit.benchmarks.generalization`; historical
+`tcspc_toolkit.generalization_evaluation` directly re-exports its 61 supported
+names, including seven aliases. Private helpers stay in the canonical module,
+and patches of its execution bindings target that module. No responsibilities,
+schemas, metric policies, or table-only compatibility behavior are repartitioned.
+Other studies, uncertainty implementations, and persistence have not moved.
+Frozen A–F values, seeds, pairing, and data roles are unchanged.
+
+Stage 7A places uncertainty source carriers, metric evaluation, and split/provenance
+policy in `tcspc_toolkit.uncertainty.evaluation`. Historical
+`tcspc_toolkit.uncertainty_evaluation` directly re-exports the same 19 public
+objects. This module retains `WEEK9_HYPOTHESES` and its existing dependency on
+`benchmarks.generalization_protocol.FINAL_ROBUSTNESS_TEST_IDS` for the provenance
+guard. It is distinct from `evaluation.attachments`, whose `IntervalAttachment`
+and `ScoreAttachment` remain generic point-linked contracts. The new uncertainty
+initializer is docstring-only.
+
+Stage 7B moves the intact ML and classical implementations to
+`tcspc_toolkit.uncertainty.ml` and `tcspc_toolkit.uncertainty.classical`.
+Historical `tcspc_toolkit.ml_uncertainty` and `tcspc_toolkit.classical_uncertainty`
+directly re-export their 34 and 18 supported names, including the three ML Week-9
+aliases. Source-to-attachment projections remain separate from source carriers;
+repeated-Poisson variability remains an empirical reference rather than a per-point
+interval attachment. ML benchmark annotations remain typing-only. Private helpers
+remain in their owning canonical modules. At that checkpoint the frozen
+`uncertainty_robustness.py` study/report layer, including conformal, stayed flat.
+Scientific policies, populations, seeds, algorithms, report schemas, and persistence
+identities are unchanged.
+
+Stage 8A places the intact Week-7 studies in `tcspc_toolkit.benchmarks.mismatch`
+and `tcspc_toolkit.benchmarks.timing`. Historical
+`tcspc_toolkit.mismatch_evaluation` and `tcspc_toolkit.timing_evaluation`
+remain direct-export facades for six and eight supported names respectively.
+The paired mono-/bi-exponential mismatch experiment is separate from frozen
+Week-8 Test F: it imports no generalization protocol and retains its
+`generating_mono`/`primary_component` ML reference identities, not pseudo-true
+projections. Timing retains distinct `repeated_batch` and
+`per_curve_optimization` scopes. The benchmark initializer imports neither
+study. At that checkpoint, IRF/Bayesian studies, uncertainty robustness, and persistence
+remained in place.
+
+Stage 8B relocates the intact Issue-8 study to `tcspc_toolkit.benchmarks.irf`
+and the Issue-4 matched-model and mismatch studies to
+`tcspc_toolkit.benchmarks.bayesian_calibration` and
+`tcspc_toolkit.benchmarks.bayesian_mismatch`. Historical `irf_evaluation`,
+`bayesian_evaluation`, and `bayesian_mismatch_evaluation` are direct-reexport
+facades for 18, 21, and 23 supported names (listed in [the API contract](api.md)).
+Bayesian estimator implementations remain in `estimation.bayesian.*`; the
+`benchmarks.bayesian_*` modules only orchestrate their scientific studies.
+Source profiles, prepared/assumed kernels, leading-edge proxies, and their
+provenance stay distinct. IRF studies remain independent of A–F execution/data;
+their existing uncertainty dependencies can transitively load protocol configuration.
+
+Bayesian mismatch retains canonical eager dependencies on the private IRF
+peak/FWHM matcher and calibration's compact carriers/unavailable-result helpers.
+Its deterministic `pseudo_true_mono` reference remains a prior-free,
+model-conditional likelihood projection, not physical truth, a primary component,
+or a posterior estimate. Credible intervals remain model/prior/fixed-IRF conditional.
+Persistence keeps seven study imports deferred and records the historical literal
+`tcspc_toolkit.bayesian_evaluation.Issue4Bayesian` unchanged. Benchmark initialization
+loads none of these studies or `emcee`. At that checkpoint uncertainty robustness
+and persistence remained flat.
+
+Stage 8C moves the intact frozen Week-9 study/report layer to
+`tcspc_toolkit.benchmarks.uncertainty`. Historical
+`tcspc_toolkit.uncertainty_robustness` directly re-exports its 28 supported names,
+including eleven legacy aliases, without wrappers or fabricated module identities.
+Reusable metrics/source carriers and ML/classical methods remain in
+`uncertainty.evaluation`, `uncertainty.ml`, and `uncertainty.classical`.
+Conformal stays inside this benchmark, together with frozen traversal, alignment,
+scorecards, classical coverage, and residual reports. There is no separate
+conformal module or change to populations, nominal levels, leakage policy, or
+scientific conclusions. The module retains its canonical generalization
+protocol/data/prepared-data dependencies; reusable layers do not import it.
+Persistence's two constant imports stay function-local, with no stored identity
+changes. Benchmark and uncertainty initializers remain docstring-only; evaluation
+remains diagnostics-only. See [the exact public/alias inventory](api.md#stage-8c-frozen-uncertainty-benchmark).
+Persistence has not moved.
+
 ```text
 frozen scientific benchmark definitions
                 ↓
@@ -36,22 +138,22 @@ legacy-compatible scientific reports
 | Current location | Carriers / entry points | Responsibility and consolidation boundary |
 |---|---|---|
 | `ml_evaluation` | `BenchmarkMeasurements`, `BenchmarkDataset`, `BenchmarkSplit`, `HistogramRepresentations`; dataset/split/representation builders | Synthetic benchmark inputs, aligned training/test membership, development-only learned representations. Preserve indices, feature definitions, normalization and fitted PCA. |
-| `generalization`, `generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
-| `generalization_evaluation` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
-| `ml_evaluation`, `mismatch_evaluation` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
-| `generalization_evaluation` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
-| `conditional_evaluation` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
+| `benchmarks.generalization_protocol`, `benchmarks.generalization_datasets` | `GeneralizationSuiteDefinition`, protocol/numerics/domain objects, `GeneralizationTestMeasurements`, `GeneralizationTestSuite` | Frozen A–F definitions, seeds, metadata and generated observations. These are not arbitrary evaluation-batch types. |
+| `benchmarks.generalization` | `GeneralizationABPreparedData`, `GeneralizationPreparedData`; both preparation functions | Shared feature/normalization/PCA mechanics beneath unchanged carriers. A/B additionally validates identities and paired targets. Learned artifacts stay outside the factual result core. |
+| `ml_evaluation`, `benchmarks.mismatch` | `RegressionBenchmarkResult`, `RegressionMetrics`; ordinary and mismatch result builders | Shared result/error construction beneath thin wrappers retaining different exception contracts. Paired mismatch supplies explicit method/reference facts; bare arrays remain semantic-free compatibility inputs. |
+| `benchmarks.generalization` | Principal/representation A/B, instrument/acquisition, model-mismatch and full-suite benchmark results | Overlapping prediction/summary/degradation tables. Specialized results additionally retain comparisons, fit diagnostics or Test-F severity/reference diagnostics. |
+| `evaluation.conditional` | Prediction-diagnostic builders; conditional and standard-regime summaries | Group-specific error/failure reporting. Legacy columns and invalid-row visibility differ from generalization. |
 | `classical_evaluation` | `ReconvolutionCurveResult`, `ReconvolutionBenchmarkResult`, `ReconvolutionBenchmarkSummary` | Numerical fit facts, initialization, optimizer/numerical validity, boundaries, NLL/deviance, failures and timings. Keep fit details separate from point projections. |
 | `cross_validation` | `RepeatedCVConfig`, `RepeatedCVBenchmarkResult` | Development-only fold-local fitting/cloning, repeated-fold metrics. Not final-test orchestration. |
-| `mismatch_evaluation`, `timing_evaluation` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
-| `ml_uncertainty` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
-| `uncertainty_evaluation` | Interval/score results, method definitions, development split, interval/quantile/score/selective metrics | Already separates intervals, heuristic scores and empirical reference variability. Retain that distinction. |
-| `uncertainty_robustness` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
-| `classical_uncertainty` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
-| `generalization_evaluation` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
-| `irf_evaluation` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
+| `benchmarks.mismatch`, `benchmarks.timing` | Paired estimator/classical mismatch results; `InferenceTimingResult` | Separate Week-7 paired reference/shift comparisons and named timing scopes. Batch prediction and per-curve optimization timing are not interchangeable. |
+| `uncertainty.ml` | Quantile/score calibration, external, robustness and paired result families | Fitted uncertainty artifacts, calibration separation and frozen conditional evaluation. Shared robustness traversal does not merge interval and score interpretations. |
+| `uncertainty.evaluation` | Interval/score source results, method/provenance definitions, development split, interval/quantile/score/selective metrics | Retains frozen protocol configuration for the provenance guard; separates intervals, heuristic scores and empirical reference variability from generic factual attachments. |
+| `benchmarks.uncertainty` | Conformal calibration/external results; `MLUncertaintyRobustnessReport`, `ClassicalUncertaintyRobustnessReport`, `ClassicalResidualMatrixResult`, `ResidualMismatchReport` | Separate interval/score scorecards, conditional classical uncertainty, residual profiles and paired diagnostics. |
+| `uncertainty.classical` | Local covariance, parametric bootstrap and repeated-Poisson result types | Per-fit conditional uncertainty versus repeated-observation empirical variability; retain separate types. |
+| `benchmarks.generalization` reports | `PhotonCountShiftReport`, `InstrumentAcquisitionDiagnostics`, `DecayModelMismatchReport`, `GeneralizationRobustnessReport` | Scientifically specialized frozen composition over tables, not candidates for one universal report. |
+| `benchmarks.irf` | Shape-mismatch dataset/pairs, classical/conditional/ML-transfer results, leading-edge regime results | Paired observations with explicit assumed IRFs, source/proxy diagnostics and sometimes no unique mono-exponential target. |
 | `experimental` | Feature/histogram adapters, `ReferenceLifetimeEvaluation` | Estimation without intrinsic truth; trusted-reference comparison only when explicitly supplied. No representation refitting. |
-| Bayesian modules | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results, `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
+| `estimation.bayesian.*`; `benchmarks.bayesian_calibration`, `benchmarks.bayesian_mismatch` | `BayesianReconvolutionResult`, `BayesianInferenceRun`, predictive results; `BayesianCalibrationReport`, `MismatchReport`, `Issue4*` study records | Estimator implementations versus matched/mismatch studies. Posterior/prior/fixed-IRF semantics, accepted/rejected sampling, PPC, primary versus pseudo-true comparisons. Runtime reports remain specialized; the factual core can represent their point, interval and explicit-reference projections without replacing scientific records. |
 | `persistence` | Point, uncertainty, metric and scientific recording adapters | External consumer of existing concrete types and identities. Schema v1, source-result identities and duplicate semantics remain unchanged. |
 
 The reusable estimator boundary remains `estimator_api`: structural `fit`/`predict`,
@@ -72,7 +174,7 @@ baseline/ML factual evaluation and legacy table projection (Stage 3)
 
 `prepare_generalization_ab_data` and `prepare_generalization_data` delegate to
 the private `_prepare_generalization_representations` helper in
-`generalization_evaluation`. It reuses `GeneralizationPreparedData` internally;
+`benchmarks.generalization`. It reuses `GeneralizationPreparedData` internally;
 no new public carrier, preparation framework or `PreparedEvaluationData` exists.
 
 The common mechanics build the development dataset, extract ordered test features,
@@ -117,7 +219,7 @@ legacy generalization table projection
 existing summaries / frozen reports
 ```
 
-Private adapters in `generalization_evaluation` now share this path for principal
+Private adapters in `benchmarks.generalization` now share this path for principal
 A/B, representation A/B, A/C/D/E instrument/acquisition, A/F model mismatch and
 the full A–F suite. Public signatures and result dataclasses are unchanged.
 Principal A/B still selects the three canonical engineered-feature estimators;
@@ -263,8 +365,8 @@ the contract of these legacy, fully targeted conditional tables.
 For example, given an existing split and regression result:
 
 ```python
-from tcspc_toolkit.conditional_evaluation import build_ml_prediction_diagnostics
-from tcspc_toolkit.evaluation_results import LifetimeReference, MethodDescriptor
+from tcspc_toolkit.evaluation.conditional import build_ml_prediction_diagnostics
+from tcspc_toolkit.evaluation.results import LifetimeReference, MethodDescriptor
 
 diagnostics = build_ml_prediction_diagnostics(
     split=split,
@@ -358,7 +460,7 @@ mutated, and the original estimator factories, fit calls and prediction order re
 prediction shape/nonfinite errors are `RuntimeError` in ordinary ML and `ValueError`
 in mismatch, with the same messages and check order. Both delegate to the private
 `ml_evaluation._assemble_regression_benchmark_result`. This keeps existing
-`evaluate_regression` metrics/target validation and uses `evaluation_core`'s
+`evaluate_regression` metrics/target validation and uses `evaluation.core`'s
 shared error calculation. The generic core has no reverse dependency on ML,
 mismatch, frozen model definitions, or sklearn.
 
@@ -395,7 +497,7 @@ scientific identities. No uncertainty migration is included in Stage 6.
 
 ### Identity and batches
 
-`evaluation_results.MethodDescriptor(method_id, family, representation_id=None)`
+`evaluation.results.MethodDescriptor(method_id, family, representation_id=None)`
 is immutable and deliberately small. Families are `baseline`, `ml`, `classical`,
 and `bayesian`, matching persistence vocabulary without depending on persistence.
 Names are nonblank strings preserved verbatim. No case folding or prefix inference
@@ -509,7 +611,7 @@ reference/errors where absent. This retains attempted and available counts.
 
 ## Implemented builders and derived primitives
 
-All are module-qualified from `evaluation_core`:
+All are module-qualified from `evaluation.core`:
 
 - `build_point_evaluation(*, batch, method, lifetime_estimates_ns, is_valid,
   failure_reasons=None)` builds one method/batch result without execution or scoring.
@@ -588,7 +690,7 @@ PointEvaluationResult
   └── separate diagnostics: residuals, PPC, fit and sampler diagnostics
 ```
 
-`evaluation_uncertainty` defines two module-qualified, validated DataFrame
+`evaluation.attachments` defines two module-qualified, validated DataFrame
 snapshots. Both require a `PointEvaluationResult` when constructed and check
 every attachment against its exact point key:
 `(evaluation_id, sample_id, method_id, representation_id)`. The uncertainty
@@ -758,8 +860,8 @@ unchanged interval, score, and classical metric policies
 legacy-compatible ML / classical scorecards and reports
 ```
 
-`uncertainty_robustness` now shares prepared ML condition inputs and the ordered
-condition traversal. The traversal accepts caller-supplied IDs and does not assign
+`benchmarks.uncertainty` (historical `uncertainty_robustness`) shares prepared ML
+condition inputs and the ordered traversal. The traversal accepts caller-supplied IDs and does not assign
 scientific meaning to their spelling; frozen wrappers still select A–F and retain
 their exact order. The A–E generating-mono versus F primary-component target choice
 remains an explicit frozen label at the scoring boundary, not an inferred property
@@ -817,11 +919,17 @@ development/training/final-test owner (`PreparedEvaluationData`) or broad result
 containing policy-dependent summaries/degradation is established here. Existing
 public constructors and Issue-#2 legacy aliases remain supported through #12.
 
+Issue #3 Stage 9 places the intact persistence implementation in
+`tcspc_toolkit.persistence.sqlite`; `tcspc_toolkit.persistence` is its direct-export
+historical/public package facade. Schema v1 and stored historical identities are
+unchanged; scientific adapter imports remain function-local.
+
 Persistence is an external consumer: reference/method vocabulary aligns, but
 scope/version/assumption labels are not substituted for database keys. Existing
 schema, source identities, uncertainty-method restrictions and duplicate policies
 are unchanged. Generic runtime attachments are not automatically persistable.
 
-Issue #3 owns physical package movement; Issue #12 owns the post-reorganization
+Issue #3 has completed physical package movement; see the
+[final architecture inventory](package_structure.md). Issue #12 owns the post-reorganization
 clean-environment, reference-workflow and cross-feature integration gate. Neither
 is part of Issue #11.

@@ -24,11 +24,12 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, and #11 have been implemented, merged, and closed. Issue #3 (package restructuring) is now the active integration target, followed by Issue #12 (full integration/regression verification).
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, and #11 have been implemented, merged, and closed. Issue #3 package restructuring is complete through Stage 10 on the integration branch; user review, merge, and GitHub closure remain manual. Issue #12 (full integration/regression verification) is the next acceptance gate and has not begun.
 
 ## Repository map
 
-- `src/tcspc_toolkit/` — package implementation.
+- `src/tcspc_toolkit/` — canonical implementations in `physics`, `irf`, `measurement`, `simulation`, `preprocessing`, `estimation`, `ml`, `evaluation`, `uncertainty`, `benchmarks`, and `persistence`; root scientific files are compatibility facades.
+- `docs/package_structure.md` — final module inventory, facade mappings, dependency graph, and Issue-#3 closure boundaries.
 - `tests/` — automated scientific and regression tests.
 - `notebooks/` — reproducible scientific demonstrations and analyses.
 - `docs/scientific_findings.md` — accumulated scientific findings, including the Week 8–9 conclusions.
@@ -85,14 +86,14 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - mathematical models are separate from simulation workflows;
 - IRFs are generated/represented independently from decay models;
 - convolution is an independent operation;
-- the shared mono-exponential reconvolution expected-count model lives in `forward_model.py` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
+- the shared mono-exponential reconvolution expected-count model lives in `physics.forward_model` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
 - noise sampling is independent from deterministic signal generation;
 - evaluation functions are organized by the quantity being evaluated, not merely by estimator family;
 - public APIs use explicit scientific names;
 - convenience wrappers may compose lower-level functions rather than duplicate their logic;
 - preprocessing is analysis-dependent: there is no universally correct TCSPC preprocessing pipeline.
 
-Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 is now the active phase for physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics while moving modules; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
+Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 has completed physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics during Issue #12 verification; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
 
 ## Scientific guardrails
 
@@ -302,8 +303,8 @@ Current integration status:
 6. **#1** — standardize array input type annotations — **complete, merged, and closed**;
 7. **#2** — API stabilization and package hardening — **complete, merged, and closed**;
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
-9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **current active integration target**;
-10. **#12** — full integration and regression verification — **next acceptance gate after #3**;
+9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **package restructuring complete through Stage 10; user review/merge/closure pending**;
+10. **#12** — full integration and regression verification — **next acceptance gate; not yet begun**;
 11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
@@ -313,13 +314,13 @@ The completed Issue-#1 typing pass established the current array-input conventio
 Issue #2 established the current API-stability boundary:
 
 - `tcspc_toolkit.__all__` is a curated high-level convenience contract; specialized advanced APIs may remain supported through module-qualified imports.
-- The generic estimator extension layer is `estimator_api.py`: `RegressorProtocol`, `EstimatorSpec`, `fit_regressors()`, and `predict_regressors()`.
-- Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml_models.py`.
+- The canonical generic estimator extension layer is `estimation.api` (historical `estimator_api` remains supported): `RegressorProtocol`, `EstimatorSpec`, `fit_regressors()`, and `predict_regressors()`.
+- Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical names remain compatibility aliases through at least Issue #12; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
 - Do not broaden the root export surface opportunistically during #3; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the remaining architectural work.
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next integration-verification phase.
 
 ## Codex working protocol
 
@@ -370,19 +371,22 @@ Issue #11 completed the Week-7–9 evaluation-architecture consolidation. Preser
 - conditional finite-invalid presentation, mismatch/degradation policies, and other documented metric-population differences are intentional compatibility/scientific boundaries;
 - legacy table-only compatibility paths may retain historical naming behavior, but new internal architecture must not infer scientific method family from estimator-name prefixes.
 
-Issue #3 is now the active architectural task. Its purpose is to reorganize the flat `src/tcspc_toolkit/` layout into coherent subpackages while preserving the scientific and API contracts clarified by Issues #2 and #11.
+Issue #3 package restructuring is complete through Stage 10. All 44 substantive
+implementation files are inside coherent subpackages. The 38 root scientific
+files and five historical package initializers are direct compatibility facades;
+five genuine root support files and seven minimal namespace initializers remain.
 
-For Issue #3:
+For future work:
 
-- inventory all current top-level modules and classify their responsibilities before moving files;
-- propose the target subpackage structure and dependency direction before broad edits; the preliminary structure in Issue #3 is guidance, not a frozen design;
-- move modules incrementally in reviewable stages rather than performing one monolithic relocation;
-- preserve numerical/scientific behavior, frozen A–F and Week-9 reproducibility, random seeds, persistence schema v1, stored method/protocol identities, and compatibility semantics;
-- preserve the curated root API and reviewed `tcspc_toolkit.__all__` contract unless Issue #3 explicitly justifies a deliberate public-API change;
-- update internal imports, tests, notebooks/examples, and documentation as modules move, using compatibility re-exports or thin shims where practical for established import paths;
-- check dependency direction and circular-import risk before and after each structural move;
-- keep algorithms in their scientifically appropriate layer; do not duplicate logic merely to fit a target folder structure;
-- do not re-consolidate evaluation semantics already settled by Issue #11; package placement should reflect those clarified responsibilities;
-- keep Issue #12 separate: clean-environment import checks, full cross-feature integration/regression verification, representative end-to-end workflows, and post-restructure acceptance belong there.
+- Use canonical submodule imports inside implementations and developer scripts.
+- Preserve all established historical imports and direct Day/Week aliases through at least Issue #12. Do not remove facades, add deprecation warnings, or fake `__module__` without a separate explicit compatibility decision.
+- Keep the exact ordered 66-name root API. Do not broaden package initializers into convenience APIs.
+- Keep `benchmarks`, `uncertainty`, `measurement`, `physics`, `ml`, `estimation`, and `estimation.bayesian` initializers docstring-only. Historical `irf`, `preprocessing`, `simulation`, `evaluation`, and `persistence` initializers re-export only their reviewed surfaces.
+- Preserve numerical/scientific behavior, frozen A–F and Week-9 protocols, random seeds, schema v1, and historical stored identities. Canonical imports do not authorize rewriting persisted Python-path strings.
+- Preserve the uncertainty provenance dependency on frozen generalization protocol configuration; ML uncertainty's other benchmark relationships remain typing-only.
+- Keep scientific execution independent of persistence; persistence adapters retain deferred scientific imports.
+- Do not extract conformal workflows or repartition settled modules merely for directory symmetry.
+- Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
-Consult Issues #3, #5, #11, and #12 together when deciding boundaries, but implement only the active Issue #3 scope.
+Consult Issues #3, #5, #11, and #12 for history and acceptance boundaries.
+Do not start further package movement or Issue #12 work without an explicit task.

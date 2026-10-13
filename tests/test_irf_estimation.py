@@ -6,13 +6,13 @@ from scipy.signal import savgol_filter
 from scipy.special import expit
 
 from tcspc_toolkit.exceptions import InvalidHistogramError, InvalidMeasurementError
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     IRFSourceKind,
     generate_gaussian_irf_profile,
     normalize_irf,
 )
-from tcspc_toolkit.irf_estimation import estimate_irf_from_leading_edge
-from tcspc_toolkit.irf_preparation import prepare_irf
+from tcspc_toolkit.irf.estimation import estimate_irf_from_leading_edge
+from tcspc_toolkit.irf.preparation import prepare_irf
 from tcspc_toolkit.measurements import MeasurementDataKind, TCSPCMeasurement
 from tcspc_toolkit.models import monoexponential_decay
 from tcspc_toolkit.preprocessing import estimate_background, subtract_background
@@ -213,7 +213,7 @@ def test_negative_derivative_is_clipped_only_for_proxy_and_quantified(
         captured_inputs.append(np.array(values, copy=True))
         return savgol_filter(values, *args, **kwargs)
 
-    monkeypatch.setattr("tcspc_toolkit.irf_estimation.savgol_filter", capture_savgol)
+    monkeypatch.setattr("tcspc_toolkit.irf.estimation.savgol_filter", capture_savgol)
     result = _estimate(measurement, smoothing_window_bins=7)
     assert result.profile is not None
     assert len(captured_inputs) == 2

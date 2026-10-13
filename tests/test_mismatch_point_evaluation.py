@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit import mismatch_evaluation as mismatch
-from tcspc_toolkit import ml_evaluation as ml
+from tcspc_toolkit.benchmarks import mismatch
+from tcspc_toolkit.ml import evaluation as ml
 from tcspc_toolkit.classical_evaluation import ReconvolutionBenchmarkResult, ReconvolutionBenchmarkSummary
 from tcspc_toolkit.evaluation_core import build_point_evaluation, combine_point_evaluations
 from tcspc_toolkit.evaluation_results import EvaluationBatch, LifetimeReference, MethodDescriptor

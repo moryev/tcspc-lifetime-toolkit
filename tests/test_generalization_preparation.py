@@ -18,7 +18,7 @@ from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.features import extract_features
 from tcspc_toolkit.generalization import default_generalization_suite
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-from tcspc_toolkit import generalization_evaluation as evaluation
+from tcspc_toolkit.benchmarks import generalization as evaluation
 from tcspc_toolkit.ml_evaluation import BenchmarkMeasurements
 
 

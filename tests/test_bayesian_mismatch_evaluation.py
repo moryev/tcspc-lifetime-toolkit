@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import tcspc_toolkit.bayesian_mismatch_evaluation as mismatch
+import tcspc_toolkit.benchmarks.bayesian_mismatch as mismatch
 from scripts.run_issue4_bayesian_mismatch_benchmarks import _json_safe
 from scripts.correct_issue4_mismatch_references import _comparison_from_saved_row
 from tcspc_toolkit.bayesian_sampling import BayesianSamplingStatus
@@ -103,6 +103,60 @@ def test_pseudo_true_prior_free_control_and_biexponential_projection(workflow, r
         workflow.config.temporal_shift_bounds_ns,
     )
     assert repeated == references["weak_biexponential", "gaussian_mono"]
+
+
+def test_pseudo_true_reference_is_independent_of_prior_and_sampling_policy(workflow, references):
+    manifest = json.loads(MANIFEST.read_text())
+    manifest["priors"]["lifetime_lognormal_log_mean_std"] = [0.0, 1.5]
+    manifest["randomness"]["base_seed"] += 1
+    alternate = mismatch.build_mismatch_workflow(manifest, "smoke")
+    alternate_config = replace(
+        alternate.config,
+        sampling_config=replace(alternate.config.sampling_config, random_seed=98765),
+    )
+    assert alternate_config.priors != workflow.config.priors
+    assert alternate_config.sampling_config != workflow.config.sampling_config
+    assert mismatch.mismatch_seeds(alternate_config, "weak_biexponential", 0) != (
+        mismatch.mismatch_seeds(workflow.config, "weak_biexponential", 0)
+    )
+    condition = alternate.conditions[1]
+    expected = mismatch.build_mismatch_expected_counts(condition).expected_counts
+    reference = mismatch.construct_pseudo_true_reference(
+        condition, condition.assumptions[0], expected,
+        alternate_config.temporal_shift_bounds_ns,
+    )
+    assert reference == references["weak_biexponential", "gaussian_mono"]
+    from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+    from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
+    fitted = monoexponential_reconvolution_expected_counts(
+        condition.time_ns, condition.assumptions[0].prepared_irf.kernel,
+        amplitude=reference.amplitude, lifetime=reference.lifetime_ns,
+        background=reference.background_per_bin, temporal_shift=reference.temporal_shift_ns,
+    )
+    assert reference.poisson_nll == poisson_negative_log_likelihood(expected, fitted)
+
+
+def test_emg_assumption_uses_the_private_canonical_irf_matcher(workflow):
+    from tcspc_toolkit.benchmarks import irf, bayesian_calibration
+    from tcspc_toolkit.irf.profiles import generate_emg_irf_profile
+    from tcspc_toolkit.irf.preparation import prepare_irf
+
+    helper = irf._match_gaussian_to_emg_profile
+    assert mismatch._match_gaussian_to_emg_profile is helper
+    assert helper.__module__ == "tcspc_toolkit.benchmarks.irf"
+    for name in ("_unavailable_bootstrap", "_unavailable_covariance"):
+        assert getattr(mismatch, name) is getattr(bayesian_calibration, name)
+    condition = workflow.conditions[-1]
+    spec = json.loads(MANIFEST.read_text())["irfs"]["emg"]
+    source = generate_emg_irf_profile(
+        condition.time_ns,
+        gaussian_centre_ns=spec["gaussian_component_centre_ns"],
+        gaussian_fwhm_ns=spec["gaussian_component_fwhm_ns"],
+        tail_time_ns=spec["tail_time_ns"],
+        provenance={"workflow": "issue4_stage6"},
+    )
+    prepared = prepare_irf(helper(source), condition.time_ns)
+    np.testing.assert_array_equal(prepared.kernel, condition.assumptions[1].prepared_irf.kernel)
 
 
 def test_physical_and_pseudo_true_decomposition(workflow, references):

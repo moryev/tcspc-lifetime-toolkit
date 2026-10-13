@@ -4,20 +4,20 @@ The explicit ``__all__`` is the supported package-root surface. See
 ``docs/api.md`` for the supported advanced APIs and compatibility policy.
 """
 
-from tcspc_toolkit.models import (
+from tcspc_toolkit.physics.models import (
     monoexponential_decay,
 )
-from tcspc_toolkit.simulation import (
+from tcspc_toolkit.simulation.histograms import (
     build_expected_counts_from_irf,
     sample_photon_counts,
 )
 
-from tcspc_toolkit.datasets import (
+from tcspc_toolkit.simulation.datasets import (
     SyntheticDataset,
     generate_monoexponential_dataset,
 )
 
-from tcspc_toolkit.irf import (
+from tcspc_toolkit.irf.profiles import (
     IRFProfile,
     IRFSourceKind,
     generate_emg_irf,
@@ -28,11 +28,11 @@ from tcspc_toolkit.irf import (
     shift_irf,
 )
 
-from tcspc_toolkit.convolution import (
+from tcspc_toolkit.physics.convolution import (
     convolve_decay_with_irf,
 )
 
-from tcspc_toolkit.fitting import (
+from tcspc_toolkit.estimation.fitting import (
     LifetimeFitResult,
     ReconvolutionFitResult,
     fit_monoexponential_decay,
@@ -46,7 +46,7 @@ from tcspc_toolkit.exceptions import (
     TCSPCError,
 )
 
-from tcspc_toolkit.measurements import (
+from tcspc_toolkit.measurement.records import (
     MeasurementDataKind,
     SampledIRF,
     TCSPCMeasurement,
@@ -54,25 +54,25 @@ from tcspc_toolkit.measurements import (
     convert_time_to_ns,
 )
 
-from tcspc_toolkit.irf_preparation import (
+from tcspc_toolkit.irf.preparation import (
     IRFPreparationDiagnostics,
     PreparedIRF,
     irf_profile_from_sampled_irf,
     prepare_irf,
 )
 
-from tcspc_toolkit.irf_estimation import (
+from tcspc_toolkit.irf.estimation import (
     LeadingEdgeIRFDiagnostics,
     LeadingEdgeIRFResult,
     estimate_irf_from_leading_edge,
 )
 
-from tcspc_toolkit.measurement_io import (
+from tcspc_toolkit.measurement.io import (
     load_sampled_irf_csv,
     load_tcspc_measurement_csv,
 )
 
-from tcspc_toolkit.experimental import (
+from tcspc_toolkit.measurement.adapters import (
     ReferenceLifetimeEvaluation,
     evaluate_estimate_against_reference,
     fit_experimental_reconvolution,
@@ -80,7 +80,7 @@ from tcspc_toolkit.experimental import (
     measurement_to_histogram_batch,
 )
 
-from tcspc_toolkit.preprocessing import (
+from tcspc_toolkit.preprocessing.histograms import (
     align_to_irf,
     crop_time_window,
     detect_peak,
@@ -100,20 +100,20 @@ from tcspc_toolkit.config import (
     save_config,
 )
 
-from tcspc_toolkit.features import (
+from tcspc_toolkit.preprocessing.features import (
     FEATURE_NAMES,
     extract_feature_table,
     extract_features,
 )
 
-from tcspc_toolkit.representations import (
+from tcspc_toolkit.preprocessing.representations import (
     cumulative_explained_variance,
     fit_pca_representation,
     normalize_histogram_batch,
     transform_pca_representation,
 )
 
-from tcspc_toolkit.estimator_api import (
+from tcspc_toolkit.estimation.api import (
     RegressorProtocol,
     EstimatorSpec,
     fit_regressors,

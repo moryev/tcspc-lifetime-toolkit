@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.datasets import (
+from tcspc_toolkit.simulation.datasets import (
     generate_monoexponential_dataset,
     generate_grouped_monoexponential_dataset,
 )

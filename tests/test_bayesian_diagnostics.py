@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from tcspc_toolkit.bayesian_sampling import (
+from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianSamplingConfig,
     _assess_sampling_diagnostics,
     _posterior_correlation,

@@ -12,7 +12,7 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from tcspc_toolkit.ml_models import (
+from tcspc_toolkit.ml.models import (
     DEFAULT_PCA_COMPONENTS,
     DEFAULT_RANDOM_STATE,
     make_hist_gradient_boosting_pipeline,
@@ -450,4 +450,3 @@ def test_quantile_hist_gradient_boosting_rejects_invalid_quantiles(
         make_quantile_hist_gradient_boosting_pipeline(
             quantile=quantile,  # type: ignore[arg-type]
         )
-

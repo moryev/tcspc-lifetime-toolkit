@@ -7,17 +7,19 @@ import pytest
 from tcspc_toolkit.evaluation_core import build_point_evaluation
 from tcspc_toolkit.evaluation_results import EvaluationBatch, MethodDescriptor
 from tcspc_toolkit.generalization_datasets import GeneralizationTestMeasurements
-from tcspc_toolkit.generalization_evaluation import _build_generalization_evaluation_batch
+from tcspc_toolkit.benchmarks.generalization import _build_generalization_evaluation_batch
 from tcspc_toolkit.ml_evaluation import BenchmarkDataset
 from tcspc_toolkit.ml_uncertainty import (
     MLUncertaintyScoreCalibrationResult,
     QuantileGradientBoostingCalibrationResult,
-    _QUANTILE_MEDIAN_POINT_METHOD,
-    _development_calibration_batch,
-    _frozen_ml_uncertainty_batch,
     evaluate_frozen_ml_uncertainty_score,
     project_ml_prediction_intervals,
     project_ml_uncertainty_scores,
+)
+from tcspc_toolkit.uncertainty.ml import (
+    _QUANTILE_MEDIAN_POINT_METHOD,
+    _development_calibration_batch,
+    _frozen_ml_uncertainty_batch,
 )
 from tcspc_toolkit.uncertainty_evaluation import (
     PredictionIntervalResult, UncertaintyDevelopmentSplit, UncertaintyScoreResult,
@@ -206,7 +208,7 @@ def test_conformal_workflow_projects_corrected_bounds_with_no_refit(monkeypatch)
         ),
         feature_names=("x",),
     )
-    import tcspc_toolkit.uncertainty_robustness as robustness
+    import tcspc_toolkit.benchmarks.uncertainty as robustness
 
     captured = []
     original = robustness._project_ml_interval_source
@@ -237,7 +239,7 @@ def test_conformal_workflow_projects_corrected_bounds_with_no_refit(monkeypatch)
 
 
 def test_external_score_projection_preserves_source_metrics_and_explicit_point_link(monkeypatch):
-    import tcspc_toolkit.ml_uncertainty as ml_uncertainty
+    import tcspc_toolkit.uncertainty.ml as ml_uncertainty
 
     source = UncertaintyScoreResult(
         np.array([2.0, 3.0]), np.array([0.2, 0.0]),
