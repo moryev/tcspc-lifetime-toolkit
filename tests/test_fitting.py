@@ -985,10 +985,202 @@ def test_poisson_optimizer_termination_without_local_optimality_is_failure(
         temporal_shift_bounds=(-0.2, 0.2),
         objective="poisson",
     )
-    assert len(calls) == 2
+    # Continuation and both bounded fallback starts still cannot turn an
+    # objectively improvable endpoint into an accepted fit.
+    assert len(calls) == 4
     assert calls[1]["options"]["ftol"] < 1e-9
     assert result.optimizer_reported_success
     assert not result.success
     assert result.numerical_validation_passed is False
     assert result.max_coordinate_descent_nll > 0.01
     assert result.recovery_attempted
+
+
+@pytest.fixture
+def poisson_recovery_stub(monkeypatch):
+    """Isolate candidate selection; physical regressions use the real objective."""
+    calls = []
+    monkeypatch.setattr(
+        fitting, "_reconvolution_model",
+        lambda time, irf, amplitude, lifetime, background, temporal_shift:
+        np.full_like(time, lifetime),
+    )
+    monkeypatch.setattr(
+        fitting, "poisson_negative_log_likelihood",
+        lambda observed, expected: float((np.mean(expected) - 2.0) ** 2),
+    )
+    monkeypatch.setattr(
+        fitting, "_poisson_coordinate_descent_check",
+        lambda fun, x, bounds: (bool(x[1] >= 1.5), 0.0 if x[1] >= 1.5 else 1.0),
+    )
+
+    def run(endpoints, *, shift=0.0, bounds=(-0.5, 0.5)):
+        def minimize(*, fun, x0, **kwargs):
+            index = len(calls)
+            spec = endpoints[index]
+            calls.append(dict(x0=x0.copy(), **kwargs))
+            x = x0.copy()
+            x[1] = spec["lifetime"]
+            if "shift" in spec:
+                x[3] = spec["shift"]
+            return OptimizeResult(
+                x=x, fun=spec.get("cached_nll", -999.0),
+                success=spec["success"], status=0 if spec["success"] else 2,
+                message=f"candidate {index}", nfev=index + 3, njev=index + 1,
+            )
+
+        monkeypatch.setattr(fitting, "minimize", minimize)
+        grid = np.arange(5, dtype=float) * 0.1
+        return fit_monoexponential_reconvolution(
+            time=grid, counts=np.ones(5), irf=np.ones(5),
+            initial_guess=(10.0, 1.0, 1.0, shift),
+            temporal_shift_bounds=bounds, objective="poisson",
+        )
+
+    return run, calls
+
+
+def test_poisson_valid_primary_does_not_run_recovery(poisson_recovery_stub):
+    run, calls = poisson_recovery_stub
+    result = run([dict(lifetime=2.0, success=True)])
+    assert len(calls) == 1
+    assert result.success
+    assert result.lifetime == 2.0
+    assert not result.recovery_attempted
+    assert (result.optimizer_nfev, result.optimizer_njev) == (3, 1)
+
+
+def test_poisson_valid_continuation_does_not_run_fallback(poisson_recovery_stub):
+    run, calls = poisson_recovery_stub
+    result = run([
+        dict(lifetime=1.0, success=True, cached_nll=-1e9),
+        dict(lifetime=2.0, success=True, cached_nll=1e9),
+    ])
+    assert len(calls) == 2
+    assert result.success and result.recovery_attempted
+    assert result.optimizer_message == "candidate 1"
+    assert (result.optimizer_nfev, result.optimizer_njev) == (7, 3)
+
+
+@pytest.mark.parametrize("primary_success", [False, True])
+def test_poisson_fallback_selects_best_actual_objective(poisson_recovery_stub, primary_success):
+    run, calls = poisson_recovery_stub
+    endpoints = [dict(lifetime=1.0, success=primary_success)]
+    if primary_success:
+        endpoints.append(dict(lifetime=1.0, success=True))  # Insufficient continuation.
+    endpoints.extend([
+        dict(lifetime=1.8, success=True, cached_nll=-1e9),
+        dict(lifetime=2.0, success=True, cached_nll=1e9),
+    ])
+    result = run(endpoints)
+    assert len(calls) == len(endpoints)
+    assert result.success and result.numerical_validation_passed
+    assert result.lifetime == 2.0  # Actual NLL, not misleading OptimizeResult.fun.
+    assert result.recovery_attempted
+    assert result.optimizer_status == 0
+    assert result.optimizer_message == f"candidate {len(endpoints) - 1}"
+    assert result.optimizer_nfev == sum(range(3, 3 + len(endpoints)))
+    assert result.optimizer_njev == sum(range(1, 1 + len(endpoints)))
+    for call, offset in zip(calls[-2:], [-0.5, 0.5], strict=True):
+        np.testing.assert_array_equal(call["x0"][:3], calls[0]["x0"][:3])
+        assert call["x0"][3] == pytest.approx(offset)
+        assert call["bounds"] == calls[0]["bounds"]
+        assert call["method"] == "L-BFGS-B"
+        assert call["options"] == {"ftol": 1e-12, "gtol": 1e-6, "maxiter": 1000}
+
+
+def test_poisson_abnormal_valid_endpoint_is_not_replaced_by_worse_success(poisson_recovery_stub):
+    run, calls = poisson_recovery_stub
+    result = run([
+        dict(lifetime=2.0, success=False, cached_nll=1e9),
+        dict(lifetime=1.8, success=True, cached_nll=-1e9),
+        dict(lifetime=1.9, success=True, cached_nll=-1e9),
+    ])
+    assert len(calls) == 3
+    assert not result.success and not result.optimizer_reported_success
+    assert result.numerical_validation_passed
+    assert result.lifetime == 2.0
+    assert result.optimizer_status == 2
+    assert result.optimizer_message == "candidate 0"
+    assert result.recovery_attempted
+
+
+@pytest.mark.parametrize("bad", [
+    dict(lifetime=2.0, success=False),  # Good objective/check cannot override status.
+    dict(lifetime=1.1, success=True),  # Improved but still numerically invalid.
+    dict(lifetime=float("nan"), success=True),
+    dict(lifetime=float("inf"), success=True),
+    dict(lifetime=-1.0, success=True),  # Outside physical bounds.
+    dict(lifetime=2.0, shift=100.0, success=True),
+])
+def test_poisson_ineligible_fallback_preserves_failure(poisson_recovery_stub, bad):
+    run, calls = poisson_recovery_stub
+    result = run([dict(lifetime=1.0, success=False), bad, bad])
+    assert len(calls) == 3
+    assert not result.success
+    assert result.lifetime == 1.0
+    assert result.optimizer_status == 2
+    assert result.recovery_attempted
+
+
+@pytest.mark.parametrize("endpoint", [float("nan"), float("inf"), -1.0])
+def test_poisson_unusable_primary_does_not_run_fallback(poisson_recovery_stub, endpoint):
+    run, calls = poisson_recovery_stub
+    result = run([dict(lifetime=endpoint, success=False)])
+    assert len(calls) == 1
+    assert not result.success
+    assert not result.recovery_attempted
+
+
+def test_poisson_nonfinite_fallback_objective_preserves_failure(
+    poisson_recovery_stub, monkeypatch,
+):
+    run, calls = poisson_recovery_stub
+    monkeypatch.setattr(
+        fitting, "poisson_negative_log_likelihood",
+        lambda observed, expected: 1.0 if np.mean(expected) == 1.0 else np.nan,
+    )
+    result = run([
+        dict(lifetime=1.0, success=False),
+        dict(lifetime=2.0, success=True),
+        dict(lifetime=2.0, success=True),
+    ])
+    assert len(calls) == 3
+    assert not result.success
+    assert result.lifetime == 1.0
+    assert result.optimizer_status == 2
+
+
+@pytest.mark.parametrize("shift,bounds,expected_calls", [
+    (-0.5, (-0.5, 0.5), 2),
+    (0.5, (-0.5, 0.5), 2),
+    (0.0, (-0.01, 0.01), 3),
+])
+def test_poisson_fallback_clips_and_deduplicates_starts(
+    poisson_recovery_stub, shift, bounds, expected_calls,
+):
+    run, calls = poisson_recovery_stub
+    result = run([dict(lifetime=1.0, success=False)] * expected_calls,
+                 shift=shift, bounds=bounds)
+    assert len(calls) == expected_calls
+    assert len({tuple(call["x0"]) for call in calls}) == expected_calls
+    assert not result.success
+    for call in calls:
+        assert call["bounds"][3][0] <= call["x0"][3] <= call["bounds"][3][1]
+
+
+def test_least_squares_never_enters_poisson_recovery(time_axis, irf, monkeypatch):
+    counts = _reconvolution_model(time_axis, irf, 1000.0, 2.0, 1.0, 0.0)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("Least squares must not use Poisson optimization/validation")
+
+    monkeypatch.setattr(fitting, "minimize", unexpected)
+    monkeypatch.setattr(fitting, "_poisson_coordinate_descent_check", unexpected)
+    result = fit_monoexponential_reconvolution(
+        time_axis, counts, irf, (900.0, 1.8, 1.1, 0.0), objective="least_squares",
+    )
+    assert result.success
+    assert result.lifetime == pytest.approx(2.0)
+    assert result.numerical_validation_passed is None
+    assert not result.recovery_attempted

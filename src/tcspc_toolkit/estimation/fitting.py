@@ -573,6 +573,28 @@ def fit_monoexponential_reconvolution(
             )
         )
 
+        def candidate_state(
+            parameters: NDArray[np.float64],
+        ) -> tuple[float, bool, float]:
+            """Evaluate actual coordinates, never a cached optimizer objective."""
+            physical = parameters * parameter_scales
+            if (
+                not np.all(np.isfinite(physical))
+                or np.any(parameters < scaled_lower_bounds)
+                or np.any(parameters > scaled_upper_bounds)
+            ):
+                return np.nan, False, np.nan
+            try:
+                nll = float(scaled_poisson_objective(parameters))
+            except ValueError:
+                return np.nan, False, np.nan
+            if not np.isfinite(nll):
+                return np.nan, False, np.nan
+            validated, descent = _poisson_coordinate_descent_check(
+                scaled_poisson_objective, parameters, scaled_bounds,
+            )
+            return nll, validated, descent
+
         optimization_result = minimize(
             fun=scaled_poisson_objective,
             x0=scaled_initial_parameters,
@@ -580,16 +602,14 @@ def fit_monoexponential_reconvolution(
             bounds=scaled_bounds,
         )
 
-        numerical_validation_passed, maximum_descent = (
-            _poisson_coordinate_descent_check(
-                scaled_poisson_objective,
-                optimization_result.x,
-                scaled_bounds,
-            )
+        selected_nll, numerical_validation_passed, maximum_descent = (
+            candidate_state(optimization_result.x)
         )
         recovery_attempted = False
         total_nfev = getattr(optimization_result, "nfev", None)
         total_njev = getattr(optimization_result, "njev", None)
+        recovery_options = {"ftol": 1e-12, "gtol": 1e-6, "maxiter": 1000}
+        attempted_starts = [scaled_initial_parameters.copy()]
 
         # A relative-objective termination can occur while the local
         # Poisson objective is still plainly descending. Continue only
@@ -598,34 +618,65 @@ def fit_monoexponential_reconvolution(
         if (
             optimization_result.success
             and not numerical_validation_passed
-            and np.all(np.isfinite(optimization_result.x))
-            and np.isfinite(optimization_result.fun)
+            and np.isfinite(selected_nll)
         ):
             recovery_attempted = True
+            attempted_starts.append(optimization_result.x.copy())
             continuation = minimize(
                 fun=scaled_poisson_objective,
                 x0=optimization_result.x.copy(),
                 method="L-BFGS-B",
                 bounds=scaled_bounds,
-                options={"ftol": 1e-12, "gtol": 1e-6, "maxiter": 1000},
+                options=recovery_options,
             )
             if total_nfev is not None:
                 total_nfev += getattr(continuation, "nfev", 0)
             if total_njev is not None:
                 total_njev += getattr(continuation, "njev", 0)
-            if (
-                np.isfinite(continuation.fun)
-                and np.isfinite(optimization_result.fun)
-                and continuation.fun <= optimization_result.fun
-            ):
+            continuation_nll, validated, descent = candidate_state(continuation.x)
+            if continuation.success and validated and continuation_nll <= selected_nll:
                 optimization_result = continuation
-                numerical_validation_passed, maximum_descent = (
-                    _poisson_coordinate_descent_check(
-                        scaled_poisson_objective,
-                        optimization_result.x,
-                        scaled_bounds,
-                    )
+                selected_nll = continuation_nll
+                numerical_validation_passed, maximum_descent = validated, descent
+
+        # A zero-shift start can sit at the interpolated IRF's support edge.
+        # Only after the ordinary path fails, try two grid-relative offsets
+        # of the ORIGINAL initialization, without changing any other guess.
+        # This is a bounded, truth-free fallback, not a global multi-start fit.
+        if (
+            not (optimization_result.success and numerical_validation_passed)
+            and np.isfinite(selected_nll)
+        ):
+            for direction in (-1.0, 1.0):
+                start = poisson_initial_parameters.copy()
+                start[3] = np.clip(
+                    initial_temporal_shift + direction * 0.5 * bin_width,
+                    shift_lower, shift_upper,
                 )
+                start /= parameter_scales
+                if any(np.array_equal(start, previous) for previous in attempted_starts):
+                    continue
+                attempted_starts.append(start.copy())
+                recovery_attempted = True
+                candidate = minimize(
+                    fun=scaled_poisson_objective,
+                    x0=start,
+                    method="L-BFGS-B",
+                    bounds=scaled_bounds,
+                    options=recovery_options,
+                )
+                if total_nfev is not None:
+                    total_nfev += getattr(candidate, "nfev", 0)
+                if total_njev is not None:
+                    total_njev += getattr(candidate, "njev", 0)
+                candidate_nll, validated, descent = candidate_state(candidate.x)
+                # No scientific tolerance: an eligible replacement must be
+                # non-worse at its returned coordinates, even if the current
+                # lower-NLL endpoint has an unsuccessful optimizer status.
+                if candidate.success and validated and candidate_nll <= selected_nll:
+                    optimization_result = candidate
+                    selected_nll = candidate_nll
+                    numerical_validation_passed, maximum_descent = validated, descent
 
         optimal_parameters = (
                 optimization_result.x
