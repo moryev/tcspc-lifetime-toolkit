@@ -933,3 +933,27 @@ Issue #3 has completed physical package movement; see the
 [final architecture inventory](package_structure.md). Issue #12 owns the post-reorganization
 clean-environment, reference-workflow and cross-feature integration gate. Neither
 is part of Issue #11.
+
+### Issue-12 Poisson optimizer recovery
+
+Scaled Poisson optimization remains necessary; its earlier numerical correction
+is not reverted. A zero-shift initialization can lie at the interpolated IRF's
+support edge, where L-BFGS-B can stall. After the ordinary fit and any existing
+tight continuation remain invalid, reconvolution now tries at most two starts:
+the original initialization (histogram-derived in classical evaluation) with
+only its shift displaced by minus/plus half a time bin, clipped to the caller's
+bounds and deduplicated.
+These deterministic starts use no generating parameters or benchmark labels.
+
+Recovery retains the scaled objective, bounds and L-BFGS-B, with
+`ftol=1e-12`, `gtol=1e-6`, `maxiter=1000`. A replacement must report optimizer
+success, have finite in-bounds parameters and objective, pass the unchanged
+coordinate-descent validation threshold of `0.01` NLL, and have a recomputed NLL
+no worse than the selected endpoint. An unsuccessful lower-NLL endpoint is not
+replaced by a worse successful one. Already accepted fits do not run fallback;
+least-squares behavior is unchanged. Recovery diagnostics count attempted work
+while status/message and numerical validation describe the selected result.
+
+This correction does not update historical Notebook-12/13 tables or scientific
+acceptance tolerances. Stage-3A reference-policy review remains separate; improved
+accepted-fit metrics must still be interpreted alongside the failure population.

@@ -598,3 +598,89 @@ def test_nonfinite_optimizer_output_is_recorded_as_invalid(monkeypatch) -> None:
     assert result.numerical_validation_passed is False
     assert not result.recovery_attempted
     assert np.isnan(result.poisson_nll)
+
+
+def _record_poisson_starts(monkeypatch):
+    original = fitting.minimize
+    starts = []
+
+    def record(*args, **kwargs):
+        starts.append(kwargs["x0"].copy())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(fitting, "minimize", record)
+    return starts
+
+
+def test_frozen_test_c_26_recovers_from_truth_free_shift_starts(monkeypatch) -> None:
+    from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
+    from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+
+    definition = default_generalization_suite()
+    assert definition.seed_for("C") == 50003
+    test_c = next(test for test in generate_generalization_test_suite(definition).tests
+                  if test.test_id == "C")
+    counts = test_c.X_histograms[26]
+    assert test_c.metadata.iloc[26]["sample_id"] == 26
+    assert hashlib.sha256(counts.tobytes()).hexdigest() == (
+        "d93f92d1c8379c82ac79a1b1dfba9e966bf8668dd6ee85a668aa8d0a39ece63d"
+    )
+    irf = normalize_irf(test_c.time, generate_gaussian_irf(test_c.time, centre=1.0, fwhm=0.6))
+    initial = estimate_reconvolution_initial_guess(time=test_c.time, counts=counts, irf=irf)
+    initial_nll = poisson_negative_log_likelihood(
+        counts, monoexponential_reconvolution_expected_counts(
+            test_c.time, irf, initial.amplitude, initial.lifetime_ns,
+            initial.background, initial.temporal_shift_ns,
+        ),
+    )
+    starts = _record_poisson_starts(monkeypatch)
+    result = fit_single_reconvolution_curve(
+        time=test_c.time, counts=counts, irf=irf,
+        temporal_shift_bounds=(-0.5, 0.5), objective="poisson",
+    )
+    assert result.valid_fit and result.optimizer_success
+    assert result.numerical_validation_passed and result.recovery_attempted
+    assert result.max_coordinate_descent_nll <= 0.01
+    assert initial_nll - result.poisson_nll > 100.0
+    assert abs(result.fitted_lifetime_ns - test_c.y[26]) < 0.05
+    assert len(starts) == 3
+    for start, shift in zip(starts[1:], [-0.25, 0.25], strict=True):
+        np.testing.assert_array_equal(start[:3], starts[0][:3])
+        assert start[3] == pytest.approx(shift)
+
+
+def test_frozen_week7_sample_770_recovers_without_relaxing_validation(monkeypatch) -> None:
+    from tcspc_toolkit.ml.evaluation import generate_benchmark_measurements
+
+    time = np.arange(0.0, 20.0, 0.05)
+    measured = generate_benchmark_measurements(
+        time=time, lifetimes_ns=[0.5, 1.0, 2.0, 3.0, 4.5, 6.0],
+        signal_photon_counts=[1000, 10000, 100000], background_levels=[0.0, 0.5, 2.0],
+        irf_centre_ns=1.0, irf_fwhm_values_ns=[0.15, 0.30, 0.60],
+        irf_shift_values_ns=[-0.20, -0.05, 0.0, 0.05, 0.20], random_seed=42,
+    )
+    counts = measured.X_histograms[770]
+    assert measured.metadata.iloc[770]["sample_id"] == 770
+    assert hashlib.sha256(counts.tobytes()).hexdigest() == (
+        "035f408aa945ef4df47b43ab8c7cada90e05877f5f029323804d1c8a3e1e95ca"
+    )
+    irf = normalize_irf(time, generate_gaussian_irf(time, centre=1.0, fwhm=0.3))
+    # Frozen pre-fix endpoint, not a starting guess or an accepted reference.
+    old_endpoint = (860.5594635040453, 6.051319475420611, 1e-12, -0.1999482723696253)
+    old_nll = poisson_negative_log_likelihood(
+        counts, monoexponential_reconvolution_expected_counts(time, irf, *old_endpoint),
+    )
+    starts = _record_poisson_starts(monkeypatch)
+    result = fit_single_reconvolution_curve(
+        time=time, counts=counts, irf=irf,
+        temporal_shift_bounds=(-0.5, 0.5), objective="poisson",
+    )
+    assert result.valid_fit and result.optimizer_success
+    assert result.numerical_validation_passed and result.recovery_attempted
+    assert result.max_coordinate_descent_nll <= 0.01
+    assert old_nll - result.poisson_nll > 0.2
+    assert abs(result.fitted_lifetime_ns - measured.y[770]) < 0.1
+    assert len(starts) == 4  # Primary, continuation, two original-guess offsets.
+    for start, shift in zip(starts[-2:], [-0.25, 0.25], strict=True):
+        np.testing.assert_array_equal(start[:3], starts[0][:3])
+        assert start[3] == pytest.approx(shift)
