@@ -1591,3 +1591,71 @@ and closed. The completed
 [Bayesian notebook](../notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
 demonstrates the library workflow and these audited findings without rerunning
 the multi-hour scientific profiles.
+
+## Issue #12: post-correction Week-7/8 acceptance reference
+
+The stored Notebook-12 and Notebook-13 classical tables are historical
+pre-correction evidence, not current regression oracles. Their selected outputs
+were published in `6afbe5ef1771ca30c0b06beaa0b48f22dc2f9897` (Week 7) and
+`6efb2c9829c97c9045dd7cae5326b71449a60bdf` (Week 8). Those outputs have not been
+rewritten or re-executed for this acceptance work.
+
+Later Poisson parameter scaling improved numerical optimization. Subsequent
+coordinate convergence validation rejected insufficient endpoints. Issue #12
+then identified a distinct zero-shift/IRF-support-edge L-BFGS-B stall: bounded,
+deterministic half-bin shift-offset starts repaired the demonstrated avoidable
+failures. The reviewed correction retains the physical model, scaled coordinates,
+caller bounds and `0.01` NLL validation threshold. Acceptance still requires
+optimizer success and numerical validation; a worse successful endpoint cannot
+replace a lower-NLL unsuccessful one. These are numerical corrections, not a new
+statistical model or a change to the frozen scientific protocol.
+
+The [Issue-12 post-correction scientific reference](../data/reference/issue12_week7_week8_post_correction.json)
+version 1 records current regression acceptance from numerical source commit
+`f07f6d84fbeb6ec933668eab4806a38b913b2ce2`. Two independent fresh-process runs
+exactly reproduced the scientific summaries, input/metadata fingerprints,
+deterministic predictions and classical returned parameters/NLLs. Timings were
+excluded from exact equality. Environment versions and all correction commits
+are provenance in the JSON, not mandatory dependency-version pins.
+
+| Classical evaluation | Valid / total | MAE (ns) | Bias (ns) |
+|---|---:|---:|---:|
+| Week-7 matched | 162 / 162 | 0.085604006 | 0.015651057 |
+| Week-7 10% secondary component | 162 / 162 | 0.203452165 | 0.190000039 |
+| Week-8 A | 192 / 192 | 0.082749602 | -0.007008059 |
+| Week-8 B | 192 / 192 | 0.249548550 | 0.047943142 |
+| Week-8 C, correct IRF | 191 / 192 | 0.096350573 | -0.015589995 |
+| Week-8 D | 192 / 192 | 0.107693242 | 0.002922290 |
+| Week-8 E | 192 / 192 | 0.077630395 | 0.003290444 |
+| Week-8 F | 192 / 192 | 0.156722945 | 0.124892075 |
+
+Errors above use accepted fits only. Test-C ID 69 remains an
+`optimizer_unsuccessful` failure, despite local numerical validation; its status
+was not relaxed. Failure IDs/reasons and total/valid/failed counts are now explicit
+acceptance quantities, so improved accepted-fit metrics cannot conceal an
+availability regression. Week-7 matched and mismatch data have 162 complete
+accepted pairs: mean absolute-error increase 0.117848159 ns, median 0.085903316 ns,
+129 worse and 33 better; the descriptive MAE ratio is 2.376666406.
+
+For the *same* Test-C observations generated with 0.6 ns FWHM, assuming 0.4 ns
+FWHM gives 192/192 accepted fits, MAE 0.116739343 ns and bias 0.046250617 ns.
+The complete-pair comparison uses 191 pairs, with mean absolute-error increase
+0.020549589 ns (128 worse, 63 better). The marginal MAE ratio 1.211610271 uses
+different accepted populations and is therefore descriptive, not a substitute
+for the paired comparison. A successful fit does not establish a correct IRF.
+
+Test F remains separate from Week-7 mismatch, with 96 weak and 96 moderate cases.
+Classical MAE against the primary component is 0.106953948 / 0.206491942 ns;
+against the descriptive signal-photon-weighted reference it is
+0.099278132 / 0.201379024 ns. All 192 fits are accepted. Neither target is a unique
+mono-exponential physical truth, and no Bayesian pseudo-true projection is used.
+
+All 79 established ML reference comparisons remain unchanged. The complete
+current A-F scorecard, including all representations, baselines, failure rates
+and degradation, is in the JSON. Historical classical comparisons intentionally
+retain six Week-7 and twelve Week-8 differences; these are explained provenance,
+not current regression failures. Timing checks distinguish repeated-batch
+prediction from recorded per-fit optimization and do not freeze milliseconds.
+See the [acceptance guide](issue12_scientific_acceptance.md) for explicit reference
+selection and reproducible commands. This record does not constitute Week-9
+acceptance or completion of Issue #12.
