@@ -1659,3 +1659,59 @@ prediction from recorded per-fit optimization and do not freeze milliseconds.
 See the [acceptance guide](issue12_scientific_acceptance.md) for explicit reference
 selection and reproducible commands. This record does not constitute Week-9
 acceptance or completion of Issue #12.
+
+### Issue #12: current Week-9 ML/conformal acceptance (Stage 3B.1)
+
+The [current Week-9 ML/conformal reference](../data/reference/issue12_week9_ml_uncertainty_post_correction.json)
+version 1 records two independently regenerated, exactly matching runs from
+scientific source commit `88c4632f3feda58b2afd05428f38810d6cf27028`. This is not an
+update to Notebook 14's stored outputs. All 191 comparisons with its saved
+calibration, external and residual tables match at four-decimal precision.
+ML/conformal algorithms, frozen A–F inputs and seeds are unchanged.
+
+Training uses 48 of 64 development observations; the remaining 16 are calibration
+only (split seed 57). All 205 pipeline fits were checked against the allowed
+training population/resamples, and external evaluation was guarded against
+refitting. The methods use engineered features, not the development PCA.
+
+On calibration, the nominal 90% quantile interval covers 16/16 references, with
+mean width 2.562512 ns, median width 3 ns and no quantile crossing. Conformal rank
+16 gives a zero correction because every calibration target is already inside
+the base interval. This reuse of calibration rows is descriptive; it is not
+independent evidence of guaranteed coverage. RF spread has error-rank correlation
+0.942397, versus 0.176471 for Ridge bootstrap spread; their low/high-score-tail
+MAEs are 0.010000/0.500000 ns and 0.183627/0.319503 ns, respectively. These are
+ranking scores, not nominal intervals.
+
+| External test | Quantile/conformal mean width (ns) | RF point MAE (ns) | Ridge-bootstrap point MAE (ns) |
+|---|---:|---:|---:|
+| A | 2.4583 | 0.1799 | 0.2042 |
+| B | 2.6719 | 0.4796 | 1.0020 |
+| C | 2.4688 | 0.1711 | 0.1977 |
+| D | 2.6406 | 0.4967 | 0.8538 |
+| E | 2.4688 | 0.2098 | 0.3553 |
+| F | 2.4844 | 0.1965 | 0.2438 |
+
+All four methods produce valid outputs for all 192 observations in each test;
+quantile and conformal empirical coverage is 1.0 throughout this finite suite.
+Those broad intervals and finite-suite coverage do not establish guarantees under
+arbitrary distribution shift or resolve model-form uncertainty. Complete metrics,
+point/attachment identities and explicit failure populations are in the reference.
+
+Test F retains 96 weak and 96 moderate cases, scored against the primary component
+with the descriptive signal-photon-weighted reference kept distinct. Under
+moderate mismatch, paired Ridge-bootstrap MAE rises by a factor 1.284723 while
+mean spread changes by only 0.995411; error-rank correlation is 0.058953. RF's
+corresponding MAE/spread ratios are 1.365396/1.093027. Internal spread need not track
+the increase in physical/reference error. No Bayesian pseudo-true target is used.
+
+Corrected current classical **point** fits for A/F remain valid for all 384 rows.
+Mean deviance per bin is 1.056118 (A), 1.060190 (F weak) and 1.062740 (F moderate);
+signed-mean-profile RMS is 0.154843, 0.172011 and 0.172211. These reproduce the
+prior negative result: the tested aggregate residual summaries are not a reliable
+general discriminator of physical model mismatch. Successful fits and scalar GOF
+do not establish model correctness.
+
+No classical covariance, classical bootstrap, repeated-Poisson scientific workflow
+or Day-62 cache was regenerated. Their corrected-fitter uncertainty acceptance
+remains Stage 3B.2; this note does not complete Week-9 or Issue-12 acceptance.

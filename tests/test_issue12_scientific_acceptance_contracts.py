@@ -230,3 +230,133 @@ def test_reference_selection_is_explicit():
     with pytest.raises(SystemExit) as error:
         acceptance.main(["--week7"])
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize("args", [
+    ["--week9-ml", "--reference", "issue12-post-correction"],
+    ["--week8", "--reference", "issue12-week9-ml"],
+])
+def test_week9_reference_cannot_silently_replace_week7_week8(args):
+    with pytest.raises(SystemExit) as error:
+        acceptance.main(args)
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("cell,index,count", [
+    ("910a6d01bbf11f44", None, 5),
+    ("339769e99c73f7e3", 0, 12),
+    ("339769e99c73f7e3", 1, 12),
+    ("7dde16d16f42f0e6", None, 3),
+])
+def test_week9_saved_tables_are_read_without_execution(cell, index, count):
+    assert len(acceptance.reference_rows(9, cell, index)) == count
+
+
+def test_week9_reference_schema_split_kinds_populations_and_provenance():
+    from tcspc_toolkit.uncertainty.evaluation import make_uncertainty_development_split
+
+    ref = acceptance.read_week9_reference()
+    assert acceptance.WEEK9_REFERENCE_PATH == ROOT / "data/reference/issue12_week9_ml_uncertainty_post_correction.json"
+    assert re.fullmatch(r"[0-9a-f]{40}", ref["source_commit"])
+    for key, value in ref["historical_provenance"].items():
+        if key.endswith("_commit"):
+            assert re.fullmatch(r"[0-9a-f]{40}", value)
+    assert ref["independent_rerun"]["status"] == "PASS"
+    w9 = ref["weeks"]["week9_ml"]
+    split = make_uncertainty_development_split(64)
+    assert (w9["development_seed"], w9["split_seed"]) == (42, 57)
+    assert (w9["n_development"], w9["n_training"], w9["n_calibration"]) == (64, 48, 16)
+    assert w9["training_indices"] == list(split.training_indices)
+    assert w9["calibration_indices"] == list(split.calibration_indices)
+    assert set(w9["training_ids"]).isdisjoint(w9["calibration_ids"])
+    w8 = acceptance.read_current_reference()["weeks"]["week8"]
+    assert w9["protocol_id"] == w8["protocol_id"] == "week8-day55-v2"
+    assert w9["test_order"] == list("ABCDEF")
+    assert w9["external_counts"] == dict.fromkeys("ABCDEF", 192)
+    assert w9["external_seeds"] == dict(zip("ABCDEF", range(50001, 50007)))
+    assert w9["input_fingerprints"] == {"development": w8["development_sha256"], **w8["external_sha256"]}
+    assert w9["conformal"]["finite_sample_rank"] == w9["conformal"]["n_calibration_scores"] == 16
+    assert w9["estimator_policy"]["bootstrap_replicates"] == 200
+    assert w9["estimator_policy"]["random_state"] == 42
+    methods = {"quantile_gradient_boosting", "conformalized_quantile_gradient_boosting",
+               "random_forest_tree_spread", "ml_training_bootstrap"}
+    assert {r["method_id"] for r in w9["calibration"]} == methods
+    assert len(w9["external"]) == 24
+    assert len(w9["test_f_severity"]) == 8
+    for group, count in (("calibration", 16), ("external", 192), ("test_f_severity", 96)):
+        for row in w9[group]:
+            population = row["population"]
+            assert population["n_attempted"] == count == population["n_valid"] + population["n_failed"]
+            assert len(population["failures"]) == population["n_failed"]
+            assert row["point_metrics"]["n_attempted"] == count
+            if row["output_kind"] == "score":
+                assert row["nominal_level"] is None
+                assert "empirical_coverage" not in row["metrics"]
+            else:
+                assert row["output_kind"] in {"quantile_prediction", "conformal_prediction"}
+                assert row["nominal_level"] == .95 - .05
+                assert row["metrics"]["n_valid_intervals"] == population["n_valid"]
+    assert w9["test_f"]["severity_counts"] == {"weak": 96, "moderate": 96}
+    assert w9["test_f"]["reference"] == "primary_component"
+    assert len(w9["residual_summary"]) == 3
+    tolerance = ref["comparison_tolerances"]["week9_ml"]
+    assert set(tolerance.values()) == {5e-5}
+    assert not {"nominal_level", "nominal_coverage", "tail_fraction", "random_state", "n_valid"} & tolerance.keys()
+    assert acceptance.compare_current(w9, w9, tolerance) == []
+
+
+@pytest.mark.parametrize("role", ["uncertainty_training", "uncertainty_calibration"])
+@pytest.mark.parametrize("test_id", list("ABCDEF"))
+def test_week9_external_provenance_rejects_training_and_calibration(test_id, role):
+    from tcspc_toolkit.uncertainty.evaluation import UncertaintyDataProvenance, UncertaintyDataRole
+    with pytest.raises(ValueError, match="only for external"):
+        UncertaintyDataProvenance(test_id, UncertaintyDataRole(role))
+
+
+def test_training_audit_observes_exact_training_rows_and_bootstrap_draws(monkeypatch):
+    from types import SimpleNamespace
+    import numpy as np
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+    from tcspc_toolkit.uncertainty.evaluation import make_uncertainty_development_split
+
+    development = SimpleNamespace(X_features=pd.DataFrame(np.arange(128).reshape(64, 2)), y=np.arange(64.))
+    split = make_uncertainty_development_split(64)
+    X = development.X_features.to_numpy(dtype=float)[list(split.training_indices)]
+    y = development.y[list(split.training_indices)]
+    monkeypatch.setattr(Pipeline, "fit", lambda self, *args, **kwargs: self)
+    with acceptance.audit_week9_training(development, split) as calls:
+        for model in [HistGradientBoostingRegressor() for _ in range(3)] + [RandomForestRegressor(), Ridge()]:
+            Pipeline([("model", model)]).fit(X, y)
+        rng = np.random.default_rng(42)
+        for _ in range(200):
+            indices = rng.integers(0, 48, 48)
+            Pipeline([("model", Ridge())]).fit(X[indices], y[indices])
+    assert len(calls) == 205
+    with pytest.raises(AssertionError):
+        with acceptance.audit_week9_training(development, split):
+            Pipeline([("model", Ridge())]).fit(X + 1, y)
+
+
+def test_calibration_external_guard_rejects_refitting():
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import Ridge
+    with acceptance.frozen_week9_models():
+        with pytest.raises(acceptance.AcceptanceFailure, match="attempted model/representation fitting"):
+            Pipeline([("model", Ridge())]).fit([[1.]], [1.])
+
+
+@pytest.mark.parametrize("interval", [False, True])
+def test_uncertainty_population_preserves_failed_ids(interval):
+    import numpy as np
+    from tcspc_toolkit.uncertainty.evaluation import PredictionIntervalResult, UncertaintyScoreResult
+    if interval:
+        source = PredictionIntervalResult(np.array([1., 2.]), np.array([.5, 3.]), np.array([2., 2.]), .9, "test")
+    else:
+        source = UncertaintyScoreResult(np.array([1., 2.]), np.array([.1, np.nan]), "test")
+    population = acceptance.uncertainty_population(source, [11, 12])
+    assert population["n_attempted"] == 2
+    assert population["n_valid"] == population["n_failed"] == 1
+    assert population["failure_rate"] == .5
+    assert population["failures"] == [{"sample_id": 12, "reason": "invalid_interval" if interval else "invalid_score"}]
