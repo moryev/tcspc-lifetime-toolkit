@@ -1,4 +1,4 @@
-"""Explicit Week-7/8 acceptance; never executes notebooks or updates references.
+"""Explicit scientific acceptance; never executes notebooks or updates references.
 
 Run with the project interpreter, e.g. ``python scripts/run_issue12_scientific_reproducibility.py
 --all --reference issue12-post-correction``. Reports go to a new system temporary directory. This is deliberately
@@ -8,6 +8,8 @@ outside ordinary pytest: full classical traversal can take several minutes.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager, ExitStack
+from dataclasses import asdict, replace
 import hashlib
 from html.parser import HTMLParser
 import importlib.abc
@@ -19,18 +21,22 @@ import subprocess
 import sys
 import tempfile
 from time import perf_counter
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "issue12-stage3a-v2"
+VERSION = "issue12-stage3b1-v1"
 REFERENCE_PATH = ROOT / "data/reference/issue12_week7_week8_post_correction.json"
 REFERENCE_ID = "issue12-week7-week8-post-correction"
+WEEK9_REFERENCE_PATH = ROOT / "data/reference/issue12_week9_ml_uncertainty_post_correction.json"
+WEEK9_REFERENCE_ID = "issue12-week9-ml-uncertainty-post-correction"
 METHODS = ("ridge", "random_forest", "hist_gradient_boosting")
 REPRESENTATIONS = ("engineered_features", "normalized_histogram", "pca_histogram")
 TEST_IDS = tuple("ABCDEF")
 NOTEBOOKS = {
     7: "12_ml_benchmarking.ipynb",
     8: "13_generalization_and_robustness.ipynb",
+    9: "14_uncertainty_and_failure_awareness.ipynb",
 }
 
 
@@ -92,15 +98,18 @@ class BodyRows(HTMLParser):
             self.in_body = False
 
 
-def reference_rows(week, cell_id):
+def reference_rows(week, cell_id, table_index=None):
     path = ROOT / "notebooks" / NOTEBOOKS[week]
     notebook = json.loads(path.read_text(encoding="utf-8"))
     cell = next(c for c in notebook["cells"] if c.get("id") == cell_id)
     tables = [o["data"]["text/html"] for o in cell.get("outputs", [])
               if "text/html" in o.get("data", {})]
-    require(len(tables) == 1, f"Expected one saved reference table at {path.name}:{cell_id}")
+    if table_index is None:
+        require(len(tables) == 1, f"Expected one saved reference table at {path.name}:{cell_id}")
+        table_index = 0
+    require(0 <= table_index < len(tables), f"Missing saved table: {cell_id}/{table_index}")
     parser = BodyRows()
-    parser.feed("".join(tables[0]))
+    parser.feed("".join(tables[table_index]))
     require(bool(parser.rows), f"Empty reference table: {cell_id}")
     return parser.rows
 
@@ -519,21 +528,360 @@ def week8(report):
     report["test_f_reference_semantics"] = "PASS"
 
 
+def read_week9_reference():
+    reference = json.loads(WEEK9_REFERENCE_PATH.read_text(encoding="utf-8"))
+    require(reference["reference_id"] == WEEK9_REFERENCE_ID and reference["reference_version"] == 1,
+            "Unsupported Week-9 ML reference")
+    require(set(reference["weeks"]) == {"week9_ml"}, "Unexpected Week-9 reference scope")
+    return reference
+
+
+def uncertainty_population(source, sample_ids):
+    """Count attempted source rows, independently of point or reference validity."""
+    import numpy as np
+    from tcspc_toolkit.uncertainty.evaluation import PredictionIntervalResult
+
+    interval = isinstance(source, PredictionIntervalResult)
+    mask = source.valid_interval_mask if interval else source.valid_score_mask
+    require(len(mask) == len(sample_ids), "Uncertainty sample identity alignment")
+    return dict(n_attempted=len(mask), n_valid=int(mask.sum()), n_failed=int((~mask).sum()),
+                failure_rate=float((~mask).mean()), failures=[
+                    dict(sample_id=sample_ids[i], reason="invalid_interval" if interval else "invalid_score")
+                    for i in np.flatnonzero(~mask)],
+                metric_population="valid source rows; failures divided by all attempted rows")
+
+
+@contextmanager
+def audit_week9_training(development, split):
+    """Observe every real pipeline fit, including the exact 200 bootstrap draws.
+
+    This delegates unchanged to sklearn; no scientific algorithm is replaced.
+    A changed training population/order fails before fitting the offending data.
+    """
+    import numpy as np
+    from sklearn.pipeline import Pipeline
+
+    X = development.X_features.to_numpy(dtype=np.float64)[list(split.training_indices)]
+    y = development.y[list(split.training_indices)]
+    rng = np.random.default_rng(42)
+    draws = [rng.integers(0, 48, size=48) for _ in range(200)]
+    calls = []
+    original = Pipeline.fit
+
+    def checked(self, actual_X, actual_y, *args, **kwargs):
+        index = len(calls)
+        require(index < 205, "Unexpected uncertainty training/refitting call")
+        indices = np.arange(48) if index < 5 else draws[index - 5]
+        np.testing.assert_array_equal(actual_X, X[indices], strict=True)
+        np.testing.assert_array_equal(actual_y, y[indices], strict=True)
+        calls.append(type(self.named_steps["model"]).__name__)
+        return original(self, actual_X, actual_y, *args, **kwargs)
+
+    with patch.object(Pipeline, "fit", checked):
+        yield calls
+    require(calls == ["HistGradientBoostingRegressor"] * 3 + ["RandomForestRegressor"] + ["Ridge"] * 201,
+            "Unexpected model fitting sequence/budget")
+
+
+@contextmanager
+def frozen_week9_models():
+    """Fail loudly if calibration/external evaluation tries to refit anything."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+    from tcspc_toolkit.uncertainty.ml import (
+        QuantileGradientBoostingIntervalEstimator, RandomForestTreeSpreadEstimator,
+        BootstrapPredictionSpreadEstimator,
+    )
+    with ExitStack() as stack:
+        for cls in (Pipeline, PCA, QuantileGradientBoostingIntervalEstimator,
+                    RandomForestTreeSpreadEstimator, BootstrapPredictionSpreadEstimator):
+            stack.enter_context(patch.object(cls, "fit", side_effect=AcceptanceFailure(
+                "Frozen Week-9 evaluation attempted model/representation fitting")))
+        yield
+
+
+def week9_ml(report):
+    """Day-58/59/62 ML plus A/F point-fit residuals; no classical uncertainty run."""
+    import numpy as np
+    import pandas as pd
+    from tcspc_toolkit.config import FeatureConfig
+    from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+    from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
+    from tcspc_toolkit.benchmarks.generalization import (
+        build_generalization_development_measurements, prepare_generalization_data,
+    )
+    from tcspc_toolkit.uncertainty.evaluation import (
+        make_uncertainty_development_split, PredictionIntervalResult,
+        evaluate_prediction_intervals, evaluate_uncertainty_scores,
+        evaluate_quantile_prediction_intervals, UncertaintyDataProvenance, UncertaintyDataRole,
+    )
+    from tcspc_toolkit.uncertainty.ml import (
+        fit_and_evaluate_quantile_gradient_boosting, fit_and_evaluate_random_forest_tree_spread,
+        fit_and_evaluate_ridge_bootstrap_spread, evaluate_frozen_quantile_gradient_boosting,
+        evaluate_frozen_ml_uncertainty_score, evaluate_paired_quantile_interval_response,
+        evaluate_paired_uncertainty_score_response, project_ml_prediction_intervals,
+        project_ml_uncertainty_scores,
+    )
+    from tcspc_toolkit.benchmarks.uncertainty import (
+        conformalize_quantile_gradient_boosting, evaluate_frozen_conformalized_quantile,
+        build_ml_uncertainty_robustness_report, evaluate_residual_mismatch_diagnostics,
+    )
+    from tcspc_toolkit.evaluation.core import build_point_evaluation, summarize_point_errors
+    from tcspc_toolkit.evaluation.results import EvaluationBatch, MethodDescriptor, LifetimeReference
+    from tcspc_toolkit.evaluation.attachments import IntervalAttachment, ScoreAttachment
+
+    definition = default_generalization_suite()
+    require(definition.suite_version == "week8-day55-v2", "Week-9 frozen external protocol")
+    require([definition.seed_for(t) for t in TEST_IDS] == list(range(50001, 50007)), "External seeds")
+    features = FeatureConfig(tail_start_ns=2., early_stop_ns=2., late_start_ns=3.)
+
+    def prepare():
+        development = build_generalization_development_measurements(definition=definition, random_seed=42)
+        suite = generate_generalization_test_suite(definition)
+        tests = {test.test_id: test for test in suite.tests}
+        prepared = prepare_generalization_data(
+            development_measurements=development, tests=tests, feature_config=features)
+        return development, prepared
+
+    development, prepared = prepare()
+    repeated_development, repeated = prepare()
+    same_measurements(development, repeated_development)
+    require(development.X_histograms.shape == (64, 400), "Development geometry")
+    require(tuple(prepared.tests) == TEST_IDS, "External ordering")
+    pd.testing.assert_frame_equal(prepared.development.X_features, repeated.development.X_features, check_exact=True)
+    for name in ("X_normalized_development", "X_pca_development"):
+        np.testing.assert_array_equal(getattr(prepared, name), getattr(repeated, name), strict=True)
+    for test_id, test in prepared.tests.items():
+        same_measurements(test, repeated.tests[test_id])
+        require(test.X_histograms.shape == (192, 400), "External geometry")
+        pd.testing.assert_frame_equal(prepared.X_features[test_id], repeated.X_features[test_id], check_exact=True)
+        for name in ("X_normalized", "X_pca"):
+            np.testing.assert_array_equal(getattr(prepared, name)[test_id], getattr(repeated, name)[test_id], strict=True)
+        UncertaintyDataProvenance(test_id, UncertaintyDataRole.EXTERNAL_EVALUATION)
+    require(prepared.pca.n_samples_ == 64, "Shared preparation PCA is development-only (unused by Week-9 methods)")
+    split = make_uncertainty_development_split(64)
+    require(split == make_uncertainty_development_split(64), "Split repeatability")
+    require((split.random_seed, split.calibration_fraction) == (57, .25), "Split policy")
+    require(len(split.training_indices) == 48 and len(split.calibration_indices) == 16, "48/16 split")
+    require(set(split.training_indices).isdisjoint(split.calibration_indices), "Calibration leakage")
+    require(set(split.training_indices) | set(split.calibration_indices) == set(range(64)), "Split partition")
+    ids = prepared.development.metadata.sample_id.tolist()
+    calibration_ids = [ids[i] for i in split.calibration_indices]
+    science = report["science"] = dict(
+        protocol_id=definition.suite_version, development_seed=42, n_development=64,
+        split_seed=57, n_training=48, n_calibration=16,
+        training_ids=[ids[i] for i in split.training_indices], calibration_ids=calibration_ids,
+        training_indices=list(split.training_indices), calibration_indices=list(split.calibration_indices),
+        test_order=list(TEST_IDS), external_seeds={t: definition.seed_for(t) for t in TEST_IDS},
+        external_counts={t: len(prepared.tests[t].y) for t in TEST_IDS},
+        input_fingerprints={"development": fingerprint(development),
+                            **{t: fingerprint(prepared.tests[t]) for t in TEST_IDS}},
+        feature_config=asdict(features), representation="engineered_features",
+        preparation_policy="Stateless features; shared 64-development PCA unused by uncertainty; learned Ridge scaling uses 48 training rows or their bootstrap resamples.",
+    )
+    week8_reference = read_current_reference()["weeks"]["week8"]
+    require(science["input_fingerprints"] == {
+        "development": week8_reference["development_sha256"],
+        **week8_reference["external_sha256"]}, "Inputs differ from the accepted Week-8 reference")
+    digests = report["repeatability"] = {
+        "development_features": frame_fingerprint(prepared.development.X_features),
+        "development_metadata": frame_fingerprint(development.metadata),
+        "development_pca": frame_fingerprint(pd.DataFrame(prepared.X_pca_development)),
+        **{t + "_features": frame_fingerprint(prepared.X_features[t]) for t in TEST_IDS},
+    }
+    print("Week 9 ML: exact data/split/preparation PASS; fitting only 48 training observations", flush=True)
+    with audit_week9_training(prepared.development, split) as fit_calls:
+        quantile = fit_and_evaluate_quantile_gradient_boosting(prepared.development, split=split)
+        rf = fit_and_evaluate_random_forest_tree_spread(prepared.development, split=split)
+        bootstrap = fit_and_evaluate_ridge_bootstrap_spread(prepared.development, split=split)
+    report["training_fit_calls"] = len(fit_calls)
+    models = quantile.fitted_estimator
+    science["estimator_policy"] = dict(
+        random_state=42, quantiles=[.05, .50, .95], nominal_level=.95 - .05,
+        quantile_models=[model.named_steps["model"].get_params(deep=False)
+                         for model in (models.lower_model, models.median_model, models.upper_model)],
+        random_forest=rf.fitted_estimator.pipeline.named_steps["model"].get_params(deep=False),
+        ridge=bootstrap.fitted_estimator.reference_estimator_.named_steps["model"].get_params(deep=False),
+        bootstrap_replicates=bootstrap.fitted_estimator.n_bootstrap,
+        bootstrap_policy="48 row draws with replacement per fit; default_rng(42); reference fit supplies point estimate",
+        rf_score="tree prediction population std (ddof=0)",
+        bootstrap_score="refitted-model prediction sample std (ddof=1)", tail_fraction=.20,
+    )
+    require(bootstrap.fitted_estimator.n_bootstrap == 200, "Bootstrap budget")
+    science["calibration"] = []
+    science["external"] = []
+    science["test_f_severity"] = []
+    point_ids = {
+        "quantile_gradient_boosting": "quantile_gradient_boosting_median",
+        "conformalized_quantile_gradient_boosting": "quantile_gradient_boosting_median",
+        "random_forest_tree_spread": "random_forest_tree_mean",
+        "ml_training_bootstrap": "training_bootstrap_reference",
+    }
+
+    def collect(source, y, sample_ids, evaluation_id):
+        interval = isinstance(source, PredictionIntervalResult)
+        kind = ("conformal_prediction" if source.method_id.startswith("conformalized_")
+                else "quantile_prediction") if interval else "score"
+        method = MethodDescriptor(point_ids[source.method_id], "ml", "engineered_features")
+        reference_kind = "primary_component" if evaluation_id.startswith("F") else "generating_mono"
+        reference = LifetimeReference(reference_kind, reference_kind, y, np.ones(len(y), dtype=bool))
+        batch = EvaluationBatch(evaluation_id, sample_ids, references={reference_kind: reference})
+        points = build_point_evaluation(batch=batch, method=method,
+            lifetime_estimates_ns=source.prediction, is_valid=np.isfinite(source.prediction))
+        if interval:
+            attachment = project_ml_prediction_intervals(batch=batch, points=points,
+                point_method=method, intervals=source, interval_kind=kind)
+            require(isinstance(attachment, IntervalAttachment), "Intervals remain factual attachments")
+            rows = attachment.intervals
+            require(rows.interval_kind.eq(kind).all() and rows.nominal_level.eq(.95 - .05).all(),
+                    "Interval identity/kind/nominal level")
+            metrics = asdict(evaluate_prediction_intervals(y, source))
+            if kind == "quantile_prediction":
+                metrics.update(asdict(evaluate_quantile_prediction_intervals(y, source,
+                    lower_quantile=.05, median_quantile=.50, upper_quantile=.95)))
+        else:
+            attachment = project_ml_uncertainty_scores(batch=batch, points=points,
+                point_method=method, scores=source)
+            require(isinstance(attachment, ScoreAttachment), "Spread stays a score attachment")
+            rows = attachment.scores
+            require("nominal_level" not in rows, "Scores must not claim coverage")
+            metrics = asdict(evaluate_uncertainty_scores(y, source))
+            metrics["mean_uncertainty_score"] = float(np.mean(source.uncertainty_score[source.valid_score_mask]))
+        require(rows.sample_id.tolist() == sample_ids and rows.method_id.eq(method.method_id).all()
+                and rows.uncertainty_method_id.eq(source.method_id).all(), "Attachment identity/order")
+        digests[evaluation_id + "/" + source.method_id] = frame_fingerprint(rows)
+        digests[evaluation_id + "/" + source.method_id + "/points"] = frame_fingerprint(points.points)
+        comparisons = points.reference_comparisons
+        point_metrics = summarize_point_errors(comparisons.error_ns,
+            is_valid=points.points.is_valid, reference_available=comparisons.reference_available,
+            eligible=comparisons.is_valid_comparison)
+        return dict(method_id=source.method_id, point_method_id=method.method_id,
+                    output_kind=kind, nominal_level=source.nominal_coverage if interval else None,
+                    evaluation_id=evaluation_id, reference_kind=reference_kind,
+                    population=uncertainty_population(source, sample_ids), metrics=metrics,
+                    point_metrics=point_metrics)
+
+    with frozen_week9_models():
+        conformal = conformalize_quantile_gradient_boosting(quantile, prepared.development)
+        science["conformal"] = dict(correction_ns=conformal.correction_ns,
+            n_calibration_scores=conformal.n_calibration_scores,
+            finite_sample_rank=min(conformal.n_calibration_scores,
+                int(np.ceil((conformal.n_calibration_scores + 1) * (.95 - .05)))),
+            rule="max(lower-y, y-upper, 0); rank=min(n, ceil((n+1)*nominal_level))",
+            calibration_source="development calibration only", nominal_level=.95 - .05)
+        digests["conformity_scores"] = frame_fingerprint(pd.DataFrame({"score": conformal.calibration_scores_ns}))
+        cal_y = prepared.development.y[list(split.calibration_indices)]
+        expected_scores = np.maximum.reduce([
+            quantile.calibration_intervals.lower - cal_y,
+            cal_y - quantile.calibration_intervals.upper, np.zeros(len(cal_y))])
+        np.testing.assert_array_equal(conformal.calibration_scores_ns, expected_scores)
+        require(conformal.n_calibration_scores == 16, "Conformal calibration population")
+        for source in (quantile.calibration_intervals, conformal.calibration_intervals,
+                       rf.calibration_scores, bootstrap.calibration_scores):
+            science["calibration"].append(collect(source, cal_y, calibration_ids, "uncertainty_calibration"))
+        for t, test in prepared.tests.items():
+            X = prepared.X_features[t]
+            raw = evaluate_frozen_quantile_gradient_boosting(quantile, X, test.y, condition_id=t)
+            corrected = evaluate_frozen_conformalized_quantile(conformal, X, test.y, test_id=t)
+            sources = [raw.intervals, corrected.intervals]
+            sources.extend(evaluate_frozen_ml_uncertainty_score(c, X, test.y, condition_id=t).scores
+                           for c in (rf, bootstrap))
+            for source in sources:
+                science["external"].append(collect(source, test.y, test.metadata.sample_id.tolist(), t))
+                if t == "F":
+                    for severity in ("weak", "moderate"):
+                        mask = test.metadata.model_mismatch_severity.to_numpy() == severity
+                        fields = ("prediction", "lower", "upper") if isinstance(source, PredictionIntervalResult) else (
+                            "prediction", "uncertainty_score")
+                        subset = replace(source, **{name: getattr(source, name)[mask] for name in fields})
+                        science["test_f_severity"].append(collect(subset, test.y[mask],
+                            test.metadata.sample_id[mask].tolist(), "F_" + severity))
+        score_calibrations = {"Random-Forest tree spread": rf, "Ridge training bootstrap": bootstrap}
+        robustness = build_ml_uncertainty_robustness_report(prepared=prepared,
+            quantile_calibration=quantile, conformal_calibration=conformal, score_calibrations=score_calibrations)
+        science["interval_scorecard"] = records(robustness.interval_scorecard)
+        science["score_scorecard"] = records(robustness.score_only_scorecard)
+        paired = {"quantile_gradient_boosting": evaluate_paired_quantile_interval_response(
+            quantile, prepared, definition=definition)}
+        paired.update({c.calibration_scores.method_id: evaluate_paired_uncertainty_score_response(
+            c, prepared, definition=definition) for c in (rf, bootstrap)})
+        science["paired_response"] = {method: records(result.summary) for method, result in paired.items()}
+        for method, result in paired.items():
+            require(list(result.condition_results) == ["B_low_photon", "B_high_photon", "D_high_background",
+                    "F_weak_mismatch", "F_moderate_mismatch"], "Frozen conditional traversal")
+            require(result.summary.n_pairs.tolist() == [128, 64, 192, 96, 96], "Conditional counts")
+            for condition, item in result.condition_results.items():
+                digests[method + "/paired/" + condition] = frame_fingerprint(item.diagnostics)
+    report["no_external_refitting"] = "PASS"
+    f = prepared.tests["F"]
+    np.testing.assert_array_equal(f.y, f.metadata.primary_lifetime_ns)
+    np.testing.assert_array_equal(f.metadata.signal_photon_weighted_lifetime_ns,
+        (1 - f.metadata.secondary_fraction) * f.y
+        + f.metadata.secondary_fraction * f.metadata.secondary_lifetime_ns)
+    science["test_f"] = dict(severity_counts={s: int(sum(f.metadata.model_mismatch_severity == s))
+        for s in ("weak", "moderate")}, reference="primary_component",
+        descriptive_reference="signal_photon_weighted_lifetime_ns; not a unique mono-exponential truth",
+        weighted_reference_fingerprint=frame_fingerprint(f.metadata[["sample_id", "signal_photon_weighted_lifetime_ns"]]))
+    require(science["test_f"]["severity_counts"] == {"weak": 96, "moderate": 96}, "F severity")
+
+    # Saved Notebook-14 tables are evidence, never executed. Any unexplained
+    # difference stops candidate collection before a current reference is made.
+    historical = {}
+    cal_values = [quantile.interval_metrics.empirical_coverage,
+                  quantile.interval_metrics.mean_interval_width,
+                  rf.score_metrics.spearman_error_correlation,
+                  bootstrap.score_metrics.spearman_error_correlation, conformal.correction_ns]
+    for row, actual in zip(reference_rows(9, "910a6d01bbf11f44"), cal_values, strict=True):
+        compare(historical, "calibration/" + row[-2], actual, float(row[-1]), 4)
+    for index, frame in enumerate((robustness.interval_scorecard, robustness.score_only_scorecard)):
+        saved = reference_rows(9, "339769e99c73f7e3", index)
+        for row, actual in zip(saved, records(frame), strict=True):
+            values = list(actual.values())
+            require(row[1:4] == values[:3], "Historical report identity/order")
+            for column, value, expected in zip(list(actual)[3:], values[3:], row[4:], strict=True):
+                compare(historical, f"{values[0]}/{values[1]}/{column}", value, float(expected), 4)
+    report["historical_notebook_comparison"] = historical.get("comparisons", [])
+    stop_on_discrepancy(historical, "Week-9 ML/calibration historical comparison")
+    print("Week 9 ML: calibration and A-F historical tables MATCH; A/F point-fit residuals only", flush=True)
+    residual = evaluate_residual_mismatch_diagnostics(prepared=prepared, definition=definition)
+    science["residual_summary"] = records(residual.summary)
+    science["residual_populations"] = [dict(condition_id=row["condition_id"],
+        n_attempted=row["n_curves"], n_valid=row["n_valid_fits"],
+        n_failed=row["n_curves"] - row["n_valid_fits"])
+        for row in science["residual_summary"]]
+    digests["signed_residual_profiles"] = frame_fingerprint(residual.profile_table)
+    digests["paired_signed_residual_profiles"] = frame_fingerprint(residual.paired_profile_table)
+    for row, actual in zip(reference_rows(9, "7dde16d16f42f0e6"), records(residual.summary), strict=True):
+        require(row[1] == actual["condition_id"], "Residual condition ordering")
+        for column, value, expected in zip(list(actual)[1:], list(actual.values())[1:], row[2:], strict=True):
+            if column in ("n_curves", "n_valid_fits"):
+                require(value == int(expected), "Residual population changed")
+            else:
+                compare(historical, f"residual/{row[1]}/{column}", value, float(expected), 4)
+    report["historical_notebook_comparison"] = historical.get("comparisons", [])
+    stop_on_discrepancy(historical, "Week-9 signed-residual historical comparison")
+    report["residual_negative_result"] = "Historical scalar and signed-profile summaries reproduced; no general mismatch-discrimination claim."
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--week7", action="store_true")
     modes.add_argument("--week8", action="store_true")
-    modes.add_argument("--all", action="store_true")
+    modes.add_argument("--all", action="store_true", help="Week 7 and Week 8 only")
+    modes.add_argument("--week9-ml", action="store_true", help="Week-9 ML/conformal and A/F residuals; no classical uncertainty")
     reference_mode = parser.add_mutually_exclusive_group(required=True)
-    reference_mode.add_argument("--reference", choices=["issue12-post-correction"],
+    reference_mode.add_argument("--reference", choices=["issue12-post-correction", "issue12-week9-ml"],
                                 help="Compare to the reviewed current JSON, not historical notebook tables")
     reference_mode.add_argument("--collect-candidate", action="store_true",
                                 help="Collect temporary evidence only; never writes or approves a reference")
     parser.add_argument("--repeat-report", type=Path,
                         help="Compare exact deterministic fingerprints/metrics with an independent prior run")
     args = parser.parse_args(argv)
-    reference = read_current_reference() if args.reference else None
+    if args.reference and (args.week9_ml != (args.reference == "issue12-week9-ml")):
+        parser.error("Select issue12-week9-ml only with --week9-ml; Week-7/8 references are unchanged")
+    reference_path = WEEK9_REFERENCE_PATH if args.week9_ml else REFERENCE_PATH
+    reference = (read_week9_reference() if args.week9_ml else read_current_reference()) if args.reference else None
     blocker = BlockFlatFacades()
     require(not blocker.names.intersection(sys.modules), "Start acceptance in a fresh interpreter")
     sys.meta_path.insert(0, blocker)
@@ -545,9 +893,9 @@ def main(argv=None):
             name: importlib.metadata.version(name) for name in ("numpy", "scipy", "pandas", "scikit-learn")}},
         "facade_blocker_count": len(blocker.names), "workflows": {},
         "reference_selection": args.reference or "candidate-collection-not-acceptance",
-        "reference": ({"path": str(REFERENCE_PATH.relative_to(ROOT)),
+        "reference": ({"path": str(reference_path.relative_to(ROOT)),
                        "id": reference["reference_id"], "version": reference["reference_version"],
-                       "sha256": hashlib.sha256(REFERENCE_PATH.read_bytes()).hexdigest(),
+                       "sha256": hashlib.sha256(reference_path.read_bytes()).hexdigest(),
                        "comparison_tolerances": reference["comparison_tolerances"]} if reference else None),
         "deterministic_rerun": "NOT REQUESTED",
         "references": {str(w): {"path": "notebooks/" + name,
@@ -556,8 +904,8 @@ def main(argv=None):
     }
     print(f"Report: {output}", flush=True)
     try:
-        for week, run in ((7, week7), (8, week8)):
-            if not (args.all or getattr(args, f"week{week}")):
+        for week, run in ((7, week7), (8, week8), ("9_ml", week9_ml)):
+            if not ((args.all and week in (7, 8)) or getattr(args, f"week{week}")):
                 continue
             result = report["workflows"][f"week{week}"] = {}
             started = perf_counter()

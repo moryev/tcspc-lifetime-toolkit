@@ -1,4 +1,4 @@
-# Issue-12 Week-7/8 acceptance
+# Issue-12 scientific acceptance
 
 Use the configured project interpreter from the repository checkout:
 
@@ -83,4 +83,65 @@ weeks are independent; `--all` still reports the other week after a failure.
 
 Lightweight pytest tests cover reference integrity, parsing, comparison boundaries,
 population handling, repeat verification and the import blocker without running
-the scientific workloads. Week-9 acceptance is outside this harness.
+the scientific workloads. `--all` remains Week 7 and Week 8 only.
+
+## Stage 3B.1: Week-9 ML/conformal acceptance
+
+```bash
+python scripts/run_issue12_scientific_reproducibility.py --week9-ml --reference issue12-week9-ml
+# Independent fresh-process repeat (use the first run's printed report path):
+python scripts/run_issue12_scientific_reproducibility.py --week9-ml --reference issue12-week9-ml --repeat-report <first-report>/acceptance.json
+```
+
+This separate mode uses the version-1
+[Issue-12 current Week-9 ML/conformal reference](../data/reference/issue12_week9_ml_uncertainty_post_correction.json).
+The Week-7/8 reference and modes are unchanged. `--collect-candidate` is available
+instead of `--reference` for explicitly authorized reference review; two independent
+candidates must agree before a reference is created. The harness never writes it.
+
+The protocol is 64 development observations (seed 42), split into 48 training and
+16 calibration observations (split seed 57), followed by untouched A–F evaluation
+(seeds 50001–50006, 192 observations each). Input fingerprints must match the
+accepted Week-8 reference. Features are stateless. Shared Week-8 preparation fits
+PCA on development only, but these uncertainty methods do not use PCA. Ridge's
+learned scaling uses only the 48 training rows or their bootstrap resamples.
+
+The three quantile HGB fits use 0.05/0.50/0.95 quantiles; RF spread is the population
+standard deviation across 100 tree predictions; Ridge spread is the sample
+standard deviation across 200 training-row bootstrap fits. Model/resampling seed
+is 42. Instrumentation checks all 205 pipeline fits against the permitted rows and
+exact seeded resamples, then rejects any refitting during calibration or external
+evaluation. RF and Ridge spread remain **scores**, never calibrated intervals.
+
+Conformal calibration remains in `benchmarks.uncertainty`: scores are
+`max(lower - y, y - upper, 0)` on the 16 held-out development rows, using the
+finite-sample rank `min(n, ceil((n + 1) * nominal_level))`. Here the rank is 16 and
+the correction is zero. Re-evaluating the calibration rows is descriptive, not an
+independent coverage test; external A–F results are reported separately. Neither
+those results nor conformal construction establish coverage under arbitrary shift.
+
+Reports retain factual point, interval and score identities, nominal levels,
+attempted/valid/failed populations, paired response diagnostics and separate
+96-row weak/moderate Test-F summaries. Test F is scored against the primary
+component; its signal-photon-weighted reference remains separately identified
+and descriptive, not a unique truth or a pseudo-true projection.
+
+Exact independent-repeat checks cover scientific summaries and 99 fingerprints of
+features, metadata, predictions/attachments, conformity scores and paired/residual
+profiles. Current-reference comparisons use explicit named-metric tolerances of
+5e-5, retaining the saved four-decimal Week-9 table precision; additional point,
+pinball, paired and severity summaries use that same precision. Configuration,
+nominal levels, seeds, identities, counts, failures and input fingerprints remain
+exact. Versions are provenance, not mandatory pins.
+
+Notebook 14 cells `910a6d01bbf11f44`, `339769e99c73f7e3` and `7dde16d16f42f0e6`
+are read only as historical evidence. All 191 saved numerical comparisons match;
+unexplained historical differences stop this workflow rather than silently
+approving a new reference. No notebook is executed or modified.
+
+The residual check runs **classical point fits only** for A/F (384 observations),
+with the corrected current fitter. It reproduces the negative residual-structure
+finding, not a model-validity guarantee. This mode does not call local covariance,
+classical parametric bootstrap or repeated-Poisson workflows, does not touch the
+Day-62 classical cache, and writes no database. Their scientific acceptance is
+reserved for Stage 3B.2. Passing this mode does not complete Issue #12.
