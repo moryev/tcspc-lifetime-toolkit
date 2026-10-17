@@ -1715,3 +1715,117 @@ do not establish model correctness.
 No classical covariance, classical bootstrap, repeated-Poisson scientific workflow
 or Day-62 cache was regenerated. Their corrected-fitter uncertainty acceptance
 remains Stage 3B.2; this note does not complete Week-9 or Issue-12 acceptance.
+
+### Issue #12: current full classical uncertainty acceptance (Stage 3B.2B)
+
+The [current classical uncertainty reference](../data/reference/issue12_week9_classical_uncertainty_post_correction.json)
+version 1, profile `issue12-week9-classical-full-v1`, uses scientific source
+`b21e3411f85f68a4db8cd304277f0e65acd5e27d`. Two independent full Day-61 runs and
+two independent full Day-62 runs agree exactly on scientific results and
+input/result/RNG fingerprints. All 1,152 detailed Day-62 records agree exactly.
+Reference establishment and final comparison used those saved reports offline,
+not a third traversal. Notebook 14 was neither executed nor rewritten; the
+historical Day-62 cache remains unchanged.
+
+Day 61 retains all eight physical conditions, 50 repeated measurements each,
+100 bootstrap refits per valid primary and nominal 90% intervals. The grid,
+Gaussian IRF and seeds 61001-61008 are unchanged. Each condition uses **one
+sequential RNG** shared by primary generation and bootstrap draws before the
+next primary measurement. Repeated-Poisson variability is an empirical sampling
+reference, not a deployable per-point uncertainty attachment.
+
+| Lifetime (ns) / photons / background per bin | Empirical SD (ns) | Covariance mean SD (ns) | Bootstrap mean SD (ns) | Covariance coverage | Bootstrap coverage |
+|---|---:|---:|---:|---:|---:|
+| 2 / 1,000 / 0.5 | 0.093993 | 0.092978 | 0.092827 | 0.96 | 0.86 |
+| 2 / 10,000 / 0.5 | 0.028011 | 0.024014 | 0.023893 | 0.84 | 0.76 |
+| 2 / 100,000 / 0.5 | 0.006362 | 0.006959 | 0.007120 | 0.98 | 0.96 |
+| 2 / 1,000 / 5 | 0.148525 | 0.148919 | 0.150240 | 0.96 | 0.90 |
+| 2 / 10,000 / 5 | 0.031815 | 0.029504 | 0.029293 | 0.92 | 0.80 |
+| 2 / 100,000 / 5 | 0.006353 | 0.007558 | 0.007509 | 0.94 | 0.92 |
+| 1 / 10,000 / 0.5 | 0.007977 | 0.011325 | 0.011274 | 1.00 | 1.00 |
+| 4 / 10,000 / 0.5 | 0.053921 | 0.059609 | 0.060690 | 0.90 | 0.92 |
+
+All 400 primary fits, 400 covariance intervals and 400 bootstrap intervals are
+valid. Of 40,000 bootstrap refits, 39,999 are valid; condition 3, realization 21,
+refit 93 fails numerical validation. Its interval uses the remaining 99 refits.
+There are no covariance boundary/conditioning failures; bootstrap refits record
+16 boundary hits in the 4-ns condition. Primary fits use two continuations and
+no half-bin fallbacks; bootstrap refits use 77 continuations and ten fallbacks.
+
+Estimated uncertainty decreases strongly with photon count, increases with
+background (especially at low photon counts), and depends on lifetime. Scales
+track empirical variability reasonably but are not uniformly optimistic:
+condition-wise estimated/empirical SD ratios span about 0.85-1.42. Pooled
+coverage is 375/400 for covariance and 356/400 for bootstrap; the per-condition
+table is more informative than those pooled fractions. With 50 valid intervals,
+coverage changes in 0.02 steps. Descriptive 95% Wilson intervals accompany the
+reference; some condition-level under/overcoverage remains. Scale calibration
+and interval coverage are distinct, not a claim of exact 90% calibration.
+
+Day 62 retains all six frozen tests in A-F order, 192 observations per test,
+200 bootstrap refits per valid primary and one sequential bootstrap RNG seeded
+62001 across the entire traversal. Invalid primaries consume no bootstrap draws.
+Coverage below is covered **valid intervals / valid intervals**, never covered
+over attempted observations. Widths are means in ns.
+
+| Test | Primary valid / attempted | Covariance valid / attempted | Bootstrap valid / attempted | Covariance coverage | Bootstrap coverage | Covariance width | Bootstrap width |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A | 192 / 192 | 192 / 192 | 192 / 192 | 0.890625 | 0.885417 | 0.332571 | 0.327137 |
+| B | 192 / 192 | 192 / 192 | 192 / 192 | 0.859375 | 0.854167 | 0.872201 | 0.909929 |
+| C | 191 / 192 | 191 / 192 | 191 / 192 | 0.884817 | 0.879581 | 0.349746 | 0.346559 |
+| D | 192 / 192 | 192 / 192 | 192 / 192 | 0.911458 | 0.916667 | 0.472545 | 0.474295 |
+| E | 192 / 192 | 192 / 192 | 192 / 192 | 0.895833 | 0.885417 | 0.336971 | 0.332267 |
+| F | 192 / 192 | 191 / 192 | 192 / 192 | 0.518325 | 0.494792 | 0.366182 | 0.360921 |
+
+Strict primary validity is 1,151/1,152: C ID 69 remains
+`optimizer_unsuccessful`. Covariance/bootstrap are skipped for that observation.
+F ID 165 has a valid primary but invalid covariance (`parameter_at_bound`),
+giving 1,150 valid covariance intervals out of 1,151 evaluated and 1,152 attempted.
+Bootstrap has 1,151 valid intervals out of 1,151 evaluated and 1,152 attempted.
+There are no conditioning failures. The legacy `fit_failure_rate` remains zero
+because it counts nonfinite predictions, not strict invalid fits. In particular,
+C's legacy finite-prediction MAE (0.095926 ns) includes ID 69; it is not the
+accepted-fit-only Stage-3A MAE (0.096351 ns). Both population definitions remain
+explicit rather than silently harmonized.
+
+Bootstrap refits total 230,200 requested, 230,104 valid and 96 failed (B: 7,
+C: 88, E: 1). Every valid interval has at least 195/200 successful refits;
+the largest internal failure fraction is 2.5%. Production still permits an
+interval with two successful refits; acceptance reporting does not change that
+policy. Day-62 primary fits use zero continuations and 29 half-bin fallbacks;
+bootstrap refits use 64 continuations and 5,366 half-bin fallbacks. Recovery use
+is diagnostic work, not a failure when the selected result is valid.
+
+Test F retains the **primary-component reference**, with weighted lifetime only
+descriptive and no Bayesian pseudo-true projection. Among 96 weak-mismatch
+observations, covariance covers 66/95 valid intervals (0.694737) and bootstrap
+63/96 (0.656250); mean widths are 0.354815/0.350997 ns. The covariance boundary
+failure is F ID 165. Among 96 moderate cases, covariance covers 33/96 (0.343750)
+and bootstrap 32/96 (0.333333); widths are 0.377430/0.370846 ns. Thus broadly
+near-nominal A-E coverage does not survive physical model mismatch:
+
+> Good calibration of statistical uncertainty conditional on the assumed model
+> does not imply robustness to physical model misspecification.
+
+These intervals do not themselves diagnose mismatch or quantify model-form
+uncertainty. The conclusion does not rely on deleting failed observations from
+availability reporting.
+
+Historical comparisons are informational and remain separate. Day 61 matches
+46/56 Notebook-14 displayed values and 4/56 values from the older findings table,
+which already differed from the notebook. Notebook differences concentrate in
+conditions 3 and 6, consistent with corrected fitting and the shared sequential
+RNG; the older documentation does not establish equivalent RNG provenance.
+Neither historical table is rewritten or declared wrong. Day 62 has 64
+differences across 146 historical comparisons. The pre-fix cache used different
+strict-validity populations (including rejected B/36 and 28 Test-C fits); changed
+validity alters all subsequent bootstrap RNG consumption, while changed fitted
+means can also alter draws. Per-observation equality with that cache is therefore
+not a current regression requirement. Exact current-run agreement is.
+
+The complete reference records bias/RMSE, scale ratios, failure populations,
+fingerprints, provenance commits and environment. Original runtime context was
+20.48/19.70 minutes for Day 61 and 126.44/126.61 minutes for Day 62; timings are not
+regression values. See the [acceptance guide](issue12_scientific_acceptance.md).
+This completes the classical scientific reference, not the remaining Issue-12
+cross-feature, performance and final integration acceptance work.
