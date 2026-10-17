@@ -145,3 +145,125 @@ finding, not a model-validity guarantee. This mode does not call local covarianc
 classical parametric bootstrap or repeated-Poisson workflows, does not touch the
 Day-62 classical cache, and writes no database. Their scientific acceptance is
 reserved for Stage 3B.2. Passing this mode does not complete Issue #12.
+
+## Stage 3B.2B: full classical uncertainty profile
+
+The explicit profile `issue12-week9-classical-full-v1` retains the historical
+scientific scale, with the reviewed current fitter. These modes are intentionally
+expensive and are **not** part of ordinary pytest:
+
+```bash
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day61 --collect-candidate
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day61 --collect-candidate --repeat-report <day61-first>/acceptance.json
+# Continue only after exact independent Day-61 agreement:
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day62 --collect-candidate
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day62 --collect-candidate --repeat-report <day62-first>/acceptance.json
+```
+
+Day 61 uses all eight Notebook-14 physical conditions in their published order,
+seeds 61001–61008, 50 repeated measurements and 100 bootstrap refits per valid
+primary. Within each condition **one RNG** produces a primary observation, its
+bootstrap draws, then the next primary. Do not separate observation generation
+from bootstrap execution. Day 62 evaluates all 192 observations in each frozen
+A–F test, in order, with 200 refits per valid primary and **one global bootstrap
+RNG seeded 62001**. Invalid primaries consume no bootstrap draws. These are serial
+production workflows, not acceptance-script reimplementations of the algorithms.
+Budget roughly 15–40 minutes per Day-61 pass and 1.5–4 hours per Day-62 pass;
+timings are provenance, not regression thresholds. The external mode stops for
+review if, after four hours, observed progress projects beyond six hours.
+
+Observers record actual inputs, returned parameters/NLL, strict failures,
+covariance diagnostics, bootstrap refit populations and optimizer recovery calls.
+Detailed records go to the temporary report directory, while bootstrap draws and
+individual refit results are digested rather than retained in large arrays.
+Instrumentation never changes starts, draws, validity or the returned objects.
+Continuation and half-bin fallback are identified from the three reviewed
+optimizer call sites; changed call structure requires an instrumentation review.
+
+Coverage means covered **valid intervals / valid intervals**. Reports also retain
+all attempted observations and actual method evaluations, including skipped
+invalid primaries. A bootstrap interval still needs only two successful refits,
+as specified by production; requested/valid/failed refit counts, minimum support
+and observations with at least 10% failed refits remain explicit. That 10% flag is
+descriptive, not a new validity threshold. Repeated-Poisson variability remains an
+empirical reference, never a per-point interval attachment. Test F uses the
+primary-component reference; weighted lifetime is descriptive only.
+
+The legacy Day-62 `fit_failure_rate` counts nonfinite predictions. It is retained
+separately from strict primary-fit failure rate and IDs/reasons. Covariance can
+fail at a boundary even when the primary is valid. Neither kind of unavailable
+interval is silently removed from availability reporting.
+
+Two independent complete passes must agree on deterministic records, input/RNG
+fingerprints, populations and metrics before establishing the current reference.
+There is no third expensive pass solely for reference comparison. After separate
+review creates `data/reference/issue12_week9_classical_uncertainty_post_correction.json`,
+compare the already-produced second evidence file read-only:
+
+```bash
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day61 --reference issue12-week9-classical --compare-report <day61-second>/acceptance.json
+python scripts/run_issue12_scientific_reproducibility.py --week9-classical-day62 --reference issue12-week9-classical --compare-report <day62-second>/acceptance.json
+```
+
+Omit `--compare-report` for an explicitly requested fresh scientific traversal;
+`--week9-classical` selects both protocols. Candidate collection and reference
+acceptance never create or overwrite the reference artifact. Notebook 14 and the
+ignored Day-62 cache are neither executed nor updated.
+
+The historical Day-61 findings table and Notebook-14 table are separate evidence:
+they already differed before Issue #12, and the documentation table does not pin
+the notebook's explicit RNG provenance. Later fitter changes can change both
+fitted means used for bootstrap draws and primary validity. In Day 62, changed
+validity decisions additionally shift the single bootstrap RNG stream (notably
+after historical B/36). Historical cache equality is therefore not the current
+regression oracle. Preserve those sources and distinguish pre-divergence checks,
+aggregate historical interpretation and current candidate-to-candidate equality.
+
+With 50 valid intervals, Day-61 coverage changes by 0.02. Descriptive 95% Wilson
+intervals accompany coverage; they are not regression tolerances and do not define
+success as an arbitrary small deviation from nominal 0.90. Exact fixed-seed
+covered/valid counts and failure identities protect current regression behavior.
+
+### Reviewed classical reference and offline acceptance
+
+The current version-1 reference is
+[`data/reference/issue12_week9_classical_uncertainty_post_correction.json`](../data/reference/issue12_week9_classical_uncertainty_post_correction.json).
+Its scientific source is `b21e3411f85f68a4db8cd304277f0e65acd5e27d`, not the
+future commit containing the reference. Separate `day61` and `day62` sections
+retain complete compact summaries, exact protocol identities, strict/legacy
+populations and fingerprints. No histograms or per-refit estimate vectors are
+stored. Provenance includes historical/fitter commits, environment, hashes of
+both evidence reports and exact-repeat results. Dependency versions are context,
+not mandatory pins.
+
+The approved complete passes took 20.48/19.70 minutes (Day 61) and
+126.44/126.61 minutes (Day 62). The finalization used **offline comparison only**;
+ordinary pytest and ordinary users are not expected to repeat this multi-hour
+profile. The expensive commands above are for a separately requested scientific
+rerun. Given completed second-pass reports, use `--compare-report` as shown above:
+that branch never calls either full scientific workflow, and lightweight tests
+enforce this. Candidate mode cannot create/overwrite the committed reference;
+reference comparison reads it without mutation. Do not rerun science merely to
+test the comparator.
+
+Named absolute tolerances are explicit in the JSON. SDs, widths and scale ratios
+use half a four-decimal unit (5e-5), consistent with the historical displayed
+precision; point MAE/bias and empirical RMSE use half a six-decimal unit (5e-7),
+consistent with the earlier Issue-12 point summaries. Coverage/failure fractions
+allow only 1e-12 arithmetic rounding and retain exact integer numerators and
+denominators. No tolerance applies to nominal coverage, IDs, seeds, order,
+populations, failures or fingerprints. Exact result fingerprints intentionally
+flag numerical/implementation drift for review even when aggregate differences
+would lie inside displayed precision. There is no universal tolerance and no
+test requiring every condition to achieve exactly 0.90 coverage.
+
+Day-61 availability is 400/400 primaries and both interval types, with
+39,999/40,000 valid bootstrap refits. Day-62 availability is 1,151/1,152 primaries,
+1,150/1,152 covariance intervals and 1,151/1,152 bootstrap intervals, with
+230,104/230,200 valid bootstrap refits. C ID 69 remains a strict primary failure;
+F ID 165 remains a covariance boundary failure. Moderate Test-F coverage is
+33/96 for covariance and 32/96 for bootstrap. See the appended current
+[scientific findings](scientific_findings.md) for condition-level results and
+interpretation. Historical differences (Day 61: 62/112; Day 62: 64/146) remain
+informational; they do not turn an agreed current-reference comparison into a
+regression failure. This stage does not declare Issue #12 complete.

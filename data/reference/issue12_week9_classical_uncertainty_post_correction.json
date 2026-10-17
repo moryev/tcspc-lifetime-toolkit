@@ -1,0 +1,2044 @@
+{
+  "reference_id": "issue12-week9-classical-uncertainty-post-correction",
+  "reference_version": 1,
+  "profile_id": "issue12-week9-classical-full-v1",
+  "purpose": "Issue-12 current post-correction classical uncertainty acceptance; historical Notebook-14 outputs and caches are not rewritten.",
+  "scientific_source_commit": "b21e3411f85f68a4db8cd304277f0e65acd5e27d",
+  "environment": {
+    "Python": "3.12.0",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "pandas": "3.0.3",
+    "scikit-learn": "1.9.0"
+  },
+  "provenance": {
+    "commits": {
+      "day61_scientific_findings": "dd72e2458ebe83783b31fdf875740d188b02df76",
+      "day62_scientific_findings": "5509923557107c5bb8a0b1cbe867df0f9b35fff3",
+      "notebook14_publication": "d3a388a14c94b08f1522bc1291df8090a873d17c",
+      "poisson_scaling": "dd72e2458ebe83783b31fdf875740d188b02df76",
+      "numerical_validation_recovery": "f5b309968f4817be096cb2593582360fe3a693af",
+      "issue12_half_bin_fallback": "f07f6d84fbeb6ec933668eab4806a38b913b2ce2"
+    },
+    "independent_reruns": {
+      "status": "PASS",
+      "policy": "Two independent complete traversals per protocol; exact scientific records and fingerprints, excluding runtime.",
+      "days": {
+        "day61": {
+          "n_records": 400,
+          "report_sha256": [
+            "f58b5f9dae2e960737b1d88f7cf0fd50c133b282fdb12405ab792cd31ba84c54",
+            "1700bd8a39ac927a2c5b1f4a0b8f9c4bf2c26a9d2c77b4428983a3ebeed29b57"
+          ],
+          "detailed_file_sha256": [
+            "bacf2de546e74acbb150ad92e717947b6c8ad8f076e6e4bac61da5e21e070c3e",
+            "aef3516b84c2e99d33f2ceca1a439071db65bcb078c39f58374239ec35418df6"
+          ],
+          "repeatability": {
+            "day61-1": "0c9e12997b4788360c38414907dc7d09ec179a0a583111a840b6ea3a558404c1",
+            "day61-2": "7855608e3c6587a107af4a1a660923dc23c44cef4f82ea5da3cfbf4f5c6e4b35",
+            "day61-3": "a06032b79899c2265a5ec586af05f72b283661edc71964cdd3a529de4535a3af",
+            "day61-4": "decc25cf1a7db31f85182b63de057bacd5845e752764ca4b4dfc01a04bd618ef",
+            "day61-5": "81cc1656e0876945573207c86cb02f79a8303d3032ccdbd6b76c84a5d25b4c28",
+            "day61-6": "91582059e988eae27da608680e259440978137bd3c553fc85def500c8f629ffa",
+            "day61-7": "b4b9af9571e3db2cc16a7eec81046013e36737f23890d62bf235d87837f6c8f0",
+            "day61-8": "d434bd6c02e11993ecc299f0885cc7f6604a5c49867c122705c49a9218a640a7"
+          },
+          "facade_blocker_count": 38,
+          "runtime_seconds": [
+            1228.9168514999983,
+            1182.0850866999972
+          ],
+          "runtime_role": "Context only, excluded from equality and acceptance",
+          "detail_format_note": "Pass-1 covariance endpoints were derivable from stored std/estimate; normalized details agree exactly with pass 2. Scientific record fingerprints were identical before reporting enrichment."
+        },
+        "day62": {
+          "n_records": 1152,
+          "report_sha256": [
+            "ddaeb2c8d53eda24eeb79b948fce0e915773d75ea08378e30ae10ee7b9586b0a",
+            "ca8c26f5af77f94991ecbe054f75b1701511e4db58bc5ecfca1a80e5ff261384"
+          ],
+          "detailed_file_sha256": [
+            "ef5021c87a0d9a525d849a7486ca446ab05dce80341a87da799893c55e79b363",
+            "ef5021c87a0d9a525d849a7486ca446ab05dce80341a87da799893c55e79b363"
+          ],
+          "repeatability": {
+            "records": "da88cf545e35aaf012513b643f4d02af5ecd4d08cb3577e3bc4cf08c9331e480",
+            "per_curve": "5aceb4fe1b0e26e2835625f2be2437f57b16b86d9049fe7a739c434b46b68f6a"
+          },
+          "facade_blocker_count": 38,
+          "runtime_seconds": [
+            7586.3719212,
+            7596.794122800002
+          ],
+          "runtime_role": "Context only, excluded from equality and acceptance",
+          "detail_format_note": "All 1152 detailed JSON records agree exactly."
+        }
+      }
+    },
+    "sequential_rng": {
+      "day61": "One seeded sequential RNG per physical condition: primary measurement, bootstrap draws, next primary measurement. No separate primary-generation pass.",
+      "day62": "One sequential bootstrap RNG seeded 62001 across A then B then C then D then E then F, in observation order. Invalid primary fits consume no bootstrap draws."
+    },
+    "bootstrap_refit_failure_summary": {
+      "day61": {
+        "n_failed": 1,
+        "reason_counts": {
+          "poisson_numerical_validation_failed": 1
+        },
+        "by_condition": {
+          "day61-3": 1
+        },
+        "identity_policy": "Individual refit failures are included in exact scientific record fingerprints; no raw refit vectors stored.",
+        "failures": [
+          {
+            "condition_id": "day61-3",
+            "sample_id": 21,
+            "refit_index": 93,
+            "failure_reason": "poisson_numerical_validation_failed"
+          }
+        ]
+      },
+      "day62": {
+        "n_failed": 96,
+        "reason_counts": {
+          "optimizer_unsuccessful": 92,
+          "poisson_numerical_validation_failed": 4
+        },
+        "by_condition": {
+          "B": 7,
+          "C": 88,
+          "E": 1
+        },
+        "identity_policy": "Individual refit failures are included in exact scientific record fingerprints; no raw refit vectors stored."
+      }
+    }
+  },
+  "comparison_policy": {
+    "exact": "Schema, IDs, seeds, ordering, counts, covered/valid denominators, method/output kinds, nominal levels, failure IDs/reasons, and input/result/RNG fingerprints. No default numeric slack.",
+    "metric_precision": "Named standard deviations, widths and dimensionless scale ratios: half a four-decimal displayed unit. Point bias/MAE and empirical RMSE: half a six-decimal unit, consistent with earlier Issue-12 point metrics.",
+    "rates": "Coverage/failure fractions allow 1e-12 arithmetic roundoff only; their integer populations remain exact. Nominal 0.90 is not the regression target.",
+    "wilson": "95% Wilson intervals are descriptive finite-sample interpretation, not regression tolerances. Day-61 coverage resolution is 1/50 when all intervals are valid.",
+    "environment": "Dependency versions are provenance, not rejection criteria; exact record fingerprints intentionally flag implementation/numerical drift for review even when summary differences are small.",
+    "populations": "Coverage = covered valid intervals / valid intervals. Attempted, evaluated, valid and failed populations are separate. Legacy finite-prediction failure is not strict fit failure.",
+    "bootstrap": "Production minimum is two successful refits. Partial failures and boundary hits remain reported, not reclassified. Repeated-Poisson variability remains an empirical reference."
+  },
+  "comparison_tolerances": {
+    "week9_classical_day61": {
+      "bias_ns": 5e-07,
+      "rmse_ns": 5e-07,
+      "mae_ns": 5e-07,
+      "std_ns": 5e-05,
+      "mean_std_ns": 5e-05,
+      "mean_uncertainty_std_ns": 5e-05,
+      "mean_width_ns": 5e-05,
+      "median_width_ns": 5e-05,
+      "std_ratio": 5e-05,
+      "mean_abs_error_over_std": 5e-05,
+      "coverage": 1e-12,
+      "empirical_coverage": 1e-12,
+      "failure_rate": 1e-12,
+      "strict_primary_fit_failure_rate": 1e-12,
+      "legacy_finite_prediction_failure_rate": 1e-12,
+      "fit_failure_rate": 1e-12,
+      "aggregate_refit_failure_rate": 1e-12,
+      "maximum_refit_failure_rate": 1e-12
+    },
+    "week9_classical_day62": {
+      "bias_ns": 5e-07,
+      "rmse_ns": 5e-07,
+      "mae_ns": 5e-07,
+      "std_ns": 5e-05,
+      "mean_std_ns": 5e-05,
+      "mean_uncertainty_std_ns": 5e-05,
+      "mean_width_ns": 5e-05,
+      "median_width_ns": 5e-05,
+      "std_ratio": 5e-05,
+      "mean_abs_error_over_std": 5e-05,
+      "coverage": 1e-12,
+      "empirical_coverage": 1e-12,
+      "failure_rate": 1e-12,
+      "strict_primary_fit_failure_rate": 1e-12,
+      "legacy_finite_prediction_failure_rate": 1e-12,
+      "fit_failure_rate": 1e-12,
+      "aggregate_refit_failure_rate": 1e-12,
+      "maximum_refit_failure_rate": 1e-12
+    }
+  },
+  "day61": {
+    "protocol": {
+      "profile_id": "issue12-week9-classical-full-v1",
+      "nominal_coverage": 0.9,
+      "temporal_shift_bounds": [
+        -0.5,
+        0.5
+      ],
+      "background_fraction": 0.1,
+      "methods": {
+        "covariance": "prediction_interval",
+        "parametric_bootstrap": "prediction_interval",
+        "repeated_poisson_realizations": "empirical_reference"
+      },
+      "n_repeated": 50,
+      "n_bootstrap": 100,
+      "rng_policy": "one sequential RNG per condition: primary, bootstrap, next primary",
+      "conditions": [
+        {
+          "condition_id": "day61-1",
+          "label": "1k photons / low background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 1000,
+          "background_per_bin": 0.5,
+          "seed": 61001,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-2",
+          "label": "10k photons / low background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 10000,
+          "background_per_bin": 0.5,
+          "seed": 61002,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-3",
+          "label": "100k photons / low background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 100000,
+          "background_per_bin": 0.5,
+          "seed": 61003,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-4",
+          "label": "1k photons / elevated background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 1000,
+          "background_per_bin": 5.0,
+          "seed": 61004,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-5",
+          "label": "10k photons / elevated background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 10000,
+          "background_per_bin": 5.0,
+          "seed": 61005,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-6",
+          "label": "100k photons / elevated background",
+          "true_lifetime_ns": 2.0,
+          "signal_photon_count": 100000,
+          "background_per_bin": 5.0,
+          "seed": 61006,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-7",
+          "label": "1 ns lifetime",
+          "true_lifetime_ns": 1.0,
+          "signal_photon_count": 10000,
+          "background_per_bin": 0.5,
+          "seed": 61007,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        },
+        {
+          "condition_id": "day61-8",
+          "label": "4 ns lifetime",
+          "true_lifetime_ns": 4.0,
+          "signal_photon_count": 10000,
+          "background_per_bin": 0.5,
+          "seed": 61008,
+          "irf_centre_ns": 1.0,
+          "irf_fwhm_ns": 0.25,
+          "irf_shift_ns": 0.05
+        }
+      ]
+    },
+    "conditions": [
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "e4b924173d47fb0fcf6b8cca34c3c3e6eea6967084d2169690608593ec7a6cdb",
+        "result_fingerprint": "0c9e12997b4788360c38414907dc7d09ec179a0a583111a840b6ea3a558404c1",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.07909083792013236,
+          "bias_ns": 0.0052799410455687526
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.96,
+          "covered": 48,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8653990931249298,
+            0.9889611156723801
+          ],
+          "mean_width_ns": 0.3058705633073005,
+          "median_width_ns": 0.30498177652826297,
+          "mean_std_ns": 0.09297804932168735,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 0.9892037707556276
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.86,
+          "covered": 43,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.7381380628941446,
+            0.9304916657298371
+          ],
+          "mean_width_ns": 0.2951087178288193,
+          "median_width_ns": 0.29120197638677814,
+          "mean_std_ns": 0.0928271479512892,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 0.9875983143527557
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-1",
+        "empirical": {
+          "bias_ns": 0.0052799410455687526,
+          "std_ns": 0.09399281732485086,
+          "rmse_ns": 0.09319782450215354
+        },
+        "final_rng_fingerprint": "ca772a773995b648f3888998ded1a7d606b69e02fc6fae40c6db4cf3b472aa96"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "484b0e05b610dda27383fecdcef17d4c2cb803d132037317047554eeb2888fbc",
+        "result_fingerprint": "7855608e3c6587a107af4a1a660923dc23c44cef4f82ea5da3cfbf4f5c6e4b35",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.023015842784443304,
+          "bias_ns": 0.002072509657691062
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.84,
+          "covered": 42,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.7148578393696501,
+            0.916625793219666
+          ],
+          "mean_width_ns": 0.07900004794602103,
+          "median_width_ns": 0.07893915105418514,
+          "mean_std_ns": 0.024014309435070404,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 0.8573065302554687
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.76,
+          "covered": 38,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.6258731624205708,
+            0.8570260860300828
+          ],
+          "mean_width_ns": 0.07726870530018351,
+          "median_width_ns": 0.0763513669672422,
+          "mean_std_ns": 0.02389327962670098,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 0.8529857878518106
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 3,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-2",
+        "empirical": {
+          "bias_ns": 0.002072509657691062,
+          "std_ns": 0.028011345519454264,
+          "rmse_ns": 0.02780715851242748
+        },
+        "final_rng_fingerprint": "399b000b8af9e66bb6d91d8c079a0939122fb878fe8c3c968e3a0a2d287d9885"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "13a7fc0cc37e4ed96f9524e7de2c9836eaaa961e991abf66393159dfb9c11333",
+        "result_fingerprint": "a06032b79899c2265a5ec586af05f72b283661edc71964cdd3a529de4535a3af",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.005062470465269695,
+          "bias_ns": 0.00019037086648139744
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.98,
+          "covered": 49,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8950455641036219,
+            0.9964607407283539
+          ],
+          "mean_width_ns": 0.02289198812383733,
+          "median_width_ns": 0.022868851730967976,
+          "mean_std_ns": 0.006958670287964998,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 1.0938236183591314
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.96,
+          "covered": 48,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8653990931249298,
+            0.9889611156723801
+          ],
+          "mean_width_ns": 0.022908374560946475,
+          "median_width_ns": 0.02294675336096752,
+          "mean_std_ns": 0.007120190512902565,
+          "requested_refits": 5000,
+          "valid_refits": 4999,
+          "failed_refits": 1,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 99,
+          "maximum_refit_failure_rate": 0.01,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0002,
+          "std_ratio": 1.1192127558765317
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 1,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 46,
+            "half_bin_fallback": 6
+          }
+        },
+        "condition_id": "day61-3",
+        "empirical": {
+          "bias_ns": 0.00019037086648139744,
+          "std_ns": 0.006361784634348864,
+          "rmse_ns": 0.006300722079727484
+        },
+        "final_rng_fingerprint": "5f4f23d54db1965af9ea54441bc7b8cbbd20df88513851607a040911f76873b7"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "c657b00d3d393cdc0f993bdc356a49c18cf9365503c857945e0f471d7a927283",
+        "result_fingerprint": "decc25cf1a7db31f85182b63de057bacd5845e752764ca4b4dfc01a04bd618ef",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.12256473009291138,
+          "bias_ns": 0.01742684778777719
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.96,
+          "covered": 48,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8653990931249298,
+            0.9889611156723801
+          ],
+          "mean_width_ns": 0.4899012275456235,
+          "median_width_ns": 0.4937567736414684,
+          "mean_std_ns": 0.14891939912416205,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 1.0026545336074346
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.9,
+          "covered": 45,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "mean_width_ns": 0.4846414785062955,
+          "median_width_ns": 0.4833720573294771,
+          "mean_std_ns": 0.15024034032288133,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 1.0115482552401713
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-4",
+        "empirical": {
+          "bias_ns": 0.01742684778777719,
+          "std_ns": 0.14852513416397506,
+          "rmse_ns": 0.14806152840179856
+        },
+        "final_rng_fingerprint": "0c2803ecaa899820986763a1cccebe49d2fac77d6a0f2dc5776ed99ec165849a"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "86147f7c14d09a27f0c4893d89ca62677484dab65464973d05d75ec4e79dd22e",
+        "result_fingerprint": "81cc1656e0876945573207c86cb02f79a8303d3032ccdbd6b76c84a5d25b4c28",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.02507566739439219,
+          "bias_ns": 0.0014797148061805833
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.92,
+          "covered": 46,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8116175308165717,
+            0.968450485911407
+          ],
+          "mean_width_ns": 0.0970582986526038,
+          "median_width_ns": 0.09716888106437782,
+          "mean_std_ns": 0.02950362787979168,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 0.9273566506249076
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.8,
+          "covered": 40,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.6696289406777459,
+            0.887562499842239
+          ],
+          "mean_width_ns": 0.09337310707892713,
+          "median_width_ns": 0.09152380822502515,
+          "mean_std_ns": 0.02929270857136546,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 0.9207270447943569
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-5",
+        "empirical": {
+          "bias_ns": 0.0014797148061805833,
+          "std_ns": 0.03181475849654003,
+          "rmse_ns": 0.03152974527231282
+        },
+        "final_rng_fingerprint": "42feb7b217f734675f9e7cd7bea6c83ec5882530ad48fe3cf0a0098b862efcd2"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "c2e86217dbce479b7af0957e205c93ea53dee9e3e22c86d1ecf00d815772e773",
+        "result_fingerprint": "91582059e988eae27da608680e259440978137bd3c553fc85def500c8f629ffa",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.0049920945693806475,
+          "bias_ns": -9.588555686425693e-05
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.94,
+          "covered": 47,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8378290831116182,
+            0.979385029651026
+          ],
+          "mean_width_ns": 0.024862959323712647,
+          "median_width_ns": 0.024920925532783356,
+          "mean_std_ns": 0.007557802991197764,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 1.1896675926594695
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.92,
+          "covered": 46,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8116175308165717,
+            0.968450485911407
+          ],
+          "mean_width_ns": 0.024119403180320655,
+          "median_width_ns": 0.02403873458395489,
+          "mean_std_ns": 0.007508607596400195,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 1.1819237857665248
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 1,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 26,
+            "half_bin_fallback": 4
+          }
+        },
+        "condition_id": "day61-6",
+        "empirical": {
+          "bias_ns": -9.588555686425693e-05,
+          "std_ns": 0.006352869522403734,
+          "rmse_ns": 0.006289750884202624
+        },
+        "final_rng_fingerprint": "ebba9d46725e95cd43b303c41e7e1271e898803d9f917aefac89e8296ff8d59c"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "6d4d38de865f770d173255fcc34ec19e1f4acdcb53b5e9745093e9368d0ceca8",
+        "result_fingerprint": "b4b9af9571e3db2cc16a7eec81046013e36737f23890d62bf235d87837f6c8f0",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.006936711911841296,
+          "bias_ns": -0.0013048124670127547
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 1.0,
+          "covered": 50,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.9286524008666414,
+            1.0
+          ],
+          "mean_width_ns": 0.03725536914858292,
+          "median_width_ns": 0.037217553475673626,
+          "mean_std_ns": 0.01132482809963798,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 1.4196186376058009
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 1.0,
+          "covered": 50,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.9286524008666414,
+            1.0
+          ],
+          "mean_width_ns": 0.03633718440384133,
+          "median_width_ns": 0.03641400907028458,
+          "mean_std_ns": 0.011274138954450978,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 1.413264523035702
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 1,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-7",
+        "empirical": {
+          "bias_ns": -0.0013048124670127547,
+          "std_ns": 0.00797737349992629,
+          "rmse_ns": 0.00800426472402379
+        },
+        "final_rng_fingerprint": "649fd27919b713e7e5994d17e9b7b968e8f90c55745b4b2b5f481dc75352ac82"
+      },
+      {
+        "n_total": 50,
+        "primary": {
+          "attempted": 50,
+          "valid": 50,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "2c1d48f1a263d615bf5bafeedab2f45c5e33ea05725553f38c8960fc029ebb74",
+        "result_fingerprint": "d434bd6c02e11993ecc299f0885cc7f6604a5c49867c122705c49a9218a640a7",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.04534385969271933,
+          "bias_ns": -0.006332255998339047
+        },
+        "covariance": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.9,
+          "covered": 45,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.7863976856252035,
+            0.9565242350681096
+          ],
+          "mean_width_ns": 0.19609475081792505,
+          "median_width_ns": 0.19640653675189368,
+          "mean_std_ns": 0.05960857173089676,
+          "boundary_failures": 0,
+          "conditioning_failures": [],
+          "std_ratio": 1.1054841033329472
+        },
+        "bootstrap": {
+          "attempted": 50,
+          "evaluated": 50,
+          "valid": 50,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.92,
+          "covered": 46,
+          "coverage_denominator": 50,
+          "coverage_wilson_95": [
+            0.8116175308165717,
+            0.968450485911407
+          ],
+          "mean_width_ns": 0.19505971564783386,
+          "median_width_ns": 0.1925811543797762,
+          "mean_std_ns": 0.06068952582486793,
+          "requested_refits": 5000,
+          "valid_refits": 5000,
+          "failed_refits": 0,
+          "boundary_hits": 16,
+          "minimum_valid_refits": 100,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0,
+          "std_ratio": 1.125531179325852
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 1,
+            "half_bin_fallback": 0
+          }
+        },
+        "condition_id": "day61-8",
+        "empirical": {
+          "bias_ns": -0.006332255998339047,
+          "std_ns": 0.05392078597166764,
+          "rmse_ns": 0.053753135746994744
+        },
+        "final_rng_fingerprint": "b4aac827968421a59ff4f427b3414b35e15f64c6046ec30c7be2de479ed8393d"
+      }
+    ]
+  },
+  "day62": {
+    "protocol": {
+      "profile_id": "issue12-week9-classical-full-v1",
+      "nominal_coverage": 0.9,
+      "temporal_shift_bounds": [
+        -0.5,
+        0.5
+      ],
+      "background_fraction": 0.1,
+      "methods": {
+        "covariance": "prediction_interval",
+        "parametric_bootstrap": "prediction_interval",
+        "repeated_poisson_realizations": "empirical_reference"
+      },
+      "protocol_id": "week8-day55-v2",
+      "test_order": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "n_per_test": 192,
+      "n_bootstrap": 200,
+      "bootstrap_seed": 62001,
+      "external_seeds": {
+        "A": 50001,
+        "B": 50002,
+        "C": 50003,
+        "D": 50004,
+        "E": 50005,
+        "F": 50006
+      },
+      "rng_policy": "one sequential bootstrap RNG across A-F; invalid primaries consume no bootstrap draws",
+      "test_f_reference": "primary_component",
+      "weighted_reference": "descriptive only, not pseudo_true_mono"
+    },
+    "conditions": [
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 192,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "d715a00565fe523c6990bd5bd4682896b11aaf645423ee85dae1841c7ac9487b",
+        "result_fingerprint": "9ce47791b6bdbc0cea5bdd7be11236460669f4ec4a81ca3867296d1e25dd5dd2",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.08274960159437507,
+          "bias_ns": -0.007008058902535932
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.890625,
+          "covered": 171,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.8385842176755814,
+            0.927341449459767
+          ],
+          "mean_width_ns": 0.33257089919709043,
+          "median_width_ns": 0.1920785401027294,
+          "mean_std_ns": 0.10109437513095576,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.8854166666666666,
+          "covered": 170,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.832610794613997,
+            0.92310253029288
+          ],
+          "mean_width_ns": 0.32713674376002083,
+          "median_width_ns": 0.1934359382240503,
+          "mean_std_ns": 0.10147061430565796,
+          "requested_refits": 38400,
+          "valid_refits": 38400,
+          "failed_refits": 0,
+          "boundary_hits": 36,
+          "minimum_valid_refits": 200,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 5,
+            "half_bin_fallback": 3
+          }
+        },
+        "condition_id": "A"
+      },
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 192,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "24897fcb541a988e3c2cb8bcadc0839c7a193fb976a4f4f6159f9f6b623a9bef",
+        "result_fingerprint": "e962dc97ba32bc160032d22a3b86c73d5b9c141f39dc1c9f7816bde374bd9e7c",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.2495485495003633,
+          "bias_ns": 0.047943141953713166
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.859375,
+          "covered": 165,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.8031305442687525,
+            0.9015210694957679
+          ],
+          "mean_width_ns": 0.8722005897541232,
+          "median_width_ns": 0.4546015859675041,
+          "mean_std_ns": 0.2651301536692468,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.8541666666666666,
+          "covered": 164,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.7973032959743978,
+            0.8971359755616515
+          ],
+          "mean_width_ns": 0.9099286090358456,
+          "median_width_ns": 0.43718604146193674,
+          "mean_std_ns": 0.2923735247819073,
+          "requested_refits": 38400,
+          "valid_refits": 38393,
+          "failed_refits": 7,
+          "boundary_hits": 178,
+          "minimum_valid_refits": 199,
+          "maximum_refit_failure_rate": 0.005,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.00018229166666666667
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 1
+          },
+          "bootstrap": {
+            "continuation": 15,
+            "half_bin_fallback": 21
+          }
+        },
+        "condition_id": "B"
+      },
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 191,
+          "failed": 1,
+          "failures": [
+            {
+              "sample_id": 69,
+              "failure_reason": "optimizer_unsuccessful"
+            }
+          ],
+          "strict_primary_fit_failure_rate": 0.005208333333333333,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "5e3d3a28a45a49c3c9354d83a37ed3d67b12abbc16728b0b85d1d9d7341f399a",
+        "result_fingerprint": "3185e729ceeff1f851ffadbfe940d8a2d60f49b2c756ccdeefcf5dbc5c80adfd",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.0959258812804724,
+          "bias_ns": -0.01543166233196748
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 191,
+          "valid": 191,
+          "failed": 1,
+          "failure_rate": 0.005208333333333333,
+          "failures": [
+            {
+              "sample_id": 69,
+              "failure_reason": "primary_invalid:optimizer_unsuccessful"
+            }
+          ],
+          "coverage": 0.8848167539267016,
+          "covered": 169,
+          "coverage_denominator": 191,
+          "coverage_wilson_95": [
+            0.8317663752303182,
+            0.9226931781406049
+          ],
+          "mean_width_ns": 0.34974597070060415,
+          "median_width_ns": 0.19174725977067553,
+          "mean_std_ns": 0.1063152261605229,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 191,
+          "valid": 191,
+          "failed": 1,
+          "failure_rate": 0.005208333333333333,
+          "failures": [
+            {
+              "sample_id": 69,
+              "failure_reason": "primary_invalid:optimizer_unsuccessful"
+            }
+          ],
+          "coverage": 0.8795811518324608,
+          "covered": 168,
+          "coverage_denominator": 191,
+          "coverage_wilson_95": [
+            0.8257911404986049,
+            0.9184036570441425
+          ],
+          "mean_width_ns": 0.3465591890066767,
+          "median_width_ns": 0.1966632209554191,
+          "mean_std_ns": 0.1086642776128154,
+          "requested_refits": 38200,
+          "valid_refits": 38112,
+          "failed_refits": 88,
+          "boundary_hits": 396,
+          "minimum_valid_refits": 195,
+          "maximum_refit_failure_rate": 0.025,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0023036649214659686
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 28
+          },
+          "bootstrap": {
+            "continuation": 11,
+            "half_bin_fallback": 5331
+          }
+        },
+        "condition_id": "C"
+      },
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 192,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "2fe7f79e6a9bcc8ebcf7181a81c45db89c29d444f12f1e69e9e8f116bb7da849",
+        "result_fingerprint": "084894469cae7976ae50ed544d1361307825beb87d04cc22d9c009492771a833",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.1076932415727389,
+          "bias_ns": 0.002922290165826439
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.9114583333333334,
+          "covered": 175,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.8627904693526963,
+            0.9439845666965373
+          ],
+          "mean_width_ns": 0.4725448196426603,
+          "median_width_ns": 0.24989323950550735,
+          "mean_std_ns": 0.14364342574313513,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.9166666666666666,
+          "covered": 176,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.868931374051098,
+            0.9480560042266069
+          ],
+          "mean_width_ns": 0.47429529425244166,
+          "median_width_ns": 0.24877831432387254,
+          "mean_std_ns": 0.14627036446841546,
+          "requested_refits": 38400,
+          "valid_refits": 38400,
+          "failed_refits": 0,
+          "boundary_hits": 0,
+          "minimum_valid_refits": 200,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 22,
+            "half_bin_fallback": 7
+          }
+        },
+        "condition_id": "D"
+      },
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 192,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "25b81a1c5434e259ba78e51b1be307986109ae8fd10edebc959f88f9fd8a43ee",
+        "result_fingerprint": "83038d155c151a4e109989791a947d4279b12b88f220f267ceef3a1cf4fc7faa",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.07763039474455248,
+          "bias_ns": 0.003290443504379187
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.8958333333333334,
+          "covered": 172,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.8445869253283719,
+            0.9315510840354478
+          ],
+          "mean_width_ns": 0.3369707945303128,
+          "median_width_ns": 0.17962989765998771,
+          "mean_std_ns": 0.10243184834472037,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.8854166666666666,
+          "covered": 170,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.832610794613997,
+            0.92310253029288
+          ],
+          "mean_width_ns": 0.33226715375799276,
+          "median_width_ns": 0.18231593323266204,
+          "mean_std_ns": 0.10338586222507902,
+          "requested_refits": 38400,
+          "valid_refits": 38399,
+          "failed_refits": 1,
+          "boundary_hits": 3,
+          "minimum_valid_refits": 199,
+          "maximum_refit_failure_rate": 0.005,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 2.604166666666667e-05
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 6,
+            "half_bin_fallback": 1
+          }
+        },
+        "condition_id": "E"
+      },
+      {
+        "n_total": 192,
+        "primary": {
+          "attempted": 192,
+          "valid": 192,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "6eb3b9984e4b81e3764874fb49c84871ece6529d45ceb9231bf987c8d61da2e7",
+        "result_fingerprint": "51c4149041ce4707038fc6e8cc02b3e53c43c5ec4bced23be21cdd3956c8e4c8",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.15672294492624225,
+          "bias_ns": 0.12489207497992467
+        },
+        "covariance": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 191,
+          "failed": 1,
+          "failure_rate": 0.005208333333333333,
+          "failures": [
+            {
+              "sample_id": 165,
+              "failure_reason": "parameter_at_bound"
+            }
+          ],
+          "coverage": 0.518324607329843,
+          "covered": 99,
+          "coverage_denominator": 191,
+          "coverage_wilson_95": [
+            0.44780304383799213,
+            0.5881236015606235
+          ],
+          "mean_width_ns": 0.3661815601282527,
+          "median_width_ns": 0.21029819094555968,
+          "mean_std_ns": 0.11131129060004077,
+          "boundary_failures": 1,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 192,
+          "evaluated": 192,
+          "valid": 192,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.4947916666666667,
+          "covered": 95,
+          "coverage_denominator": 192,
+          "coverage_wilson_95": [
+            0.4248705123482253,
+            0.5649171454233035
+          ],
+          "mean_width_ns": 0.3609214840722479,
+          "median_width_ns": 0.207551894661961,
+          "mean_std_ns": 0.11135600012112538,
+          "requested_refits": 38400,
+          "valid_refits": 38400,
+          "failed_refits": 0,
+          "boundary_hits": 183,
+          "minimum_valid_refits": 200,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 5,
+            "half_bin_fallback": 3
+          }
+        },
+        "condition_id": "F"
+      }
+    ],
+    "external_sha256": {
+      "A": "a6810b47f62f30b30584efa105937a47ac86d23b69faca8aa95e40c33c5c5470",
+      "B": "b5b2f7267fd2c59ee9cc31bdf8efbd9d6d91414880c66c0f7d254600625b404b",
+      "C": "d2db2dd849278650c1870ee8271081540a7b24b2e6b43d289b706c3167064284",
+      "D": "f6bcaf42e37240506547e97e0282e317f45f9f5fc15b86c1c725ffea215721c5",
+      "E": "bbceb049e2e5036aa0d27cf3cc40d2afad41270591f55b73c3f4314dd3efc25c",
+      "F": "7a70e09cbfb7eaa356f150b0f42d14b319e5f34191647e1bd3f635a25f47ac10"
+    },
+    "legacy_scorecard": [
+      {
+        "method": "covariance",
+        "test_id": "A",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.082749601594375,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.890625,
+        "coverage_gap": -0.009375,
+        "mean_width_ns": 0.33257089919709,
+        "median_width_ns": 0.192078540102729,
+        "mean_uncertainty_std_ns": 0.101094375130956,
+        "mean_abs_error_over_std": 0.843489861649074,
+        "median_abs_error_over_std": 0.741672478785678,
+        "interval_score": 0.39514756237354,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "A",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.082749601594375,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.885416666666667,
+        "coverage_gap": -0.014583333333333,
+        "mean_width_ns": 0.327136743760021,
+        "median_width_ns": 0.19343593822405,
+        "mean_uncertainty_std_ns": 0.101470614305658,
+        "mean_abs_error_over_std": 0.843623827938772,
+        "median_abs_error_over_std": 0.727001997826046,
+        "interval_score": 0.408195690814291,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.249548549500363,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.859375,
+        "coverage_gap": -0.040625,
+        "mean_width_ns": 0.872200589754123,
+        "median_width_ns": 0.454601585967504,
+        "mean_uncertainty_std_ns": 0.265130153669247,
+        "mean_abs_error_over_std": 0.90346682634607,
+        "median_abs_error_over_std": 0.780489883076673,
+        "interval_score": 1.200296313774713,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.249548549500363,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.854166666666667,
+        "coverage_gap": -0.045833333333333,
+        "mean_width_ns": 0.909928609035846,
+        "median_width_ns": 0.437186041461937,
+        "mean_uncertainty_std_ns": 0.292373524781907,
+        "mean_abs_error_over_std": 0.873580023749215,
+        "median_abs_error_over_std": 0.774270625822442,
+        "interval_score": 1.385324492190819,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": 0.000182291666667
+      },
+      {
+        "method": "covariance",
+        "test_id": "C",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.095925881280472,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.884816753926702,
+        "coverage_gap": -0.015183246073298,
+        "mean_width_ns": 0.349745970700604,
+        "median_width_ns": 0.191747259770676,
+        "mean_uncertainty_std_ns": 0.106315226160523,
+        "mean_abs_error_over_std": 0.825811809259806,
+        "median_abs_error_over_std": 0.70333671262867,
+        "interval_score": 0.499356560226116,
+        "interval_failure_rate": 0.005208333333333,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "C",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.095925881280472,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.879581151832461,
+        "coverage_gap": -0.020418848167539,
+        "mean_width_ns": 0.346559189006677,
+        "median_width_ns": 0.196663220955419,
+        "mean_uncertainty_std_ns": 0.108664277612815,
+        "mean_abs_error_over_std": 0.821165023076285,
+        "median_abs_error_over_std": 0.680958377486816,
+        "interval_score": 0.499849848364004,
+        "interval_failure_rate": 0.005208333333333,
+        "mean_bootstrap_refit_failure_rate": 0.002303664921466
+      },
+      {
+        "method": "covariance",
+        "test_id": "D",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.107693241572739,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.911458333333333,
+        "coverage_gap": 0.011458333333333,
+        "mean_width_ns": 0.47254481964266,
+        "median_width_ns": 0.249893239505507,
+        "mean_uncertainty_std_ns": 0.143643425743135,
+        "mean_abs_error_over_std": 0.750060468420854,
+        "median_abs_error_over_std": 0.650876081604488,
+        "interval_score": 0.573072721393331,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "D",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.107693241572739,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.916666666666667,
+        "coverage_gap": 0.016666666666667,
+        "mean_width_ns": 0.474295294252442,
+        "median_width_ns": 0.248778314323873,
+        "mean_uncertainty_std_ns": 0.146270364468415,
+        "mean_abs_error_over_std": 0.748527983443372,
+        "median_abs_error_over_std": 0.656945432500044,
+        "interval_score": 0.598773120305825,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "test_id": "E",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.077630394744552,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.895833333333333,
+        "coverage_gap": -0.004166666666667,
+        "mean_width_ns": 0.336970794530313,
+        "median_width_ns": 0.179629897659988,
+        "mean_uncertainty_std_ns": 0.10243184834472,
+        "mean_abs_error_over_std": 0.785954055498932,
+        "median_abs_error_over_std": 0.658779405944638,
+        "interval_score": 0.394688001533265,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "E",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.077630394744552,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.885416666666667,
+        "coverage_gap": -0.014583333333333,
+        "mean_width_ns": 0.332267153757993,
+        "median_width_ns": 0.182315933232662,
+        "mean_uncertainty_std_ns": 0.103385862225079,
+        "mean_abs_error_over_std": 0.784918118344823,
+        "median_abs_error_over_std": 0.657368932521004,
+        "interval_score": 0.381414315481217,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": 2.6041666667e-05
+      },
+      {
+        "method": "covariance",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.156722944926242,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.518324607329843,
+        "coverage_gap": -0.381675392670157,
+        "mean_width_ns": 0.366181560128253,
+        "median_width_ns": 0.21029819094556,
+        "mean_uncertainty_std_ns": 0.111311290600041,
+        "mean_abs_error_over_std": 2.523183987339084,
+        "median_abs_error_over_std": 1.564320168042739,
+        "interval_score": 1.380269277025994,
+        "interval_failure_rate": 0.005208333333333,
+        "mean_bootstrap_refit_failure_rate": null
+      },
+      {
+        "method": "parametric_bootstrap",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 192,
+        "n_valid_predictions": 192,
+        "fit_failure_rate": 0.0,
+        "mae_ns": 0.156722944926242,
+        "nominal_coverage": 0.9,
+        "empirical_coverage": 0.494791666666667,
+        "coverage_gap": -0.405208333333333,
+        "mean_width_ns": 0.360921484072248,
+        "median_width_ns": 0.207551894661961,
+        "mean_uncertainty_std_ns": 0.111356000121125,
+        "mean_abs_error_over_std": 2.533192384711076,
+        "median_abs_error_over_std": 1.590923464934776,
+        "interval_score": 1.409358076148781,
+        "interval_failure_rate": 0.0,
+        "mean_bootstrap_refit_failure_rate": 0.0
+      }
+    ],
+    "legacy_conditional_scorecard": [
+      {
+        "method": "covariance",
+        "condition_id": "B_low_photon",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 128,
+        "mae_ns": 0.367362952299522,
+        "empirical_coverage": 0.859375,
+        "coverage_gap": -0.040625,
+        "mean_width_ns": 1.284455669753481,
+        "mean_uncertainty_std_ns": 0.390446799857218,
+        "mean_abs_error_over_std": 0.88116412925242,
+        "median_abs_error_over_std": 0.71959954396473,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "parametric_bootstrap",
+        "condition_id": "B_low_photon",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 128,
+        "mae_ns": 0.367362952299522,
+        "empirical_coverage": 0.84375,
+        "coverage_gap": -0.05625,
+        "mean_width_ns": 1.341342029257239,
+        "mean_uncertainty_std_ns": 0.43131807941835,
+        "mean_abs_error_over_std": 0.837390121646708,
+        "median_abs_error_over_std": 0.693597581138329,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "condition_id": "B_high_photon",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 64,
+        "mae_ns": 0.013919743902046,
+        "empirical_coverage": 0.859375,
+        "coverage_gap": -0.040625,
+        "mean_width_ns": 0.047690429755408,
+        "mean_uncertainty_std_ns": 0.014496861293304,
+        "mean_abs_error_over_std": 0.948072220533371,
+        "median_abs_error_over_std": 0.852014902245324,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "parametric_bootstrap",
+        "condition_id": "B_high_photon",
+        "test_id": "B",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 64,
+        "mae_ns": 0.013919743902046,
+        "empirical_coverage": 0.875,
+        "coverage_gap": -0.025,
+        "mean_width_ns": 0.04710176859306,
+        "mean_uncertainty_std_ns": 0.014484415509023,
+        "mean_abs_error_over_std": 0.945959827954229,
+        "median_abs_error_over_std": 0.860503198724728,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "condition_id": "D_high_background",
+        "test_id": "D",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "mae_ns": 0.107693241572739,
+        "empirical_coverage": 0.911458333333333,
+        "coverage_gap": 0.011458333333333,
+        "mean_width_ns": 0.47254481964266,
+        "mean_uncertainty_std_ns": 0.143643425743135,
+        "mean_abs_error_over_std": 0.750060468420854,
+        "median_abs_error_over_std": 0.650876081604488,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "parametric_bootstrap",
+        "condition_id": "D_high_background",
+        "test_id": "D",
+        "target_reference": "monoexponential_lifetime",
+        "n_samples": 192,
+        "mae_ns": 0.107693241572739,
+        "empirical_coverage": 0.916666666666667,
+        "coverage_gap": 0.016666666666667,
+        "mean_width_ns": 0.474295294252442,
+        "mean_uncertainty_std_ns": 0.146270364468415,
+        "mean_abs_error_over_std": 0.748527983443372,
+        "median_abs_error_over_std": 0.656945432500044,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "condition_id": "F_weak_mismatch",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 96,
+        "mae_ns": 0.106953947812339,
+        "empirical_coverage": 0.694736842105263,
+        "coverage_gap": -0.205263157894737,
+        "mean_width_ns": 0.354814973316269,
+        "mean_uncertainty_std_ns": 0.107856093546109,
+        "mean_abs_error_over_std": 1.36302495981503,
+        "median_abs_error_over_std": 1.086129960502315,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.010416666666667
+      },
+      {
+        "method": "parametric_bootstrap",
+        "condition_id": "F_weak_mismatch",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 96,
+        "mae_ns": 0.106953947812339,
+        "empirical_coverage": 0.65625,
+        "coverage_gap": -0.24375,
+        "mean_width_ns": 0.350996662012314,
+        "mean_uncertainty_std_ns": 0.107847218300316,
+        "mean_abs_error_over_std": 1.378230806118148,
+        "median_abs_error_over_std": 1.111829808881995,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "covariance",
+        "condition_id": "F_moderate_mismatch",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 96,
+        "mae_ns": 0.206491942040145,
+        "empirical_coverage": 0.34375,
+        "coverage_gap": -0.55625,
+        "mean_width_ns": 0.377429744994278,
+        "mean_uncertainty_std_ns": 0.114730496017994,
+        "mean_abs_error_over_std": 3.671258024993096,
+        "median_abs_error_over_std": 2.936053516084646,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      },
+      {
+        "method": "parametric_bootstrap",
+        "condition_id": "F_moderate_mismatch",
+        "test_id": "F",
+        "target_reference": "dominant_component_tau_1",
+        "n_samples": 96,
+        "mae_ns": 0.206491942040145,
+        "empirical_coverage": 0.333333333333333,
+        "coverage_gap": -0.566666666666667,
+        "mean_width_ns": 0.370846306132182,
+        "mean_uncertainty_std_ns": 0.114864781941935,
+        "mean_abs_error_over_std": 3.688153963304005,
+        "median_abs_error_over_std": 2.908191174004555,
+        "fit_failure_rate": 0.0,
+        "interval_failure_rate": 0.0
+      }
+    ],
+    "test_f_severity": [
+      {
+        "severity": "weak",
+        "n_total": 96,
+        "primary": {
+          "attempted": 96,
+          "valid": 96,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "ad812ee3cc1b3185e2c8ef9352831904edf373ae0479a8f3433ca78337b74cfc",
+        "result_fingerprint": "43d550bb7ccf1ff77eef533451640ee83019828314d7c6cb4d037813518882f7",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.10695394781233941,
+          "bias_ns": 0.06265844379954276
+        },
+        "covariance": {
+          "attempted": 96,
+          "evaluated": 96,
+          "valid": 95,
+          "failed": 1,
+          "failure_rate": 0.010416666666666666,
+          "failures": [
+            {
+              "sample_id": 165,
+              "failure_reason": "parameter_at_bound"
+            }
+          ],
+          "coverage": 0.6947368421052632,
+          "covered": 66,
+          "coverage_denominator": 95,
+          "coverage_wilson_95": [
+            0.5960660393008851,
+            0.7782708072153203
+          ],
+          "mean_width_ns": 0.35481497331626904,
+          "median_width_ns": 0.18830802868800334,
+          "mean_std_ns": 0.10785609354610898,
+          "boundary_failures": 1,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 96,
+          "evaluated": 96,
+          "valid": 96,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.65625,
+          "covered": 63,
+          "coverage_denominator": 96,
+          "coverage_wilson_95": [
+            0.5568803111840908,
+            0.7435960676103857
+          ],
+          "mean_width_ns": 0.3509966620123142,
+          "median_width_ns": 0.18494831049743604,
+          "mean_std_ns": 0.10784721830031614,
+          "requested_refits": 19200,
+          "valid_refits": 19200,
+          "failed_refits": 0,
+          "boundary_hits": 182,
+          "minimum_valid_refits": 200,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 3,
+            "half_bin_fallback": 1
+          }
+        }
+      },
+      {
+        "severity": "moderate",
+        "n_total": 96,
+        "primary": {
+          "attempted": 96,
+          "valid": 96,
+          "failed": 0,
+          "failures": [],
+          "strict_primary_fit_failure_rate": 0.0,
+          "legacy_finite_prediction_failure_rate": 0.0
+        },
+        "input_fingerprint": "1398f761de97831a916979a9db213b6110cc57c50536964873bb89be13738f74",
+        "result_fingerprint": "3ec3886dfe2f9c1d6ed82df62a3e90bc80810e70e3094ca1936bc1b9fa745e5b",
+        "point_error": {
+          "metric_population": "finite predictions, including finite-invalid (legacy Day-62)",
+          "mae_ns": 0.2064919420401451,
+          "bias_ns": 0.18712570616030658
+        },
+        "covariance": {
+          "attempted": 96,
+          "evaluated": 96,
+          "valid": 96,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.34375,
+          "covered": 33,
+          "coverage_denominator": 96,
+          "coverage_wilson_95": [
+            0.25640393238961445,
+            0.44311968881590924
+          ],
+          "mean_width_ns": 0.3774297449942781,
+          "median_width_ns": 0.22320029424251198,
+          "mean_std_ns": 0.11473049601799416,
+          "boundary_failures": 0,
+          "conditioning_failures": []
+        },
+        "bootstrap": {
+          "attempted": 96,
+          "evaluated": 96,
+          "valid": 96,
+          "failed": 0,
+          "failure_rate": 0.0,
+          "failures": [],
+          "coverage": 0.3333333333333333,
+          "covered": 32,
+          "coverage_denominator": 96,
+          "coverage_wilson_95": [
+            0.24705692415210542,
+            0.4324349384671198
+          ],
+          "mean_width_ns": 0.37084630613218156,
+          "median_width_ns": 0.21565019696924137,
+          "mean_std_ns": 0.11486478194193457,
+          "requested_refits": 19200,
+          "valid_refits": 19200,
+          "failed_refits": 0,
+          "boundary_hits": 1,
+          "minimum_valid_refits": 200,
+          "maximum_refit_failure_rate": 0.0,
+          "high_refit_failure_observations": [],
+          "aggregate_refit_failure_rate": 0.0
+        },
+        "recovery": {
+          "primary": {
+            "continuation": 0,
+            "half_bin_fallback": 0
+          },
+          "bootstrap": {
+            "continuation": 2,
+            "half_bin_fallback": 2
+          }
+        }
+      }
+    ]
+  },
+  "historical_context": {
+    "policy": "Historical aggregate comparisons are informational. Current independent-run agreement and this explicit reference govern regression acceptance.",
+    "day61": {
+      "notebook_comparisons": 56,
+      "notebook_matches": 46,
+      "findings_comparisons": 56,
+      "findings_matches": 4,
+      "interpretation": "The two old tables already disagreed. Notebook differences are in conditions 3 and 6, consistent with corrected fitting and sequential-RNG effects. The older documentation does not pin equivalent RNG provenance; no claim that either historical table is wrong."
+    },
+    "day62": {
+      "comparisons": 146,
+      "differences": 64,
+      "interpretation": "The historical cache predates numerical validation and half-bin fallback. Changed primary validity (including B/36 and Test C) changes later sequential bootstrap RNG progression. Aggregate comparison is informational, not per-observation equality with the old cache."
+    },
+    "immutable_sha256": {
+      "notebooks/14_uncertainty_and_failure_awareness.ipynb": "d3a656cee2fd36064335eed9ad14b37754535a0617129e181d7176a8dcfa2a6d",
+      "data/generated/week9_day62_classical_a_f.csv": "8edf287f6babff6217c57d3f4d5010b2c259567518dc9adeb78a3ecc2a9c57ca",
+      "data/reference/issue12_week7_week8_post_correction.json": "352e8c54d8a8f306f290abf99064a574bb0707189dea119a8de3ebe0c0c7ef2f",
+      "data/reference/issue12_week9_ml_uncertainty_post_correction.json": "ea219aa844ac058f9774bd20707792397ba3adfc6380b113911e79f29b563cc2"
+    }
+  }
+}

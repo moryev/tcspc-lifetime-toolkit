@@ -25,11 +25,24 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "issue12-stage3b1-v1"
+VERSION = "issue12-stage3b2-v1"
 REFERENCE_PATH = ROOT / "data/reference/issue12_week7_week8_post_correction.json"
 REFERENCE_ID = "issue12-week7-week8-post-correction"
 WEEK9_REFERENCE_PATH = ROOT / "data/reference/issue12_week9_ml_uncertainty_post_correction.json"
 WEEK9_REFERENCE_ID = "issue12-week9-ml-uncertainty-post-correction"
+CLASSICAL_REFERENCE_PATH = ROOT / "data/reference/issue12_week9_classical_uncertainty_post_correction.json"
+CLASSICAL_REFERENCE_ID = "issue12-week9-classical-uncertainty-post-correction"
+CLASSICAL_PROFILE = "issue12-week9-classical-full-v1"
+DAY61_CONDITIONS = (
+    ("1k photons / low background", 2., 1000, .5),
+    ("10k photons / low background", 2., 10000, .5),
+    ("100k photons / low background", 2., 100000, .5),
+    ("1k photons / elevated background", 2., 1000, 5.),
+    ("10k photons / elevated background", 2., 10000, 5.),
+    ("100k photons / elevated background", 2., 100000, 5.),
+    ("1 ns lifetime", 1., 10000, .5),
+    ("4 ns lifetime", 4., 10000, .5),
+)
 METHODS = ("ridge", "random_forest", "hist_gradient_boosting")
 REPRESENTATIONS = ("engineered_features", "normalized_histogram", "pca_histogram")
 TEST_IDS = tuple("ABCDEF")
@@ -863,6 +876,460 @@ def week9_ml(report):
     report["residual_negative_result"] = "Historical scalar and signed-profile summaries reproduced; no general mismatch-discrimination claim."
 
 
+def scientific_json(value):
+    """Lossless finite scalar conversion; explicit null for unusable diagnostics."""
+    import math
+    import numpy as np
+    if isinstance(value, dict):
+        return {str(k): scientific_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return [scientific_json(v) for v in value]
+    if isinstance(value, np.generic):
+        value = value.item()
+    return None if isinstance(value, float) and not math.isfinite(value) else value
+
+
+def record_digest(value):
+    return hashlib.sha256(json.dumps(scientific_json(value), sort_keys=True,
+        separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def array_digest(*arrays):
+    import numpy as np
+    digest = hashlib.sha256()
+    for value in arrays:
+        value = np.asarray(value)
+        digest.update(str((value.shape, value.dtype.str)).encode())
+        digest.update(value.tobytes())
+    return digest.hexdigest()
+
+
+def optimizer_call_sites():
+    """Observe the three reviewed call sites, never infer recovery from fit quality.
+
+    AST line ranges survive formatting changes. A changed optimizer call structure
+    deliberately requires review of this instrumentation, not a silent guess.
+    """
+    import ast
+    from tcspc_toolkit.estimation import fitting
+    labels = {"optimization_result": "primary", "continuation": "continuation",
+              "candidate": "half_bin_fallback"}
+    sites = {}
+    for node in ast.walk(ast.parse(Path(fitting.__file__).read_text(encoding="utf-8"))):
+        if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name) and node.value.func.id == "minimize"):
+            require(len(node.targets) == 1 and isinstance(node.targets[0], ast.Name), "Optimizer assignment")
+            label = labels[node.targets[0].id]
+            sites.update({line: label for line in range(node.lineno, node.end_lineno + 1)})
+    require(set(sites.values()) == set(labels.values()), "Review optimizer instrumentation")
+    return sites
+
+
+class ClassicalObservationAudit:
+    """Read-only observers around canonical calls; no draws, starts or fits added.
+
+    All RNG consumption and iteration remain owned by production orchestrators.
+    Bootstrap refit records are streamed into a digest, not retained as large arrays.
+    """
+    def __init__(self, identities, progress_label):
+        self.identities = iter(identities)
+        self.rows = []
+        self.in_bootstrap = False
+        self.current = None
+        self.calls = []
+        self.sites = optimizer_call_sites()
+        self.label = progress_label
+        self.started = perf_counter()
+        self.timings = dict(primary_seconds=0., covariance_seconds=0., bootstrap_seconds=0.)
+
+    def minimize(self, original, *args, **kwargs):
+        # The wrapper's caller is the production fitter; only read its line number.
+        label = self.sites.get(sys._getframe(2).f_lineno)
+        require(label is not None, "Unreviewed optimizer call site")
+        self.calls.append(label)
+        return original(*args, **kwargs)
+
+    def fit(self, original, **kwargs):
+        started = perf_counter()
+        self.calls = []
+        result = original(**kwargs)
+        row = asdict(result)
+        row.pop("runtime_ms")
+        row = scientific_json(row)
+        row["optimizer_calls"] = {label: self.calls.count(label)
+            for label in ("primary", "continuation", "half_bin_fallback")}
+        require(row["optimizer_calls"]["primary"] == 1, "Primary optimizer was not observed exactly once")
+        require(bool(row["recovery_attempted"]) == bool(sum(self.calls.count(k)
+            for k in ("continuation", "half_bin_fallback"))), "Recovery observer disagrees with fitter")
+        inputs = array_digest(kwargs["time"], kwargs["counts"], kwargs["irf"])
+        if self.in_bootstrap:
+            self.refit_digest.update(record_digest(dict(inputs=inputs, result=row)).encode())
+            for label in self.refit_work:
+                self.refit_work[label] += int(row["optimizer_calls"][label] > 0)
+            if not result.valid_fit:
+                self.refit_failures.append(dict(refit_index=self.refit_index,
+                    failure_reason=result.failure_reason))
+            self.refit_index += 1
+        else:
+            identity = next(self.identities)
+            self.current = dict(**identity, input_fingerprint=inputs, primary=row,
+                                covariance=None, bootstrap=None)
+            self.rows.append(self.current)
+            self.timings["primary_seconds"] += perf_counter() - started
+            elapsed = perf_counter() - self.started
+            if self.label == "Day 62" and elapsed > 4 * 3600:
+                require(elapsed * 1152 / len(self.rows) <= 6 * 3600,
+                        "Day-62 runtime exceeds four hours and projects beyond six; stop for review")
+            if len(self.rows) == 1 or len(self.rows) % 5 == 0:
+                print(f"{self.label}: primary {len(self.rows)} {identity['condition_id']}/"
+                      f"{identity['sample_id']} ({perf_counter()-self.started:.1f}s)", flush=True)
+        return result
+
+    def covariance(self, original, **kwargs):
+        started = perf_counter()
+        result = original(**kwargs)
+        self.timings["covariance_seconds"] += perf_counter() - started
+        self.current["covariance"] = scientific_json(asdict(result))
+        return result
+
+    def bootstrap(self, original, **kwargs):
+        started = perf_counter()
+        self.in_bootstrap = True
+        self.refit_digest = hashlib.sha256()
+        self.refit_index, self.refit_failures = 0, []
+        self.refit_work = dict(continuation=0, half_bin_fallback=0)
+        before = record_digest(kwargs["rng"].bit_generator.state)
+        try:
+            result = original(**kwargs)
+        finally:
+            self.in_bootstrap = False
+        self.timings["bootstrap_seconds"] += perf_counter() - started
+        require(self.refit_index == result.n_resamples, "Missing bootstrap refit observations")
+        require(len(self.refit_failures) == result.n_failed_fits, "Bootstrap failure population mismatch")
+        values = asdict(result)
+        samples = values.pop("lifetime_samples_ns")
+        values.update(refit_fingerprint=self.refit_digest.hexdigest(),
+            sample_fingerprint=array_digest(samples), refit_failures=self.refit_failures,
+            recovery_fits=self.refit_work, rng_before=before,
+            rng_after=record_digest(kwargs["rng"].bit_generator.state))
+        self.current["bootstrap"] = scientific_json(values)
+        return result
+
+    @contextmanager
+    def observe(self):
+        from tcspc_toolkit.estimation import fitting
+        from tcspc_toolkit.uncertainty import classical
+        from tcspc_toolkit.benchmarks import uncertainty
+        original_minimize = fitting.minimize
+        original_fit = classical.fit_single_reconvolution_curve
+        original_covariance = classical.estimate_poisson_reconvolution_local_covariance
+        original_bootstrap = classical.estimate_parametric_poisson_bootstrap
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(fitting, "minimize",
+                lambda *a, **k: self.minimize(original_minimize, *a, **k)))
+            for owner in (classical, uncertainty):
+                stack.enter_context(patch.object(owner, "fit_single_reconvolution_curve",
+                    lambda **k: self.fit(original_fit, **k)))
+                stack.enter_context(patch.object(owner, "estimate_poisson_reconvolution_local_covariance",
+                    lambda **k: self.covariance(original_covariance, **k)))
+                stack.enter_context(patch.object(owner, "estimate_parametric_poisson_bootstrap",
+                    lambda **k: self.bootstrap(original_bootstrap, **k)))
+            yield self
+
+
+def wilson_interval(covered, n):
+    """Descriptive 95% binomial interval, not a regression acceptance band."""
+    from statistics import NormalDist
+    if n == 0:
+        return None
+    z = NormalDist().inv_cdf(.975)
+    p = covered / n
+    centre = (p + z*z/(2*n)) / (1 + z*z/n)
+    radius = z * (p*(1-p)/n + z*z/(4*n*n))**.5 / (1 + z*z/n)
+    return [centre-radius, centre+radius]
+
+
+def classical_detail_records(rows):
+    """Include derived Gaussian endpoints in temporary records, without mutation.
+
+    The scientific fingerprint already covers the fitted lifetime and covariance
+    diagnostics defining these endpoints. Day-62 projection endpoints are retained.
+    """
+    import copy
+    from statistics import NormalDist
+    output = copy.deepcopy(rows)
+    quantile = NormalDist().inv_cdf(.95)
+    for row in output:
+        covariance = row["covariance"]
+        if covariance is not None and "lower_ns" not in covariance:
+            valid = covariance["covariance_valid"]
+            lifetime = row["primary"]["fitted_lifetime_ns"]
+            width = quantile * covariance["lifetime_std"] if valid else None
+            covariance.update(lower_ns=lifetime-width if valid else None,
+                              upper_ns=lifetime+width if valid else None)
+    return output
+
+
+def classical_population(rows):
+    """Supplement canonical metrics with explicit availability/refit populations."""
+    import numpy as np
+    from statistics import NormalDist
+    from tcspc_toolkit.uncertainty.evaluation import PredictionIntervalResult, evaluate_prediction_intervals
+    primary_failures = [dict(sample_id=r["sample_id"], failure_reason=r["primary"]["failure_reason"])
+                        for r in rows if not r["primary"]["valid_fit"]]
+    prediction = np.array([r["primary"]["fitted_lifetime_ns"] for r in rows], dtype=float)
+    truth = np.array([r["reference_ns"] for r in rows])
+    strict = np.array([r["primary"]["valid_fit"] for r in rows])
+    result = dict(n_total=len(rows), primary=dict(attempted=len(rows), valid=int(strict.sum()),
+        failed=len(primary_failures), failures=primary_failures,
+        strict_primary_fit_failure_rate=len(primary_failures)/len(rows),
+        legacy_finite_prediction_failure_rate=float(np.mean(~np.isfinite(prediction)))),
+        input_fingerprint=record_digest([r["input_fingerprint"] for r in rows]),
+        result_fingerprint=record_digest(rows))
+    finite = np.isfinite(prediction)
+    result["point_error"] = dict(metric_population="finite predictions, including finite-invalid (legacy Day-62)",
+        mae_ns=float(np.mean(np.abs(prediction[finite]-truth[finite]))),
+        bias_ns=float(np.mean(prediction[finite]-truth[finite])))
+    for method in ("covariance", "bootstrap"):
+        lower, upper, scales, failures = [], [], [], []
+        for row in rows:
+            source = row[method]
+            valid = source is not None and source[method + "_valid"]
+            if not valid:
+                failures.append(dict(sample_id=row["sample_id"], failure_reason=(
+                    source["failure_reason"] if source else "primary_invalid:" + row["primary"]["failure_reason"])))
+            scale = source["lifetime_std" if method == "covariance" else "bootstrap_std_ns"] if valid else np.nan
+            if method == "covariance":
+                displacement = NormalDist().inv_cdf(.95) * scale
+                estimate = row["primary"]["fitted_lifetime_ns"]
+                lo, hi = (estimate-displacement, estimate+displacement) if valid else (np.nan, np.nan)
+                if source is not None and "lower_ns" in source:
+                    require((not valid) or (lo == source["lower_ns"] and hi == source["upper_ns"]),
+                            "Observed covariance bounds disagree with canonical projection")
+            else:
+                lo, hi = (source["lower_ns"], source["upper_ns"]) if valid else (np.nan, np.nan)
+            lower.append(lo)
+            upper.append(hi)
+            scales.append(scale)
+        source = PredictionIntervalResult(prediction=np.where(strict, prediction, np.nan),
+            lower=np.array(lower), upper=np.array(upper), nominal_coverage=.90,
+            method_id="covariance" if method == "covariance" else "parametric_bootstrap")
+        metrics = evaluate_prediction_intervals(truth, source)
+        valid = np.isfinite(lower) & np.isfinite(upper) & strict
+        covered = int(np.sum(valid & (truth >= lower) & (truth <= upper)))
+        count = int(valid.sum())
+        require(count == len(rows)-len(failures), "Interval observer validity mismatch")
+        summary = dict(attempted=len(rows), evaluated=sum(r[method] is not None for r in rows),
+            valid=count, failed=len(failures), failure_rate=len(failures)/len(rows), failures=failures,
+            coverage=metrics.empirical_coverage, covered=covered, coverage_denominator=count,
+            coverage_wilson_95=wilson_interval(covered, count),
+            mean_width_ns=metrics.mean_interval_width, median_width_ns=metrics.median_interval_width,
+            mean_std_ns=float(np.nanmean(scales)) if count else None)
+        if method == "covariance":
+            summary["boundary_failures"] = sum(r[method] is not None and r[method]["boundary_hit"] for r in rows)
+            summary["conditioning_failures"] = [f for f in failures
+                if "information" in (f["failure_reason"] or "")]
+        else:
+            sources = [r[method] for r in rows if r[method] is not None]
+            summary.update(requested_refits=sum(s["n_resamples"] for s in sources),
+                valid_refits=sum(s["n_successful_fits"] for s in sources),
+                failed_refits=sum(s["n_failed_fits"] for s in sources),
+                boundary_hits=sum(s["n_boundary_hits"] for s in sources),
+                minimum_valid_refits=min((s["n_successful_fits"] for s in sources), default=0),
+                maximum_refit_failure_rate=max((s["fit_failure_rate"] for s in sources), default=None),
+                high_refit_failure_observations=[dict(sample_id=r["sample_id"],
+                    requested=r[method]["n_resamples"], valid=r[method]["n_successful_fits"],
+                    failed=r[method]["n_failed_fits"]) for r in rows
+                    if r[method] is not None and r[method]["fit_failure_rate"] >= .10])
+            summary["aggregate_refit_failure_rate"] = (summary["failed_refits"]/summary["requested_refits"]
+                if summary["requested_refits"] else None)
+        result[method] = summary
+    result["recovery"] = {
+        "primary": {k: sum(r["primary"]["optimizer_calls"][k] > 0 for r in rows)
+                    for k in ("continuation", "half_bin_fallback")},
+        "bootstrap": {k: sum(r["bootstrap"]["recovery_fits"][k] for r in rows if r["bootstrap"] is not None)
+                      for k in ("continuation", "half_bin_fallback")}}
+    return scientific_json(result)
+
+
+def classical_protocol(day):
+    common = dict(profile_id=CLASSICAL_PROFILE, nominal_coverage=.90,
+        temporal_shift_bounds=[-.5, .5], background_fraction=.10,
+        methods={"covariance": "prediction_interval", "parametric_bootstrap": "prediction_interval",
+                 "repeated_poisson_realizations": "empirical_reference"})
+    if day == 61:
+        return common | dict(n_repeated=50, n_bootstrap=100,
+            rng_policy="one sequential RNG per condition: primary, bootstrap, next primary",
+            conditions=[dict(condition_id=f"day61-{i}", label=label, true_lifetime_ns=tau,
+                signal_photon_count=photons, background_per_bin=background, seed=61000+i,
+                irf_centre_ns=1., irf_fwhm_ns=.25, irf_shift_ns=.05)
+                for i, (label, tau, photons, background) in enumerate(DAY61_CONDITIONS, 1)])
+    require(day == 62, "Unknown classical day")
+    return common | dict(protocol_id="week8-day55-v2", test_order=list(TEST_IDS),
+        n_per_test=192, n_bootstrap=200, bootstrap_seed=62001,
+        external_seeds=dict(zip(TEST_IDS, range(50001, 50007))),
+        rng_policy="one sequential bootstrap RNG across A-F; invalid primaries consume no bootstrap draws",
+        test_f_reference="primary_component", weighted_reference="descriptive only, not pseudo_true_mono")
+
+
+def week9_classical_day61(report):
+    import numpy as np
+    from tcspc_toolkit.uncertainty.classical import evaluate_repeated_poisson_uncertainty
+    protocol = classical_protocol(61)
+    science = report["science"] = dict(protocol=protocol, conditions=[])
+    report["repeatability"] = {}
+    report["timing"] = {}
+    details = []
+    for condition in protocol["conditions"]:
+        cid = condition["condition_id"]
+        rng = np.random.default_rng(condition["seed"])
+        audit = ClassicalObservationAudit([dict(condition_id=cid, sample_id=i,
+            reference_ns=condition["true_lifetime_ns"]) for i in range(50)], "Day 61")
+        with audit.observe():
+            result = evaluate_repeated_poisson_uncertainty(time=np.arange(0., 20., .05),
+                **{k: condition[k] for k in ("true_lifetime_ns", "signal_photon_count", "background_per_bin",
+                    "irf_centre_ns", "irf_fwhm_ns", "irf_shift_ns")},
+                temporal_shift_bounds=(-.5, .5), n_repeats=50, n_bootstrap_resamples=100,
+                rng=rng, nominal_coverage=.90)
+        require(len(audit.rows) == 50, "Day-61 realization count")
+        summary = classical_population(audit.rows)
+        summary.update(condition_id=cid, empirical=dict(bias_ns=result.empirical_bias_ns,
+            std_ns=result.empirical_std_ns, rmse_ns=result.empirical_rmse_ns),
+            final_rng_fingerprint=record_digest(rng.bit_generator.state))
+        for method in ("covariance", "bootstrap"):
+            summary[method]["std_ratio"] = getattr(result, method + "_to_empirical_std_ratio")
+            require(summary[method]["coverage"] == getattr(result, method + "_metrics").empirical_coverage,
+                    "Observer/canonical coverage disagree")
+            require(summary[method]["mean_std_ns"] == getattr(result, "mean_" + method + "_std_ns"),
+                    "Observer/canonical uncertainty scale disagree")
+        science["conditions"].append(scientific_json(summary))
+        report["repeatability"][cid] = summary["result_fingerprint"]
+        report["timing"][cid] = audit.timings
+        details.extend(audit.rows)
+        print(f"Day 61 {cid}: complete, primary {summary['primary']['valid']}/50, "
+              f"bootstrap {summary['bootstrap']['valid_refits']}/{summary['bootstrap']['requested_refits']}", flush=True)
+    report["details"] = details  # main writes these separately, never into the reference
+    report["historical_notebook_comparison"] = []
+
+
+def week9_classical_day62(report):
+    import numpy as np
+    from tcspc_toolkit.config import FeatureConfig
+    from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+    from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
+    from tcspc_toolkit.benchmarks.generalization import (
+        build_generalization_development_measurements, prepare_generalization_data)
+    from tcspc_toolkit.benchmarks.uncertainty import evaluate_classical_uncertainty_robustness
+    protocol = classical_protocol(62)
+    definition = default_generalization_suite()
+    require(definition.suite_version == protocol["protocol_id"], "Frozen external protocol")
+    tests = {t.test_id: t for t in generate_generalization_test_suite(definition).tests}
+    require(list(tests) == list(TEST_IDS), "External order")
+    identities = []
+    for tid, test in tests.items():
+        require(len(test.y) == 192 and definition.seed_for(tid) == protocol["external_seeds"][tid], "External identity")
+        for i, target in enumerate(test.y):
+            identities.append(dict(condition_id=tid, sample_id=int(test.metadata.iloc[i].sample_id), reference_ns=float(target)))
+    np.testing.assert_array_equal(tests["F"].y, tests["F"].metadata.primary_lifetime_ns)
+    previous = read_current_reference()["weeks"]["week8"]
+    for tid, test in tests.items():
+        require(fingerprint(test) == previous["external_sha256"][tid], "Accepted Week-8 inputs differ")
+    prepared = prepare_generalization_data(
+        development_measurements=build_generalization_development_measurements(definition=definition, random_seed=42),
+        tests=tests, feature_config=FeatureConfig(tail_start_ns=2., early_stop_ns=2., late_start_ns=3.), n_pca_components=10)
+    audit = ClassicalObservationAudit(identities, "Day 62")
+    report["details"] = audit.rows
+    with audit.observe():
+        result = evaluate_classical_uncertainty_robustness(prepared=prepared, definition=definition,
+            n_bootstrap_resamples=200, nominal_coverage=.90, bootstrap_random_seed=62001)
+    require(len(audit.rows) == 1152, "Full external traversal incomplete")
+    for row, canonical in zip(audit.rows, result.per_curve.itertuples(index=False), strict=True):
+        require(row["condition_id"] == canonical.test_id and row["sample_id"] == canonical.sample_id,
+                "Observed traversal and canonical table differ")
+        if row["covariance"] is not None:
+            row["covariance"].update(scientific_json(dict(lower_ns=canonical.covariance_lower_ns,
+                upper_ns=canonical.covariance_upper_ns)))
+    bootstrap_rows = [r["bootstrap"] for r in audit.rows if r["bootstrap"] is not None]
+    require(all(a["rng_after"] == b["rng_before"] for a, b in zip(bootstrap_rows, bootstrap_rows[1:])),
+            "Global A-F sequential bootstrap RNG was interrupted")
+    science = report["science"] = dict(protocol=protocol, conditions=[],
+        external_sha256={tid: fingerprint(t) for tid, t in tests.items()},
+        legacy_scorecard=records(result.scorecard), legacy_conditional_scorecard=records(result.conditional_scorecard))
+    for tid in TEST_IDS:
+        rows = [r for r in audit.rows if r["condition_id"] == tid]
+        summary = classical_population(rows)
+        summary["condition_id"] = tid
+        science["conditions"].append(summary)
+        canonical = result.per_curve.loc[result.per_curve.test_id == tid]
+        require(summary["primary"]["valid"] == int(canonical.classical_fit_valid.sum()), "Strict primary population")
+        for method in ("covariance", "bootstrap"):
+            require(summary[method]["valid"] == int(canonical[method+"_valid"].sum()), "Interval population")
+    science["test_f_severity"] = []
+    for severity in ("weak", "moderate"):
+        ids = set(tests["F"].metadata.loc[tests["F"].metadata.model_mismatch_severity == severity, "sample_id"])
+        require(len(ids) == 96, "Test-F severity count")
+        rows = [r for r in audit.rows if r["condition_id"] == "F" and r["sample_id"] in ids]
+        science["test_f_severity"].append(dict(severity=severity, **classical_population(rows)))
+    report["repeatability"] = dict(records=record_digest(audit.rows), per_curve=frame_fingerprint(result.per_curve))
+    report["timing"] = audit.timings
+    report["details"] = audit.rows
+    report["historical_notebook_comparison"] = []
+
+
+def read_classical_reference():
+    reference = json.loads(CLASSICAL_REFERENCE_PATH.read_text(encoding="utf-8"))
+    require(reference["reference_id"] == CLASSICAL_REFERENCE_ID and reference["reference_version"] == 1,
+            "Unsupported classical reference")
+    require(reference["profile_id"] == CLASSICAL_PROFILE, "Unknown classical profile")
+    require(all(day in reference for day in ("day61", "day62")), "Incomplete classical reference")
+    for day in (61, 62):
+        require(reference[f"day{day}"]["protocol"] == classical_protocol(day),
+                f"Classical Day-{day} reference protocol differs")
+    require(reference["provenance"]["independent_reruns"]["status"] == "PASS",
+            "Classical reference requires independent exact agreement")
+    return reference
+
+
+def classical_historical_comparison(day, science):
+    """Keep historical sources separate; differences never rewrite either oracle."""
+    comparisons = {}
+    findings = (ROOT / "docs/scientific_findings.md").read_text(encoding="utf-8")
+    if day == 61:
+        table = findings.split("| Condition                         | Empirical std (ns)", 1)[1]
+        doc_rows = [line.split("|")[1:-1] for line in table.splitlines()[2:10]]
+        saved = reference_rows(9, "517e9d4b7bfe797e")
+        require(len(saved) == len(doc_rows) == len(science["conditions"]) == 8, "Historical Day-61 rows")
+        columns = ("empirical_std", "covariance_std", "covariance_ratio", "bootstrap_std", "bootstrap_ratio",
+                   "covariance_coverage", "bootstrap_coverage")
+        for current, notebook, documentation in zip(science["conditions"], saved, doc_rows, strict=True):
+            values = [current["empirical"]["std_ns"], current["covariance"]["mean_std_ns"],
+                current["covariance"]["std_ratio"], current["bootstrap"]["mean_std_ns"],
+                current["bootstrap"]["std_ratio"], current["covariance"]["coverage"], current["bootstrap"]["coverage"]]
+            for source, expected, precision in (("Notebook14", notebook[2:], [4]*7),
+                    ("scientific_findings", documentation[1:], [4, 4, 3, 4, 3, 2, 2])):
+                for name, actual, old, decimals in zip(columns, values, expected, precision, strict=True):
+                    compare(comparisons, f"{source}/{current['condition_id']}/{name}", actual, float(old), decimals)
+    else:
+        for cell, key, identity in (("a9df22789358b5cc", "legacy_scorecard", "test_id"),
+                                   ("fef57a13bfb661b8", "legacy_conditional_scorecard", "condition_id")):
+            columns = ["mae_ns", "empirical_coverage", "mean_width_ns", "mean_uncertainty_std_ns", "mean_abs_error_over_std"]
+            if identity == "test_id":
+                columns.append("fit_failure_rate")
+            for old, current in zip(reference_rows(9, cell), science[key], strict=True):
+                require(old[1:3] == [current["method"], current[identity]], "Historical classical row identity")
+                for name, value in zip(columns, old[3:], strict=True):
+                    compare(comparisons, f"Notebook14/{current[identity]}/{current['method']}/{name}",
+                            current[name], float(value), 4)
+        table = findings.split("| Test | Covariance coverage | Bootstrap coverage | Covariance mean width (ns)", 1)[1]
+        for line, current in zip(table.splitlines()[2:8], science["conditions"], strict=True):
+            old = [v.strip() for v in line.split("|")[1:-1]]
+            require(old[0] == current["condition_id"], "Historical Day-62 ordering")
+            for (method, metric), value in zip((("covariance", "coverage"), ("bootstrap", "coverage"),
+                    ("covariance", "mean_width_ns"), ("bootstrap", "mean_width_ns")), old[1:], strict=True):
+                compare(comparisons, f"scientific_findings/{old[0]}/{method}/{metric}", current[method][metric], float(value), 3)
+    return comparisons["comparisons"]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group(required=True)
@@ -870,18 +1337,32 @@ def main(argv=None):
     modes.add_argument("--week8", action="store_true")
     modes.add_argument("--all", action="store_true", help="Week 7 and Week 8 only")
     modes.add_argument("--week9-ml", action="store_true", help="Week-9 ML/conformal and A/F residuals; no classical uncertainty")
+    modes.add_argument("--week9-classical-day61", action="store_true", help="Full 8 x 50 x 100 sequential-RNG calibration")
+    modes.add_argument("--week9-classical-day62", action="store_true", help="Full A-F x 192 x 200 sequential-RNG robustness")
+    modes.add_argument("--week9-classical", action="store_true", help="Both full classical protocols; intentionally expensive")
     reference_mode = parser.add_mutually_exclusive_group(required=True)
-    reference_mode.add_argument("--reference", choices=["issue12-post-correction", "issue12-week9-ml"],
+    reference_mode.add_argument("--reference", choices=["issue12-post-correction", "issue12-week9-ml", "issue12-week9-classical"],
                                 help="Compare to the reviewed current JSON, not historical notebook tables")
     reference_mode.add_argument("--collect-candidate", action="store_true",
                                 help="Collect temporary evidence only; never writes or approves a reference")
     parser.add_argument("--repeat-report", type=Path,
                         help="Compare exact deterministic fingerprints/metrics with an independent prior run")
+    parser.add_argument("--compare-report", type=Path,
+                        help="Read-only reference comparison of completed evidence; no scientific traversal")
     args = parser.parse_args(argv)
-    if args.reference and (args.week9_ml != (args.reference == "issue12-week9-ml")):
-        parser.error("Select issue12-week9-ml only with --week9-ml; Week-7/8 references are unchanged")
-    reference_path = WEEK9_REFERENCE_PATH if args.week9_ml else REFERENCE_PATH
-    reference = (read_week9_reference() if args.week9_ml else read_current_reference()) if args.reference else None
+    if args.week9_classical and args.collect_candidate:
+        parser.error("Collect Day 61 and Day 62 separately; verify Day-61 repeats before starting Day 62")
+    classical_mode = args.week9_classical or args.week9_classical_day61 or args.week9_classical_day62
+    expected_reference = ("issue12-week9-classical" if classical_mode else
+                          "issue12-week9-ml" if args.week9_ml else "issue12-post-correction")
+    if args.reference and args.reference != expected_reference:
+        parser.error("Reference must match the explicitly selected workflow")
+    if args.compare_report and not args.reference:
+        parser.error("--compare-report requires --reference")
+    reference_path = (CLASSICAL_REFERENCE_PATH if classical_mode else
+                      WEEK9_REFERENCE_PATH if args.week9_ml else REFERENCE_PATH)
+    loader = read_classical_reference if classical_mode else read_week9_reference if args.week9_ml else read_current_reference
+    reference = loader() if args.reference else None
     blocker = BlockFlatFacades()
     require(not blocker.names.intersection(sys.modules), "Start acceptance in a fresh interpreter")
     sys.meta_path.insert(0, blocker)
@@ -904,13 +1385,34 @@ def main(argv=None):
     }
     print(f"Report: {output}", flush=True)
     try:
-        for week, run in ((7, week7), (8, week8), ("9_ml", week9_ml)):
-            if not ((args.all and week in (7, 8)) or getattr(args, f"week{week}")):
+        for week, run in ((7, week7), (8, week8), ("9_ml", week9_ml),
+                          ("9_classical_day61", week9_classical_day61), ("9_classical_day62", week9_classical_day62)):
+            if not ((args.all and week in (7, 8)) or getattr(args, f"week{week}")
+                    or (args.week9_classical and week in ("9_classical_day61", "9_classical_day62"))):
                 continue
             result = report["workflows"][f"week{week}"] = {}
             started = perf_counter()
             try:
-                run(result)
+                if args.compare_report:
+                    prior = json.loads(args.compare_report.read_text(encoding="utf-8"))
+                    require(prior["status"] != "FAIL" and prior["facade_blocker_count"] == 38,
+                            "Cannot accept failed/unblocked evidence")
+                    if classical_mode:
+                        require(prior["deterministic_rerun"] == "PASS", "Classical evidence needs independent exact agreement")
+                    result.update(prior["workflows"][f"week{week}"])
+                    result["scientific_elapsed_seconds"] = result["elapsed_seconds"]
+                    if classical_mode and "details_path" in result:
+                        # Copy/enrich reporting only; never overwrite original evidence.
+                        result["details"] = json.loads(Path(result["details_path"]).read_text(encoding="utf-8"))
+                    report["evidence_source"] = dict(path=str(args.compare_report),
+                        sha256=hashlib.sha256(args.compare_report.read_bytes()).hexdigest(),
+                        git_commit=prior["git_commit"], versions=prior["versions"],
+                        deterministic_rerun=prior["deterministic_rerun"])
+                else:
+                    run(result)
+                if week in ("9_classical_day61", "9_classical_day62"):
+                    result["historical_notebook_comparison"] = classical_historical_comparison(
+                        61 if week.endswith("61") else 62, result["science"])
                 historical = result["historical_notebook_comparison"]
                 result["historical_difference_summary"] = {
                     "role": "informational; historical notebook outputs are not current acceptance oracles",
@@ -918,7 +1420,9 @@ def main(argv=None):
                     "comparisons": len(historical),
                 }
                 if reference:
-                    differences = compare_current(result["science"], reference["weeks"][f"week{week}"],
+                    expected = (reference[week.removeprefix("9_classical_")] if classical_mode
+                                else reference["weeks"][f"week{week}"])
+                    differences = compare_current(result["science"], expected,
                                                   reference["comparison_tolerances"][f"week{week}"])
                     result["current_reference_acceptance"] = dict(
                         status="FAIL" if differences else "PASS", discrepancies=differences)
@@ -931,6 +1435,11 @@ def main(argv=None):
                 print(result["error"], flush=True)
                 # Stop this workflow. The other independent week may still be audited.
             finally:
+                if "details" in result:
+                    detail_path = output.with_name(f"week{week}_details.json")
+                    detail_path.write_text(json.dumps(classical_detail_records(result.pop("details")),
+                        indent=2, allow_nan=False), encoding="utf-8")
+                    result["details_path"] = str(detail_path)
                 result["elapsed_seconds"] = perf_counter() - started
                 report["status"] = ("FAIL" if any(r["status"] == "FAIL" for r in report["workflows"].values())
                                     else "PASS" if reference else "CANDIDATE")
