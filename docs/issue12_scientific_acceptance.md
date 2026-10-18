@@ -267,3 +267,132 @@ F ID 165 remains a covariance boundary failure. Moderate Test-F coverage is
 interpretation. Historical differences (Day 61: 62/112; Day 62: 64/146) remain
 informational; they do not turn an agreed current-reference comparison into a
 regression failure. This stage does not declare Issue #12 complete.
+
+## Stage 4: cross-feature end-to-end integration
+
+Run the small integration harness from the installed checkout:
+
+```bash
+python scripts/run_issue12_integration.py --block-emcee
+# Optional, with the Bayesian extra installed:
+python scripts/run_issue12_integration.py --bayesian
+python -m pytest tests/test_issue12_integration.py
+```
+
+The profile is `issue12-cross-feature-v1`. Every invocation runs all four
+workflows twice with the 38 removable flat facades blocked. It compares exact
+scientific reports, excluding runtime and temporary paths, and prints JSON to
+stdout. Temporary CSVs and SQLite databases are removed before it returns.
+Importing its definitions does not execute workflows. It reuses only the
+existing scientific harness's import blocker and assertion helper; it does not
+call any Week-7/8/9 acceptance workflow or execute notebooks.
+
+| Workflow | Composition and acceptance boundary |
+| --- | --- |
+| A: synthetic classical | Seeded Poisson counts enter `TCSPCMeasurement` as raw counts, with an independently represented Gaussian source and prepared IRF. Poisson reconvolution feeds local Fisher covariance, factual point/reference evaluation and a 90% interval attachment. A normalized processed-intensity measurement is rejected by the raw-count guard. |
+| B: generic ML | Thirty-two simulated curves provide stateless features. A caller-supplied `EstimatorSpec` fits `StandardScaler` and Ridge on 24 training rows only. Eight held-out predictions retain deliberately unsorted sample identities through generic prediction and factual evaluation. No frozen external benchmark data are used. |
+| C: imported measurement | Temporary experimental-style CSVs explicitly convert ps to ns, retain raw counts and imported sampled-IRF identity, and feed preparation, feature adapters and classical fitting. No lifetime reference is invented. A separately identified leading-edge proxy retains its diagnostics; constructibility is not physical validation. |
+| D: decay mismatch | A small bi-exponential observation is analyzed with the mono-exponential model. Its explicit scoring reference is `primary_component` (2 ns). The 2.4 ns weighted value is descriptive only; no `pseudo_true_mono` projection is computed or substituted. Finite Poisson deviance and residuals do not establish model validity. |
+
+The classical measurement adapter returns curve diagnostics. The harness uses
+their returned parameters and validity to construct the public low-level fit
+carrier required by local covariance, evaluating the fitted curve with the
+shared production forward model. It neither refits nor implements another
+scientific algorithm. Evaluation uses `MethodDescriptor`, `LifetimeReference`,
+`EvaluationBatch`, `PointEvaluationResult` and the canonical covariance
+`IntervalAttachment` projection. A score attachment is unnecessary for these
+workflows: covariance intervals are not heuristic scores.
+
+Persistence records the actual classical and ML outputs in a temporary schema-v1
+database: ten point results (one valid classical fit, one explicitly injected
+failed classical fixture, eight ML predictions) and four uncertainty records
+(covariance summaries and intervals for both classical attempts). It checks
+run/method/family/representation identity, generating-reference values and
+explicit reference IDs in execution provenance, validity/failure reasons,
+source/prepared/assumed IRF links and interval ownership. Generating references
+remain simulation-condition facts, not invented trusted experimental references.
+Current query APIs supply pandas tables after closing the writer. A read-only
+write attempt is rejected and the database SHA-256 remains identical across all
+reads. The existing persistence example separately exercises metric recording
+and SQL aggregation.
+
+The failed-fit fixture preserves the finite estimate but marks it invalid.
+Covariance reports `fit_unsuccessful`; its projected interval remains invalid.
+Evaluation retains both attempts, reports one available interval and a 0.5
+interval-failure rate, and persistence retains the failed result. This tests
+failure propagation, not the incidence of optimizer failures.
+
+`--block-emcee` blocks the optional dependency in a fresh process, completes all
+non-Bayesian paths and verifies the actionable error when sampling is requested.
+`--bayesian` requests only two ensembles, twelve walkers, twenty warmup steps and
+thirty production steps with fixed assumed IRF and explicit priors. Its finite
+sample shape is `(2, 30, 12, 4)`. The observed status is `insufficient_sampling`;
+this is wiring acceptance, not convergence or calibration acceptance. The Stage-4
+pytest fixture uses the blocked-dependency path and runs no MCMC.
+
+The existing CLI fit is checked against its Python API and explicitly identified
+as unconvolved least squares. A separate `python -m tcspc_toolkit simulate` smoke
+checks the module entry point. Neither expands the CLI or replaces the Poisson
+reconvolution workflow above.
+
+### Recovery and validation record (2026-10-18)
+
+Recovery began on `test/issue-12-integration-acceptance` at
+`d95a4f938a87de787bf6ce04ed23fb7b3aca1e4e`, with only the untracked runner and its
+13-test file. Both were complete, without TODOs, debug code, truncated workflows
+or removable-flat-facade imports. All four workflows, failure propagation,
+SQLite/pandas roundtrip, dependency isolation, facade blocking, exact repeats
+and CLI checks were already implemented. Prior completed Stage-4 validation
+could not be established from repository evidence.
+
+The first integration run passed unchanged. The broader developer-script guard
+then identified supported package re-exports that scripts must avoid: two
+`simulation` imports and one `persistence` import. These were changed to
+`simulation.histograms` and `persistence.sqlite`. No production algorithm or test
+expectation changed. Independent reports before and after this import correction
+were exactly identical.
+
+Two fresh Bayesian-enabled invocations after correction passed in 3.04 and
+3.10 seconds of reported harness time, each including its own exact repeat.
+Their complete workflow reports also matched each other exactly. Both inexpensive
+examples (`custom_estimator.py` and `persistence_roundtrip.py`) passed with all
+38 flat facades and `emcee` blocked; their temporary database was removed.
+
+The initial representative subsystem run emitted a Windows/joblib physical-core
+discovery warning because sandboxed CIM access failed. Windows independently
+reported eight physical cores and sixteen logical processors. Subsequent pytest
+commands set `LOKY_MAX_CPU_COUNT=8` for the process only; no warning filter or
+repository configuration was changed. The repeated 219-test subsystem group
+passed without warnings.
+
+Final validation used the configured Python 3.12.0 virtual environment:
+
+| Gate | Result |
+| --- | --- |
+| Stage-4 integration tests and corrected developer-script guard | 14 passed (13 integration tests plus the guard), 8.20 s |
+| Representative simulation, import, IRF preparation, estimator, evaluation, covariance-attachment, mismatch-reference and Bayesian-sampling tests | 219 passed, 14.57 s |
+| Package structure/facade readiness, public API, compatibility aliases and lightweight scientific-acceptance contracts | 324 passed, 224.08 s |
+| Complete seven-file persistence suite | 270 passed, 11.98 s |
+| Full repository suite (`python -m pytest -q`) | 1,885 passed, 0 failed, 0 skipped, 341.78 s |
+
+The full suite emitted exactly the two established finite-invalid mismatch
+`RuntimeWarning: invalid value encountered in subtract` warnings from
+`test_classical_frozen_tables_match_independent_legacy_expectations[mismatch]`.
+No new scientific warning remained.
+
+The exact ordered 66-name root API, 38 flat compatibility facades and seven
+historical persistence identity strings passed their existing contract tests.
+Schema version remains 1 and its definition SHA-256 remains
+`1edaa036c1e9ffe00927e87d7d14aad89e995c11a0a68172f6cc68842e833cf9`.
+Byte comparisons found no changes in the 125 protected source, notebook, config,
+reference and example files, including all three Issue-12 scientific references,
+all 17 notebooks and all four configs. The recovered integration test file is
+also byte-for-byte unchanged. Frozen scientific workflows were not rerun and
+their references, notebook outputs, seeds and schema were not updated.
+
+Stage-4 acceptance passes. The runner, tests and this record are ready for review
+and commit; the recovery session leaves them unstaged and uncommitted.
+
+Stage 4 does not complete Issue #12. Remaining issue-wide work includes the
+performance sanity assessment, documentation consistency review and final
+acceptance reconciliation. Stage 5 is separate and is not started here.
