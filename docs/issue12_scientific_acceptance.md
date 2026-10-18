@@ -1,5 +1,10 @@
 # Issue-12 scientific acceptance
 
+The [Stage-5 final technical acceptance ledger](#stage-5-final-technical-acceptance)
+reconciles all stages. Earlier sections retain their checkpoint-specific status
+and scientific provenance; their expensive commands are explicit reproduction
+instructions, not prerequisites for an ordinary test run.
+
 Use the configured project interpreter from the repository checkout:
 
 ```bash
@@ -393,6 +398,202 @@ their references, notebook outputs, seeds and schema were not updated.
 Stage-4 acceptance passes. The runner, tests and this record are ready for review
 and commit; the recovery session leaves them unstaged and uncommitted.
 
-Stage 4 does not complete Issue #12. Remaining issue-wide work includes the
-performance sanity assessment, documentation consistency review and final
-acceptance reconciliation. Stage 5 is separate and is not started here.
+At the Stage-4 checkpoint, performance sanity, documentation consistency and
+final acceptance reconciliation remained for Stage 5, recorded below.
+
+## Stage-5 final technical acceptance
+
+The final gate began on 2026-10-18 with a clean working tree on
+`test/issue-12-integration-acceptance`, HEAD
+`b57dbc657fb55f55b2ce580da8fdabd3a1114ad3`; local `origin/main` was
+`cc89d0589f32f63d0badae067e4c62f64d5438b5`. HEAD contains canonical Python and
+notebook import migration, the corrected Poisson fitter, all three post-correction
+references, and the committed Stage-4 runner/tests. Stage 5 changes documentation
+only. It does not repeat the completed scientific reference runs.
+
+### Performance sanity
+
+These observations detect catastrophic regressions; they are not timing goldens,
+microbenchmarks, or optimization targets. The configured interpreter is Python
+3.12.0 on Windows. Existing `benchmarks.timing` helpers were reused: classical
+timing summarizes already-computed fits, and fitted-regressor timing repeats
+prediction without retraining. Its existing tests guard those boundaries.
+
+| Workload | Observation | Classification |
+| --- | --- | --- |
+| Poisson reconvolution, 12 raw-count histograms of 120 bins | 0.658 s total; median 31.7 ms/fit; finite runtimes 26.6–296.4 ms; exactly 12 fit calls | NORMAL |
+| Bounded recovery within that batch | 1/12 attempted recovery; that observation remained optimizer-unsuccessful; 11/12 valid | SLOW_BUT_EXPECTED for the recovery fit; no catastrophic regression |
+| Stage-4 runner, three fresh processes with `--block-emcee` | Process times 2.989, 2.926, 3.097 s; reported workflow times 2.413, 2.336, 2.390 s | NORMAL |
+| Fresh `import tcspc_toolkit` | 2.139 s including process startup | NORMAL |
+| Fresh canonical `physics.forward_model` import | 2.089 s including inherited root initialization | NORMAL |
+| `python -m tcspc_toolkit --help` | 2.181 s including process startup | NORMAL |
+| Canonical Ridge simulation/features/training/prediction | 0.164 s under call instrumentation; 32 curves, 24 train, 8 held out; one pipeline fit and one scaler fit on 24 rows | NORMAL |
+| Small Stage-4 SQLite write/read/query/pandas operation | 0.212 s; ten results and four uncertainty rows; read operations leave database bytes unchanged | NORMAL |
+
+The classical probe used `evaluate_reconvolution_benchmark` with seed 120501,
+lifetimes `[1.2, 2.0, 3.0]` repeated four times, `arange(0, 12, 0.1)` ns,
+a Gaussian source centered at 0.8 ns with FWHM 0.35 ns prepared once,
+30,000 signal photons, background 3 counts/bin, and shift bounds ±0.3 ns.
+Zero-based observation 4 retained optimizer status 2 (`ABNORMAL`) despite passing
+the numerical check; it was not relabeled successful or removed from timing.
+This is an additional small sanity observation, not a new scientific reference.
+
+Each integration command intentionally executes its workflows twice. All three
+fresh-process reports matched exactly after excluding runtime. All 38 flat
+facades and `emcee` were blocked. The runner reconstructs a covariance input
+carrier from the existing classical fit without fitting again; the second ML
+prediction checks API equivalence without refitting. Separate CLI/API fits are
+intentional equivalence checks. IRFs are prepared once per scientifically distinct
+source/grid. No avoidable repeated fitting was found.
+
+An AST audit of all 99 production Python files found only lightweight module-level
+declarations and metadata construction, with no dataset generation, training,
+database creation, MCMC or benchmark execution. Fresh-process root, canonical
+and CLI imports were also guarded against scientific calls and SQLite connections
+with `emcee` blocked: none occurred. Instrumented startup was approximately
+3.8 s including profiling overhead. ML call instrumentation confirmed no frozen
+A–F or uncertainty workflow execution. No actual MCMC timing was performed.
+
+### Acceptance evidence and limitations
+
+The earlier Stage-2 local installation report was not recovered from the
+repository or its temporary acceptance directories. Stage 5 therefore restored
+reviewable installation evidence with a bounded fresh artifact check, without
+changing packaging configuration or the configured project environment:
+
+- A `git archive` of baseline HEAD was unpacked into a temporary source tree.
+  A temporary build environment produced both
+  `tcspc_lifetime_toolkit-0.7.0-py3-none-any.whl` and
+  `tcspc_lifetime_toolkit-0.7.0.tar.gz`.
+- Each artifact was installed into its own fresh Python 3.12.0 virtual environment
+  without system site packages. Direct scientific dependencies were constrained
+  to the configured project's installed versions; build tools came from PyPI.
+  Installed imports were verified inside the new environment, outside the checkout,
+  with isolated Python startup (`-I`), all 99 production modules and 66 root names.
+- Module and console-script `--help` passed for both installations. The complete
+  Stage-4 runner passed from each installed artifact with `emcee` and all 38 flat
+  facades blocked (reported workflow times 2.78 s and 4.11 s). Dependency download,
+  build and installation setup took 376 s overall; this is not scientific runtime.
+- Temporary source, artifacts, virtual environments and databases were removed.
+  No broader platform/version matrix or optional-sampler calibration is claimed.
+  Project metadata/build configuration and the API documentation's 66 names were
+  also checked against the current installed package and `pyproject.toml`.
+
+The contract-test review confirmed that ordinary pytest reads/reference-compares
+saved scientific evidence, uses mocks or small fixtures, and explicitly guards
+against a third full classical traversal. The integration tests use small
+deterministic compositions. Package-structure tests compile notebook cells and
+execute selected import statements only, never notebook workflows.
+
+Meaningful limitations retained by acceptance:
+
+- Frozen Test C still contains optimizer-unsuccessful observation 69. Strict
+  validity remains separate from finite predictions; the small timing probe also
+  demonstrates that a fit can remain explicitly invalid after bounded recovery.
+- The Stage-4 tiny Bayesian smoke reported `insufficient_sampling`; it proves
+  wiring only, not MCMC convergence or calibration.
+- Local covariance, bootstrap and Bayesian intervals are conditional on their
+  respective model assumptions; Bayesian intervals also depend on the prior and
+  fixed assumed IRF. Model mismatch can destroy coverage. RF/tree and training
+  bootstrap spread remain scores, not automatically nominal intervals.
+- Historical notebook-era tables and saved outputs are preserved. The three
+  Issue-12 post-correction JSON files are the current regression references;
+  [scientific findings](scientific_findings.md#issue-12-post-correction-week-78-acceptance-reference)
+  distinguishes the corresponding Week-7/8 and Week-9 results.
+- Ordinary historical pickle payloads can depend on facade module globals.
+  Their future removal needs a separate compatibility decision; seven persisted
+  identity strings remain provenance labels, not executable import instructions.
+- Python 3.11 clean-install acceptance has not been demonstrated locally. The
+  declared minimum remains 3.11; this session validates Python 3.12.0.
+- The two known finite-invalid subtraction warnings in
+  `benchmarks/generalization.py` remain documented and unsuppressed. Changing
+  numerical behavior merely to silence them is outside acceptance scope.
+
+The [post-Issue-12 cleanup handoff](package_structure.md#post-issue-12-compatibility-cleanup-handoff)
+identifies the 38 future flat-facade deletion candidates and required test/pickle
+decisions. The five reviewed package initializers are outside that deletion scope.
+No compatibility facade is deleted and no subsequent issue is started here.
+
+### Final Issue-12 acceptance ledger
+
+Scientific PASS entries below carry forward completed, independently repeated
+Stage-3 evidence. Stage 5 verified reference hashes and lightweight contracts;
+it did not regenerate those results or execute notebooks.
+
+| Area | Stage | Status | Evidence / reference | Remaining limitation |
+| --- | --- | --- | --- | --- |
+| Canonical imports | 1A, 4, 5 | PASS | Readiness scanner and blocked execution; zero ordinary first-party flat-facade dependencies | Explicit compatibility tests remain |
+| Notebook migration | 1B, 5 | PASS | 17 notebooks; zero active flat-facade imports; compilation and import-only guards | Saved historical outputs retained; no wholesale execution |
+| Clean package installation | 2, 5 | PASS | Fresh wheel and sdist installs, installed-path/module inventory checks, CLI and integration | Python 3.12.0 locally; no Python 3.11/platform matrix claim |
+| Public root API | 1, 4, 5 | PASS | Exact ordered 66-name contract; API documentation contains the same 66 names | Specialized APIs remain module-qualified |
+| Compatibility facades | 1, 4, 5 | PASS | All 38 flat candidates retained; object identity, historical lookup and readiness tests | Separate retirement/pickle decision required |
+| CLI / examples | 2, 4, 5 | PASS | Module/console help, CLI tests and integration; both inexpensive examples rerun | CLI fit remains unconvolved least squares; no CLI expansion |
+| Week-7 reproducibility | 3A | PASS | [Week-7/8 reference](../data/reference/issue12_week7_week8_post_correction.json); 162/162 valid matched and mismatch fits | Historical notebook-era numbers are not current regression references |
+| Week-8 A–F reproducibility | 3A | PASS | Same reference; frozen seeds, roles, ordering, identities and failure populations | Test-C observation 69 remains invalid; Test-F primary/descriptive references differ |
+| Week-9 ML uncertainty | 3B.1 | PASS | [ML/conformal reference](../data/reference/issue12_week9_ml_uncertainty_post_correction.json); independent repeats and 191 historical comparisons | Calibration/development roles and score/interval distinctions remain essential |
+| Week-9 classical uncertainty | 3B.2B | PASS | [Classical reference](../data/reference/issue12_week9_classical_uncertainty_post_correction.json); repeated full Day-61/62 evidence | Conditional intervals; Test-C fit failure, Test-F boundary covariance and poor mismatch coverage retained |
+| Persistence | 4, 5 | PASS | 270 tests; classical/ML identities, provenance, interval linkage, invalidity, read-only pandas/byte checks | Schema v1 and seven stored historical labels are frozen |
+| Cross-feature integration | 4, 5 | PASS | Four workflows, 13 tests; three exactly matching fresh-process reports, two internal runs each | Tiny Bayesian smoke establishes wiring only |
+| Optional dependencies | 4, 5 | PASS | Root/classical/ML/integration/examples work with `emcee` blocked, including clean installs | Actual sampling requires the optional extra; no convergence claim |
+| Performance sanity | 5 | PASS | All workloads NORMAL; bounded recovery SLOW_BUT_EXPECTED; no CATASTROPHIC_REGRESSION | Observed wall times are machine/load dependent |
+| Documentation consistency | 5 | PASS | Current import scanner, API inventory, historical/current labels and final ledger | Historical provenance tables intentionally retained |
+| Known limitations / warnings | 3–5 | PASS | Explicit limitations above; exactly two known full-suite warnings | Warnings are documented, not suppressed |
+| Full regression | 5 | PASS | 1,885 passed; 0 failed; 0 skipped; 2 known warnings; 362.66 s | No multi-hour scientific generation in ordinary pytest |
+
+### Final validation and protected-state audit
+
+The final sequence used the configured project interpreter. The process-local
+`LOKY_MAX_CPU_COUNT=8` supplied the previously verified physical-core count when
+the Windows sandbox blocked joblib's core-discovery command; no warning filter
+was applied.
+
+| Validation, in execution order | Result |
+| --- | --- |
+| Scientific acceptance contracts and existing timing tests | 78 passed, 4.59 s |
+| Stage-4 integration tests | 13 passed, 9.93 s |
+| Package structure/readiness, public API, naming compatibility, estimator API, CLI and config tests | 306 passed, 238.43 s |
+| Complete seven-file persistence suite | 270 passed, 10.84 s |
+| `examples/custom_estimator.py` | PASS, 2.10 s; predictions `[1.5, 2.5]` |
+| `examples/persistence_roundtrip.py` | PASS, 2.36 s; read-only SQL/pandas roundtrip and ownership assertions |
+| Full repository suite (`python -m pytest -q`) | 1,885 passed, 0 failed, 0 skipped, 2 warnings, 362.66 s |
+
+Both examples ran with the 38 flat facades and `emcee` blocked. The persistence
+example's Bayesian summaries are explicitly fixtures; no MCMC ran. The full-suite
+warnings are both `RuntimeWarning: invalid value encountered in subtract` at
+`benchmarks/generalization.py:4576`, from
+`test_classical_frozen_tables_match_independent_legacy_expectations[mismatch]`.
+
+The documentation audit corrected stale issue-status wording and unqualified
+historical relocation/notebook statements in README, AGENTS, API, evaluation and
+package-structure documentation. README purpose/install/CLI guidance and recommended
+imports remain valid. Persistence documentation already distinguished schema identity,
+stored historical strings and current imports correctly. Scientific findings already
+distinguished all three current references from historical tables; neither of those
+two documents needed changes.
+
+All 212 protected tracked files matched the initial byte hashes: production source,
+tests, scripts, examples, the 17 notebooks, four configs, reference files and
+`pyproject.toml`. In particular, the three reference SHA-256 values before and after
+Stage 5 are identical:
+
+| Reference file in `data/reference/` | SHA-256 |
+| --- | --- |
+| `issue12_week7_week8_post_correction.json` | `352e8c54d8a8f306f290abf99064a574bb0707189dea119a8de3ebe0c0c7ef2f` |
+| `issue12_week9_ml_uncertainty_post_correction.json` | `ea219aa844ac058f9774bd20707792397ba3adfc6380b113911e79f29b563cc2` |
+| `issue12_week9_classical_uncertainty_post_correction.json` | `644a335c822c2de9361e7356fafd1becadf5f9a89a50f30f277eba804cd45d5a` |
+
+The exact ordered 66-name root API, all 38 flat facades, all seven historical
+persistence identities and schema v1 passed their existing guards. The schema
+fingerprint remains
+`1edaa036c1e9ffe00927e87d7d14aad89e995c11a0a68172f6cc68842e833cf9`.
+No algorithms, seeds, notebook outputs or scientific references changed.
+
+No accidental tracked/untracked SQLite files, reports, build/dist outputs or debug
+logs were found. Temporary Stage-5 artifacts were removed; pre-existing ignored
+generated data, `.venv`, IDE files, egg-info and normal pytest/bytecode caches were
+retained. The final diff is documentation only and `git diff --check` passes.
+
+**Stage 5 passes. Issue #12 is technically ready to close with the documented
+limitations.** These documentation changes are ready for review and commit;
+they remain unstaged and uncommitted. Commit, merge and GitHub closure remain
+user actions. No further Issue-12 technical stage or Issue #13 work is begun.

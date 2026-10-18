@@ -45,7 +45,8 @@ Stage 6B moves the entire preparation/execution/reporting implementation to
 names, including seven aliases. Private helpers stay in the canonical module,
 and patches of its execution bindings target that module. No responsibilities,
 schemas, metric policies, or table-only compatibility behavior are repartitioned.
-Other studies, uncertainty implementations, and persistence have not moved.
+Other studies, uncertainty implementations, and persistence moved in later
+Issue-3 stages, described below and in the [package inventory](package_structure.md).
 Frozen A–F values, seeds, pairing, and data roles are unchanged.
 
 Stage 7A places uncertainty source carriers, metric evaluation, and split/provenance
@@ -117,7 +118,9 @@ protocol/data/prepared-data dependencies; reusable layers do not import it.
 Persistence's two constant imports stay function-local, with no stored identity
 changes. Benchmark and uncertainty initializers remain docstring-only; evaluation
 remains diagnostics-only. See [the exact public/alias inventory](api.md#stage-8c-frozen-uncertainty-benchmark).
-Persistence has not moved.
+Persistence subsequently moved to `persistence.sqlite` in Issue #3 Stage 9;
+the reviewed `persistence` package API and historical stored identities remain
+unchanged. See the [persistence contract](persistence.md).
 
 ```text
 frozen scientific benchmark definitions
