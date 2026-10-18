@@ -29,7 +29,9 @@ frozen Week-9 uncertainty orchestration/reporting, and SQLite persistence.
 The [final architecture inventory](package_structure.md) records every production
 module, compatibility facade, and dependency edge. All established historical
 imports remain supported through at least Issue #12; this is not a deprecation.
-Issue #12 acceptance is now active. Ordinary first-party consumers should use
+Issue #12 acceptance evidence is recorded in the
+[acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
+Ordinary first-party consumers should use
 the curated root API for its reviewed exports, otherwise the canonical submodules
 listed here. The 38 flat compatibility modules remain available for compatibility
 verification through Issue #12, with retirement planned separately afterward.
@@ -55,7 +57,7 @@ are added to the root, and existing public-import examples remain supported.
 ## Curated root API and supported module-qualified workflows
 
 The explicit `tcspc_toolkit.__all__` remains the curated package-root contract.
-All pre-Issue-#2 root exports are preserved. Stage 4 adds only the four generic
+All pre-Issue-#2 root exports are preserved. Issue #2 Stage 4 added only the four generic
 extension symbols and the missing `build_expected_counts_from_irf` entry.
 Module-qualified workflows are also public where documented; absence from
 the root does not make them private. Internal names beginning with `_` are
@@ -250,8 +252,8 @@ populations, reference selection, regime boundaries, table schemas, or visuals:
 Conditional analysis retains both legacy-result adapters and explicit factual
 paths; it does not select frozen A–F conditions. Plotting remains a separate
 explicit import: importing `tcspc_toolkit.evaluation` does not load conditional
-analysis or Matplotlib. Benchmark, uncertainty, and persistence modules have
-not moved in these stages.
+analysis or Matplotlib. Benchmark, uncertainty, and persistence modules moved in
+the later Issue-3 stages described below.
 
 Stage 6A creates the docstring-only `benchmarks` namespace and moves
 the frozen Week-8 protocol/configuration and dataset-generation implementations.
@@ -592,7 +594,8 @@ Flat `datasets` directly re-exports `SyntheticDataset`, both dataset generators,
 and the existing array type aliases. Expected-count construction, Poisson
 sampling, seed/Generator handling, and random-draw ordering are unchanged.
 This is generic synthetic generation, not the frozen A–F protocol: the
-`generalization*` modules remain separate and have not moved in this stage.
+generalization implementations remain separate under `benchmarks`, as described
+in the Stage-6 inventory above.
 
 ### Stage-8C frozen uncertainty benchmark
 

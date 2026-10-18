@@ -20,8 +20,9 @@ likelihood while adding explicit priors, posterior sampling, sampling
 diagnostics, posterior summaries, posterior-predictive checks, and controlled
 decay-model and IRF-model mismatch evaluation. These integrations are present
 while the package version remains 0.7.0. Public-API stabilization is complete;
-package restructuring is complete. Issue #12 integration verification and later
-release qualification remain separate acceptance work.
+package restructuring is complete. The [Issue #12 acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
+records installation, scientific reproducibility, cross-feature integration and
+final performance/regression evidence. Later release qualification remains separate.
 
 SQLite-backed persistence now records measurements, IRF provenance, estimator
 results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
@@ -1420,7 +1421,7 @@ The integration and release sequence is:
    merged, and closed;
 9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
    full integration and regression verification across the mature workflows —
-   active acceptance gate;
+   final technical acceptance recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance), pending review and GitHub closure;
 10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
     Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
 11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —
@@ -1488,7 +1489,9 @@ Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
 inference, posterior diagnostics, controlled model-mismatch evaluation, and
 Notebook 17 are implemented. The package/API restructuring is complete and
-Issue #12 now verifies clean installation and mature cross-feature integration.
+Issue #12 acceptance covers clean installation and mature cross-feature integration;
+its [ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
+records the evidence and remaining limitations.
 Vendor formats, synthetic-to-real validation, and broader decay-model inference
 remain future work. These post-release integrations do not change the v0.7.0
 release version.

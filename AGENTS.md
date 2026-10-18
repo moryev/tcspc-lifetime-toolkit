@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is now the active acceptance gate. Work on #12 should verify clean installation, representative end-to-end workflows, cross-feature integration, reproducibility, and regression behavior without reopening the completed package restructuring unless a concrete integration defect requires it.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) has reached its final technical acceptance stage. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. Review, commit/merge and GitHub closure remain user actions. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
 ## Repository map
 
@@ -304,7 +304,7 @@ Current integration status:
 7. **#2** — API stabilization and package hardening — **complete, merged, and closed**;
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
-10. **#12** — full integration and regression verification — **active acceptance gate**;
+10. **#12** — full integration and regression verification — **final technical acceptance**, pending review and GitHub closure; see the acceptance ledger;
 11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
@@ -392,4 +392,4 @@ For future work:
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
 Consult Issues #3, #5, #11, and #12 for history and acceptance boundaries.
-Issue #12 is the active integration-verification task. Do not start further package movement; any structural change must be defect-driven and explicitly justified by Issue-#12 acceptance evidence.
+Issue #12's final technical acceptance is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). Do not start further package movement or Issue #13 automatically. The [post-Issue-12 compatibility cleanup handoff](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) is a separate future task; all 38 flat facades remain present.

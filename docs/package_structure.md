@@ -16,6 +16,8 @@ The readiness guards now cover ordinary Python consumers, notebook code cells,
 and current documentation import examples. Historical mapping/provenance text
 and dedicated compatibility tests remain intentional exceptions. The notebook
 inventory below records the earlier Issue-3 checkpoint, not current dependencies.
+Current integration and performance evidence is recorded in the
+[Issue-12 acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
 The five reviewed package-level facades are not flat-file retirement candidates.
 
 ## Canonical tree and ownership
@@ -66,7 +68,8 @@ represent copied scientific implementations. All substantive root scientific
 implementations have moved into subpackages.
 
 Paths are relative to `src/tcspc_toolkit/`; target names omit `tcspc_toolkit.`.
-Line counts include documentation and imports and are informational.
+Line counts are informational snapshots from Issue #3; they include documentation
+and imports and are not current size or performance acceptance thresholds.
 For **every B row**, the count of scientific/executable body statements after
 excluding documentation, direct imports and `__all__` declarations is **zero**.
 There are no functions, classes, wrappers, SQL definitions or numerical bodies
@@ -367,9 +370,10 @@ typing:
   uncertainty.ml -> benchmarks.generalization_protocol
 ```
 
-## Repository-wide reconciliation
+## Historical Issue-3 repository-wide reconciliation
 
-Historical imports are classified by use, not mechanically rewritten:
+At that checkpoint, historical imports were classified by use. Issue-12 Stage 1
+subsequently migrated ordinary consumers and active notebook code, as noted above:
 
 | Area | Classification and action |
 | --- | --- |
@@ -404,14 +408,16 @@ implementation, `src/tcspc_toolkit/benchmarks/bayesian_mismatch.py`. This is the
 current provenance source, protected by a structural regression test. No saved
 correction artifact was regenerated, and no persisted schema-v1 identity changed.
 
-### Unchanged notebook imports
+### Historical Issue-3 notebook import inventory
 
-Only historical module paths are listed; the `tcspc_toolkit.` prefix is omitted.
-All 17 notebooks were read without execution, including source-only reads of
-949 cells omitted by the capped initial previews; those later cells contained
+These paths describe the Issue-3 checkpoint, before Issue-12 Stage 1B migrated
+active code-cell imports. The current 17 notebooks have zero active imports of
+the 38 removable flat facades. The `tcspc_toolkit.` prefix is omitted below.
+At the earlier checkpoint, all 17 notebooks were read without execution, including
+source-only reads of 949 cells omitted by the capped initial previews; those later cells contained
 no additional package imports.
 
-| Notebook | Retained historical imports |
+| Notebook | Historical imports at the Issue-3 checkpoint |
 | --- | --- |
 | `01_tcspc_simulation.ipynb` | `simulation` |
 | `02_classical_lifetime_fitting.ipynb` | `evaluation`, `fitting` |
@@ -459,7 +465,7 @@ pandas/scientific imports, explicit plotting/study imports, and all initializer
 boundaries. Root initialization still has its inherited sklearn/pandas cost;
 Issue #3 does not claim or implement root-import optimization.
 
-## Validation and acceptance boundary
+## Historical Issue-3 validation and acceptance boundary
 
 The committed baseline passed 188 structural/API tests and all 270 persistence
 tests. Five additional global closure guards cover the complete inventory,
@@ -492,6 +498,24 @@ import-only substitutions in two scripts. Production source, notebooks,
 examples, configurations, and saved scientific outputs are unchanged.
 
 Issue #3's physical architecture requires no further package migration.
-Issue #12 remains separate: clean-install matrices, wheel/sdist acceptance,
-scientific-reference workflow reruns, extensive cross-feature fresh-environment
-workflows, performance acceptance and release qualification were not performed.
+At Issue #3 closure, clean-install matrices, wheel/sdist acceptance,
+scientific-reference reruns, cross-feature fresh-environment workflows and
+performance acceptance remained for Issue #12. Its subsequent evidence is in the
+[acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
+Later release qualification remains separate.
+
+## Post-Issue-12 compatibility cleanup handoff
+
+The **38 flat facade files** in the inventory can be considered for deletion in
+a separate, explicitly authorized task after Issue #12. Current first-party
+Python consumers, active code in all 17 notebooks, and recommended documentation
+imports have migrated to the curated root API or canonical hierarchy. The five
+reviewed package-level facades are not deletion candidates.
+
+A deletion task must redesign or remove compatibility-specific import, direct
+identity, alias and historical-pickle tests while preserving canonical API and
+scientific coverage. Old ordinary pickle payloads that reference globals in a
+deleted module may stop loading; migration or an explicit compatibility decision
+is required. The seven persistence identity strings remain historical provenance
+labels, independent of current import paths: do not rewrite them or schema v1.
+No facade is deleted as part of Issue #12.
