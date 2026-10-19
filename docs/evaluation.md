@@ -1,5 +1,11 @@
 # Evaluation architecture: Issue #11, Stages 0–10
 
+The relocation account below records Issues #11 and #3. The 38 flat scientific
+re-export modules described at those historical checkpoints were removed after
+Issue #12. Current callers use the canonical submodules named here or documented
+root exports. The retained `evaluation` and `persistence` package APIs and
+supported symbol aliases are unchanged; see the [removal mapping](package_structure.md#removed-flat-module-mapping).
+
 Stages 0–1 added module-qualified factual result contracts and small metric
 primitives. Stage 2 shares representation-preparation mechanics beneath the
 existing A/B and multi-test carriers. Stage 3 routes nonclassical generalization
@@ -20,8 +26,8 @@ those study workflows. The 66-name root API and notebooks are unchanged.
 Issue #3 Stage 5B places the factual implementations in
 `tcspc_toolkit.evaluation.results`, `tcspc_toolkit.evaluation.core`, and
 `tcspc_toolkit.evaluation.attachments`. Historical `evaluation_results`,
-`evaluation_core`, and `evaluation_uncertainty` imports remain direct-object
-compatibility paths through at least Issue #12. Import factual APIs from those
+`evaluation_core`, and `evaluation_uncertainty` imports were direct-object
+compatibility paths through Issue #12 and are now removed. Import factual APIs from those
 explicit submodules: `tcspc_toolkit.evaluation` remains the historical
 seven-function diagnostics facade, not an aggregate factual/reporting API.
 Its inherited initialization of diagnostics/fitting is separate from the
@@ -29,19 +35,19 @@ estimator-independent source dependencies of the factual modules.
 
 Stage 5C adds canonical `tcspc_toolkit.evaluation.conditional` and
 `tcspc_toolkit.evaluation.plots`. Historical `conditional_evaluation` and
-`benchmark_plots` remain direct-object compatibility paths through at least
-Issue #12. These explicit submodules preserve the existing conditional
+`benchmark_plots` were direct-object compatibility paths through
+Issue #12 and are now removed. These explicit submodules preserve the existing conditional
 populations, legacy adapters, caller-selected references/regimes, and plotting
 schemas. The diagnostics facade imports neither module nor Matplotlib.
 
 Stage 6A places only frozen Week-8 protocol/configuration and paired dataset
 generation in `tcspc_toolkit.benchmarks.generalization_protocol` and
 `tcspc_toolkit.benchmarks.generalization_datasets`. Historical `generalization`
-and `generalization_datasets` remain direct-object compatibility paths through
-at least Issue #12. The benchmark initializer imports no children.
+and `generalization_datasets` were direct-object compatibility paths through
+Issue #12 and are now removed. The benchmark initializer imports no children.
 Stage 6B moves the entire preparation/execution/reporting implementation to
 `tcspc_toolkit.benchmarks.generalization`; historical
-`tcspc_toolkit.generalization_evaluation` directly re-exports its 61 supported
+`tcspc_toolkit.generalization_evaluation` historically re-exported its 61 supported
 names, including seven aliases. Private helpers stay in the canonical module,
 and patches of its execution bindings target that module. No responsibilities,
 schemas, metric policies, or table-only compatibility behavior are repartitioned.
@@ -51,7 +57,7 @@ Frozen A–F values, seeds, pairing, and data roles are unchanged.
 
 Stage 7A places uncertainty source carriers, metric evaluation, and split/provenance
 policy in `tcspc_toolkit.uncertainty.evaluation`. Historical
-`tcspc_toolkit.uncertainty_evaluation` directly re-exports the same 19 public
+`tcspc_toolkit.uncertainty_evaluation` historically re-exported the same 19 public
 objects. This module retains `WEEK9_HYPOTHESES` and its existing dependency on
 `benchmarks.generalization_protocol.FINAL_ROBUSTNESS_TEST_IDS` for the provenance
 guard. It is distinct from `evaluation.attachments`, whose `IntervalAttachment`
@@ -61,7 +67,7 @@ initializer is docstring-only.
 Stage 7B moves the intact ML and classical implementations to
 `tcspc_toolkit.uncertainty.ml` and `tcspc_toolkit.uncertainty.classical`.
 Historical `tcspc_toolkit.ml_uncertainty` and `tcspc_toolkit.classical_uncertainty`
-directly re-export their 34 and 18 supported names, including the three ML Week-9
+historically re-exported their 34 and 18 supported names, including the three ML Week-9
 aliases. Source-to-attachment projections remain separate from source carriers;
 repeated-Poisson variability remains an empirical reference rather than a per-point
 interval attachment. ML benchmark annotations remain typing-only. Private helpers
@@ -73,7 +79,7 @@ identities are unchanged.
 Stage 8A places the intact Week-7 studies in `tcspc_toolkit.benchmarks.mismatch`
 and `tcspc_toolkit.benchmarks.timing`. Historical
 `tcspc_toolkit.mismatch_evaluation` and `tcspc_toolkit.timing_evaluation`
-remain direct-export facades for six and eight supported names respectively.
+were direct-export facades for six and eight supported names respectively.
 The paired mono-/bi-exponential mismatch experiment is separate from frozen
 Week-8 Test F: it imports no generalization protocol and retains its
 `generating_mono`/`primary_component` ML reference identities, not pseudo-true
@@ -86,7 +92,7 @@ Stage 8B relocates the intact Issue-8 study to `tcspc_toolkit.benchmarks.irf`
 and the Issue-4 matched-model and mismatch studies to
 `tcspc_toolkit.benchmarks.bayesian_calibration` and
 `tcspc_toolkit.benchmarks.bayesian_mismatch`. Historical `irf_evaluation`,
-`bayesian_evaluation`, and `bayesian_mismatch_evaluation` are direct-reexport
+`bayesian_evaluation`, and `bayesian_mismatch_evaluation` were direct-reexport
 facades for 18, 21, and 23 supported names (listed in [the API contract](api.md)).
 Bayesian estimator implementations remain in `estimation.bayesian.*`; the
 `benchmarks.bayesian_*` modules only orchestrate their scientific studies.
@@ -106,7 +112,7 @@ and persistence remained flat.
 
 Stage 8C moves the intact frozen Week-9 study/report layer to
 `tcspc_toolkit.benchmarks.uncertainty`. Historical
-`tcspc_toolkit.uncertainty_robustness` directly re-exports its 28 supported names,
+`tcspc_toolkit.uncertainty_robustness` historically re-exported its 28 supported names,
 including eleven legacy aliases, without wrappers or fabricated module identities.
 Reusable metrics/source carriers and ML/classical methods remain in
 `uncertainty.evaluation`, `uncertainty.ml`, and `uncertainty.classical`.

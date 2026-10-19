@@ -41,8 +41,9 @@ representations nor computes benchmark metrics. The curated root API and
 supported module-qualified workflows are documented in [the API contract](../api.md).
 Issue #11 settled evaluation/report responsibilities; Issue #3 completed their
 physical relocation without changing this boundary. See the
-[final package inventory](../package_structure.md). Historical paths remain
-supported through at least Issue #12.
+[package inventory](../package_structure.md). The separate post-Issue-12 cleanup
+removed the 38 obsolete flat module paths; canonical/root APIs, reviewed package
+APIs, and supported symbol aliases remain available.
 
 ## Generalized IRFs — Issue #8
 
@@ -154,5 +155,6 @@ plain JSON manifest, `configs/issue8_irf_workflow.json`, fixes the audited
 demonstration settings without adding a configuration framework. Detailed
 results and fixture limitations belong in `docs/scientific_findings.md`.
 Issues #2 and #11 established the API and evaluation contracts above. Issue #3
-package restructuring is complete; Issue #12 is the separate next integration
-acceptance gate, not another module-migration phase.
+package restructuring and Issue #12 integration acceptance are complete, merged,
+and closed. The subsequent flat-module cleanup changes obsolete import paths
+only; it does not reopen the scientific contracts above.

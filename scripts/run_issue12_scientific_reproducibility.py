@@ -62,12 +62,51 @@ def require(condition, message):
         raise AcceptanceFailure(message)
 
 
+REMOVED_FLAT_MODULE_NAMES = (
+    "tcspc_toolkit.baselines",
+    "tcspc_toolkit.bayesian",
+    "tcspc_toolkit.bayesian_evaluation",
+    "tcspc_toolkit.bayesian_mismatch_evaluation",
+    "tcspc_toolkit.bayesian_predictive",
+    "tcspc_toolkit.bayesian_sampling",
+    "tcspc_toolkit.benchmark_plots",
+    "tcspc_toolkit.classical_evaluation",
+    "tcspc_toolkit.classical_uncertainty",
+    "tcspc_toolkit.conditional_evaluation",
+    "tcspc_toolkit.convolution",
+    "tcspc_toolkit.cross_validation",
+    "tcspc_toolkit.datasets",
+    "tcspc_toolkit.estimator_api",
+    "tcspc_toolkit.evaluation_core",
+    "tcspc_toolkit.evaluation_results",
+    "tcspc_toolkit.evaluation_uncertainty",
+    "tcspc_toolkit.experimental",
+    "tcspc_toolkit.features",
+    "tcspc_toolkit.fitting",
+    "tcspc_toolkit.forward_model",
+    "tcspc_toolkit.generalization",
+    "tcspc_toolkit.generalization_datasets",
+    "tcspc_toolkit.generalization_evaluation",
+    "tcspc_toolkit.irf_estimation",
+    "tcspc_toolkit.irf_evaluation",
+    "tcspc_toolkit.irf_preparation",
+    "tcspc_toolkit.measurement_io",
+    "tcspc_toolkit.measurements",
+    "tcspc_toolkit.mismatch_evaluation",
+    "tcspc_toolkit.ml_evaluation",
+    "tcspc_toolkit.ml_models",
+    "tcspc_toolkit.ml_uncertainty",
+    "tcspc_toolkit.models",
+    "tcspc_toolkit.representations",
+    "tcspc_toolkit.timing_evaluation",
+    "tcspc_toolkit.uncertainty_evaluation",
+    "tcspc_toolkit.uncertainty_robustness",
+)
+
+
 def flat_facades():
-    """The reviewed 38 root .py facades, not historical package initializers."""
-    support = {"__init__", "__main__", "cli", "config", "exceptions"}
-    names = {p.stem for p in (ROOT / "src/tcspc_toolkit").glob("*.py")} - support
-    require(len(names) == 38, "Review the flat-facade inventory before running acceptance")
-    return {"tcspc_toolkit." + name for name in names}
+    """Remember the 38 removed paths, independently of installed source files."""
+    return set(REMOVED_FLAT_MODULE_NAMES)
 
 
 class BlockFlatFacades(importlib.abc.MetaPathFinder):

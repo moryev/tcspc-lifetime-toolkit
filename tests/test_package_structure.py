@@ -1,8 +1,7 @@
-"""Issue-#3 relocation guards, not a second scientific validation suite.
+"""Canonical architecture and post-Issue-12 removed-module contracts.
 
-Update responsibility paths deliberately when implementations move; retain the
-old import list. New package initializers must stay minimal, not eagerly load
-their entire subtree. Runtime checks complement the static import graph.
+The historical deny-list is fixed even though its source files no longer exist.
+Retained package APIs and canonical dependency boundaries remain supported.
 """
 
 import ast
@@ -18,25 +17,60 @@ import pytest
 PACKAGE = "tcspc_toolkit"
 SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src" / PACKAGE
 
-# Supported module import paths, not a promise about incidental/private names.
-# Keep these through at least #12, even when a name.py becomes name/__init__.py.
-OLD_MODULE_PATHS = (
-    "models", "convolution", "forward_model", "irf", "irf_preparation",
-    "irf_estimation", "measurements", "measurement_io", "experimental",
-    "simulation", "datasets", "preprocessing", "features", "representations",
-    "estimator_api", "baselines", "fitting", "classical_evaluation",
-    "ml_models", "ml_evaluation", "cross_validation", "evaluation",
-    "evaluation_results", "evaluation_core", "evaluation_uncertainty",
-    "conditional_evaluation", "benchmark_plots", "mismatch_evaluation", "timing_evaluation",
-    "generalization", "generalization_datasets", "generalization_evaluation",
-    "irf_evaluation", "uncertainty_evaluation", "ml_uncertainty",
-    "classical_uncertainty", "uncertainty_robustness", "bayesian",
-    "bayesian_sampling", "bayesian_predictive", "bayesian_evaluation",
-    "bayesian_mismatch_evaluation", "persistence", "config", "exceptions",
-)
+# Explicit historical manifest; no discovery from surviving files.
+REMOVED_FLAT_FACADES = {
+    "baselines": "estimation.baselines",
+    "bayesian": "estimation.bayesian.posterior",
+    "bayesian_evaluation": "benchmarks.bayesian_calibration",
+    "bayesian_mismatch_evaluation": "benchmarks.bayesian_mismatch",
+    "bayesian_predictive": "estimation.bayesian.predictive",
+    "bayesian_sampling": "estimation.bayesian.sampling",
+    "benchmark_plots": "evaluation.plots",
+    "classical_evaluation": "estimation.classical",
+    "classical_uncertainty": "uncertainty.classical",
+    "conditional_evaluation": "evaluation.conditional",
+    "convolution": "physics.convolution",
+    "cross_validation": "ml.cross_validation",
+    "datasets": "simulation.datasets",
+    "estimator_api": "estimation.api",
+    "evaluation_core": "evaluation.core",
+    "evaluation_results": "evaluation.results",
+    "evaluation_uncertainty": "evaluation.attachments",
+    "experimental": "measurement.adapters",
+    "features": "preprocessing.features",
+    "fitting": "estimation.fitting",
+    "forward_model": "physics.forward_model",
+    "generalization": "benchmarks.generalization_protocol",
+    "generalization_datasets": "benchmarks.generalization_datasets",
+    "generalization_evaluation": "benchmarks.generalization",
+    "irf_estimation": "irf.estimation",
+    "irf_evaluation": "benchmarks.irf",
+    "irf_preparation": "irf.preparation",
+    "measurement_io": "measurement.io",
+    "measurements": "measurement.records",
+    "mismatch_evaluation": "benchmarks.mismatch",
+    "ml_evaluation": "ml.evaluation",
+    "ml_models": "ml.models",
+    "ml_uncertainty": "uncertainty.ml",
+    "models": "physics.models",
+    "representations": "preprocessing.representations",
+    "timing_evaluation": "benchmarks.timing",
+    "uncertainty_evaluation": "uncertainty.evaluation",
+    "uncertainty_robustness": "benchmarks.uncertainty",
+}
+
+RETAINED_PACKAGE_APIS = {
+    "evaluation": "evaluation.diagnostics",
+    "irf": "irf.profiles",
+    "persistence": "persistence.sqlite",
+    "preprocessing": "preprocessing.histograms",
+    "simulation": "simulation.histograms",
+}
+
+SUPPORTED_MODULE_PATHS = (*RETAINED_PACKAGE_APIS, "config", "exceptions")
 
 # Responsibility sets identify implementations, not their future spelling.
-# Canonical implementations move; old paths and dependency restrictions stay.
+# Canonical dependency restrictions survive removal of historical paths.
 EXTENSION = {f"{PACKAGE}.estimation.api"}
 BASELINES = f"{PACKAGE}.estimation.baselines"
 ESTIMATION = f"{PACKAGE}.estimation"
@@ -198,21 +232,7 @@ BENCHMARK_IMPORTS = {
         f"{PACKAGE}.preprocessing.representations",
     },
 }
-MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in (
-    "estimator_api", "baselines", "models", "convolution", "forward_model",
-    "features", "representations", "irf_preparation", "irf_estimation",
-    "measurements", "measurement_io", "experimental", "datasets",
-    "fitting", "classical_evaluation", "bayesian", "bayesian_sampling", "bayesian_predictive",
-    "ml_models", "ml_evaluation", "cross_validation",
-    "evaluation_results", "evaluation_core", "evaluation_uncertainty",
-    "conditional_evaluation", "benchmark_plots",
-    "generalization", "generalization_datasets", "generalization_evaluation",
-    "uncertainty_evaluation",
-    "ml_uncertainty", "classical_uncertainty",
-    "mismatch_evaluation", "timing_evaluation",
-    "irf_evaluation", "bayesian_evaluation", "bayesian_mismatch_evaluation",
-    "uncertainty_robustness",
-)}
+MIGRATED_SHIMS = {f"{PACKAGE}.{name}" for name in REMOVED_FLAT_FACADES}
 # A package facade must run as a parent initializer, but canonical code must
 # not explicitly import its old re-export surface as an implementation.
 PREPROCESSING = f"{PACKAGE}.preprocessing"
@@ -486,9 +506,45 @@ def package_imports():
     return records, packages
 
 
-def test_supported_flat_modules_remain_importable():
-    for name in OLD_MODULE_PATHS:
+def test_retained_package_and_support_modules_remain_importable():
+    for name in SUPPORTED_MODULE_PATHS:
         assert importlib.import_module(f"{PACKAGE}.{name}") is not None
+
+
+def test_removed_flat_modules_are_absent_without_an_artificial_blocker(tmp_path):
+    assert len(REMOVED_FLAT_FACADES) == 38
+    for name in REMOVED_FLAT_FACADES:
+        assert not (SOURCE_ROOT / f"{name}.py").exists()
+        assert not (SOURCE_ROOT / name).exists()
+    script = f"""
+import importlib
+import importlib.util
+import sys
+import tcspc_toolkit as toolkit
+removed = {sorted(REMOVED_FLAT_FACADES)!r}
+# Loading every canonical replacement must not install aliases as a side effect.
+for target in {sorted(set(REMOVED_FLAT_FACADES.values()))!r}:
+    importlib.import_module('tcspc_toolkit.' + target)
+assert '__getattr__' not in vars(toolkit)
+for short in removed:
+    name = 'tcspc_toolkit.' + short
+    assert name not in sys.modules, name
+    assert not hasattr(toolkit, short), short
+    assert importlib.util.find_spec(name) is None, name
+    try:
+        importlib.import_module(name)
+    except ModuleNotFoundError as error:
+        assert error.name == name, (name, error.name)
+    else:
+        raise AssertionError('Removed module imported: ' + name)
+    assert name not in sys.modules, name
+"""
+    completed = subprocess.run(
+        [sys.executable, "-B", "-c", script], cwd=tmp_path,
+        capture_output=True, text=True, timeout=60,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_responsibility_dependency_direction(package_imports):
@@ -618,14 +674,10 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
     }
     consumers = {(module, kind, names) for module, imports in records.items()
                  for kind, base, names in imports if base == GENERALIZATION}
-    facade = f"{PACKAGE}.generalization_evaluation"
-    assert {(module, kind, names) for module, kind, names in consumers if module != facade} == {
+    assert consumers == {
         (UNCERTAINTY_ML, "typing", ("GeneralizationPreparedData",)),
         (UNCERTAINTY_BENCHMARK, "eager", ("GeneralizationPreparedData",)),
         (PERSISTENCE_SQLITE, "deferred", ("RobustnessMetrics",)),
-    }
-    assert {(module, kind) for module, kind, _ in consumers if module == facade} == {
-        (facade, "eager"),
     }
     foundations = (
         f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
@@ -636,10 +688,7 @@ def test_benchmark_protocol_data_dependencies_preserve_existing_edge_kinds(packa
             assert not benchmark_edges(module), module
 
 
-@pytest.mark.parametrize("module", [
-    BENCHMARKS, GENERALIZATION_PROTOCOL, GENERALIZATION_DATASETS,
-    f"{PACKAGE}.generalization", f"{PACKAGE}.generalization_datasets",
-])
+@pytest.mark.parametrize("module", [BENCHMARKS, GENERALIZATION_PROTOCOL, GENERALIZATION_DATASETS])
 def test_fresh_benchmark_imports_do_not_aggregate_studies(tmp_path, module):
     script = f"""
 import importlib
@@ -748,58 +797,10 @@ CLOSURE_SUPPORT_FILES = {
     "physics/__init__.py",
     "uncertainty/__init__.py",
 }
-CLOSURE_FACADES = {
-    "baselines": "estimation.baselines",
-    "bayesian": "estimation.bayesian.posterior",
-    "bayesian_evaluation": "benchmarks.bayesian_calibration",
-    "bayesian_mismatch_evaluation": "benchmarks.bayesian_mismatch",
-    "bayesian_predictive": "estimation.bayesian.predictive",
-    "bayesian_sampling": "estimation.bayesian.sampling",
-    "benchmark_plots": "evaluation.plots",
-    "classical_evaluation": "estimation.classical",
-    "classical_uncertainty": "uncertainty.classical",
-    "conditional_evaluation": "evaluation.conditional",
-    "convolution": "physics.convolution",
-    "cross_validation": "ml.cross_validation",
-    "datasets": "simulation.datasets",
-    "estimator_api": "estimation.api",
-    "evaluation": "evaluation.diagnostics",
-    "evaluation_core": "evaluation.core",
-    "evaluation_results": "evaluation.results",
-    "evaluation_uncertainty": "evaluation.attachments",
-    "experimental": "measurement.adapters",
-    "features": "preprocessing.features",
-    "fitting": "estimation.fitting",
-    "forward_model": "physics.forward_model",
-    "generalization": "benchmarks.generalization_protocol",
-    "generalization_datasets": "benchmarks.generalization_datasets",
-    "generalization_evaluation": "benchmarks.generalization",
-    "irf": "irf.profiles",
-    "irf_estimation": "irf.estimation",
-    "irf_evaluation": "benchmarks.irf",
-    "irf_preparation": "irf.preparation",
-    "measurement_io": "measurement.io",
-    "measurements": "measurement.records",
-    "mismatch_evaluation": "benchmarks.mismatch",
-    "ml_evaluation": "ml.evaluation",
-    "ml_models": "ml.models",
-    "ml_uncertainty": "uncertainty.ml",
-    "models": "physics.models",
-    "persistence": "persistence.sqlite",
-    "preprocessing": "preprocessing.histograms",
-    "representations": "preprocessing.representations",
-    "simulation": "simulation.histograms",
-    "timing_evaluation": "benchmarks.timing",
-    "uncertainty_evaluation": "uncertainty.evaluation",
-    "uncertainty_robustness": "benchmarks.uncertainty",
-}
 
 
-# Issue-12 first-party retirement readiness (Python, notebooks and docs).
-# These five reviewed package APIs are NOT removable flat .py facades.
-REMOVABLE_FLAT_FACADES = set(CLOSURE_FACADES) - {
-    "irf", "preprocessing", "simulation", "evaluation", "persistence",
-}
+# Historical removed paths remain forbidden in Python, notebooks and docs.
+REMOVED_FLAT_NAMES = set(REMOVED_FLAT_FACADES)
 
 
 def _python_flat_facade_dependencies(source, package=None):
@@ -807,7 +808,7 @@ def _python_flat_facade_dependencies(source, package=None):
 
     Notebook callers supply code-cell source only, never saved outputs.
     Historical SQL provenance labels and negative guards are not imports.
-    Dynamic compatibility registries retain their separate identity/pickle tests.
+    Removed-name registries retain their separate negative import/pickle tests.
     """
     import re
     import textwrap
@@ -817,7 +818,7 @@ def _python_flat_facade_dependencies(source, package=None):
     def facade(name):
         prefix, separator, rest = name.partition(".")
         first = rest.split(".")[0]
-        return first if separator and prefix == PACKAGE and first in REMOVABLE_FLAT_FACADES else None
+        return first if separator and prefix == PACKAGE and first in REMOVED_FLAT_NAMES else None
 
     class Visitor(ast.NodeVisitor):
         scope = "<module>"
@@ -896,25 +897,10 @@ def _python_flat_facade_dependencies(source, package=None):
     return found
 
 
-def test_python_consumers_are_ready_for_flat_facade_retirement():
-    """No ordinary Python consumer depends on the 38 future deletion targets."""
-    assert len(REMOVABLE_FLAT_FACADES) == 38
+def test_python_consumers_have_no_removed_flat_dependencies():
+    """No compatibility-import exceptions remain in first-party Python code."""
+    assert len(REMOVED_FLAT_NAMES) == 38
     repository = SOURCE_ROOT.parents[1]
-    # Exact imports/lookups belonging to dedicated compatibility coverage.
-    # No whole test directory or compatibility-test file is excluded.
-    allowed = {
-        ("tests/test_api_name_compatibility.py", "<module>", "import", "uncertainty_robustness",
-         (("DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED", None),
-          ("DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED", None),
-          ("evaluate_classical_uncertainty_robustness", None))),
-        ("tests/test_public_api.py",
-         "test_generalization_historical_pickle_globals_resolve_without_fabricated_modules",
-         "string-target", "generalization_evaluation", ()),
-        ("tests/test_public_api.py",
-         "test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_lookup",
-         "string-target", "uncertainty_evaluation", ()),
-    }
-    observed = []
     violations = []
     for directory in (SOURCE_ROOT, repository / "scripts", repository / "examples", repository / "tests"):
         for path in sorted(directory.rglob("*.py")):
@@ -925,15 +911,8 @@ def test_python_consumers_are_ready_for_flat_facade_retirement():
             for scope, kind, old, names, line in _python_flat_facade_dependencies(
                 path.read_text(encoding="utf-8"), package,
             ):
-                key = (relative, scope, kind, old, names)
-                if key in allowed:
-                    observed.append(key)
-                else:
-                    violations.append((relative, line, scope, kind, old))
+                violations.append((relative, line, scope, kind, old))
     assert not violations, violations
-    assert set(observed) == allowed and len(observed) == len(allowed), (
-        "Review changed/duplicate compatibility exceptions explicitly", observed,
-    )
 
 
 @pytest.mark.parametrize("template", [
@@ -1122,27 +1101,26 @@ def test_documentation_readiness_preserves_historical_labels_and_public_apis(tem
 
 def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
     facade_files = {
-        (name + "/__init__.py") if (SOURCE_ROOT / name).is_dir() else (name + ".py")
-        for name in CLOSURE_FACADES
+        name + "/__init__.py" for name in RETAINED_PACKAGE_APIS
     }
     expected = CLOSURE_CANONICAL_FILES | CLOSURE_SUPPORT_FILES | facade_files
     actual = {path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")}
     assert actual == expected
-    assert len(actual) == 99
+    assert len(actual) == 61
     assert len(CLOSURE_CANONICAL_FILES) == 44
     assert len(CLOSURE_SUPPORT_FILES) == 12
-    assert len(facade_files) == 43
-    assert len(expected) == 44 + 12 + 43  # Each file belongs to exactly one class.
+    assert len(facade_files) == 5
+    assert len(expected) == 44 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
             assert len(tree.body) == 1 and ast.get_docstring(tree), relative
 
 
-def test_all_compatibility_facades_are_direct_exports_with_global_identity():
+def test_retained_package_apis_and_root_keep_canonical_identity():
     import pickle
 
-    for old_name, new_name in CLOSURE_FACADES.items():
+    for old_name, new_name in RETAINED_PACKAGE_APIS.items():
         old = importlib.import_module(f"{PACKAGE}.{old_name}")
         new = importlib.import_module(f"{PACKAGE}.{new_name}")
         tree = ast.parse(Path(old.__file__).read_text(encoding="utf-8"))
@@ -1243,7 +1221,7 @@ def test_correction_provenance_source_is_canonical_implementation():
 
 def test_no_test_patches_a_historical_facade_as_an_implementation(package_imports):
     records, _ = package_imports
-    modules = set(records)
+    modules = set(records) | MIGRATED_SHIMS
     observed_exceptions = set()
     for path in sorted(Path(__file__).parent.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -1565,9 +1543,7 @@ assert not any(n == b or n.startswith(b + '.') for n in added for b in blocked),
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("module", [
-    GENERALIZATION, f"{PACKAGE}.generalization_evaluation",
-])
+@pytest.mark.parametrize("module", [GENERALIZATION])
 def test_fresh_generalization_execution_uses_only_canonical_dependencies(tmp_path, module):
     script = f"""
 import importlib
@@ -1638,33 +1614,6 @@ assert not set(blocked).intersection(sys.modules)
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("filename, canonical, count", [
-    ("generalization_evaluation.py", GENERALIZATION, 61),
-    ("uncertainty_evaluation.py", UNCERTAINTY_EVALUATION, 19),
-    ("ml_uncertainty.py", UNCERTAINTY_ML, 34),
-    ("classical_uncertainty.py", UNCERTAINTY_CLASSICAL, 18),
-    ("mismatch_evaluation.py", MISMATCH, 6),
-    ("timing_evaluation.py", TIMING, 8),
-    ("irf_evaluation.py", IRF_STUDY, 18),
-    ("bayesian_evaluation.py", BAYESIAN_CALIBRATION, 21),
-    ("bayesian_mismatch_evaluation.py", BAYESIAN_MISMATCH, 23),
-    ("uncertainty_robustness.py", UNCERTAINTY_BENCHMARK, 28),
-])
-def test_study_facades_contain_only_direct_compatibility_exports(filename, canonical, count):
-    path = SOURCE_ROOT / filename
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    assert ast.get_docstring(tree)
-    imports = [node for node in tree.body if isinstance(node, ast.ImportFrom)]
-    assert len(tree.body) == 3 and len(imports) == 1
-    assert imports[0].module == canonical and imports[0].level == 0
-    assert all(alias.asname is None and not alias.name.startswith("_") for alias in imports[0].names)
-    exports = tree.body[-1]
-    assert isinstance(exports, ast.Assign) and len(exports.targets) == 1
-    assert exports.targets[0].id == "__all__"
-    assert ast.literal_eval(exports.value) == tuple(alias.name for alias in imports[0].names)
-    assert len(imports[0].names) == count
-
-
 def test_week9_benchmark_has_only_existing_eager_dependencies_and_local_consumers(package_imports):
     records, _ = package_imports
     assert {base for _, base, _ in records[UNCERTAINTY_BENCHMARK]} == BENCHMARK_IMPORTS[UNCERTAINTY_BENCHMARK]
@@ -1672,16 +1621,15 @@ def test_week9_benchmark_has_only_existing_eager_dependencies_and_local_consumer
     consumers = [(module, kind, names) for module, imports in records.items()
                  for kind, base, names in imports
                  if UNCERTAINTY_BENCHMARK in _targets(base, names, set(records))]
-    facade = f"{PACKAGE}.uncertainty_robustness"
     assert {(module, kind) for module, kind, _ in consumers} == {
-        (facade, "eager"), (PERSISTENCE_SQLITE, "deferred"),
+        (PERSISTENCE_SQLITE, "deferred"),
     }
     assert [(kind, names) for module, kind, names in consumers if module == PERSISTENCE_SQLITE] == [
         ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
         ("deferred", ("CONFORMALIZED_QUANTILE_METHOD_ID",)),
     ]
     # This exact consumer set also forbids reverse edges from reusable layers.
-    assert len(consumers) == 3
+    assert len(consumers) == 2
     assert not (SOURCE_ROOT / "uncertainty" / "conformal.py").exists()
     tree = ast.parse((SOURCE_ROOT / "benchmarks" / "uncertainty.py").read_text(encoding="utf-8"))
     definitions = {node.name for node in tree.body
@@ -1693,9 +1641,7 @@ def test_week9_benchmark_has_only_existing_eager_dependencies_and_local_consumer
     } <= definitions
 
 
-@pytest.mark.parametrize("module", [
-    UNCERTAINTY_BENCHMARK, f"{PACKAGE}.uncertainty_robustness",
-])
+@pytest.mark.parametrize("module", [UNCERTAINTY_BENCHMARK])
 def test_fresh_week9_benchmark_import_preserves_namespace_and_optional_boundaries(tmp_path, module):
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
         PERSISTENCE, BAYESIAN, IRF_STUDY, BAYESIAN_CALIBRATION, BAYESIAN_MISMATCH,
@@ -1756,13 +1702,12 @@ def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(
     consumers = [(module, kind, names) for module, imports in records.items()
                  for kind, base, names in imports if base == UNCERTAINTY_EVALUATION]
     assert {(module, kind) for module, kind, _ in consumers} == {
-        (f"{PACKAGE}.uncertainty_evaluation", "eager"),
         (UNCERTAINTY_ML, "eager"),
         (UNCERTAINTY_CLASSICAL, "eager"),
         (UNCERTAINTY_BENCHMARK, "eager"),
         (PERSISTENCE_SQLITE, "deferred"),
     }
-    assert len(consumers) == 12  # Facade, three eager consumers, eight local imports.
+    assert len(consumers) == 11  # Three eager consumers, eight local imports.
     assert sum(module == PERSISTENCE_SQLITE for module, _, _ in consumers) == 8
     foundations = (
         f"{PACKAGE}.physics", IRF, MEASUREMENT, SIMULATION, PREPROCESSING, ESTIMATION,
@@ -1776,9 +1721,7 @@ def test_uncertainty_evaluation_retains_protocol_policy_and_consumer_edge_kinds(
                                or t == f"{PACKAGE}.uncertainty_evaluation" for t in targets), module
 
 
-@pytest.mark.parametrize("module", [
-    UNCERTAINTY, UNCERTAINTY_EVALUATION, f"{PACKAGE}.uncertainty_evaluation",
-])
+@pytest.mark.parametrize("module", [UNCERTAINTY, UNCERTAINTY_EVALUATION])
 def test_fresh_uncertainty_imports_preserve_initializer_and_protocol_only_boundary(tmp_path, module):
     # Keep the real root, which already loads sklearn. Attribute new imports to
     # their source and compare added modules; do not replace root initialization.
@@ -1905,13 +1848,11 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
     assert all(kind == "eager" for kind, _, _ in records[UNCERTAINTY_CLASSICAL])
     expected = {
         UNCERTAINTY_ML: {
-            (f"{PACKAGE}.ml_uncertainty", "eager"),
             (IRF_STUDY, "eager"),
             (UNCERTAINTY_BENCHMARK, "eager"),
             (PERSISTENCE_SQLITE, "deferred"),
         },
         UNCERTAINTY_CLASSICAL: {
-            (f"{PACKAGE}.classical_uncertainty", "eager"),
             (BAYESIAN_CALIBRATION, "eager"),
             (BAYESIAN_MISMATCH, "eager"),
             (IRF_STUDY, "eager"),
@@ -1927,12 +1868,7 @@ def test_uncertainty_method_dependencies_and_consumers_preserve_edge_kinds(packa
         assert consumers.count((PERSISTENCE_SQLITE, "deferred")) == 4
 
 
-@pytest.mark.parametrize("module, canonical", [
-    (UNCERTAINTY_ML, UNCERTAINTY_ML),
-    (f"{PACKAGE}.ml_uncertainty", UNCERTAINTY_ML),
-    (UNCERTAINTY_CLASSICAL, UNCERTAINTY_CLASSICAL),
-    (f"{PACKAGE}.classical_uncertainty", UNCERTAINTY_CLASSICAL),
-])
+@pytest.mark.parametrize("module, canonical", [(UNCERTAINTY_ML, UNCERTAINTY_ML), (UNCERTAINTY_CLASSICAL, UNCERTAINTY_CLASSICAL)])
 def test_fresh_uncertainty_methods_do_not_load_studies_or_sibling(tmp_path, module, canonical):
     sibling = UNCERTAINTY_CLASSICAL if canonical == UNCERTAINTY_ML else UNCERTAINTY_ML
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
@@ -1984,10 +1920,7 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
 def test_week7_studies_remain_independent_of_other_benchmarks(package_imports):
     records, _ = package_imports
     assert records[BENCHMARKS] == []
-    for canonical, facade in (
-        (MISMATCH, f"{PACKAGE}.mismatch_evaluation"),
-        (TIMING, f"{PACKAGE}.timing_evaluation"),
-    ):
+    for canonical in (MISMATCH, TIMING):
         assert {base for _, base, _ in records[canonical]} == BENCHMARK_IMPORTS[canonical]
         assert all(kind == "eager" for kind, _, _ in records[canonical])
         assert not any(base == BENCHMARKS or base.startswith(BENCHMARKS + ".")
@@ -1995,17 +1928,12 @@ def test_week7_studies_remain_independent_of_other_benchmarks(package_imports):
         consumers = [(module, kind) for module, imports in records.items()
                      for kind, base, names in imports
                      if canonical in _targets(base, names, set(records))]
-        assert consumers == [(facade, "eager")]
+        assert consumers == []
     # No production/private or persistence-local consumer existed at relocation.
     assert not any(base in {MISMATCH, TIMING} for _, base, _ in records[PERSISTENCE_SQLITE])
 
 
-@pytest.mark.parametrize("module, canonical", [
-    (MISMATCH, MISMATCH),
-    (f"{PACKAGE}.mismatch_evaluation", MISMATCH),
-    (TIMING, TIMING),
-    (f"{PACKAGE}.timing_evaluation", TIMING),
-])
+@pytest.mark.parametrize("module, canonical", [(MISMATCH, MISMATCH), (TIMING, TIMING)])
 def test_fresh_week7_studies_load_only_the_explicit_benchmark_child(tmp_path, module, canonical):
     sibling = TIMING if canonical == MISMATCH else MISMATCH
     blocked = sorted(MIGRATED_SHIMS - {module}) + [
@@ -2053,16 +1981,13 @@ def test_irf_bayesian_study_edges_and_private_helpers_remain_canonical(package_i
 
     expected_consumers = {
         IRF_STUDY: Counter({
-            (f"{PACKAGE}.irf_evaluation", "eager"): 1,
             (BAYESIAN_MISMATCH, "eager"): 1,
         }),
         BAYESIAN_CALIBRATION: Counter({
-            (f"{PACKAGE}.bayesian_evaluation", "eager"): 1,
             (BAYESIAN_MISMATCH, "eager"): 1,
             (PERSISTENCE_SQLITE, "deferred"): 3,
         }),
         BAYESIAN_MISMATCH: Counter({
-            (f"{PACKAGE}.bayesian_mismatch_evaluation", "eager"): 1,
             (PERSISTENCE_SQLITE, "deferred"): 4,
         }),
     }
@@ -2101,14 +2026,7 @@ def test_irf_bayesian_study_edges_and_private_helpers_remain_canonical(package_i
         assert edges == [("eager", canonical)]
 
 
-@pytest.mark.parametrize("module, canonical", [
-    (IRF_STUDY, IRF_STUDY),
-    (f"{PACKAGE}.irf_evaluation", IRF_STUDY),
-    (BAYESIAN_CALIBRATION, BAYESIAN_CALIBRATION),
-    (f"{PACKAGE}.bayesian_evaluation", BAYESIAN_CALIBRATION),
-    (BAYESIAN_MISMATCH, BAYESIAN_MISMATCH),
-    (f"{PACKAGE}.bayesian_mismatch_evaluation", BAYESIAN_MISMATCH),
-])
+@pytest.mark.parametrize("module, canonical", [(IRF_STUDY, IRF_STUDY), (BAYESIAN_CALIBRATION, BAYESIAN_CALIBRATION), (BAYESIAN_MISMATCH, BAYESIAN_MISMATCH)])
 def test_fresh_irf_bayesian_studies_preserve_optional_sampler_and_isolation(
     tmp_path, module, canonical,
 ):
@@ -2356,12 +2274,7 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("module, canonical", [
-    (f"{EVALUATION}.conditional", f"{EVALUATION}.conditional"),
-    (f"{PACKAGE}.conditional_evaluation", f"{EVALUATION}.conditional"),
-    (f"{EVALUATION}.plots", f"{EVALUATION}.plots"),
-    (f"{PACKAGE}.benchmark_plots", f"{EVALUATION}.plots"),
-])
+@pytest.mark.parametrize("module, canonical", [(f"{EVALUATION}.conditional", f"{EVALUATION}.conditional"), (f"{EVALUATION}.plots", f"{EVALUATION}.plots")])
 def test_fresh_analysis_imports_require_explicit_submodules(tmp_path, module, canonical):
     script = f"""
 import importlib
@@ -2399,12 +2312,17 @@ else:
     assert not any(n in sys.modules for n in {sorted(FACTUAL)!r})
 assert not attempts, attempts
 assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blocked)
-legacy = importlib.import_module(
-    'tcspc_toolkit.conditional_evaluation'
-    if {canonical!r} == {EVALUATION + '.conditional'!r} else 'tcspc_toolkit.benchmark_plots'
+assert loaded is implementation
+public_names = (
+    ('build_prediction_diagnostics', 'build_ml_prediction_diagnostics',
+     'build_classical_prediction_diagnostics', 'summarize_conditional_performance',
+     'assign_numeric_regimes', 'add_benchmark_regimes', 'summarize_standard_regimes')
+    if {canonical!r} == {EVALUATION + '.conditional'!r} else
+    ('plot_true_vs_predicted', 'plot_error_histogram', 'plot_error_vs_condition',
+     'plot_paired_absolute_error_comparison')
 )
-for name in legacy.__all__:
-    assert getattr(legacy, name) is getattr(implementation, name)
+for name in public_names:
+    assert callable(getattr(implementation, name))
     assert not hasattr(facade, name)
 assert tuple(facade.__all__) == {DIAGNOSTIC_EXPORTS!r}
 """
@@ -2600,9 +2518,8 @@ async def later():
 @pytest.mark.parametrize("reverse", [False, True], ids=["forward", "reverse"])
 @pytest.mark.parametrize("generic_only", [True, False], ids=["generic", "supported"])
 def test_fresh_import_order_without_sampler_or_database(tmp_path, reverse, generic_only):
-    names = (["estimation.api", "estimator_api", "evaluation_results", "evaluation_core", "evaluation_uncertainty",
-              "evaluation.results", "evaluation.core", "evaluation.attachments"]
-             if generic_only else [*OLD_MODULE_PATHS, "persistence.sqlite", "estimation.api", "estimation.baselines",
+    names = (["estimation.api", "evaluation.results", "evaluation.core", "evaluation.attachments"]
+             if generic_only else [*SUPPORTED_MODULE_PATHS, "persistence.sqlite", "estimation.api", "estimation.baselines",
                                    "estimation.fitting", "estimation.classical",
                                    "estimation.bayesian.posterior", "estimation.bayesian.sampling",
                                    "estimation.bayesian.predictive",

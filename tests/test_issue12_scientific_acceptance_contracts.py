@@ -23,9 +23,11 @@ def test_blocker_matches_reviewed_retirement_manifest():
     tree = ast.parse((ROOT / "tests/test_package_structure.py").read_text(encoding="utf-8"))
     registry = next(ast.literal_eval(node.value) for node in tree.body
                     if isinstance(node, ast.Assign)
-                    and any(isinstance(t, ast.Name) and t.id == "CLOSURE_FACADES" for t in node.targets))
+                    and any(isinstance(t, ast.Name) and t.id == "REMOVED_FLAT_FACADES" for t in node.targets))
     packages = {"irf", "preprocessing", "simulation", "evaluation", "persistence"}
-    assert acceptance.flat_facades() == {"tcspc_toolkit." + name for name in registry.keys() - packages}
+    assert acceptance.flat_facades() == {"tcspc_toolkit." + name for name in registry}
+    assert len(registry) == 38
+    assert all(not (ROOT / "src/tcspc_toolkit" / f"{name}.py").exists() for name in registry)
     blocker = acceptance.BlockFlatFacades()
     for name in blocker.names:
         with pytest.raises(ImportError, match="flat facade"):
