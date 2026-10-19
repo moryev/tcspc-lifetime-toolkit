@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — Post-Week-9 integration
 
+### Breaking — post-Issue-12 import cleanup
+
+- Remove the 38 obsolete flat scientific compatibility modules retained through
+  Issue #12. Use the canonical hierarchy or the unchanged curated 66-name root API;
+  the five reviewed public package APIs and supported symbol aliases remain.
+  See the [complete migration mapping](docs/package_structure.md#removed-flat-module-mapping).
+- Ordinary historical Python pickles naming globals in removed modules may no
+  longer load. Canonical pickle roundtrips remain supported; no legacy loader or
+  runtime import alias is added.
+- Schema-v1 persistence and its seven historical provenance strings remain
+  intentionally unchanged. No database migration or scientific algorithm change
+  accompanies this breaking import cleanup.
+
 ### Changed — Issue #2
 
 - Establish generic estimator execution with `RegressorProtocol`, immutable

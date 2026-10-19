@@ -4,6 +4,7 @@ import importlib
 import pickle
 import subprocess
 import sys
+from types import FunctionType
 
 import pytest
 
@@ -84,16 +85,39 @@ EXPECTED_ROOT_EXPORTS = (
 )
 
 
-def assert_same_export(old_module, canonical_module, name):
-    """Reuse for old-flat -> new-canonical cases as each module actually moves.
-
-    Compatibility exports are the same objects, not forwarding wrappers. Stage
-    0 established the root/flat pattern; migrated cases now name their actual
-    canonical modules explicitly.
-    """
-    old = importlib.import_module(old_module)
+def assert_same_export(public_module, canonical_module, name):
+    """Supported root/package exports retain exact canonical object identity."""
+    public = importlib.import_module(public_module)
     canonical = importlib.import_module(canonical_module)
-    assert getattr(old, name) is getattr(canonical, name)
+    assert getattr(public, name) is getattr(canonical, name)
+
+
+def assert_surface_after_removal(historical_module, canonical, names):
+    """Retain symbols and current serialization while rejecting removed globals."""
+    retained_packages = {
+        "tcspc_toolkit.irf", "tcspc_toolkit.preprocessing",
+        "tcspc_toolkit.simulation", "tcspc_toolkit.evaluation",
+        "tcspc_toolkit.persistence",
+    }
+    if historical_module in retained_packages:
+        public = importlib.import_module(historical_module)
+        assert tuple(public.__all__) == names
+        for name in names:
+            assert getattr(public, name) is getattr(canonical, name)
+    else:
+        assert importlib.util.find_spec(historical_module) is None
+        with pytest.raises(ModuleNotFoundError) as error:
+            importlib.import_module(historical_module)
+        assert error.value.name == historical_module
+        for name in names:
+            historical_global = f"c{historical_module}\n{name}\n.".encode()
+            with pytest.raises(ModuleNotFoundError) as error:
+                pickle.loads(historical_global)
+            assert error.value.name == historical_module
+    for name in names:
+        obj = getattr(canonical, name)
+        if isinstance(obj, (type, FunctionType)):
+            assert pickle.loads(pickle.dumps(obj)) is obj
 
 
 def test_all_exports_are_unique_and_accessible():
@@ -128,16 +152,12 @@ def test_extension_exports_are_canonical_objects(name):
         "monoexponential_reconvolution_expected_counts",
     )),
 ])
-def test_relocated_exports_keep_direct_identity_and_historical_lookup(old_module, canonical_module, names):
+def test_canonical_foundations_survive_removed_module_paths(old_module, canonical_module, names):
     canonical = importlib.import_module(canonical_module)
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if name != "FloatArray":
-            obj = getattr(canonical, name)
-            assert obj.__module__ == canonical_module
-            # A trusted protocol-0 GLOBAL lookup exercises the historical path
-            # without pretending that new objects retain old __module__ values.
-            assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is obj
+            assert getattr(canonical, name).__module__ == canonical_module
 
 
 @pytest.mark.parametrize("module, name", [
@@ -166,13 +186,11 @@ def test_physical_root_exports_are_canonical_objects(module, name):
         "augment_with_total_counts",
     )),
 ])
-def test_preprocessing_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+def test_preprocessing_canonical_surfaces_preserve_supported_objects_and_root_identity(old_module, module, names):
     canonical_module = f"tcspc_toolkit.preprocessing.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if name in EXPECTED_ROOT_EXPORTS:
             assert_same_export("tcspc_toolkit", canonical_module, name)
         if name not in {"FEATURE_NAMES", "CountNormalization"}:
@@ -197,13 +215,11 @@ def test_preprocessing_facades_preserve_supported_objects_and_root_identity(old_
         "estimate_irf_from_leading_edge",
     )),
 ])
-def test_irf_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+def test_irf_canonical_surfaces_preserve_supported_objects_and_root_identity(old_module, module, names):
     canonical_module = f"tcspc_toolkit.irf.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if name in EXPECTED_ROOT_EXPORTS:
             assert_same_export("tcspc_toolkit", canonical_module, name)
         if name not in {"FloatArray", "ResamplingMethod", "TimeWindow", "BinRange"}:
@@ -224,13 +240,11 @@ def test_irf_facades_preserve_supported_objects_and_root_identity(old_module, mo
         "evaluate_estimate_against_reference",
     )),
 ])
-def test_measurement_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+def test_measurement_canonical_surfaces_preserve_supported_objects_and_root_identity(old_module, module, names):
     canonical_module = f"tcspc_toolkit.measurement.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if name in EXPECTED_ROOT_EXPORTS:
             assert_same_export("tcspc_toolkit", canonical_module, name)
         if name not in {"FloatArray", "IntArray"}:
@@ -249,13 +263,11 @@ def test_measurement_facades_preserve_supported_objects_and_root_identity(old_mo
         "generate_grouped_monoexponential_dataset",
     )),
 ])
-def test_simulation_facades_preserve_supported_objects_and_root_identity(old_module, module, names):
+def test_simulation_canonical_surfaces_preserve_supported_objects_and_root_identity(old_module, module, names):
     canonical_module = f"tcspc_toolkit.simulation.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if name in EXPECTED_ROOT_EXPORTS:
             assert_same_export("tcspc_toolkit", canonical_module, name)
         if name not in {"FloatArray", "IntArray"}:
@@ -274,20 +286,14 @@ def test_simulation_facades_preserve_supported_objects_and_root_identity(old_mod
         "evaluate_reconvolution_benchmark",
     )),
 ])
-def test_classical_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+def test_classical_canonical_surfaces_preserve_supported_objects_and_removed_paths(old_module, module, names):
     canonical_module = f"tcspc_toolkit.estimation.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         assert getattr(canonical, name).__module__ == canonical_module
         if name in EXPECTED_ROOT_EXPORTS:
             assert_same_export("tcspc_toolkit", canonical_module, name)
-        if name in {"ReconvolutionFitResult", "ReconvolutionCurveResult"}:
-            # Historical GLOBAL references still resolve, while newly pickled
-            # objects naturally use the canonical implementation module.
-            assert pickle.loads(f"c{old_module}\n{name}\n.".encode()) is getattr(canonical, name)
 
 
 @pytest.mark.parametrize("old_module, module, names", [
@@ -337,22 +343,14 @@ def test_classical_facades_preserve_supported_objects_and_historical_lookup(old_
         "sample_bayesian_posterior_predictive",
     )),
 ])
-def test_bayesian_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+def test_bayesian_canonical_surfaces_preserve_supported_objects_and_removed_paths(old_module, module, names):
     canonical_module = f"tcspc_toolkit.estimation.bayesian.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if not name.isupper():
             assert getattr(canonical, name).__module__ == canonical_module
-    if module == "sampling":
-        # Persisted historical source identity remains resolvable without
-        # forcing new objects to pretend to be defined in the old module.
-        assert pickle.loads(
-            b"ctcspc_toolkit.bayesian_sampling\nBayesianReconvolutionResult\n."
-        ) is canonical.BayesianReconvolutionResult
 
 
 @pytest.mark.parametrize("old_module, module, names", [
@@ -402,20 +400,14 @@ def test_bayesian_facades_preserve_supported_objects_and_historical_lookup(old_m
         "evaluate_estimators_repeated_cv",
     )),
 ])
-def test_ml_facades_preserve_supported_objects_and_historical_lookup(old_module, module, names):
+def test_ml_canonical_surfaces_preserve_supported_objects_and_removed_paths(old_module, module, names):
     canonical_module = f"tcspc_toolkit.ml.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if not name.isupper() and name not in {"FloatArray", "IntArray"}:
             assert getattr(canonical, name).__module__ == canonical_module
-    if module == "evaluation":
-        assert pickle.loads(
-            b"ctcspc_toolkit.ml_evaluation\nRegressionBenchmarkResult\n."
-        ) is canonical.RegressionBenchmarkResult
 
 
 @pytest.mark.parametrize("old_module, module, names", [
@@ -430,15 +422,14 @@ def test_ml_facades_preserve_supported_objects_and_historical_lookup(old_module,
         "IntervalAttachment", "ScoreAttachment",
     )),
 ])
-def test_factual_facades_preserve_supported_objects_without_expanding_root(old_module, module, names):
+def test_factual_canonical_surfaces_preserve_supported_objects_without_expanding_root(old_module, module, names):
     canonical_module = f"tcspc_toolkit.evaluation.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
     diagnostics_facade = importlib.import_module("tcspc_toolkit.evaluation")
-    assert tuple(canonical.__all__) == tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
+    assert tuple(canonical.__all__) == names
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         assert getattr(canonical, name).__module__ == canonical_module
         assert not hasattr(diagnostics_facade, name)
         assert not hasattr(toolkit, name)
@@ -455,15 +446,13 @@ def test_factual_facades_preserve_supported_objects_without_expanding_root(old_m
         "plot_paired_absolute_error_comparison",
     )),
 ])
-def test_analysis_facades_preserve_supported_functions_without_expanding_root(old_module, module, names):
+def test_analysis_canonical_surfaces_preserve_supported_functions_without_expanding_root(old_module, module, names):
     canonical_module = f"tcspc_toolkit.evaluation.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
     diagnostics_facade = importlib.import_module("tcspc_toolkit.evaluation")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         assert getattr(canonical, name).__module__ == canonical_module
         assert not hasattr(diagnostics_facade, name)
         assert not hasattr(toolkit, name)
@@ -564,34 +553,29 @@ def test_analysis_facades_preserve_supported_functions_without_expanding_root(ol
         "build_week8_robustness_report",
     )),
 ])
-def test_benchmark_facades_preserve_supported_objects_without_expanding_root(old_module, module, names):
+def test_benchmark_canonical_surfaces_preserve_supported_objects_without_expanding_root(old_module, module, names):
     canonical_module = f"tcspc_toolkit.benchmarks.{module}"
     canonical = importlib.import_module(canonical_module)
-    facade = importlib.import_module(old_module)
     namespace = importlib.import_module("tcspc_toolkit.benchmarks")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(old_module, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
-        assert_same_export(old_module, canonical_module, name)
         if not name.isupper() and name not in {"FloatArray", "IntArray"}:
             assert getattr(canonical, name).__module__ == canonical_module
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
 
 
-def test_generalization_historical_pickle_globals_resolve_without_fabricated_modules():
+def test_generalization_canonical_and_removed_pickle_globals():
     canonical = importlib.import_module("tcspc_toolkit.benchmarks.generalization")
-    facade = importlib.import_module("tcspc_toolkit.generalization_evaluation")
-    for name in facade.__all__:
-        obj = getattr(canonical, name)
-        if callable(obj):
-            assert obj.__module__ == canonical.__name__
-            historical = f"ctcspc_toolkit.generalization_evaluation\n{name}\n.".encode()
-            assert pickle.loads(historical) is obj
-            assert pickle.loads(pickle.dumps(obj)) is obj
+    assert_surface_after_removal(
+        "tcspc_toolkit.generalization_evaluation", canonical,
+        ("PhotonCountShiftReport", "Day53ABReport",
+         "GeneralizationRobustnessReport", "Week8RobustnessReport"),
+    )
 
 
-def test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_lookup():
+def test_uncertainty_evaluation_canonical_surface_preserves_public_objects_and_removed_paths():
     names = (
         "DEFAULT_UNCERTAINTY_CALIBRATION_FRACTION",
         "DEFAULT_UNCERTAINTY_SPLIT_SEED",
@@ -614,19 +598,15 @@ def test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_l
         "evaluate_selective_prediction",
     )
     canonical = importlib.import_module("tcspc_toolkit.uncertainty.evaluation")
-    facade = importlib.import_module("tcspc_toolkit.uncertainty_evaluation")
     namespace = importlib.import_module("tcspc_toolkit.uncertainty")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal("tcspc_toolkit.uncertainty_evaluation", canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
         obj = getattr(canonical, name)
-        assert getattr(facade, name) is obj
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
         if callable(obj):
             assert obj.__module__ == canonical.__name__
-            historical = f"ctcspc_toolkit.uncertainty_evaluation\n{name}\n.".encode()
-            assert pickle.loads(historical) is obj
             assert pickle.loads(pickle.dumps(obj)) is obj
     # Source uncertainty outputs remain distinct from point-linked attachments.
     attachments = importlib.import_module("tcspc_toolkit.evaluation.attachments")
@@ -698,26 +678,22 @@ def test_uncertainty_evaluation_facade_preserves_public_objects_and_historical_l
         "estimate_poisson_reconvolution_local_covariance",
     ), ()),
 ])
-def test_uncertainty_method_facades_preserve_public_surface_and_pickle_lookup(
+def test_uncertainty_method_canonical_surfaces_preserve_public_surface_and_canonical_pickle(
     historical, canonical_name, names, aliases,
 ):
     canonical = importlib.import_module(canonical_name)
-    facade = importlib.import_module(historical)
     namespace = importlib.import_module("tcspc_toolkit.uncertainty")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(historical, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
         obj = getattr(canonical, name)
-        assert getattr(facade, name) is obj
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
         if callable(obj):
             assert obj.__module__ == canonical_name
-            historical_global = f"c{historical}\n{name}\n.".encode()
-            assert pickle.loads(historical_global) is obj
             assert pickle.loads(pickle.dumps(obj)) is obj
     for alias, name in aliases:
-        assert getattr(facade, alias) is getattr(canonical, name)
+        assert getattr(canonical, alias) is getattr(canonical, name)
 
 
 @pytest.mark.parametrize("historical, canonical_name, names", [
@@ -740,21 +716,17 @@ def test_uncertainty_method_facades_preserve_public_surface_and_pickle_lookup(
         "summarize_inference_timing",
     )),
 ])
-def test_week7_study_facades_preserve_public_surface_and_historical_lookup(
+def test_week7_study_canonical_surfaces_preserve_public_surface_and_removed_paths(
     historical, canonical_name, names,
 ):
     canonical = importlib.import_module(canonical_name)
-    facade = importlib.import_module(historical)
     namespace = importlib.import_module("tcspc_toolkit.benchmarks")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(historical, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
         obj = getattr(canonical, name)
-        assert getattr(facade, name) is obj
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
-        historical_global = f"c{historical}\n{name}\n.".encode()
-        assert pickle.loads(historical_global) is obj
         if name != "FloatArray":
             assert obj.__module__ == canonical_name
             assert pickle.loads(pickle.dumps(obj)) is obj
@@ -835,32 +807,25 @@ def test_week7_study_facades_preserve_public_surface_and_historical_lookup(
         "evaluate_mismatch_workflow",
     )),
 ])
-def test_irf_bayesian_study_facades_preserve_surface_and_historical_lookup(
+def test_irf_bayesian_study_canonical_surfaces_preserve_surface_and_removed_paths(
     historical, canonical_name, names,
 ):
     canonical = importlib.import_module(canonical_name)
-    facade = importlib.import_module(historical)
     namespace = importlib.import_module("tcspc_toolkit.benchmarks")
     typing_aliases = {"FloatArray", "IntArray", "Mechanism", "GeneratingModel", "ReferenceName"}
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(historical, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
         obj = getattr(canonical, name)
-        assert getattr(facade, name) is obj
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
-        historical_global = f"c{historical}\n{name}\n.".encode()
-        assert pickle.loads(historical_global) is obj
         if name not in typing_aliases:
             assert obj.__module__ == canonical_name
             assert pickle.loads(pickle.dumps(obj)) is obj
-    for private in ("_match_gaussian_to_emg_profile", "_unavailable_bootstrap", "_unavailable_covariance"):
-        assert private not in facade.__all__
-        assert not hasattr(facade, private)
 
 
 
-def test_week9_benchmark_facade_preserves_public_alias_and_pickle_identity():
+def test_week9_benchmark_canonical_surface_preserves_public_alias_and_pickle_identity():
     names = (
         "DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED",
         "CONFORMALIZED_QUANTILE_METHOD_ID",
@@ -907,29 +872,24 @@ def test_week9_benchmark_facade_preserves_public_alias_and_pickle_identity():
     historical = "tcspc_toolkit.uncertainty_robustness"
     canonical_name = "tcspc_toolkit.benchmarks.uncertainty"
     canonical = importlib.import_module(canonical_name)
-    facade = importlib.import_module(historical)
     namespace = importlib.import_module("tcspc_toolkit.benchmarks")
-    assert tuple(facade.__all__) == names
+    assert_surface_after_removal(historical, canonical, names)
     assert not set(names).intersection(EXPECTED_ROOT_EXPORTS)
     for name in names:
         obj = getattr(canonical, name)
-        assert getattr(facade, name) is obj
         assert not hasattr(namespace, name)
         assert not hasattr(toolkit, name)
-        historical_global = f"c{historical}\n{name}\n.".encode()
-        assert pickle.loads(historical_global) is obj
         if callable(obj):
             assert obj.__module__ == canonical_name
             assert pickle.loads(pickle.dumps(obj)) is obj
     for alias, name in aliases:
-        assert getattr(facade, alias) is getattr(canonical, name)
+        assert getattr(canonical, alias) is getattr(canonical, name)
     # Test-only private consumers migrate; they do not become compatibility API.
     for private in (
         "_finite_sample_conformal_quantile", "_summarize_signed_residual_profile",
         "_evaluate_classical_uncertainty_test", "_report_interval_rows", "_report_score_rows",
     ):
         assert callable(getattr(canonical, private))
-        assert not hasattr(facade, private)
 
 
 def test_expected_counts_builder_is_in_the_root_contract():

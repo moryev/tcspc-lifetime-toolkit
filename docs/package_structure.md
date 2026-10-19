@@ -1,24 +1,19 @@
-# Final package architecture — Issue #3
+# Package architecture and post-Issue-12 import cleanup
 
-Issue #3 Stage 10 completes package restructuring on
-`refactor/issue-3-package-structure`. Its committed Stage-9 baseline is
-`0d8f77381dd03b7044a9b431442e13fb5fb9bd9c`.
-This is an architecture/compatibility audit, not Issue #12 acceptance, a release,
-or a scientific reanalysis. Merge and GitHub closure remain user actions.
+Issues #3 and #12 are complete, merged, and closed. The separate breaking cleanup
+removes the 38 flat scientific compatibility modules retained through Issue #12.
+Use the curated 66-name root API or canonical hierarchy. The five reviewed public
+package APIs and supported Day/Week symbol aliases remain unchanged.
 
-Current Issue-12 status: Issue #3 has since been merged and closed. The inventory
-and checkpoint results below preserve its historical audit. Ordinary first-party
-Python consumers now use the curated root API or canonical submodules; dedicated
-compatibility checks still exercise the 38 flat facades through Issue #12.
-Issue-12 Stage 1B also migrated notebook code-cell imports, without executing
-notebooks or changing their saved outputs, metadata, or scientific Markdown.
-The readiness guards now cover ordinary Python consumers, notebook code cells,
-and current documentation import examples. Historical mapping/provenance text
-and dedicated compatibility tests remain intentional exceptions. The notebook
-inventory below records the earlier Issue-3 checkpoint, not current dependencies.
-Current integration and performance evidence is recorded in the
-[Issue-12 acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
-The five reviewed package-level facades are not flat-file retirement candidates.
+Current first-party Python consumers, all 17 notebooks' active code, examples,
+CLI paths, and recommended documentation imports use supported paths. Negative
+tests prove the removed modules are absent; fixed historical deny-lists continue
+to guard imports even after their source files disappear. Notebook files and
+scientific references are unchanged.
+
+The Issue-3 inventory, dependency graph and checkpoint results below are explicitly
+historical. Issue-12 installation, scientific and integration evidence remains in
+the [acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
 
 ## Canonical tree and ownership
 
@@ -39,8 +34,7 @@ tcspc_toolkit/
 │                     generalization.py, mismatch.py, timing.py, irf.py,
 │                     bayesian_calibration.py, bayesian_mismatch.py, uncertainty.py
 ├── persistence/      __init__.py, sqlite.py
-├── __init__.py, __main__.py, cli.py, config.py, exceptions.py
-└── 38 historical flat facades (listed below)
+└── __init__.py, __main__.py, cli.py, config.py, exceptions.py
 ```
 
 Reusable physical, measurement, estimator, factual-evaluation and uncertainty
@@ -51,16 +45,31 @@ Bayesian mismatch, and frozen Week-9 uncertainty reporting. The existing
 conformal workflow remains inside `benchmarks.uncertainty`; it was not extracted.
 `estimation.bayesian.*` owns inference, not those study protocols.
 
-## Complete production inventory
+## Current production inventory
 
-Every Python file is assigned exactly once:
+There are **61 production Python files**: 44 canonical implementation files,
+five retained public package initializers (`irf`, `preprocessing`, `simulation`,
+`evaluation`, `persistence`), and 12 root/support files (five root files and seven
+docstring-only namespace initializers). No obsolete flat facade remains.
+
+The ordered root API is exactly 66 names, with direct canonical object identity.
+Supported symbol aliases, canonical serialization and retained package API lookup
+remain covered. Removed flat module imports and their historical pickle globals
+are covered by explicit negative contracts.
+
+## Historical Issue-3 complete production inventory
+
+The following 99-file inventory records Issue #3 Stage 10 on
+`refactor/issue-3-package-structure`, following Stage-9 commit
+`0d8f77381dd03b7044a9b431442e13fb5fb9bd9c`. It is preserved as relocation history,
+not the current file list. Every Python file at that checkpoint was assigned once:
 
 - **A — canonical implementation:** 44 files in 11 package families.
 - **B — historical compatibility facade:** 43 files (38 root files and five package initializers).
 - **C — root/support:** 12 files (five genuine root support files and seven docstring-only namespace initializers).
 - **D — unexpected substantial root implementation:** zero.
 
-There are **99 production Python files**, compared with 48 at the pre-move
+There were **99 production Python files**, compared with 48 at the pre-move
 Stage-0 checkpoint `93efa73a`. The increase of 51 is accounted for by the 43
 retained facades, seven namespace-only initializers, and the canonical shared
 IRF-selection module established in the earlier reviewed stages. It does not
@@ -179,12 +188,12 @@ in those facades.
 
 ## API and initializer contracts
 
-The exact ordered root `__all__` remains 66 names. Root bindings and all
+At the Issue-3 checkpoint, the ordered root `__all__` contained 66 names. Root bindings and all
 524 facade-export bindings (including repeated names across historical paths)
-resolve directly to their canonical objects. Historical import/pickle lookup,
-public constants/typing aliases, and established Day/Week aliases are retained.
-Compatibility is supported through **at least Issue #12**; no removal policy,
-runtime deprecation warning, wrapper, or fake `__module__` was introduced.
+resolved directly to canonical objects. Historical import/pickle lookup,
+public constants/typing aliases, and Day/Week aliases were retained through
+Issue #12. The separate post-Issue-12 cleanup removes the 38 flat module paths
+while preserving supported symbols and the reviewed package APIs.
 
 Docstring-only namespaces are `physics`, `measurement`, `estimation`,
 `estimation.bayesian`, `ml`, `uncertainty`, and `benchmarks`.
@@ -193,7 +202,7 @@ Intentional historical package facades are `irf` (profiles), `preprocessing`
 functions only), and `persistence` (the 62-name SQLite public API).
 None is an aggregate convenience API for its whole subtree.
 
-## Dependency audit
+## Historical Issue-3 dependency audit
 
 Arrows below mean **imports/depends on**, not data flow. The source/AST audit
 uses the parent-aware graph in `tests/test_package_structure.py`; cross-package
@@ -504,18 +513,69 @@ performance acceptance remained for Issue #12. Its subsequent evidence is in the
 [acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
 Later release qualification remains separate.
 
-## Post-Issue-12 compatibility cleanup handoff
+<a id="post-issue-12-compatibility-cleanup-handoff"></a>
 
-The **38 flat facade files** in the inventory can be considered for deletion in
-a separate, explicitly authorized task after Issue #12. Current first-party
-Python consumers, active code in all 17 notebooks, and recommended documentation
-imports have migrated to the curated root API or canonical hierarchy. The five
-reviewed package-level facades are not deletion candidates.
+## Post-Issue-12 compatibility removal record
 
-A deletion task must redesign or remove compatibility-specific import, direct
-identity, alias and historical-pickle tests while preserving canonical API and
-scientific coverage. Old ordinary pickle payloads that reference globals in a
-deleted module may stop loading; migration or an explicit compatibility decision
-is required. The seven persistence identity strings remain historical provenance
-labels, independent of current import paths: do not rewrite them or schema v1.
-No facade is deleted as part of Issue #12.
+All **38 obsolete flat scientific modules** have been removed in a separate
+breaking cleanup after Issue #12. Their absence is intentional: old imports fail
+with `ModuleNotFoundError`. No runtime aliases or legacy unpickler replace them.
+The five public package APIs are retained, including `tcspc_toolkit.persistence`.
+
+The fixed manifest in the structure tests and the historical acceptance blocker
+retain all 38 names independently of source files. Compatibility tests now check
+actual absence and rejected historical pickle globals while retaining canonical
+object identity, serialization, report fields, aliases and architectural boundaries.
+
+Ordinary historical Python pickles whose globals name a removed module may no
+longer load. Canonical pickle roundtrips and supported package-global lookups
+remain available. Schema v1 and its seven stored historical identity strings are
+unchanged: those strings are opaque provenance labels, not dynamic import paths.
+No database migration, scientific reference regeneration or algorithm change is
+part of this cleanup.
+
+### Removed flat module mapping
+
+Use a curated root export where documented; otherwise use the canonical module
+below. Supported symbol names, including Day/Week aliases, are unchanged.
+
+| Removed file under `src/tcspc_toolkit/` | Supported canonical module |
+| --- | --- |
+| `baselines.py` | `tcspc_toolkit.estimation.baselines` |
+| `bayesian.py` | `tcspc_toolkit.estimation.bayesian.posterior` |
+| `bayesian_evaluation.py` | `tcspc_toolkit.benchmarks.bayesian_calibration` |
+| `bayesian_mismatch_evaluation.py` | `tcspc_toolkit.benchmarks.bayesian_mismatch` |
+| `bayesian_predictive.py` | `tcspc_toolkit.estimation.bayesian.predictive` |
+| `bayesian_sampling.py` | `tcspc_toolkit.estimation.bayesian.sampling` |
+| `benchmark_plots.py` | `tcspc_toolkit.evaluation.plots` |
+| `classical_evaluation.py` | `tcspc_toolkit.estimation.classical` |
+| `classical_uncertainty.py` | `tcspc_toolkit.uncertainty.classical` |
+| `conditional_evaluation.py` | `tcspc_toolkit.evaluation.conditional` |
+| `convolution.py` | `tcspc_toolkit.physics.convolution` |
+| `cross_validation.py` | `tcspc_toolkit.ml.cross_validation` |
+| `datasets.py` | `tcspc_toolkit.simulation.datasets` |
+| `estimator_api.py` | `tcspc_toolkit.estimation.api` |
+| `evaluation_core.py` | `tcspc_toolkit.evaluation.core` |
+| `evaluation_results.py` | `tcspc_toolkit.evaluation.results` |
+| `evaluation_uncertainty.py` | `tcspc_toolkit.evaluation.attachments` |
+| `experimental.py` | `tcspc_toolkit.measurement.adapters` |
+| `features.py` | `tcspc_toolkit.preprocessing.features` |
+| `fitting.py` | `tcspc_toolkit.estimation.fitting` |
+| `forward_model.py` | `tcspc_toolkit.physics.forward_model` |
+| `generalization.py` | `tcspc_toolkit.benchmarks.generalization_protocol` |
+| `generalization_datasets.py` | `tcspc_toolkit.benchmarks.generalization_datasets` |
+| `generalization_evaluation.py` | `tcspc_toolkit.benchmarks.generalization` |
+| `irf_estimation.py` | `tcspc_toolkit.irf.estimation` |
+| `irf_evaluation.py` | `tcspc_toolkit.benchmarks.irf` |
+| `irf_preparation.py` | `tcspc_toolkit.irf.preparation` |
+| `measurement_io.py` | `tcspc_toolkit.measurement.io` |
+| `measurements.py` | `tcspc_toolkit.measurement.records` |
+| `mismatch_evaluation.py` | `tcspc_toolkit.benchmarks.mismatch` |
+| `ml_evaluation.py` | `tcspc_toolkit.ml.evaluation` |
+| `ml_models.py` | `tcspc_toolkit.ml.models` |
+| `ml_uncertainty.py` | `tcspc_toolkit.uncertainty.ml` |
+| `models.py` | `tcspc_toolkit.physics.models` |
+| `representations.py` | `tcspc_toolkit.preprocessing.representations` |
+| `timing_evaluation.py` | `tcspc_toolkit.benchmarks.timing` |
+| `uncertainty_evaluation.py` | `tcspc_toolkit.uncertainty.evaluation` |
+| `uncertainty_robustness.py` | `tcspc_toolkit.benchmarks.uncertainty` |

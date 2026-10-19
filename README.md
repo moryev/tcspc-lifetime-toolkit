@@ -711,8 +711,11 @@ implementations now live in responsibility-oriented subpackages, for example:
 - SQLite persistence in `tcspc_toolkit.persistence.sqlite`;
 - factual/diagnostic evaluation in `tcspc_toolkit.evaluation`.
 
-Historical flat module imports remain supported through compatibility facades
-through at least Issue #12.
+The 38 obsolete flat module paths have been removed after Issue #12. Use the
+curated root API or canonical submodules; see the [migration mapping](docs/package_structure.md#removed-flat-module-mapping).
+Supported symbol aliases and the reviewed package APIs remain available.
+Historical Python pickles naming removed module globals may no longer load;
+SQLite schema-v1 provenance labels remain unchanged.
 
 Canonical experiment configuration stays separate from generic execution:
 
@@ -1308,8 +1311,7 @@ tcspc-lifetime-toolkit/
 │       ├── uncertainty/
 │       ├── benchmarks/
 │       ├── persistence/
-│       ├── __init__.py, __main__.py, cli.py, config.py, exceptions.py
-│       └── historical compatibility facades (*.py)
+│       └── __init__.py, __main__.py, cli.py, config.py, exceptions.py
 │
 └── tests/...
 ```
@@ -1330,19 +1332,19 @@ Canonical implementations are organized by responsibility:
 | `benchmarks` | Frozen generalization and scientific mismatch/timing/IRF/Bayesian/Week-9 studies |
 | `persistence` | SQLite schema-v1 implementation and deferred scientific recording/query adapters |
 
-The ordered 66-name root API is unchanged. Historical module imports and direct
-Day/Week aliases remain supported through at least Issue #12; the flat scientific
-files are compatibility facades, not duplicate implementations or deprecated APIs.
+The ordered 66-name root API and direct Day/Week symbol aliases are unchanged.
+The 38 obsolete flat scientific module paths have been removed.
 The `irf`, `preprocessing`, `simulation`, `evaluation`, and `persistence`
 package initializers preserve their historical surfaces. Other namespace
 initializers stay docstring-only. See the [complete architecture inventory and
 dependency audit](docs/package_structure.md) and [API contract](docs/api.md).
 
-Issue #3 is complete and closed. The final architecture audit found 44 canonical
-implementation files, 43 compatibility facades, 12 support/namespace files,
-and no unexpected substantial scientific implementation remaining at package
-root. The final merged-main regression baseline was 1,721 passing tests with
-only the two known finite-invalid mismatch warnings.
+The current package contains 61 Python files: 44 canonical implementations,
+five reviewed public package initializers, and 12 root/support/namespace files.
+Issue #3's historical inventory contained 99 files, including the subsequently
+removed 38 flat facades; its merged-main regression baseline was 1,721 passing
+tests with two known finite-invalid mismatch warnings. Issue #12 subsequently
+completed integration acceptance before this separate breaking cleanup.
 
 Supporting repository locations:
 
@@ -1421,7 +1423,7 @@ The integration and release sequence is:
    merged, and closed;
 9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
    full integration and regression verification across the mature workflows —
-   final technical acceptance recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance), pending review and GitHub closure;
+   complete, merged, and closed; technical evidence is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance);
 10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
     Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
 11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —

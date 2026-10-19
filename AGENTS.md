@@ -24,11 +24,11 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) has reached its final technical acceptance stage. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. Review, commit/merge and GitHub closure remain user actions. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removes the 38 obsolete flat scientific module paths. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
 ## Repository map
 
-- `src/tcspc_toolkit/` — canonical implementations in `physics`, `irf`, `measurement`, `simulation`, `preprocessing`, `estimation`, `ml`, `evaluation`, `uncertainty`, `benchmarks`, and `persistence`; root scientific files are compatibility facades.
+- `src/tcspc_toolkit/` — canonical implementations in `physics`, `irf`, `measurement`, `simulation`, `preprocessing`, `estimation`, `ml`, `evaluation`, `uncertainty`, `benchmarks`, and `persistence`; only five genuine support files remain at package root.
 - `docs/package_structure.md` — final module inventory, facade mappings, dependency graph, and Issue-#3 closure boundaries.
 - `tests/` — automated scientific and regression tests.
 - `notebooks/` — reproducible scientific demonstrations and analyses.
@@ -304,7 +304,7 @@ Current integration status:
 7. **#2** — API stabilization and package hardening — **complete, merged, and closed**;
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
-10. **#12** — full integration and regression verification — **final technical acceptance**, pending review and GitHub closure; see the acceptance ledger;
+10. **#12** — full integration and regression verification — **complete, merged, and closed**; see the acceptance ledger;
 11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
 12. **#14** — Week 11 documentation and user experience;
 13. **#15** — Week 12 continuous integration and release.
@@ -314,10 +314,10 @@ The completed Issue-#1 typing pass established the current array-input conventio
 Issue #2 established the current API-stability boundary:
 
 - `tcspc_toolkit.__all__` is a curated high-level convenience contract; specialized advanced APIs may remain supported through module-qualified imports.
-- The canonical generic estimator extension layer is `estimation.api` (historical `estimator_api` remains supported): `RegressorProtocol`, `EstimatorSpec`, `fit_regressors()`, and `predict_regressors()`.
+- The canonical generic estimator extension layer is `estimation.api` (the obsolete flat `estimator_api` module has been removed): `RegressorProtocol`, `EstimatorSpec`, `fit_regressors()`, and `predict_regressors()`.
 - Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
-- Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical names remain compatibility aliases through at least Issue #12; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
+- Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical symbol names remain direct aliases in their canonical modules; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
 - Do not broaden the root export surface opportunistically during #12; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
 Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next integration-verification phase.
@@ -372,17 +372,18 @@ Issue #11 completed the Week-7–9 evaluation-architecture consolidation. Preser
 - legacy table-only compatibility paths may retain historical naming behavior, but new internal architecture must not infer scientific method family from estimator-name prefixes.
 
 Issue #3 package restructuring is complete, merged, and closed after Stage 10. All 44 substantive
-implementation files are inside coherent subpackages. The 38 root scientific
-files and five historical package initializers are direct compatibility facades;
-five genuine root support files and seven minimal namespace initializers remain.
+implementation files are inside coherent subpackages. The post-Issue-12 cleanup
+removed the 38 obsolete flat scientific modules. Five reviewed public package
+initializers, five genuine root support files and seven minimal namespace
+initializers remain: 61 production Python files in total.
 
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. Treat that as the pre-Issue-#12 repository baseline; new test counts may increase as #12 adds acceptance coverage.
 
 For future work:
 
 - Use canonical submodule imports inside implementations and developer scripts.
-- Ordinary first-party tests, examples, notebook code cells, and current documentation should use the curated root API or canonical submodules. Retain the 38 flat compatibility modules for Issue-12 compatibility verification; their planned post-Issue-12 retirement is separate from the reviewed package-initializer APIs. Stage 1B notebook import migration is source-only, not scientific reproducibility verification.
-- Preserve all established historical imports and direct Day/Week aliases through at least Issue #12. Do not remove facades, add deprecation warnings, or fake `__module__` without a separate explicit compatibility decision.
+- First-party tests, examples, notebook code cells, and current documentation must use the curated root API or canonical submodules. Do not recreate the 38 removed flat modules. Keep their fixed historical deny-list in the removal/readiness guards; do not infer it from surviving files. Reviewed package-initializer APIs remain supported. Issue-12 Stage 1B notebook import migration was source-only.
+- Preserve supported direct Day/Week symbol aliases in canonical modules. Removed flat paths and ordinary pickles naming their globals are intentionally unsupported. Do not add legacy loaders, `sys.modules` aliases, dynamic import shims, or fake `__module__` without a separate design decision.
 - Keep the exact ordered 66-name root API. Do not broaden package initializers into convenience APIs.
 - Keep `benchmarks`, `uncertainty`, `measurement`, `physics`, `ml`, `estimation`, and `estimation.bayesian` initializers docstring-only. Historical `irf`, `preprocessing`, `simulation`, `evaluation`, and `persistence` initializers re-export only their reviewed surfaces.
 - Preserve numerical/scientific behavior, frozen A–F and Week-9 protocols, random seeds, schema v1, and historical stored identities. Canonical imports do not authorize rewriting persisted Python-path strings.
@@ -392,4 +393,4 @@ For future work:
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
 Consult Issues #3, #5, #11, and #12 for history and acceptance boundaries.
-Issue #12's final technical acceptance is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). Do not start further package movement or Issue #13 automatically. The [post-Issue-12 compatibility cleanup handoff](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) is a separate future task; all 38 flat facades remain present.
+Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions. Do not start further package movement or Issue #13 automatically.

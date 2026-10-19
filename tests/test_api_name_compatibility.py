@@ -1,4 +1,4 @@
-"""Compatibility of scientific API names with historical module imports."""
+"""Supported symbol aliases and intentional removal of old pickle globals."""
 
 import ast
 import importlib
@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from tcspc_toolkit.uncertainty_robustness import (
+from tcspc_toolkit.benchmarks.uncertainty import (
     DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED,
     DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED,
     evaluate_classical_uncertainty_robustness,
@@ -20,27 +20,27 @@ from tcspc_toolkit.uncertainty_robustness import (
 
 # Deliberate public contract, independent of implementation alias discovery.
 RENAMED_APIS = (
-    ("generalization_evaluation", "Day53ABReport", "PhotonCountShiftReport"),
-    ("generalization_evaluation", "build_day53_ab_report", "build_photon_count_shift_report"),
-    ("generalization_evaluation", "Day55ModelMismatchReport", "DecayModelMismatchReport"),
-    ("generalization_evaluation", "build_day55_model_mismatch_report", "build_decay_model_mismatch_report"),
-    ("generalization_evaluation", "build_day55_severity_comparison", "build_model_mismatch_severity_comparison"),
-    ("generalization_evaluation", "Week8RobustnessReport", "GeneralizationRobustnessReport"),
-    ("generalization_evaluation", "build_week8_robustness_report", "build_generalization_robustness_report"),
-    ("ml_uncertainty", "evaluate_week9_quantile_robustness_conditions", "evaluate_quantile_interval_robustness"),
-    ("ml_uncertainty", "evaluate_week9_paired_quantile_response", "evaluate_paired_quantile_interval_response"),
-    ("ml_uncertainty", "evaluate_week9_paired_ml_uncertainty_response", "evaluate_paired_uncertainty_score_response"),
-    ("uncertainty_robustness", "DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED", "DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED"),
-    ("uncertainty_robustness", "build_week9_interval_scorecard", "build_ml_interval_scorecard"),
-    ("uncertainty_robustness", "build_week9_score_only_scorecard", "build_ml_uncertainty_scorecard"),
-    ("uncertainty_robustness", "Week9MLUncertaintyRobustnessReport", "MLUncertaintyRobustnessReport"),
-    ("uncertainty_robustness", "build_week9_ml_uncertainty_robustness_report", "build_ml_uncertainty_robustness_report"),
-    ("uncertainty_robustness", "build_week9_classical_uncertainty_scorecard", "build_classical_uncertainty_scorecard"),
-    ("uncertainty_robustness", "build_week9_classical_conditional_scorecard", "build_classical_conditional_uncertainty_scorecard"),
-    ("uncertainty_robustness", "Week9ClassicalUncertaintyRobustnessReport", "ClassicalUncertaintyRobustnessReport"),
-    ("uncertainty_robustness", "evaluate_week9_classical_uncertainty_robustness", "evaluate_classical_uncertainty_robustness"),
-    ("uncertainty_robustness", "Week9ResidualMismatchReport", "ResidualMismatchReport"),
-    ("uncertainty_robustness", "evaluate_week9_residual_mismatch_diagnostics", "evaluate_residual_mismatch_diagnostics"),
+    ("benchmarks.generalization", "Day53ABReport", "PhotonCountShiftReport"),
+    ("benchmarks.generalization", "build_day53_ab_report", "build_photon_count_shift_report"),
+    ("benchmarks.generalization", "Day55ModelMismatchReport", "DecayModelMismatchReport"),
+    ("benchmarks.generalization", "build_day55_model_mismatch_report", "build_decay_model_mismatch_report"),
+    ("benchmarks.generalization", "build_day55_severity_comparison", "build_model_mismatch_severity_comparison"),
+    ("benchmarks.generalization", "Week8RobustnessReport", "GeneralizationRobustnessReport"),
+    ("benchmarks.generalization", "build_week8_robustness_report", "build_generalization_robustness_report"),
+    ("uncertainty.ml", "evaluate_week9_quantile_robustness_conditions", "evaluate_quantile_interval_robustness"),
+    ("uncertainty.ml", "evaluate_week9_paired_quantile_response", "evaluate_paired_quantile_interval_response"),
+    ("uncertainty.ml", "evaluate_week9_paired_ml_uncertainty_response", "evaluate_paired_uncertainty_score_response"),
+    ("benchmarks.uncertainty", "DEFAULT_DAY62_CLASSICAL_BOOTSTRAP_SEED", "DEFAULT_CLASSICAL_ROBUSTNESS_BOOTSTRAP_SEED"),
+    ("benchmarks.uncertainty", "build_week9_interval_scorecard", "build_ml_interval_scorecard"),
+    ("benchmarks.uncertainty", "build_week9_score_only_scorecard", "build_ml_uncertainty_scorecard"),
+    ("benchmarks.uncertainty", "Week9MLUncertaintyRobustnessReport", "MLUncertaintyRobustnessReport"),
+    ("benchmarks.uncertainty", "build_week9_ml_uncertainty_robustness_report", "build_ml_uncertainty_robustness_report"),
+    ("benchmarks.uncertainty", "build_week9_classical_uncertainty_scorecard", "build_classical_uncertainty_scorecard"),
+    ("benchmarks.uncertainty", "build_week9_classical_conditional_scorecard", "build_classical_conditional_uncertainty_scorecard"),
+    ("benchmarks.uncertainty", "Week9ClassicalUncertaintyRobustnessReport", "ClassicalUncertaintyRobustnessReport"),
+    ("benchmarks.uncertainty", "evaluate_week9_classical_uncertainty_robustness", "evaluate_classical_uncertainty_robustness"),
+    ("benchmarks.uncertainty", "Week9ResidualMismatchReport", "ResidualMismatchReport"),
+    ("benchmarks.uncertainty", "evaluate_week9_residual_mismatch_diagnostics", "evaluate_residual_mismatch_diagnostics"),
     ("persistence", "record_week9_interval_scorecard_row", "record_ml_interval_scorecard_row"),
     ("persistence", "record_week9_score_only_scorecard_row", "record_ml_uncertainty_scorecard_row"),
 )
@@ -80,16 +80,22 @@ def test_report_fields_and_legacy_pickle_references(module_name, legacy_name, ca
     # the old module-global class reference to exercise historical unpickling.
     reference = f"c{canonical.__module__}\n{canonical_name}\n".encode()
     assert current_payload.count(reference) == 1
-    # Pin the *historical module* as well as the class name. After relocation,
-    # new pickles may use the canonical implementation module naturally; old
-    # payloads must still resolve through the flat compatibility path.
-    historical_payloads = [
-        current_payload.replace(
-            reference, f"ctcspc_toolkit.{module_name}\n{name}\n".encode(),
+    removed_module = {
+        "benchmarks.generalization": "generalization_evaluation",
+        "benchmarks.uncertainty": "uncertainty_robustness",
+    }[module_name]
+    for name in (canonical_name, legacy_name):
+        historical = current_payload.replace(
+            reference, f"ctcspc_toolkit.{removed_module}\n{name}\n".encode(),
         )
-        for name in (canonical_name, legacy_name)
-    ]
-    for payload in (current_payload, *historical_payloads):
+        with pytest.raises(ModuleNotFoundError) as error:
+            pickle.loads(historical)
+        assert error.value.name == f"tcspc_toolkit.{removed_module}"
+    # Both supported names resolve in the canonical module.
+    canonical_alias_payload = current_payload.replace(
+        reference, f"c{canonical.__module__}\n{legacy_name}\n".encode(),
+    )
+    for payload in (current_payload, canonical_alias_payload):
         restored = pickle.loads(payload)
         assert type(restored) is canonical
         assert vars(restored).keys() == values.keys()

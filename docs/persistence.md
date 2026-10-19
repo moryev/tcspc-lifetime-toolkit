@@ -129,8 +129,16 @@ and existing database-opening behavior are unchanged. The public-import
 round-trip example and notebooks retain their supported imports.
 
 Issue #3 Stage 10 confirms this layout in the [final architecture audit](package_structure.md).
-The public facade remains supported through at least Issue #12; it is not deprecated.
+The public package API remains supported after Issue #12; it is not a removed flat module.
 No schema migration or stored-identity rewrite accompanies package restructuring.
+
+The post-Issue-12 removal of 38 flat scientific modules does **not** remove
+`tcspc_toolkit.persistence`: it remains a supported public package API. The seven
+strings above intentionally retain their historical text even where the named
+scientific module no longer exists. Read paths return scalar/JSON provenance
+through SQL queries; they do not import those strings or unpickle result objects.
+Ordinary external Python pickles naming deleted scientific module globals may
+fail to load, independently of schema-v1 database compatibility.
 
 ## Scientific entities
 
