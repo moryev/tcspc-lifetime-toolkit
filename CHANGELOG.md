@@ -2,7 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Post-Week-9 integration
+## [Unreleased] — Post-Week-9 integration and documentation
+
+### Documentation and usability — Issue #14
+
+- Replace the long landing page with a practical README, a tested Poisson
+  reconvolution quick start and its reproducible scientific figure.
+- Add six focused executable examples alongside the preserved custom-estimator
+  and SQLite examples, with explicit synthetic-data and inference/fixture labels.
+- Add task-oriented documentation, CLI, results and reproducibility guides that
+  link to the existing scientific evidence and preserve historical anchors.
+- Display small positive CLI fit standard errors with four significant digits
+  rather than rounding them to zero; fitting and numerical results are unchanged.
+- Add example smoke checks, README/code consistency checks, relative-link checks
+  and lightweight Bayesian configuration/dispatch coverage. Full example sampling
+  is validated separately; package version, APIs, reference evidence and schema v1
+  remain unchanged.
+
+Current roadmap: Issue #12 and the separate compatibility cleanup are complete;
+Issue #14 precedes #15 CI/release work. Issue #13 remains deferred until realistic
+experiment-specific inputs are available and does not block release preparation.
 
 ### Breaking — post-Issue-12 import cleanup
 
@@ -57,6 +76,10 @@ All notable changes to this project will be documented in this file.
 
 ### Scientific scope and status
 
+The following records the historical Issue-8 verification checkpoint. Later
+Bayesian, persistence and integration work is complete; see the
+[Issue-12 acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
+
 - Leading-edge estimates are proxies, not recovered measured/true IRFs.
   Fixed-IRF uncertainty does not propagate IRF-shape uncertainty.
 - The three-bootstrap example is an interface demonstration, not calibrated
@@ -65,10 +88,10 @@ All notable changes to this project will be documented in this file.
 - Final Stage-7 verification: Notebook 16's 12 code cells pass from a fresh
   kernel, the requested Issue-#8 regression group passes 184 tests, and the
   full suite passes 839 tests.
-- Issue #8 implementation and verification are complete; commit/closure
-  review is still pending. Issue #4 (Bayesian Poisson
-  inference) is next in Issue #5's unchanged ordering; it is not implemented
-  here. No release-version bump is included.
+- At that checkpoint, Issue #8 implementation/verification were complete and
+  commit/closure review was pending. Issue #4 (Bayesian Poisson inference) was
+  the next task, not part of the Issue-8 change. Both issues are now complete.
+  No release-version bump accompanied that work.
 
 ## [0.1.0] - 2026-07-30
 

@@ -1,1535 +1,280 @@
 # TCSPC Lifetime Toolkit
 
-A scientific Python toolkit for simulating, fitting, and evaluating time-correlated single-photon counting decay curves.
-
-The project is being developed as an end-to-end framework for classical, Bayesian, and machine-learning-based fluorescence-lifetime estimation. Its long-term goal is to support realistic TCSPC simulation and data processing, reproducible benchmarking of lifetime estimators, and lifetime-based sensing demonstrations.
-
-Version 0.7.0 extends the toolkit beyond in-distribution estimator
-benchmarking to controlled generalization, robustness, uncertainty
-calibration, and failure-awareness. The current benchmark now evaluates not
-only whether lifetime estimators are accurate under familiar conditions, but
-also whether their performance survives distribution shift, whether their
-reported uncertainty tracks statistical degradation, and whether they detect
-failure when the assumed physical decay model is wrong.
-
-Post-v0.7.0 integration work has since extended the same architecture with
-canonical experimental-style measurement objects, generalized sampled and
-synthetic IRF handling, and Bayesian Poisson reconvolution. The Bayesian path
-reuses the shared mono-exponential forward model and Poisson observation
-likelihood while adding explicit priors, posterior sampling, sampling
-diagnostics, posterior summaries, posterior-predictive checks, and controlled
-decay-model and IRF-model mismatch evaluation. These integrations are present
-while the package version remains 0.7.0. Public-API stabilization and package
-restructuring are complete, and the post-Issue-12 cleanup removed the 38
-obsolete flat compatibility modules. The curated 66-name root API and
-canonical subpackage hierarchy are now the supported import surfaces. The
-[Issue #12 acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
-records installation, scientific reproducibility, cross-feature integration,
-and final performance/regression evidence. Later release qualification remains
-separate.
-
-SQLite-backed persistence now records measurements, IRF provenance, estimator
-results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
-query/DataFrame helpers. See the [persistence contract](docs/persistence.md) and
-the [small end-to-end roundtrip example](examples/persistence_roundtrip.py)
-for structured read-only retrieval, direct parameterized SQL aggregation and
-DataFrame conversion (deterministic Bayesian fixtures; no MCMC required).
-
-## Scientific motivation
-
-Time-correlated single-photon counting (TCSPC) is widely used to measure fluorescence and excited-state lifetimes. A measured TCSPC histogram contains photon counts distributed over time bins following an excitation event.
-
-The measured histogram is generally not identical to the underlying fluorescence decay. The finite temporal response of the measurement system broadens the signal through the instrument response function (IRF), while photon detection introduces stochastic counting fluctuations. For an ideal photon-counting measurement, the observed count in each time bin can be modelled as a Poisson-distributed random variable.
-
-Accurate lifetime estimation therefore requires separating the underlying fluorescence dynamics from both instrumental broadening and photon-counting statistics. This becomes particularly important when the fluorescence lifetime is comparable to or shorter than the IRF width, or when only a limited number of photons are available.
-
-This project separates TCSPC analysis into reusable physical, statistical, and data-analysis stages:
-
-1. define a physical fluorescence-decay model;
-2. define and normalize the instrument response function;
-3. construct the expected TCSPC histogram through numerical convolution and detector-background addition;
-4. generate Poisson-sampled photon-count measurements;
-5. validate measured histograms and construct analysis-dependent derived representations where appropriate;
-6. estimate physical parameters using ordinary or IRF-aware reconvolution fitting;
-7. evaluate fitted models using lifetime errors, raw residuals, and Poisson-aware residual diagnostics;
-8. generate controlled synthetic datasets for machine-learning experiments;
-9. construct reproducible train/test splits shared across estimator and representation benchmarks;
-10. evaluate statistical, physics-inspired, linear, and nonlinear lifetime estimators;
-11. compare engineered features, normalized histograms, and PCA-compressed representations;
-12. benchmark classical reconvolution and ML under controlled lifetime, photon-count, background, IRF-width, and IRF-shift regimes;
-13. evaluate generalization under frozen external distribution-shift and model-mismatch tests;
-14. quantify predictive uncertainty using calibrated intervals, ensemble disagreement, bootstrap sensitivity, and local Poisson information;
-15. compare reported uncertainty with empirical repeated-Poisson sampling variability;
-16. evaluate uncertainty calibration and failure-awareness under the frozen A–F robustness suite;
-17. distinguish statistical uncertainty from failures caused by physical model misspecification.
-
-The current implementation provides a reproducible framework for both
-classical and data-driven TCSPC lifetime estimation.
-
-Classical inference includes ordinary mono-exponential least-squares fitting,
-IRF-aware least-squares reconvolution, and Poisson maximum-likelihood
-reconvolution with simultaneous estimation of amplitude, lifetime, detector
-background, and temporal IRF shift.
-
-The machine-learning workflow now includes physically inspired baselines,
-scikit-learn regression pipelines, controlled representation benchmarks,
-repeated development-set cross-validation, frozen out-of-distribution
-evaluation, conditional robustness analysis, model-mismatch experiments,
-inference timing, direct quantile prediction intervals, Random-Forest
-ensemble-disagreement scores, and training-data bootstrap uncertainty
-scores.
-
-Classical inference now additionally includes local Poisson/Fisher
-covariance uncertainty, parametric Poisson bootstrap intervals,
-repeated-Poisson empirical uncertainty calibration, and A–F evaluation of
-coverage, interval width, uncertainty scale, and failure-awareness.
-
-The toolkit explicitly distinguishes statistical uncertainty conditional on
-an assumed forward model from physical model misspecification. Controlled
-bi-exponential tests demonstrate that an estimator can remain statistically
-confident while its assumed mono-exponential decay model is wrong.
-
-Synthetic benchmark datasets can vary fluorescence lifetime, signal photon
-count, detector background, IRF width, and IRF temporal shift while retaining
-explicit ground-truth metadata and reproducible train/test splits.
-
-The central scientific objective is not simply to demonstrate that machine
-learning can predict fluorescence lifetime, but to determine under which
-photon-count, background, IRF, and model-mismatch conditions data-driven
-estimation outperforms, matches, or complements physically explicit fitting.
-
-## Current functionality
-
-The current version supports:
-
-* mono-, bi-, and multi-exponential decay modelling;
-* constant detector background counts;
-* Gaussian and exponentially modified Gaussian (EMG) instrument response functions;
-* generalized sampled source profiles and explicitly prepared, unit-area target-grid kernels;
-* explicit sampled/imported-IRF registration and linear resampling with support/sampling diagnostics;
-* opt-in, failure-aware leading-edge IRF proxies, never automatic replacements for measured IRFs;
-* controlled IRF shape-family mismatch and proxy-failure evaluation, independent of frozen A–F;
-* non-integer temporal IRF shifting;
-* numerical convolution of fluorescence decays with IRFs;
-* IRF-convolved TCSPC simulation with Poisson photon-count sampling;
-* reproducible simulations using NumPy random-number generators;
-* generation of independent and grouped synthetic mono-exponential datasets;
-* structured storage of simulated curves and metadata;
-* validation of raw TCSPC histograms, including dimensionality, finite values, non-negative integer-like photon counts, and approximately uniform time bins;
-* strict single-curve CSV import with explicit time units, raw-count or processed-intensity semantics, source provenance, and optional same-grid sampled IRFs;
-* Poisson reconvolution of imported raw counts with a compatible sampled IRF or explicit `PreparedIRF`, plus separate opt-in evaluation against a trusted reference lifetime;
-* explicit background estimation from user-selected histogram regions;
-* background subtraction for derived visualization and analysis representations while preserving negative statistical fluctuations;
-* discrete peak detection for raw photon-count histograms;
-* temporal-coordinate alignment to the IRF peak without modifying or interpolating measured photon counts;
-* time-window cropping using physical time coordinates;
-* photon-count-preserving temporal rebinning by integer factors;
-* total-count and peak-count normalization for visualization and machine-learning representations;
-* physically interpretable feature extraction from raw TCSPC histograms, including intensity, photon-arrival moments, quantile timing, half-decay timing, tail, and early/late descriptors;
-* stable engineered-feature schemas and batch construction of pandas feature tables;
-* batch construction of total- or peak-normalized histogram representations;
-* PCA compression of normalized TCSPC histograms;
-* leakage-safe PCA workflows with fitting restricted to training data and separate transformation of training and test samples;
-* explained-variance analysis for PCA representations;
-* immutable simulation, preprocessing, and feature configuration dataclasses;
-* reproducible factorial benchmark generation with controlled variation of fluorescence lifetime, signal photon count, detector background, IRF width, and IRF temporal shift;
-* shared train-test splits preserving aligned engineered-feature, raw-histogram, target, and metadata representations;
-* train/test support and level-balance diagnostics for controlled benchmark variables;
-* constant-mean regression baselines;
-* physics-inspired mean-arrival-time lifetime estimation;
-* reusable scikit-learn pipelines for Ridge regression, Random Forest regression, and Histogram Gradient Boosting regression;
-* unified regression evaluation using MAE, median absolute error, RMSE, relative error, and $R^2$;
-* controlled representation benchmarking using the same samples, targets, and estimator family across engineered features, TOTAL-normalized histograms, and PCA-compressed histograms;
-* photon-count ablation experiments that restore measured total counts to normalized histogram representations;
-* batch classical reconvolution benchmarking with histogram-derived initial guesses;
-* per-curve reconvolution diagnostics including fitted lifetime, optimizer success, fit validity, parameter-boundary hits, Poisson negative log-likelihood, Poisson deviance, and optimizer runtime;
-* aggregate classical-fit summaries including fit success/failure rate, MAE, median absolute error, RMSE, and runtime statistics;
-* standardized per-sample diagnostics shared by ML and classical estimators;
-* reusable benchmark plots for true-versus-predicted lifetime, signed and absolute error distributions, error versus physical conditions, and paired estimator comparison;
-* conditional performance analysis across lifetime, photon-count, background, IRF-width, and IRF-misalignment regimes;
-* regime-level summaries including MAE, median absolute error, bias, 90th- and 95th-percentile absolute errors, and failure rate;
-* matched weakly bi-exponential model-mismatch simulation while preserving primary lifetime and nuisance conditions sample-by-sample;
-* direct comparison of ML distribution shift and classical forward-model mismatch;
-* mismatch summaries reporting in-distribution and mismatch MAE, MAE degradation, bias changes, and failure rates;
-* repeated batch inference timing for mean-arrival and machine-learning estimators;
-* reuse of recorded per-curve reconvolution optimization runtimes for computational-cost comparison;
-* estimator-throughput and accuracy-versus-runtime benchmarking;
-* JSON serialization and loading of configuration objects using `pathlib`;
-* metadata-based selection of machine-learning targets;
-* nonlinear least-squares mono-exponential lifetime fitting;
-* IRF-aware mono-exponential reconvolution fitting;
-* simultaneous reconvolution estimation of amplitude, lifetime, detector background, and temporal IRF shift;
-* selectable least-squares and Poisson maximum-likelihood reconvolution objectives;
-* Poisson negative log-likelihood evaluation;
-* covariance-based parameter standard errors for ordinary least-squares mono-exponential fitting;
-* fitted-signal reconstruction;
-* raw residual calculation;
-* Poisson-scaled Pearson residuals;
-* Poisson deviance residuals;
-* absolute and relative lifetime errors;
-* baseline machine-learning lifetime estimation using normalized TCSPC histograms;
-* random and group-aware train-test evaluation;
-* data-leakage analysis for repeated noisy realizations;
-* CSV export of simulated and evaluated data;
-* Jupyter notebooks demonstrating classical fitting, realistic TCSPC
-  simulation, reconvolution fitting, Poisson-aware validation, preprocessing,
-  feature engineering, leakage-safe representations, classical-versus-ML
-  benchmarking, robustness analysis, uncertainty calibration, and
-  failure-awareness;
-* frozen Week-8 A–F generalization tests separating familiar conditions,
-  photon-count OOD, IRF-width shift, elevated background, temporal
-  misalignment, and controlled bi-exponential model mismatch;
-* repeated development-set cross-validation with leakage-safe estimator and
-  representation fitting;
-* frozen external robustness evaluation in which Tests A–F never enter model
-  training, representation fitting, or uncertainty calibration;
-* paired familiar-versus-shifted evaluation using matched physical conditions;
-* direct quantile lifetime estimation with separate 0.05, 0.50, and 0.95
-  Histogram Gradient Boosting models defining nominal 90% prediction
-  intervals;
-* prediction-interval evaluation including empirical coverage, coverage
-  error, interval width, interval score, failure rate, pinball losses, and
-  quantile-crossing diagnostics;
-* Random-Forest tree-to-tree disagreement as an uncertainty-ranking score;
-* non-parametric training-data bootstrap prediction spread for scikit-learn
-  lifetime estimators;
-* uncertainty-score evaluation through error correlation and
-  low-/high-uncertainty error subsets;
-* leakage-safe split-conformal extension of direct quantile prediction
-  intervals using only the held-out development calibration subset;
-* local Poisson/Fisher covariance estimation for reconvolution parameters
-  using the expected-count Jacobian and scaled Fisher information;
-* explicit rejection of singular, ill-conditioned, boundary, and otherwise
-  invalid local covariance estimates;
-* parametric Poisson-bootstrap lifetime uncertainty with retained refit and
-  parameter-boundary failures;
-* Bayesian Poisson reconvolution with explicit priors, posterior summaries
-  and correlations, independent-ensemble sampling diagnostics, and
-  posterior-predictive checks;
-* controlled Bayesian/classical decay-model and IRF-shape mismatch evaluation
-  distinguishing statistical uncertainty from physical model error;
-* repeated-Poisson experiments comparing reported uncertainty with empirical
-  estimator variability while holding the physical measurement condition
-  fixed;
-* frozen A–F classical uncertainty evaluation including coverage, interval
-  width, uncertainty scale, normalized error, and failure diagnostics;
-* conditional uncertainty analysis for low/high photon count, elevated
-  background, and weak/moderate bi-exponential mismatch;
-* structured signed Poisson-deviance residual analysis for model-mismatch
-  diagnostics;
-* explicit demonstration that well-calibrated statistical uncertainty under
-  an assumed forward model does not guarantee awareness of physical model
-  misspecification;
-* Notebook 13 integrating the complete generalization and robustness
-  workflow;
-* Notebook 14 integrating the complete uncertainty-calibration and
-  failure-awareness workflow;
-* Notebook 15 demonstrating explicit-unit experimental-style CSV import,
-  same-grid sampled IRF reconvolution, and carefully labelled ML transfer.
-* Notebook 16 demonstrating generalized IRF construction and preparation,
-  registration/resampling diagnostics, IRF-shape mismatch, leading-edge proxy
-  failure modes, conditional uncertainty, and Gaussian-trained ML transfer;
-* Notebook 17 integrating Bayesian Poisson reconvolution, matched-model
-  uncertainty calibration, pseudo-true model-mismatch references, paired IRF
-  misspecification, sampling diagnostics, and posterior-predictive checks.
-
-## Current scientific assumptions
-
-The current realistic TCSPC workflow represents a measurement as a sequence of physical, instrumental, and statistical stages:
-
-1. generate an ideal fluorescence decay;
-2. generate and normalize an instrument response function (IRF);
-3. optionally shift the IRF in time;
-4. convolve the ideal fluorescence decay with the IRF;
-5. scale the fluorescence contribution by its amplitude;
-6. add the detector background;
-7. sample the resulting expected counts using Poisson statistics.
-
-For a mono-exponential fluorescence decay, the unit-amplitude decay shape is represented by
-
-```math
-I_\tau(t)
-=
-\exp\left(
--\frac{t}{\tau}
-\right),
-```
-
-where $\tau$ is the fluorescence lifetime.
-
-The instrument response function describes the temporal broadening introduced by the measurement system. The legacy Gaussian simulation path uses
-
-```math
-\mathrm{IRF}(t)
-=
-C
-\exp\left[
--\frac{(t-t_0)^2}{2\sigma^2}
-\right],
-```
-
-where:
-
-* $t_0$ is the IRF centre;
-* $\sigma$ determines the IRF width;
-* $C$ is the Gaussian amplitude.
-
-The generalized path also supports EMG and sampled/imported IRFs. EMG
-parameters describe the Gaussian component plus a positive exponential tail;
-the component centre/FWHM are not the full EMG peak/FWHM. The downstream
-convolution consumes sampled arrays, not a Gaussian-specific model.
-
-The Gaussian width is specified through the full width at half maximum (FWHM),
-
-```math
-\mathrm{FWHM}
-=
-2\sqrt{2\ln 2}\,\sigma.
-```
-
-Before convolution, the IRF is normalized to unit temporal area,
-
-```math
-\int
-\mathrm{IRF}(t)\,dt
-=
-1.
-```
-
-A temporal shift $\Delta t$ can be applied to describe the relative alignment between the fluorescence decay and the instrument response,
-
-```math
-\mathrm{IRF}_{\Delta t}(t)
-=
-\mathrm{IRF}(t-\Delta t).
-```
-
-The instrument-broadened fluorescence signal is then calculated through convolution,
-
-```math
-[\mathrm{IRF}_{\Delta t} * I_\tau](t)
-=
-\int
-\mathrm{IRF}_{\Delta t}(t-t')
-I_\tau(t')
-\,dt'.
-```
-
-Numerically, the convolution is evaluated on a uniform time grid. The discrete convolution includes the time-bin width $\Delta t_{\mathrm{bin}}$ so that the numerical sum approximates the continuous convolution integral.
-
-The expected TCSPC photon-count curve is
-
-```math
-\mu(t)
-=
-A
-[\mathrm{IRF}_{\Delta t} * I_\tau](t)
-+
-B,
-```
-
-where:
-
-* $A$ is the fluorescence-signal amplitude;
-* $\tau$ is the fluorescence lifetime;
-* $B$ is the constant detector background;
-* $\Delta t$ is the relative temporal shift of the IRF.
-
-For each time bin $i$, the measured photon count is sampled according to
-
-```math
-N_i
-\sim
-\mathrm{Poisson}(\mu_i),
-```
-
-where $\mu_i$ is the expected photon count in that time bin.
-
-The resulting forward model can therefore be summarized as
-
-```math
-I_\tau(t)
-\longrightarrow
-\mathrm{IRF}_{\Delta t}(t)
-\longrightarrow
-[\mathrm{IRF}_{\Delta t} * I_\tau](t)
-\longrightarrow
-\mu(t)
-\longrightarrow
-N_i.
-```
-
-Reconvolution fitting evaluates this forward model repeatedly while varying the fitted physical parameters. In the current mono-exponential implementation, the fitted parameter vector is
-
-```math
-\theta
-=
-(A,\tau,B,\Delta t).
-```
-
-Least-squares reconvolution estimates these parameters by minimizing ordinary residual errors between the measured histogram and the reconvolved model.
-
-For Poisson maximum-likelihood reconvolution, the fitted parameters are estimated by minimizing the reduced Poisson negative log-likelihood,
-
-```math
--\log L
-=
-\sum_i
-\left[
-\mu_i
--
-N_i\log(\mu_i)
-\right],
-```
-
-up to an additive term that does not depend on the fitted parameters.
-
-Poisson deviance residuals are additionally available for statistically scaled model diagnostics across histogram regions with strongly different photon-count levels.
-
-## Preprocessing philosophy
-
-TCSPC preprocessing is analysis-dependent. The toolkit therefore provides small, composable preprocessing functions rather than enforcing a single universal preprocessing pipeline.
-
-The current preprocessing utilities include:
-
-- `validate_histogram()` for validating raw measured TCSPC histograms;
-- `estimate_background()` for estimating a stationary background level from an explicitly selected bin interval;
-- `subtract_background()` for constructing background-corrected derived representations;
-- `detect_peak()` for locating the discrete maximum of a raw photon-count histogram;
-- `align_to_irf()` for redefining the temporal origin relative to the IRF peak without modifying the measured counts;
-- `crop_time_window()` for selecting a physical time interval;
-- `rebin_histogram()` for combining neighboring bins while preserving the total photon count;
-- `normalize_counts()` for total-count or peak-count normalization.
-
-These operations are deliberately not combined into a single hard-coded `preprocess()` routine because different downstream analyses require different statistical treatment.
-
-### Poisson reconvolution fitting
-
-For Poisson maximum-likelihood fitting, the measured photon counts are retained as raw counts:
-
-```text
-raw photon counts
-        ↓
-validate histogram
-        ↓
-background estimate ──→ initial background guess
-        ↓
-IRF information ──────→ temporal-reference / shift information
-        ↓
-numerical initialization
-        ↓
-Poisson reconvolution fit
-```
-
-The detector background is included directly in the expected-count model,
-
-```math
-\mu(t)
-=
-A
-[\mathrm{IRF}_{\Delta t} * I_\tau](t)
-+
-B,
-```
-
-rather than being subtracted from the observed counts before fitting.
-
-Similarly, normalization is not applied to the raw observations before Poisson-likelihood fitting because normalization removes the absolute photon-count scale on which the count likelihood is defined.
-
-The current numerical implementation can use a least-squares reconvolution result as an initialization for subsequent Poisson maximum-likelihood refinement. Least squares in this workflow acts as a numerical initialization step; the final statistical objective remains the Poisson likelihood.
-
-### Visualization and machine-learning representations
-
-For visualization, exploratory analysis, or machine-learning input preparation, a different sequence may be appropriate:
-
-```text
-raw photon counts
-        ↓
-validate histogram
-        ↓
-temporal alignment
-        ↓
-crop
-        ↓
-rebin
-        ↓
-normalize
-        ↓
-analysis- or ML-ready representation
-```
-
-Cropping changes the observation window, rebinning trades temporal resolution for increased counts per bin, and normalization removes absolute count-scale information. These transformations can therefore be useful for representation-oriented analyses without being statistically neutral.
-
-Rebinning preserves the total number of photons within the rebinned region,
-
-```math
-\sum_i N_i^{(\mathrm{rebinned})}
-=
-\sum_i N_i^{(\mathrm{original})},
-```
-
-provided the selected number of bins is exactly divisible by the rebinning factor.
-
-Cropping before reconvolution should be distinguished from selecting a fitting window after constructing the forward model. Premature truncation of the IRF or fluorescence signal can introduce convolution edge effects.
-
-The guiding design principle is therefore:
-
-
-> **Preprocessing choices should follow the scientific question and statistical model
-> rather than being imposed by the software architecture.**
-
-
-## Machine-learning representations
-
-The toolkit supports three complementary representations of TCSPC
-measurements for machine-learning analysis.
-
-### Engineered physical features
-
-`extract_features()` and `extract_feature_table()` convert raw measured
-histograms into a stable set of physically interpretable descriptors,
-including photon-count, temporal-moment, quantile, half-decay, tail, and
-early/late features.
-
-Feature extraction does not silently subtract background, normalize, crop,
-align, or rebin the histogram. Any required preprocessing must be performed
-explicitly so that the scientific meaning of each feature remains traceable.
-
-### Normalized TCSPC histograms
-
-`normalize_histogram_batch()` preserves the complete binned temporal shape
-while normalizing each histogram independently.
-
-Total-count normalization removes absolute photon-count information:
-
-```math
-x_i
-=
-\frac{N_i}{\sum_j N_j}.
-```
-
-Absolute photon counts and normalized decay shape therefore represent
-different physical information.
-
-### PCA-compressed histograms
-
-`fit_pca_representation()` and `transform_pca_representation()` provide a
-lower-dimensional representation of normalized histogram bins.
-
-PCA captures directions of large histogram variance but does not use lifetime
-labels and is not itself a lifetime estimator. Components explaining large
-variance are therefore not necessarily those carrying the most lifetime
-information.
-
-PCA and any other learned preprocessing transformation must be fitted using
-training data only. Test data must not contribute to fitted PCA components,
-scalers, feature-selection rules, or other learned transformations.
-
-The appropriate preprocessing depends on the intended analysis. Feature
-engineering and machine-learning representations may use normalization or
-derived temporal descriptors, whereas Poisson reconvolution fitting should
-generally retain the original photon counts and background statistics.
-
-## Scientific benchmark findings
-
-Controlled benchmarking now includes repeated development-set
-cross-validation and final A-F robustness evaluation covering photon-count,
-IRF, background, temporal-alignment, and decay-model shifts.
-
-Key findings and their scientific interpretation are maintained in
-[`docs/scientific_findings.md`](docs/scientific_findings.md). The complete
-Week-8 robustness workflow is available in
-[`notebooks/13_generalization_and_robustness.ipynb`](notebooks/13_generalization_and_robustness.ipynb),
-and the Week-9 uncertainty and failure-awareness synthesis is available in
-[`notebooks/14_uncertainty_and_failure_awareness.ipynb`](notebooks/14_uncertainty_and_failure_awareness.ipynb).
-
-### Generalized IRFs and failure awareness
-
-Issue #8 adds the explicit workflow
-`IRFProfile → prepare_irf → PreparedIRF → simulation / reconvolution`.
-Gaussian, EMG, imported `SampledIRF`, and deliberately requested leading-edge
-proxies share this path. Source values/provenance stay distinct from derived
-kernels and their preparation history. Registration and linear resampling
-are caller choices; support loss is reported separately from target-grid
-quadrature change.
-
-`fit_experimental_reconvolution(..., prepared_irf=...)` explicitly overrides
-an attached sampled IRF, without automatic preparation or resampling. The
-legacy attached-IRF path is unchanged. Leading-edge estimates are approximate
-proxies, not measured/true IRFs; numerical success does not certify physical
-accuracy. [Notebook 16](notebooks/16_generalized_irf_and_failure_awareness.ipynb)
-demonstrates these boundaries and controlled shape-mismatch/failure studies.
-Their findings and the small ML/bootstrap fixture limitations are recorded in
-[`docs/scientific_findings.md`](docs/scientific_findings.md).
-
-### Bayesian Poisson inference and model-conditional uncertainty
-
-Issue #4 adds joint posterior inference for amplitude, lifetime, background,
-and residual shift using the shared reconvolution model and a fixed prepared
-IRF. Matched-model calibration and controlled decay/IRF mismatch studies
-compare posterior credible intervals with covariance and bootstrap intervals.
-Posterior correlations and predictive checks add information about parameter
-coupling and model adequacy; successful sampling and narrow intervals do not
-establish physical-model correctness. The verified findings, including the
-corrected deterministic reference analysis, are in
-[`docs/scientific_findings.md`](docs/scientific_findings.md#post-week-9--issue-4-bayesian-poisson-inference-and-model-conditional-uncertainty).
-[Notebook 17](notebooks/17_bayesian_poisson_inference_and_model_mismatch.ipynb)
-demonstrates the complete workflow; Issue #4 is complete and closed.
-
-## Current implementation status
-
-Version 0.7.0 extends the toolkit from in-distribution estimator benchmarking
-to controlled external generalization, robustness, uncertainty calibration,
-and failure-awareness.
-
-The current workflow separates development data from frozen external Tests
-A–F, uses repeated development-set cross-validation for stability analysis,
-and evaluates familiar conditions, photon-count distribution shift, IRF-width
-change, elevated detector background, temporal misalignment, and controlled
-bi-exponential model mismatch.
-
-Uncertainty analysis now includes direct quantile prediction intervals,
-Random-Forest tree disagreement, training-data bootstrap prediction spread,
-local Poisson/Fisher covariance, parametric Poisson bootstrap, Bayesian
-posteriors and predictive checks, repeated-Poisson empirical calibration,
-split conformalization, conditional uncertainty scorecards, and residual-based
-mismatch diagnostics.
-
-The central limitation established by the current benchmark is that statistical
-uncertainty and physical model validity are not equivalent. An estimator can
-remain statistically confident while becoming biased because the assumed
-mono-exponential forward model is incomplete.
-
-The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
-measurements. Post-v0.7.0 integration added the Issue #6 single-curve import
-boundary, Issue #8 generalized IRF/proxy workflows, Issue #4 Bayesian
-inference with completed calibration and mismatch experiments, Issue #9
-SQLite persistence, and the subsequent API/evaluation/package-hardening work.
-Public-API stabilization, canonical subpackage reorganization, Issue #12 full
-integration acceptance, and the post-Issue-12 removal of the 38 obsolete flat
-compatibility modules are complete. The current package contains 61 Python
-files and retains the curated 66-name root API. Synthetic-to-real validation,
-broader inverse decay models, and the remaining Week-10–12 roadmap work
-remain future development.
+**Scientific Python tools for simulating, fitting and evaluating fluorescence
+lifetimes from time-correlated single-photon-counting (TCSPC) histograms.**
+
+A recorded decay combines fluorescence kinetics, the instrument response
+function (IRF), detector background and photon-counting noise. The toolkit makes
+those assumptions explicit and compares physics-based inference with learned
+estimators under controlled distribution shift and model mismatch.
+
+For scientists, Python developers and collaborators studying when estimates can be trusted.
+Reference evidence is synthetic; a canonical CSV path also supports compatible experimental measurements.
+
+[Documentation](docs/README.md) · [Executable examples](examples/README.md) ·
+[Scientific results](docs/results.md) · [API](docs/api.md) ·
+[Changelog](CHANGELOG.md) · [Issues](https://github.com/moryev/tcspc-lifetime-toolkit/issues)
+
+## Main capabilities
+
+- Mono-, bi- and multi-exponential decay simulation with independent Poisson
+  photon sampling, IRF convolution and constant detector background.
+- Gaussian, exponentially modified Gaussian (EMG), and sampled/measured IRF
+  sources with explicit registration, resampling and preparation diagnostics.
+- Mono-exponential least-squares and Poisson reconvolution; estimation of
+  lifetime, amplitude, background and temporal shift.
+- Measurement validation, physical features, normalized/PCA representations,
+  leakage-aware ML training and controlled external generalization benchmarks.
+- Local covariance, parametric bootstrap, ML/conformal uncertainty and genuine
+  Bayesian Poisson inference with explicit priors and sampling diagnostics.
+- Optional SQLite recording and querying of scientific results and provenance.
 
 ## Installation
 
-### Requirements
-
-* Python 3.11 or newer
-* pip
-* Git
-
-### Clone the repository
-
-Clone the repository and enter the project directory:
+Requires **Python 3.11 or newer**. Install from a checkout to run the committed
+examples and access bundled data:
 
 ```bash
 git clone https://github.com/moryev/tcspc-lifetime-toolkit.git
 cd tcspc-lifetime-toolkit
-```
-
-### Create a virtual environment
-
-On Windows PowerShell:
-
-```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
 ```
 
-On macOS or Linux:
+Activate the environment on macOS/Linux:
 
 ```bash
-python -m venv .venv
 source .venv/bin/activate
 ```
 
-### Install the package
+Or in Windows PowerShell:
 
-Install the project in editable mode:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Then install the base package:
 
 ```bash
 python -m pip install -e .
 ```
 
-Editable installation allows changes made inside `src/tcspc_toolkit/` to become available without reinstalling the package after every edit.
-
-Bayesian posterior sampling requires the optional `emcee>=3.1.6,<4` dependency:
-
-```bash
-python -m pip install -e ".[bayesian]"
-```
-
-The base package remains usable without `emcee`.
-
-### Install the project together with the development dependencies
-
-For Jupyter, pytest, and Bayesian support needed by Notebook 17 and the full test suite:
+The base dependencies include NumPy, SciPy, pandas, Matplotlib and scikit-learn.
+Choose extras only as needed:
 
 ```bash
-python -m pip install -e ".[dev,bayesian]"
+python -m pip install -e ".[dev]"           # pytest and Jupyter
+python -m pip install -e ".[bayesian]"      # emcee for actual posterior sampling
+python -m pip install -e ".[dev,bayesian]"  # complete development/test environment
 ```
 
-## Public API and estimator extensions
+## Five-minute quick start
 
-### High-level root imports
-
-The package root is a deliberately curated convenience API for common
-modelling, simulation, measurement import, IRF preparation, preprocessing,
-fitting, and generic estimator execution. For example:
-
-```python
-from tcspc_toolkit import (
-    TCSPCMeasurement,
-    load_tcspc_measurement_csv,
-    fit_experimental_reconvolution,
-    EstimatorSpec,
-    RegressorProtocol,
-    fit_regressors,
-    predict_regressors,
-)
-```
-
-The extension contract accepts caller-supplied estimator specifications and
-already-prepared representation mappings. A factory creates fresh model state;
-the caller owns feature construction, sample ordering, and train/test roles.
-The generic helpers fit/predict estimators, not representations or benchmark
-metrics. Structural `fit(X, y)` / `predict(X)` adapters need no sklearn base
-class, cloning support, or registry.
-
-Run the small deterministic [custom estimator example](examples/custom_estimator.py):
+From the checkout root:
 
 ```bash
-python examples/custom_estimator.py
+python examples/quickstart.py
 ```
 
-It uses `LinearRegression` on prepared toy features and returns the prediction
-array `[1.5, 2.5]` ns; it is an API demonstration, not a TCSPC benchmark.
+Or copy this complete **synthetic** workflow into Python: decay → IRF convolution
+→ expected counts/background → seeded Poisson observation → reconvolution fit.
 
-### Module-qualified advanced APIs
-
-Module-qualified does **not** mean unsupported or private. Canonical advanced
-implementations now live in responsibility-oriented subpackages, for example:
-
-- benchmark/generalization orchestration in `tcspc_toolkit.benchmarks`;
-- cross-validation in `tcspc_toolkit.ml.cross_validation`;
-- reusable uncertainty methods in `tcspc_toolkit.uncertainty`;
-- Bayesian inference in `tcspc_toolkit.estimation.bayesian`;
-- SQLite persistence in `tcspc_toolkit.persistence.sqlite`;
-- factual/diagnostic evaluation in `tcspc_toolkit.evaluation`.
-
-The 38 obsolete flat module paths have been removed after Issue #12. Use the
-curated root API or canonical submodules; see the [migration mapping](docs/package_structure.md#removed-flat-module-mapping).
-Supported symbol aliases and the reviewed package APIs remain available.
-Historical Python pickles naming removed module globals may no longer load;
-SQLite schema-v1 provenance labels remain unchanged.
-
-Canonical experiment configuration stays separate from generic execution:
-
-```python
-from tcspc_toolkit.ml.models import make_canonical_ml_estimator_specs
-```
-
-User specifications extend the generic API; the canonical factory describes
-the toolkit's reproducible benchmark estimators and representations. Generic
-execution does not know their identities or redefine frozen A–F experiments.
-
-The explicit `tcspc_toolkit.__all__` defines the curated 66-name root contract.
-Issue #3 completed the package reorganization without changing that ordered
-surface. Importing the root neither initializes persistence nor requires the
-optional `emcee` sampler. See the
-[API contract and legacy-name mapping](docs/api.md) and
-[package-structure audit](docs/package_structure.md) for details.
-
-## Minimal example
-
-The following example generates an idealized TCSPC decay with Poisson photon-counting statistics:
-
+<!-- quickstart begin -->
 ```python
 import numpy as np
 
-from tcspc_toolkit.simulation import simulate_monoexponential_decay
-
-time_ns = np.linspace(
-    start=0.0,
-    stop=20.0,
-    num=512,
-)
-
-expected_counts, measured_counts = simulate_monoexponential_decay(
-    time=time_ns,
-    amplitude=10_000.0,
-    lifetime=2.5,
-    background=5.0,
-    random_seed=42,
-)
-
-print("First expected counts:")
-print(expected_counts[:5])
-
-print("First measured counts:")
-print(measured_counts[:5])
-```
-
-The fitting and evaluation workflow is:
-
-```python
-import numpy as np
-
-from tcspc_toolkit.evaluation import (
-    calculate_absolute_lifetime_error,
-    calculate_reduced_residuals,
-    calculate_relative_lifetime_error,
-    calculate_residuals,
-    generate_fitted_signal,
-)
-from tcspc_toolkit import fit_monoexponential_decay
-
-true_lifetime_ns = 2.5
-
-background_guess = float(
-    np.median(measured_counts[-50:])
-)
-
-amplitude_guess = float(
-    measured_counts.max() - background_guess
-)
-
-fit_result = fit_monoexponential_decay(
-    time=time_ns,
-    counts=measured_counts,
-    initial_guess=(
-        amplitude_guess,
-        2.0,
-        background_guess,
-    ),
-)
-
-fitted_counts = generate_fitted_signal(
-    time=time_ns,
-    fit_result=fit_result,
-)
-
-raw_residuals = calculate_residuals(
-    observed=measured_counts,
-    fitted=fitted_counts,
-)
-
-reduced_residuals = calculate_reduced_residuals(
-    observed=measured_counts,
-    fitted=fitted_counts,
-)
-
-absolute_error_ns = calculate_absolute_lifetime_error(
-    true_lifetime=true_lifetime_ns,
-    estimated_lifetime=fit_result.lifetime,
-)
-
-relative_error = calculate_relative_lifetime_error(
-    true_lifetime=true_lifetime_ns,
-    estimated_lifetime=fit_result.lifetime,
-)
-
-print(
-    f"Estimated lifetime: "
-    f"{fit_result.lifetime:.4f} ± "
-    f"{fit_result.lifetime_std:.4f} ns"
-)
-
-print(f"Absolute error: {absolute_error_ns:.4f} ns")
-print(f"Relative error: {relative_error * 100:.2f}%")
-```
-
-## Experimental-style CSV workflow
-
-One curve can be imported from a headered CSV file with explicitly declared
-time units and data semantics. The example files in [`data/examples`](data/examples)
-are synthetic demonstrations of this import path, not real measurements. The
-decay times are in picoseconds and the separate sampled IRF times are in
-nanoseconds; both become nanoseconds internally. A real measurement must use
-its own compatible acquired IRF and documented acquisition conditions.
-
-```python
-from tcspc_toolkit import fit_experimental_reconvolution
 from tcspc_toolkit import (
-    load_sampled_irf_csv,
-    load_tcspc_measurement_csv,
+    build_expected_counts_from_irf, fit_monoexponential_reconvolution,
+    generate_gaussian_irf_profile, monoexponential_decay, prepare_irf,
+    sample_photon_counts,
 )
+from tcspc_toolkit.estimation.classical import estimate_reconvolution_initial_guess
+from tcspc_toolkit.evaluation.diagnostics import calculate_poisson_deviance_residuals
 
-irf = load_sampled_irf_csv(
-    "data/examples/experimental_style_irf.csv",
-    time_unit="ns",
-    time_column="time_ns",
+time_ns = np.linspace(0.0, 20.0, 512)
+lifetime_true_ns = 2.5
+decay = monoexponential_decay(time_ns, amplitude=1.0, lifetime=lifetime_true_ns)
+source = generate_gaussian_irf_profile(
+    time_ns, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.3,
 )
-measurement = load_tcspc_measurement_csv(
-    "data/examples/experimental_style_decay.csv",
-    time_unit="ps",
-    data_kind="raw_counts",
-    time_column="time_ps",
-    irf=irf,
+prepared = prepare_irf(source, time_ns)  # Explicit same-grid, unit-area kernel.
+expected = build_expected_counts_from_irf(
+    decay, prepared, signal_photon_count=100_000, background_per_bin=2.0,
+)  # Convolve, scale the finite-window signal sum, then add background.
+counts = sample_photon_counts(expected, np.random.default_rng(42))
+guess = estimate_reconvolution_initial_guess(
+    time=time_ns, counts=counts, irf=prepared.kernel,
 )
-result = fit_experimental_reconvolution(
-    measurement,
-    temporal_shift_bounds_ns=(-0.5, 0.5),
+fit = fit_monoexponential_reconvolution(
+    time_ns, counts, prepared.kernel,
+    initial_guess=(guess.amplitude, guess.lifetime_ns,
+                   guess.background, guess.temporal_shift_ns),
+    temporal_shift_bounds=(-0.5, 0.5), objective="poisson",
 )
-print(result.fitted_lifetime_ns, result.poisson_deviance, result.valid_fit)
+if not fit.success:
+    raise RuntimeError(f"Fit did not pass numerical checks: {fit.optimizer_message}")
+residuals = calculate_poisson_deviance_residuals(counts, fit.fitted_curve)
+print(f"Synthetic lifetime: {lifetime_true_ns:.4f} ns; estimate: {fit.lifetime:.4f} ns")
+print(f"Background: {fit.background:.3f} counts/bin; shift: {fit.temporal_shift:.5f} ns")
+print(f"Numerical validation: {fit.numerical_validation_passed}")
+print(f"Poisson deviance: {np.sum(residuals**2):.3f} across {counts.size} bins")
 ```
+<!-- quickstart end -->
 
-The Poisson fit accepts only raw integer photon counts. Processed or
-normalized floating-point intensities can be imported, but cannot silently
-enter Poisson-count inference. The supplied IRF must have a matching grid
-after unit conversion; resampling and IRF-origin generalization are later
-work. For now, `temporal_shift_bounds_ns` must include zero because the reused
-fitter initializes the shift at zero; more general alignment and initialization
-are deferred to Issue #8. Fitting treats that sampled IRF as fixed, so IRF
-measurement noise is not propagated into uncertainty. The estimated lifetime and diagnostics
-require **no** ground truth.
-Reference-based error evaluation is a separate, optional call when a trusted
-reference is available. A synthetic-development ML model can consume the
-imported curve on a compatible grid, but that alone does not validate
-synthetic-to-real transfer. See
-[`notebooks/15_experimental_tcspc_workflow.ipynb`](notebooks/15_experimental_tcspc_workflow.ipynb).
-
-CLI migration note: `tcspc fit` now uses the canonical CSV validator. Declare
-the input time unit with `--time-unit` (`ns` by default) and the data semantics
-with `--data-kind` (`raw_counts` by default). Fractional intensities must be
-explicitly declared with `--data-kind processed_intensity`; raw counts must be
-non-negative exact integers within the `int64` range. Irregular time grids are
-rejected. For example, use `tcspc fit --input decay.csv --time-column time_ps
---counts-column intensity --time-unit ps --data-kind processed_intensity` for
-a fractional picosecond-grid input. The CLI `fit` command remains an **unconvolved
-least-squares baseline**, not the measured-IRF reconvolution workflow shown
-above.
-
-Imported array buffers are copied and read-only, and the top-level metadata
-and provenance mappings are defensively copied and protected. Nested mutable
-objects within those mappings are not recursively frozen.
-
-## Notebooks
-
-The repository currently includes the following notebook workflows:
-
-### `01_tcspc_simulation.ipynb`
-
-Demonstrates:
-
-* construction of a time axis;
-* calculation of an expected mono-exponential decay;
-* Poisson sampling of photon counts;
-* visualization on linear and logarithmic scales;
-* creation of a pandas DataFrame;
-* CSV export of synthetic data.
-
-### `02_classical_lifetime_fitting.ipynb`
-
-Demonstrates:
-
-* loading simulated TCSPC data;
-* selection of initial fitting parameters;
-* nonlinear least-squares fitting;
-* lifetime and uncertainty estimation;
-* fitted-signal reconstruction;
-* absolute and relative lifetime errors;
-* raw and Poisson-scaled residual analysis;
-* export of detailed and fit-level results.
-
-### `03_synthetic_dataset_analysis.ipynb`
-
-Demonstrates:
-
-* generation of multiple synthetic TCSPC decay curves;
-* creation of machine-learning matrices and lifetime targets;
-* inspection of curve-level metadata;
-* conversion from matrix to long-table representation;
-* validation of photon-count and metadata consistency;
-* visualization of selected decay curves;
-* analysis of lifetime and photon-count distributions;
-* comparison of target, expected, and measured photon counts;
-* grouping and averaging of curves by lifetime range;
-* normalization of decay curves for shape comparison;
-* CSV export of long-format data;
-* compressed NumPy export of the machine-learning dataset.
-
-### `04_first_ml_baseline.ipynb`
-
-Demonstrates:
-
-* loading the compressed synthetic machine-learning dataset;
-* inspection of feature-matrix, target, and metadata shapes;
-* normalization of each TCSPC decay curve by its total photon count;
-* separation of the dataset into training and test subsets;
-* construction of a mean-prediction regression baseline;
-* training of Ridge regression, Random Forest, and Gradient Boosting models;
-* prediction of fluorescence lifetimes for previously unseen decay curves;
-* evaluation using mean absolute error, median absolute error, relative error, and $R^2$;
-* comparison of model performance against the mean baseline;
-* analysis of prediction error as a function of photon count;
-* analysis of prediction error as a function of true lifetime;
-* visualization of predicted versus true lifetimes;
-* collection of model-level metrics in a summary table.
-
-### `05_data_leakage_and_grouped_evaluation.ipynb`
-
-Demonstrates:
-
-* generation of repeated Poisson realizations from shared simulation parameter sets;
-* assignment of curve, parameter-group, and realization identifiers;
-* construction of a naive random row-level train–test split;
-* construction of a parameter-group-aware train–test split;
-* verification of row-level and parameter-group overlap between training and test subsets;
-* analysis of how repeated realizations are distributed across a naive random split;
-* training of mean-prediction, Ridge, Random Forest, and Gradient Boosting models under both splitting protocols;
-* comparison of model performance using mean absolute error, median absolute error, relative error, and $R^2$;
-* quantification of the performance difference between random and group-aware evaluation;
-* analysis of signed prediction residuals and systematic prediction bias;
-* analysis of prediction error as a function of true lifetime;
-* analysis of prediction error as a function of measured total photon count;
-* identification of lifetime and photon-count regions with the largest prediction errors;
-* discussion of interpolation performance, simulation-group leakage, and scientifically defensible test-set construction;
-* documentation of current limitations and future evaluation scenarios involving new noise regimes, model mismatch, and unfamiliar instrument response functions.
-
-### `06_grouped_dataset_api_workflow.ipynb`
-
-Demonstrates:
-
-* generation of grouped mono-exponential TCSPC datasets through the reusable generate_grouped_monoexponential_dataset() API;
-* inspection of the returned SyntheticDataset, including the time axis, measured histogram matrix, and metadata table;
-* verification of dataset dimensions, parameter-group counts, realization counts, and within-group parameter consistency;
-* visualization of independent Poisson realizations generated from one shared physical parameter set;
-* normalization of measured histograms by their total photon counts;
-* explicit selection of the lifetime target through dataset.get_targets();
-* extraction of parameter-group identifiers from dataset metadata;
-* construction of an ordinary row-level random train–test split;
-* construction of a parameter-group-aware train–test split using GroupShuffleSplit;
-* quantification of parameter-group overlap under both splitting protocols;
-* training of a mean-prediction baseline and a Random Forest regressor;
-* comparison of model performance using mean absolute error, median absolute error, mean relative error, and $R^2$;
-* visualization of mean absolute error under random and group-aware evaluation;
-* comparison of true and predicted lifetimes for the Random Forest model;
-* demonstration of how the package-level grouped dataset API supports reproducible and leakage-aware ML evaluation;
-* discussion of why group-aware splitting is preferable when several noisy realizations share the same underlying simulation parameters.
-
-### `07_irf_convolution_and_realistic_simulation.ipynb`
-
-Demonstrates:
-
-* construction of a uniform TCSPC time axis and inspection of the corresponding time-bin width;
-* generation of Gaussian instrument response functions through `generate_gaussian_irf()`;
-* normalization of IRFs through `normalize_irf()` so that their area is equal to one;
-* comparison of raw and normalized IRFs and verification that normalization preserves the IRF shape while removing dependence on the original Gaussian amplitude;
-* temporal shifting of normalized IRFs through `shift_irf()` using positive and negative time offsets;
-* visualization of the IRF shift convention and inspection of shifted peak positions;
-* generation of an ideal mono-exponential fluorescence decay through `monoexponential_decay()` with zero detector background before convolution;
-* numerical convolution of the ideal fluorescence signal with the IRF through `convolve_decay_with_irf()`;
-* comparison of ideal and IRF-convolved fluorescence decays on linear and logarithmic scales;
-* explicit addition of detector background after convolution according to the physical model $`\lambda(t) = [\mathrm{IRF} * I](t) + B`$;
-* demonstration of why detector background should not be included in the fluorescence signal before convolution;
-* Poisson sampling of the expected IRF-convolved signal through `sample_photon_counts()` using a reproducible NumPy random-number generator;
-* verification of Poisson-sampling reproducibility using independent generators initialized with the same random seed;
-* comparison of expected counts and Poisson-sampled TCSPC histograms;
-* demonstration of the complete compositional simulation workflow from fluorescence model to convolution, detector background, and photon-counting noise;
-* investigation of how increasing IRF FWHM distorts the leading edge, peak position, and temporal shape of a short-lifetime fluorescence decay;
-* comparison of IRF-convolved signals for several fluorescence lifetimes at a fixed IRF width;
-* analysis of the relationship between fluorescence lifetime and IRF FWHM, including cases where the lifetime is shorter than, comparable to, or much longer than the instrument response;
-* peak-normalized comparison of ideal and convolved decay curves using matched colors for each fluorescence lifetime;
-* logarithmic visualization of lifetime-dependent decay tails while excluding floating-point-scale numerical convolution artifacts below a relative signal threshold;
-* investigation of how temporal IRF misalignment changes the position and shape of the convolved decay;
-* analysis of boundary and truncation effects when shifted IRFs extend beyond the finite observation window;
-* inspection of IRF-area loss caused by truncation and its effect on the resulting convolved signal;
-* investigation of time-bin resolution and how insufficient temporal sampling affects narrow IRFs and numerical convolution;
-* integration checks confirming that IRF generation, normalization, convolution, background addition, and Poisson sampling work together consistently;
-* discussion of the main numerical and physical limitations of the current realistic TCSPC simulation workflow and its extension toward reconvolution fitting and more complex decay models.
-
-### `08_naive_vs_reconvolution_fitting.ipynb`
-
-Demonstrates:
-
-* construction of a uniform TCSPC time axis for lifetime-fitting experiments and inspection of the corresponding time-bin width;
-* generation and normalization of a fixed Gaussian instrument response function through `generate_gaussian_irf()` and `normalize_irf()`;
-* verification that the normalized IRF has unit integrated area before it is used in convolution and reconvolution fitting;
-* definition of representative fluorescence lifetimes spanning regimes where the lifetime is much longer than, comparable to, and shorter than the IRF FWHM;
-* generation of ideal mono-exponential fluorescence decays through `monoexponential_decay()`;
-* numerical convolution of the ideal fluorescence signal with the fixed IRF through `convolve_decay_with_irf()`;
-* adjustment of the decay amplitude so that different lifetime conditions contain approximately the same total number of expected signal photons;
-* explicit addition of detector background after convolution according to the physical measurement model $`\mu(t) = A[\mathrm{IRF} * I_\tau](t) + B`$;
-* generation of Poisson-sampled TCSPC histograms through `sample_photon_counts()` using reproducible NumPy random-number generators;
-* comparison of the same simulated TCSPC histogram with two competing lifetime-fitting approaches: a naive mono-exponential fit and an IRF-aware reconvolution fit;
-* restriction of the naive exponential fit to the measured decay region beginning at the histogram peak so that the simple model is not trivially penalized by the IRF-generated leading edge;
-* construction of data-driven initial guesses for amplitude, lifetime, and background without using the known true lifetime;
-* use of the naive-fit result as a practical initialization for the reconvolution fit while keeping the known IRF shape and width fixed;
-* reconvolution fitting through `fit_monoexponential_reconvolution()` with simultaneous estimation of amplitude, fluorescence lifetime, detector background, and temporal IRF shift;
-* visual comparison of measured photon counts, the true expected reconvolved signal, the naive fitted decay, and the reconvolution fitted curve;
-* calculation of signed relative lifetime errors through $`(\tau_{\mathrm{fit}}-\tau_{\mathrm{true}})/\tau_{\mathrm{true}}`$ to distinguish lifetime overestimation from underestimation;
-* comparison of recovered lifetimes for representative cases including $`\tau \gg \mathrm{FWHM}_{\mathrm{IRF}}`$, $`\tau \approx 3\,\mathrm{FWHM}_{\mathrm{IRF}}`$, $`\tau \approx \mathrm{FWHM}_{\mathrm{IRF}}`$, and $`\tau < \mathrm{FWHM}_{\mathrm{IRF}}`$;
-* systematic lifetime sweep over a broad range of $`\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}`$ values to quantify when neglecting the IRF becomes scientifically significant;
-* visualization of relative lifetime bias as a function of $`\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}`$ on a logarithmic horizontal axis;
-* explicit marking of the physically important transition $`\tau_{\mathrm{true}} = \mathrm{FWHM}_{\mathrm{IRF}}`$ in the lifetime-bias figure;
-* demonstration that naive exponential fitting increasingly overestimates short lifetimes as the fluorescence lifetime approaches and falls below the IRF width;
-* demonstration that reconvolution fitting substantially suppresses the systematic lifetime bias introduced by ignoring the instrument response;
-* repeated Poisson simulation of each lifetime condition across multiple independent realizations to separate systematic model bias from statistical photon-counting variability;
-* calculation of median relative lifetime error and 16th–84th percentile intervals for both fitting approaches;
-* comparison of statistical spread between naive and reconvolution lifetime estimates across the full lifetime-to-IRF-width range;
-* verification of numerical fit success rates for both fitting methods across all simulated lifetime regimes and Poisson realizations;
-* demonstration that successful optimizer convergence alone is not sufficient for physical correctness, since the naive model can converge reliably while remaining systematically biased;
-* analysis of the distinction between model-induced bias and increasing parameter uncertainty when fluorescence lifetimes become shorter than the instrument response;
-* presentation of a controlled scientific benchmark showing why reconvolution becomes necessary when $`\tau_{\mathrm{true}}`$ approaches $`\mathrm{FWHM}_{\mathrm{IRF}}`$;
-* discussion of the remaining limitation that both fitting approaches still use least-squares objectives despite the underlying Poisson photon-counting statistics, motivating the next development step toward Poisson-aware fitting.
-
-### `09_poisson_reconvolution_fitting_and_validation.ipynb`
-
-Demonstrates:
-
-* construction of a reproducible synthetic TCSPC measurement using a normalized Gaussian instrument response function, mono-exponential fluorescence decay, temporal IRF shift, detector background, and Poisson photon-count sampling;
-* explicit construction of the physical forward model $`\mu(t) = A[\mathrm{IRF}_{\Delta t} * I_\tau](t) + B`$ with detector background added after convolution;
-* validation of the imposed temporal IRF shift through comparison of reference and shifted IRF peak positions;
-* generation of a challenging short-lifetime TCSPC histogram in a regime where the fluorescence lifetime is comparable to the IRF width;
-* comparison of three lifetime-estimation approaches applied to the same measured histogram: naive unconvolved least squares, least-squares reconvolution, and Poisson maximum-likelihood reconvolution;
-* restriction of the naive exponential fit to the post-peak decay region while reconvolution methods fit the complete TCSPC histogram;
-* simultaneous reconvolution estimation of fluorescence amplitude, lifetime, detector background, and temporal IRF shift while keeping the IRF shape and width fixed;
-* use of the least-squares reconvolution solution as a practical initialization for Poisson maximum-likelihood refinement;
-* tabulated comparison of true and recovered physical parameters and signed relative lifetime errors;
-* visualization of measured photon counts, the true expected TCSPC curve, naive exponential fit, least-squares reconvolution fit, and Poisson-MLE reconvolution fit on linear and logarithmic scales;
-* calculation and visualization of raw residuals for all fitting approaches;
-* calculation of Poisson deviance residuals through `calculate_poisson_deviance_residuals()` to account for the count-dependent statistical scale of photon-counting data;
-* demonstration that the naive exponential model leaves strong systematic residual structure while reconvolution produces approximately unstructured residual fluctuations around zero;
-* direct comparison of Poisson negative log-likelihood values for least-squares and Poisson-MLE reconvolution solutions using `poisson_negative_log_likelihood()`;
-* demonstration that least-squares and Poisson-MLE reconvolution give nearly identical parameter estimates in a high-count regime while the Poisson solution achieves the lower Poisson negative log-likelihood;
-* systematic comparison of naive least squares, least-squares reconvolution, and Poisson-MLE reconvolution across a broad range of $`\tau_{\mathrm{true}}/\mathrm{FWHM}_{\mathrm{IRF}}`$ values;
-* demonstration that ignoring the IRF produces rapidly increasing lifetime bias when the fluorescence lifetime approaches or falls below the IRF width;
-* demonstration that both reconvolution approaches substantially suppress the systematic model bias across the lifetime-to-IRF-width sweep;
-* Monte Carlo investigation of lifetime recovery at the challenging condition $`\tau/\mathrm{FWHM}_{\mathrm{IRF}} = 0.5`$ over expected fluorescence signal levels from 100 to 100,000 photons;
-* scaling of detector background with signal photon count so that the approximate signal-to-background ratio remains fixed during the Monte Carlo photon-count sweep;
-* repeated Poisson simulation and reconvolution fitting to separate estimator bias from statistical lifetime uncertainty;
-* comparison of least-squares and Poisson-MLE reconvolution using lifetime-error bias, median absolute error, RMSE, standard deviation, and error-distribution boxplots;
-* demonstration that Poisson maximum likelihood provides lower lifetime-error RMSE in low- and intermediate-count regimes while least-squares and Poisson fitting converge toward similar performance at high photon counts;
-* demonstration that successful numerical optimization does not guarantee precise parameter recovery when photon statistics contain insufficient information;
-* analysis of the distinction between systematic forward-model error, statistical estimator efficiency, and the fundamental information loss associated with finite IRF width and limited photon counts;
-* validation of a complete TCSPC inference workflow from physical decay modelling and IRF reconvolution to Poisson sampling, parameter estimation, and Poisson-aware residual diagnostics.
-
-### `10_preprocessing_tcspc_histograms.ipynb`
-
-Demonstrates:
-
-* generation of a realistic IRF-convolved, Poisson-sampled TCSPC measurement;
-* validation of raw photon-count histograms and inspection of bin width and total photon count;
-* explicit background estimation from a known background-dominated time region;
-* comparison of the estimated and true detector-background levels;
-* background subtraction and interpretation of negative background-corrected bins as statistical fluctuations;
-* preservation of the original raw histogram for Poisson-likelihood fitting;
-* peak detection using a simulated measured IRF photon-count histogram;
-* alignment of the temporal coordinate to the continuous IRF peak without modifying measured counts;
-* selection of scientifically meaningful time windows using physical time coordinates;
-* comparison of temporal rebinning factors and numerical verification of photon-count conservation;
-* analysis of the trade-off between temporal resolution and relative Poisson fluctuations;
-* comparison of total-count and peak-count normalization;
-* demonstration that normalization is useful for shape-based representations but removes the absolute count scale required by the present Poisson likelihood;
-* construction of a raw-count statistical fitting workflow using background information for initialization;
-* least-squares initialization followed by Poisson maximum-likelihood reconvolution refinement;
-* construction of a separate crop–rebin–normalize workflow for machine-learning representations;
-* demonstration that scientifically appropriate preprocessing depends on the downstream analysis rather than on a single universal pipeline.
-
-### `11_feature_engineering.ipynb`
-
-Demonstrates:
-
-* generation of a structured IRF-convolved TCSPC dataset with controlled variation of fluorescence lifetime, signal-photon count, detector background, IRF width, and IRF temporal shift;
-* extraction of the complete stable engineered-feature schema from raw photon-count histograms;
-* physical interpretation of intensity, photon-arrival moment, quantile, half-decay, tail, and early/late features;
-* exploratory analysis of feature–lifetime relationships across varying nuisance conditions;
-* controlled investigation of feature sensitivity to photon count, background, IRF width, and IRF temporal shift;
-* construction of total-normalized histogram representations;
-* explicit demonstration that total normalization removes pure absolute count scaling;
-* construction of a common stratified train–test split shared by all representations;
-* leakage-safe PCA fitting using training histograms only;
-* analysis of per-component and cumulative explained variance;
-* visualization of the first PCA component vectors;
-* visualization of normalized histograms in PC1–PC2 space colored by true lifetime;
-* construction of aligned engineered-feature, normalized-histogram, and PCA-compressed input matrices;
-* comparison of the scientific advantages and limitations of all three machine-learning representations.
-
-### `12_ml_benchmarking.ipynb`
-
-Demonstrates:
-
-* construction of a reproducible 810-curve factorial TCSPC benchmark spanning fluorescence lifetime, signal photon count, detector background, IRF width, and IRF temporal shift;
-* construction of a fixed 80/20 train-test split with explicit support and parameter-balance checks;
-* adaptation of engineered-feature windows to remain valid across a broad 0.5–6 ns lifetime range;
-* evaluation of constant-mean and physics-inspired mean-arrival-time baselines;
-* training and evaluation of Ridge, Random Forest, and Histogram Gradient Boosting regressors using the same engineered-feature representation;
-* comparison of engineered features, TOTAL-normalized 400-bin histograms, and 10-component PCA representations under controlled Ridge and nonlinear-model benchmarks;
-* analysis of PCA explained variance and the distinction between total histogram variance and lifetime-predictive information;
-* photon-count ablation by restoring measured total counts to normalized and PCA representations;
-* Poisson reconvolution benchmarking using a nominal Gaussian IRF with fitted amplitude, lifetime, background, and temporal shift;
-* direct aggregate and paired comparison of classical reconvolution with engineered-feature ML;
-* conditional analysis across short/medium/long lifetime, low/medium/high photon count, low/medium/high background, narrow/medium/broad IRF width, and small/medium/large IRF-misalignment regimes;
-* reporting of MAE, median absolute error, bias, 90th- and 95th-percentile absolute errors, failure rates, and classical parameter-boundary diagnostics;
-* demonstration that the preferred estimator changes across physical operating regimes rather than following a universal global ordering;
-* generation of matched weakly bi-exponential test curves with a 10% slow secondary component while preserving the original primary lifetime and nuisance conditions;
-* comparison of ML distribution shift with classical mono-exponential forward-model mismatch;
-* analysis of mismatch-induced MAE degradation, lifetime bias, fit validity, and per-curve error changes;
-* repeated batch inference timing for mean-arrival, Ridge, Random Forest, and Histogram Gradient Boosting estimators;
-* comparison with recorded per-curve classical reconvolution optimization runtimes;
-* analysis of estimator throughput and the accuracy-versus-computational-cost trade-off;
-* final synthesis of when data-driven TCSPC lifetime estimation outperforms, matches, or complements classical reconvolution;
-* explicit discussion of benchmark scope, interpolation limits, model mismatch, and future experimental validation requirements.
-
-### `13_generalization_and_robustness.ipynb`
-
-Demonstrates:
-
-* construction and verification of the frozen paired Week-8 robustness suite covering Tests A-F;
-* separation of development data from untouched final robustness tests;
-* repeated 5-fold × 5-repeat development-set cross-validation;
-* leakage-safe comparison of engineered-feature, normalized-histogram,
-  and PCA-histogram representations;
-* evaluation of familiar Test A against photon-count OOD Test B;
-* controlled IRF-width, elevated-background, and temporal-misalignment robustness experiments in Tests C-E;
-* deliberate comparison of correct and misspecified IRFs in Test C;
-* controlled weak and moderate bi-exponential model mismatch in Test F;
-* comparison of dominant-component and signal-photon-weighted lifetime references under bi-exponential decay;
-* unified A-F MAE and MAE-degradation scorecards for the principal estimators;
-* classical fit-failure and goodness-of-fit diagnostics across robustness regimes;
-* demonstration that strong in-distribution cross-validation does not guarantee OOD robustness;
-* demonstration that explicit physical nuisance modelling provides strong robustness while forward-model mismatch can produce biased but numerically successful fits;
-* final Week-8 scientific synthesis and transition toward uncertainty and failure-awareness in Week 9.
-
-### `14_uncertainty_and_failure_awareness.ipynb`
-
-Demonstrates:
-
-* reconstruction of the frozen Week-9 uncertainty protocol with 48
-uncertainty-training and 16 held-out calibration samples;
-* strict separation of development training, development calibration, and
-untouched external Tests A–F;
-* direct 0.05/0.50/0.95 quantile lifetime prediction intervals;
-* calibration-subset comparison of nominal coverage and interval width;
-* Random-Forest tree disagreement versus actual lifetime error;
-* Ridge training-bootstrap spread versus actual lifetime error;
-* frozen A–F evaluation of ML uncertainty scores and prediction intervals;
-* split conformalization of the direct quantile intervals;
-* repeated-Poisson comparison of empirical lifetime variability with local
-covariance and parametric-bootstrap uncertainty;
-* full classical A–F uncertainty evaluation using local Poisson/Fisher
-covariance and parametric Poisson bootstrap;
-* conditional comparison of low- and high-photon regimes, elevated
-background, and weak/moderate bi-exponential mismatch;
-* demonstration that classical uncertainty responds physically to loss of
-photon information and elevated background;
-* demonstration that nominal 90% classical coverage collapses under
-bi-exponential model mismatch despite only modest increases in reported
-uncertainty;
-* comparison of scalar Poisson deviance and aggregate signed residual
-profiles as possible model-mismatch diagnostics;
-* demonstration that the present residual diagnostics add only weak
-discrimination beyond the uncertainty-calibration failure;
-* final synthesis of the distinction between statistical uncertainty,
-  distribution-shift awareness, and physical model validity.
-
-### `15_experimental_tcspc_workflow.ipynb`
-
-Demonstrates the deliberately small experimental-style import path using
-synthetic CSV stand-ins: explicit units and raw-count semantics, a separate
-same-grid sampled IRF, provenance, Poisson reconvolution diagnostics,
-compatible-grid ML input with an unvalidated synthetic-development model, and
-reference-based evaluation only when a trusted reference is supplied.
-
-### `16_generalized_irf_and_failure_awareness.ipynb`
-
-Demonstrates source profiles, explicit registration/resampling and support
-diagnostics, generic Gaussian/EMG simulation, prepared-IRF experimental
-reconvolution, leading-edge proxies, paired IRF shape mismatch, conditional
-uncertainty, and Gaussian-trained ML transfer. It calls committed library
-code with [`configs/issue8_irf_workflow.json`](configs/issue8_irf_workflow.json).
-After the editable development install, restart the notebook kernel and run
-all cells; the manifest is located from the repository or notebook directory.
-The discrete-target ML fixture and three-bootstrap interface demonstration
-are intentionally not broad robustness or calibrated-coverage studies.
-
-### `17_bayesian_poisson_inference_and_model_mismatch.ipynb`
-
-Uses one short independent raw-count Bayesian/PPC demonstration and loads the
-completed Stage-5/6 scientific records plus the Stage-6.5 corrected-reference
-artifact. It visualizes matched-model uncertainty, pseudo-true targeting,
-paired IRF mismatch, sampler diagnostics, and posterior-predictive warnings
-without rerunning the multi-hour scientific profiles.
-
-## Repository structure
+Typical output:
 
 ```text
-tcspc-lifetime-toolkit/
-├── README.md
-├── CITATION.cff
-├── pyproject.toml
-├── .gitignore
-│
-├── configs/
-│   ├── example_simulation.json
-│   ├── issue4_bayesian_workflow.json
-│   ├── issue4_bayesian_mismatch_workflow.json
-│   └── issue8_irf_workflow.json
-│
-├── data/
-│   ├── examples/
-│   │   ├── README.md
-│   │   ├── experimental_style_decay.csv
-│   │   ├── experimental_style_irf.csv
-│   │   └── ideal_tcspc_decay.csv
-│   └── generated/
-│       └── .gitkeep
-│
-├── docs/
-│   ├── scientific_findings.md
-│   └── design/
-│       └── master_design_document.md
-│
-├── notebooks/
-│   ├── 01_tcspc_simulation.ipynb
-│   ├── 02_classical_lifetime_fitting.ipynb
-│   ├── 03_synthetic_dataset_analysis.ipynb
-│   ├── 04_first_ml_baseline.ipynb
-│   ├── 05_data_leakage_and_grouped_evaluation.ipynb
-│   ├── 06_grouped_dataset_api_workflow.ipynb
-│   ├── 07_irf_convolution_and_realistic_simulation.ipynb
-│   ├── 08_naive_vs_reconvolution_fitting.ipynb
-│   ├── 09_poisson_reconvolution_fitting_and_validation.ipynb
-│   ├── 10_preprocessing_tcspc_histograms.ipynb
-│   ├── 11_feature_engineering.ipynb
-│   ├── 12_ml_benchmarking.ipynb
-│   ├── 13_generalization_and_robustness.ipynb
-│   ├── 14_uncertainty_and_failure_awareness.ipynb
-│   ├── 15_experimental_tcspc_workflow.ipynb
-│   ├── 16_generalized_irf_and_failure_awareness.ipynb
-│   └── 17_bayesian_poisson_inference_and_model_mismatch.ipynb
-│
-├── scripts/
-│   ├── run_issue12_scientific_reproducibility.py
-│   ├── run_issue12_integration.py
-│   └── ... scientific audit/correction utilities
-│
-├── src/
-│   └── tcspc_toolkit/
-│       ├── physics/
-│       ├── irf/
-│       ├── measurement/
-│       ├── simulation/
-│       ├── preprocessing/
-│       ├── estimation/
-│       │   └── bayesian/
-│       ├── ml/
-│       ├── evaluation/
-│       ├── uncertainty/
-│       ├── benchmarks/
-│       ├── persistence/
-│       └── __init__.py, __main__.py, cli.py, config.py, exceptions.py
-│
-└── tests/...
+Synthetic lifetime: 2.5000 ns; estimate: 2.5017 ns
+Background: 2.155 counts/bin; shift: 0.00031 ns
+Numerical validation: True
+Poisson deviance: 543.328 across 512 bins
 ```
 
-Canonical implementations are organized by responsibility:
+The signal budget is the **finite-window sum after convolution**, before background.
+The fitted amplitude is a different scale, not the signal photon count. Background
+and shift (bounded to ±0.5 ns) are fitted. Read the
+[model conventions](docs/user_guide.md#simulation-and-reconvolution) before adapting it.
 
-| Package | Responsibility |
+![Synthetic TCSPC counts, generating expectation, reconvolution fit and deviance residuals](docs/images/quickstart.png)
+
+Regenerate this figure from the same observation and fit:
+
+```bash
+python examples/quickstart.py --figure docs/images/quickstart.png
+```
+
+This small matched-model demonstration is not a benchmark or calibration study.
+A close estimate, successful optimizer or acceptable scalar deviance does not
+establish that the physical model is correct.
+
+## CLI quick examples
+
+```bash
+tcspc simulate --bins 512 --lifetime 2.5 --random-seed 42
+tcspc fit --input data/examples/ideal_tcspc_decay.csv --time-unit ns --data-kind raw_counts
+tcspc fit --help
+```
+
+The CLI provides **unconvolved baselines**: simulation prints a short Poisson
+preview; fitting uses unweighted least squares on a CSV. It does not perform
+IRF-aware Poisson reconvolution. The bundled fit input is synthetic and matches
+that baseline model. Use the Python examples above for reconvolution.
+
+[All commands, options and uncertainty semantics](docs/cli.md); `python -m tcspc_toolkit` invokes the same CLI.
+
+## Examples and documentation
+
+| Start here | What you will do |
 | --- | --- |
-| `physics` | Decay models, convolution, and shared expected-count forward model |
-| `irf` | Source profiles, explicit preparation, selection, and leading-edge proxies |
-| `measurement` | Raw/processed measurement records, CSV I/O, and experimental adapters |
-| `simulation` | Histogram simulation, Poisson sampling, and synthetic datasets |
-| `preprocessing` | Histogram operations, features, and caller-owned representations/PCA |
-| `estimation` | Generic estimator contract, baselines, classical fitting, and Bayesian inference |
-| `ml` | Model factories, regression evaluation, and development cross-validation |
-| `evaluation` | Point/reference facts, attachments, diagnostics, conditional analysis, and plots |
-| `uncertainty` | Reusable metric/provenance contracts and ML/classical uncertainty methods |
-| `benchmarks` | Frozen generalization and scientific mismatch/timing/IRF/Bayesian/Week-9 studies |
-| `persistence` | SQLite schema-v1 implementation and deferred scientific recording/query adapters |
+| [Quick start](examples/quickstart.py) | Simulate and fit an IRF-convolved Poisson histogram |
+| [CSV import](examples/experimental_csv.py) | Import separate synthetic decay/IRF files using experimental APIs |
+| [Preprocessing/features](examples/preprocessing_features.py) | Validate raw counts and build a separate derived representation |
+| [ML prediction](examples/ml_lifetime_prediction.py) | Fit a training-only pipeline and evaluate a held-out set |
+| [Uncertainty](examples/uncertainty_example.py) | Compare local covariance with parametric Poisson bootstrap |
+| [Bayesian inference](examples/bayesian_inference.py) | Sample a real posterior; requires `bayesian`, about 1–2 minutes |
+| [Custom estimator](examples/custom_estimator.py) | Supply your own estimator and feature matrix |
+| [SQLite roundtrip](examples/persistence_roundtrip.py) | Record, query and aggregate results in a new database |
 
-The ordered 66-name root API and direct Day/Week symbol aliases are unchanged.
-The 38 obsolete flat scientific module paths have been removed.
-The `irf`, `preprocessing`, `simulation`, `evaluation`, and `persistence`
-package initializers preserve their historical surfaces. Other namespace
-initializers stay docstring-only. See the [complete architecture inventory and
-dependency audit](docs/package_structure.md) and [API contract](docs/api.md).
+The [example index](examples/README.md) gives exact commands, expected outputs,
+dependencies and scientific caveats. The persistence example's Bayesian summaries
+are illustrative storage fixtures; the Bayesian inference script runs actual sampling.
 
-The current package contains 61 Python files: 44 canonical implementations,
-five reviewed public package initializers, and 12 root/support/namespace files.
-Issue #3's historical inventory contained 99 files, including the subsequently
-removed 38 flat facades; its merged-main regression baseline was 1,721 passing
-tests with two known finite-invalid mismatch warnings. Issue #12 subsequently
-completed integration acceptance before this separate breaking cleanup.
+- [User guide](docs/user_guide.md): measurement semantics, IRFs, preprocessing,
+  ML, uncertainty and interpretation.
+- [Results guide](docs/results.md): concise metrics with populations and caveats;
+  [scientific findings](docs/scientific_findings.md): authoritative detailed evidence.
+- [Reproducibility and notebook guide](docs/reproducibility.md): seeds, manifests,
+  inputs, regeneration and computational cost.
+- [API contract](docs/api.md), [package structure](docs/package_structure.md),
+  [evaluation contract](docs/evaluation.md), and [SQLite contract](docs/persistence.md).
+- [Design principles](docs/design/master_design_document.md) and
+  [Issue-12 acceptance ledger](docs/issue12_scientific_acceptance.md).
 
-Supporting repository locations:
+## Principal benchmark findings
 
-* `configs/`: reproducible JSON manifests for simulation and the Issue-8 and Issue-4 scientific workflows;
-* `data/examples/`: small example datasets tracked by Git;
-* `data/generated/`: generated scientific outputs that are not normally tracked by Git;
-* `docs/scientific_findings.md`: cumulative record of durable scientific conclusions established by the benchmark and post-Week-9 workflows;
-* `notebooks/`: documented end-to-end analysis and scientific validation workflows;
-* `scripts/`: focused reproducibility and audit utilities, including the Stage-6.5 Issue-4 pseudo-true-reference correction script;
-* `tests/`: automated verification of physical, numerical, statistical, and package behaviour;
-* `pyproject.toml`: package metadata, dependencies, optional Bayesian dependency, build configuration, and command-line entry points.
+These are **controlled synthetic** results from the accepted Issue-12
+post-correction references, not outputs of the small examples.
 
-## Current limitations
+| Method / representation | Evaluation regime | Metric | Population / caveat |
+| --- | --- | --- | --- |
+| Poisson reconvolution / raw counts | Frozen A: matched distribution | MAE **0.082750 ns** | 192 accepted fits / 192 observations |
+| Random Forest / engineered features | Frozen A → B: photon-count shift | MAE **0.149010 → 0.428854 ns** | 192 each; B combines low/high photon regimes |
+| Poisson reconvolution / raw counts | Frozen F: bi-exponential mismatch | MAE **0.156723 ns** | 192 accepted; reference is primary-component lifetime |
+| Local Poisson covariance / raw counts | Frozen A → F, nominal 90% intervals | Coverage **0.890625 → 0.518325** | 192/192 valid A; 191/192 valid F; primary-component reference |
 
-The current implementation remains centred on controlled synthetic TCSPC
-benchmarks, with an initial single-curve experimental CSV path.
+The point-estimation ML study uses 64 development observations. The separate
+Week-9 ML uncertainty study uses a 48/16 training/calibration split; its results
+must not be substituted into that row. Under bi-exponential mismatch there is no
+unique mono-exponential physical truth. Coverage uses valid intervals as its
+denominator, with availability reported separately.
 
-It does not yet include:
+See [results and reference definitions](docs/results.md) for correct-IRF versus
+wrong-IRF comparisons, Bayesian evidence, and intentional differences between
+accepted-fit and finite-prediction metric populations.
 
-* vendor-specific TCSPC formats and broader multi-curve import;
-* automatic zero-time inference, blind IRF reconstruction, or guarantees for leading-edge proxy accuracy;
-* pile-up effects;
-* detector dead time;
-* afterpulsing;
-* time-dependent or structured detector background;
-* full bi- or multi-exponential reconvolution inverse fitting;
-* general model-selection or model-adequacy tests for distinguishing decay families;
-* uncertainty guarantees under arbitrary distribution shift or physical model misspecification;
-* validated synthetic-to-real transfer;
-* deep-learning lifetime estimators.
+## Scientific assumptions and limitations
 
-The current uncertainty methods quantify different notions of reliability
-and should not be treated as interchangeable. Local Poisson covariance,
-parametric bootstrap, and Bayesian posterior uncertainty are conditional on
-the assumed forward model and fixed IRF. Random-Forest disagreement and
-training-bootstrap spread are uncertainty scores rather than calibrated
-lifetime standard deviations.
+- Poisson likelihoods require raw, non-negative integer counts with appropriate
+  counting assumptions. Normalized or background-subtracted intensities are
+  derived representations, not interchangeable Poisson observations.
+- Inference here is mono-exponential with constant background and an assumed IRF.
+  Richer generating decays can expose bias; multi-component simulation does not
+  imply general multi-component inference or automatic model selection.
+- Units, IRF registration and resampling are explicit. Imported source traces
+  retain provenance; prepared kernels are derived objects. Leading-edge proxies
+  are approximate and do not recover a validated instrument response.
+- Experimental measurements have no intrinsic ground truth. Truth-based metrics
+  require an explicit trusted reference; all bundled CSVs are synthetic.
+- ML performance depends on training support and representation. Frozen A–F data
+  remain external to training, tuning, representation fitting and calibration.
+- Covariance, bootstrap and Bayesian intervals condition on the assumed model.
+  Bayesian intervals also depend on the prior and fixed IRF; sampler diagnostics
+  and posterior-predictive checks do not establish physical correctness.
+- Detector pile-up, afterpulsing, vendor binary formats and validated
+  synthetic-to-real deployment are outside the demonstrated scope.
 
-The current experiments demonstrate explicitly that good uncertainty
-calibration under a correctly specified mono-exponential model does not
-guarantee reliable uncertainty when the physical decay model is wrong.
-
-The toolkit therefore remains a research and scientific-software prototype
-rather than a validated replacement for established experimental TCSPC
-analysis software.
-
-## Development roadmap
-
-Version 0.7.0 completes the Week 8–9 generalization, robustness, uncertainty,
-and failure-awareness stage. The current authoritative post-Week-9 sequence is
-tracked in [Issue #5](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5).
-
-The integration and release sequence is:
-
-1. [Issue #6](https://github.com/moryev/tcspc-lifetime-toolkit/issues/6) —
-   experimental TCSPC data ingestion, processing, validation, provenance, and
-   estimation — implemented;
-2. [Issue #8](https://github.com/moryev/tcspc-lifetime-toolkit/issues/8) —
-   generalized IRFs, explicit sampled-IRF preparation, and leading-edge
-   proxy/failure-awareness evaluation — implemented, verified, and closed;
-3. [Issue #4](https://github.com/moryev/tcspc-lifetime-toolkit/issues/4) —
-   Bayesian Poisson lifetime inference using the canonical measurement and IRF
-   abstractions — inference, scientific evaluation, documentation, and
-   Notebook 17 implemented, final acceptance review completed, and issue closed;
-4. [Issue #9](https://github.com/moryev/tcspc-lifetime-toolkit/issues/9) —
-   optional SQLite persistence for experiments, predictions, fit results,
-   uncertainty outputs, Bayesian summaries, and benchmark metrics — merged and closed;
-5. [Issue #1](https://github.com/moryev/tcspc-lifetime-toolkit/issues/1) —
-   standardization of array input type annotations — merged and closed;
-6. [Issue #2](https://github.com/moryev/tcspc-lifetime-toolkit/issues/2) —
-   public-API stabilization and package hardening — merged and closed;
-7. [Issue #11](https://github.com/moryev/tcspc-lifetime-toolkit/issues/11) —
-   consolidation of the Week 7–9 evaluation architecture — merged and closed;
-8. [Issue #3](https://github.com/moryev/tcspc-lifetime-toolkit/issues/3) —
-   reorganization of `tcspc_toolkit` into coherent subpackages — complete,
-   merged, and closed;
-9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
-   full integration and regression verification across the mature workflows —
-   complete, merged, and closed; technical evidence is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
-   The subsequent compatibility cleanup also removed the 38 obsolete flat
-   module paths after acceptance, reducing the package to 61 Python files while
-   preserving the curated root API and persistence schema;
-10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
-    Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
-11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —
-    Week 11 documentation and user experience;
-12. [Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15) —
-    Week 12 continuous integration and release preparation.
-
-This ordering is deliberate: experimental measurements are introduced before
-IRF generalization and Bayesian inference so that the final scientific and
-software abstractions are not frozen around synthetic-only workflows. API and
-package cleanup then follows the major scientific integrations rather than
-preceding them.
-
-Longer-term extensions beyond the current integration/release roadmap may
-include broader physical model-mismatch studies, pile-up/dead-time/afterpulsing
-models, bi- and multi-exponential inverse fitting and model selection,
-validated synthetic-to-real transfer, deep-learning estimators where
-scientifically justified, profiling-driven acceleration, interactive
-interfaces, and agentic orchestration of validated toolkit operations.
+**An estimator can correctly quantify statistical uncertainty while remaining
+confidently wrong because its physical model is incomplete.**
 
 ## Reproducibility
 
-Synthetic photon-count data are generated using NumPy random-number
-generators. Supplying a fixed `random_seed` makes a simulation reproducible.
-
-For example:
-
-```python
-expected_1, measured_1 = simulate_monoexponential_decay(
-    time=time_ns,
-    amplitude=10_000.0,
-    lifetime=2.5,
-    background=5.0,
-    random_seed=42,
-)
-
-expected_2, measured_2 = simulate_monoexponential_decay(
-    time=time_ns,
-    amplitude=10_000.0,
-    lifetime=2.5,
-    background=5.0,
-    random_seed=42,
-)
-
-assert np.array_equal(measured_1, measured_2)
+```bash
+python -m pytest
 ```
 
-## Project status
+Use the development and Bayesian extras for full validation. Quick examples take
+seconds; bootstrap usually under 30 seconds. Full Bayesian example sampling takes
+about 1–2 minutes and is validated separately from routine smoke tests.
 
-Version 0.7.0 completes the current generalization, robustness, uncertainty,
-and failure-awareness development stage.
+Committed [configurations](configs) and [reference summaries](data/reference)
+record accepted evidence. Generated artifacts live under `data/generated/`;
+Notebook 17 needs additional records. Reference studies can take hours:
+read the [reproducibility guide](docs/reproducibility.md) before running them.
 
-The toolkit now provides an integrated TCSPC workflow spanning physical
-simulation, canonical experimental-style measurements, generalized IRF
-handling, preprocessing, classical reconvolution, machine-learning estimation,
-controlled external robustness testing, statistical uncertainty calibration,
-Bayesian Poisson inference, posterior-predictive diagnostics, and
-model-mismatch failure analysis.
+## Development status and roadmap
 
-The repository remains under active development. The current codebase is a
-research and scientific-software prototype and is not yet intended as a
-validated replacement for established experimental TCSPC-analysis software.
+Package metadata remains **0.7.0**; the current checkout includes subsequent
+unreleased integration work and a breaking removal of obsolete flat imports.
+Use the curated root API or [canonical module paths](docs/package_structure.md#removed-flat-module-mapping).
+Schema-v1 SQLite provenance identities remain unchanged.
 
-Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
-explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
-inference, posterior diagnostics, controlled model-mismatch evaluation, and
-Notebook 17 are implemented. Public-API stabilization, package restructuring,
-and Issue #12 full integration acceptance are complete. The subsequent
-compatibility cleanup removed 38 obsolete flat module paths; supported usage
-now goes through the curated root API, canonical subpackages, and reviewed
-package-level APIs. The
-[acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
-records the integration evidence and remaining limitations.
+Issue #12 integration and the compatibility cleanup are complete.
+[Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) covers this
+documentation/UX work; [Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15)
+follows with CI and release preparation.
+[Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13), the
+Purcell-enhanced sensing demonstration, is **deferred pending realistic
+experiment-specific inputs** and does not block release-readiness work.
+The [orchestration issue](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5)
+records the sequence.
 
-The next roadmap item is Issue #13, the Week-10 Purcell-enhanced TCSPC
-refractive-index sensing demonstration, followed by Issue #14 documentation
-and user experience and Issue #15 CI/release preparation. Vendor formats,
-synthetic-to-real validation, and broader decay-model inference remain future
-work. These post-v0.7.0 integrations and cleanup do not change the currently
-declared 0.7.0 package version.
+## Citation and contact
 
-## Citation
+Cite the software using [CITATION.cff](CITATION.cff) or GitHub's “Cite this repository”
+action: **Yevhenii Morozov, TCSPC Lifetime Toolkit, version 0.7.0 (2026)**.
+Also record the commit when using unreleased work. No associated article or
+preprint is currently listed.
 
-If you use this toolkit in scientific work, please cite:
-
-> Morozov Y., *TCSPC Lifetime Toolkit*, version 0.7.0,
-> https://github.com/moryev/tcspc-lifetime-toolkit
-
-Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
-
-## Contact
-
-If you are interested in the project, have questions, or would like to contribute, please feel free to contact me at:
-
-**Yevhenii Morozov**  
-Email: [morozov.ye.m@gmail.com](mailto:morozov.ye.m@gmail.com)
+Questions, reproducible bug reports and collaboration proposals are welcome via
+[GitHub issues](https://github.com/moryev/tcspc-lifetime-toolkit/issues) or
+[morozov.ye.m@gmail.com](mailto:morozov.ye.m@gmail.com).
+Licensed under [Apache 2.0](LICENSE).

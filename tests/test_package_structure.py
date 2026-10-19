@@ -1064,7 +1064,10 @@ def _markdown_flat_facade_dependencies(source):
 
 def test_current_documentation_examples_are_ready_for_flat_facade_retirement():
     repository = SOURCE_ROOT.parents[1]
-    paths = sorted(set(repository.glob("*.md")) | set(repository.joinpath("docs").rglob("*.md")))
+    paths = sorted(set(repository.glob("*.md"))
+                   | set(repository.joinpath("docs").rglob("*.md"))
+                   | set(repository.joinpath("examples").rglob("*.md"))
+                   | set(repository.joinpath("data/examples").rglob("*.md")))
     assert paths
     violations = []
     for path in paths:

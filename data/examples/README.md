@@ -1,5 +1,9 @@
 # Experimental-style CSV example
 
+All three CSVs in this directory are synthetic demonstration inputs.
+For executable import/reconvolution commands, see the
+[example index](../../examples/README.md#2-experimental-style-csv-import).
+
 `experimental_style_decay.csv` and `experimental_style_irf.csv` are **synthetic**
 demonstration files, not experimental observations. They exercise the same
 import and estimation path intended for a compatible exported TCSPC histogram.
@@ -21,3 +25,14 @@ The generator settings document fixture provenance; they are **not** attached
 as ground truth to the imported `TCSPCMeasurement` or passed to its estimator.
 The workflow is demonstrated in
 [`notebooks/15_experimental_tcspc_workflow.ipynb`](../../notebooks/15_experimental_tcspc_workflow.ipynb).
+
+## Ideal unconvolved baseline
+
+`ideal_tcspc_decay.csv` contains a synthetic ideal mono-exponential decay with
+constant background and Poisson observations, without IRF convolution. Its
+columns are `time_ns`, `expected_counts`, `measured_counts`, and
+`lifetime_true_ns`. Use `measured_counts` as the observation; generating
+expectations and the 2.5 ns lifetime column are synthetic provenance.
+The [CLI baseline example](../../docs/cli.md#fit-a-csv-baseline) selects those
+observation and time columns explicitly through its defaults. This file is not
+an experimental measurement or an IRF-aware fitting demonstration.
