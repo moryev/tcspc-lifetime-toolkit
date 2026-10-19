@@ -12,7 +12,7 @@ photon sampling. On a uniform time grid in nanoseconds, its model is
 ```math
 I_\tau(t)=\exp(-t/\tau),\qquad
 \mu_i=A\,(h_{\Delta t}*I_\tau)(t_i)+B,\qquad
-N_i\sim\operatorname{Poisson}(\mu_i).
+N_i\sim\mathop{\text{Poisson}}(\mu_i).
 ```
 
 Here `h` is a unit-temporal-area IRF, `A` scales the convolved unit-amplitude
