@@ -19,10 +19,14 @@ reuses the shared mono-exponential forward model and Poisson observation
 likelihood while adding explicit priors, posterior sampling, sampling
 diagnostics, posterior summaries, posterior-predictive checks, and controlled
 decay-model and IRF-model mismatch evaluation. These integrations are present
-while the package version remains 0.7.0. Public-API stabilization is complete;
-package restructuring is complete. The [Issue #12 acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
-records installation, scientific reproducibility, cross-feature integration and
-final performance/regression evidence. Later release qualification remains separate.
+while the package version remains 0.7.0. Public-API stabilization and package
+restructuring are complete, and the post-Issue-12 cleanup removed the 38
+obsolete flat compatibility modules. The curated 66-name root API and
+canonical subpackage hierarchy are now the supported import surfaces. The
+[Issue #12 acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
+records installation, scientific reproducibility, cross-feature integration,
+and final performance/regression evidence. Later release qualification remains
+separate.
 
 SQLite-backed persistence now records measurements, IRF provenance, estimator
 results, uncertainty, Bayesian diagnostics and benchmark metrics, with read-only
@@ -597,12 +601,16 @@ remain statistically confident while becoming biased because the assumed
 mono-exponential forward model is incomplete.
 
 The v0.7.0 release benchmarks remain based on controlled synthetic TCSPC
-measurements. Post-release integration adds the Issue-#6 single-curve import
-boundary, Issue-#8 generalized IRF/proxy workflows, and Issue-#4 Bayesian
-inference with completed calibration and mismatch experiments. The final
-Bayesian notebook is available; Issue #4 is complete and closed.
-Synthetic-to-real validation, broader inverse decay models, and package/API
-hardening remain future development stages.
+measurements. Post-v0.7.0 integration added the Issue #6 single-curve import
+boundary, Issue #8 generalized IRF/proxy workflows, Issue #4 Bayesian
+inference with completed calibration and mismatch experiments, Issue #9
+SQLite persistence, and the subsequent API/evaluation/package-hardening work.
+Public-API stabilization, canonical subpackage reorganization, Issue #12 full
+integration acceptance, and the post-Issue-12 removal of the 38 obsolete flat
+compatibility modules are complete. The current package contains 61 Python
+files and retains the curated 66-name root API. Synthetic-to-real validation,
+broader inverse decay models, and the remaining Week-10–12 roadmap work
+remain future development.
 
 ## Installation
 
@@ -1295,7 +1303,9 @@ tcspc-lifetime-toolkit/
 │   └── 17_bayesian_poisson_inference_and_model_mismatch.ipynb
 │
 ├── scripts/
-│   └── correct_issue4_mismatch_references.py
+│   ├── run_issue12_scientific_reproducibility.py
+│   ├── run_issue12_integration.py
+│   └── ... scientific audit/correction utilities
 │
 ├── src/
 │   └── tcspc_toolkit/
@@ -1423,7 +1433,10 @@ The integration and release sequence is:
    merged, and closed;
 9. [Issue #12](https://github.com/moryev/tcspc-lifetime-toolkit/issues/12) —
    full integration and regression verification across the mature workflows —
-   complete, merged, and closed; technical evidence is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance);
+   complete, merged, and closed; technical evidence is recorded in the [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
+   The subsequent compatibility cleanup also removed the 38 obsolete flat
+   module paths after acceptance, reducing the package to 61 Python files while
+   preserving the curated root API and persistence schema;
 10. [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13) —
     Week 10 Purcell-enhanced TCSPC refractive-index sensing demonstration;
 11. [Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) —
@@ -1490,13 +1503,20 @@ validated replacement for established experimental TCSPC-analysis software.
 Single-curve CSV import, the legacy same-grid sampled-IRF workflow, and the
 explicit generalized-IRF/proxy workflow are available. Bayesian Poisson
 inference, posterior diagnostics, controlled model-mismatch evaluation, and
-Notebook 17 are implemented. The package/API restructuring is complete and
-Issue #12 acceptance covers clean installation and mature cross-feature integration;
-its [ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
-records the evidence and remaining limitations.
-Vendor formats, synthetic-to-real validation, and broader decay-model inference
-remain future work. These post-release integrations do not change the v0.7.0
-release version.
+Notebook 17 are implemented. Public-API stabilization, package restructuring,
+and Issue #12 full integration acceptance are complete. The subsequent
+compatibility cleanup removed 38 obsolete flat module paths; supported usage
+now goes through the curated root API, canonical subpackages, and reviewed
+package-level APIs. The
+[acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance)
+records the integration evidence and remaining limitations.
+
+The next roadmap item is Issue #13, the Week-10 Purcell-enhanced TCSPC
+refractive-index sensing demonstration, followed by Issue #14 documentation
+and user experience and Issue #15 CI/release preparation. Vendor formats,
+synthetic-to-real validation, and broader decay-model inference remain future
+work. These post-v0.7.0 integrations and cleanup do not change the currently
+declared 0.7.0 package version.
 
 ## Citation
 
