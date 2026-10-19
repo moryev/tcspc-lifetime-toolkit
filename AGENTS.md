@@ -24,7 +24,9 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removes the 38 obsolete flat scientific module paths. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
+The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
+
+The active roadmap now moves directly to **#14 documentation/user experience** and then **#15 CI/release preparation**. **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
 ## Repository map
 
@@ -305,9 +307,9 @@ Current integration status:
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
 10. **#12** — full integration and regression verification — **complete, merged, and closed**; see the acceptance ledger;
-11. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration;
-12. **#14** — Week 11 documentation and user experience;
-13. **#15** — Week 12 continuous integration and release.
+11. **#14** — Week 11 documentation and user experience — **next active issue**;
+12. **#15** — Week 12 continuous integration and release — follows #14;
+13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -320,7 +322,7 @@ Issue #2 established the current API-stability boundary:
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical symbol names remain direct aliases in their canonical modules; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
 - Do not broaden the root export surface opportunistically during #12; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next integration-verification phase.
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next documentation/UX and release-preparation phases. Do not restart Issue #12-style integration work unless a concrete regression is found.
 
 ## Codex working protocol
 
@@ -340,7 +342,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, #1, #2, #11, and #3 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, or public-API contracts merely because Issue #12 exercises them together.
+Issues #6, #8, #4, #9, #1, #2, #11, #3, and #12 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #14/#15 unless a concrete defect is discovered and the active issue explicitly requires it.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -392,5 +394,12 @@ For future work:
 - Do not extract conformal workflows or repartition settled modules merely for directory symmetry.
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
-Consult Issues #3, #5, #11, and #12 for history and acceptance boundaries.
-Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions. Do not start further package movement or Issue #13 automatically.
+Consult Issues #3, #5, #11, #12, #14, and #15 for history, current sequencing, and acceptance boundaries.
+Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions.
+
+Current task orientation:
+- proceed to #14 documentation/UX next;
+- proceed to #15 CI/release preparation after #14;
+- keep #13 open but deferred until realistic experiment-specific or photonic-simulation inputs are available;
+- do not let deferred #13 block release-readiness work;
+- do not start further package movement automatically.
