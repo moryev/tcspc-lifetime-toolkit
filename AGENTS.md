@@ -26,7 +26,7 @@ The toolkit combines:
 
 The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
 
-The active roadmap now moves directly to **#14 documentation/user experience** and then **#15 CI/release preparation**. **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
+**Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 (Week 12 continuous integration and release preparation) is now active.** **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
 ## Repository map
 
@@ -34,6 +34,8 @@ The active roadmap now moves directly to **#14 documentation/user experience** a
 - `docs/package_structure.md` — final module inventory, facade mappings, dependency graph, and Issue-#3 closure boundaries.
 - `tests/` — automated scientific and regression tests.
 - `notebooks/` — reproducible scientific demonstrations and analyses.
+- `examples/` — eight supported, user-facing executable workflows, including the reproducible Poisson reconvolution quick start; the full Bayesian example is not a routine test-suite smoke test.
+- `docs/README.md`, `docs/user_guide.md`, `docs/cli.md`, `docs/results.md`, and `docs/reproducibility.md` — Issue-#14 navigation, task guidance, qualified scientific summaries, and execution prerequisites.
 - `docs/scientific_findings.md` — accumulated scientific findings, including the Week 8–9 conclusions.
 - `docs/design/master_design_document.md` — current design principles.
 - `configs/` — committed configuration files used for reproducible workflows, including the Issue-8 and Issue-4 manifests.
@@ -65,7 +67,7 @@ Run a targeted test file during development with:
 python -m pytest tests/test_<relevant_module>.py
 ```
 
-The project currently does not require Ruff, Black, mypy, or other lint/type-check commands as mandatory validation steps. Those belong to the later Week 12 CI/release work unless an active issue explicitly introduces them earlier.
+Prior to Issue #15, Ruff/format/coverage checks were not required repository gates. Issue #15 is responsible for choosing and documenting their configuration and identical local/CI commands. Do not assume a lint rule, formatter, coverage threshold, or Python-version matrix is already accepted before evaluating the existing codebase.
 
 ## Source-of-truth priority
 
@@ -95,7 +97,7 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - convenience wrappers may compose lower-level functions rather than duplicate their logic;
 - preprocessing is analysis-dependent: there is no universally correct TCSPC preprocessing pipeline.
 
-Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 has completed physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics during Issue #12 verification; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
+Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 has completed physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics during Issue #15 release qualification; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
 
 ## Scientific guardrails
 
@@ -307,8 +309,8 @@ Current integration status:
 8. **#11** — consolidate Week 7–9 evaluation architecture — **complete, merged, and closed**;
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
 10. **#12** — full integration and regression verification — **complete, merged, and closed**; see the acceptance ledger;
-11. **#14** — Week 11 documentation and user experience — **next active issue**;
-12. **#15** — Week 12 continuous integration and release — follows #14;
+11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
+12. **#15** — Week 12 continuous integration and release preparation — **next active issue**;
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
@@ -320,9 +322,20 @@ Issue #2 established the current API-stability boundary:
 - Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical symbol names remain direct aliases in their canonical modules; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
-- Do not broaden the root export surface opportunistically during #12; preserve the reviewed public import contract unless the active issue explicitly changes it.
+- Do not broaden the root export surface opportunistically during #15; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during the next documentation/UX and release-preparation phases. Do not restart Issue #12-style integration work unless a concrete regression is found.
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during Issue #15 release preparation. Do not restart Issue #12-style integration work unless a concrete regression is found.
+
+## Issue #15 CI and release guardrails
+
+- Treat the merged Issue-#14 README, examples, generated quick-start figure, documentation guides, and tests as the current public usage baseline. The Issue-#14 local report was **1,877 passing tests** and a separate successful full Bayesian example; rerun validation in CI/clean environments rather than treating historical local results as CI evidence.
+- Add deterministic, reasonably fast CI quality gates on relevant pushes/PRs. Test Python support honestly: the package declares **Python >=3.11**, while documented clean-install acceptance so far is Python 3.12. Select and report a feasible version matrix; do not claim unsupported platform coverage.
+- Prefer Ruff for lint and one canonical formatter after an inventory of existing violations. Choose rules and rollout deliberately; do not mass-reformat or refactor scientific modules just to make a release PR green. Use a measured, justified coverage policy rather than an arbitrary percentage.
+- Keep ordinary CI separate from expensive reference regeneration, long uncertainty/bootstrap studies, and the full Bayesian user demonstration. Existing fast Bayesian unit/regression tests may still belong in CI; clearly document any optional or manually invoked expensive qualification checks.
+- Verify clean wheel/sdist builds and installs when release/distribution is in scope. Exercise the README quick start, CLI baseline, representative experimental/ML/uncertainty examples, optional Bayesian import/smoke, and SQLite read/write example without overwriting saved references.
+- Review compatibility of the curated 66-name root API, canonical package exports, removed-flat-module deny-list, schema-v1/fingerprint/provenance strings, version metadata, dependencies, license, `CITATION.cff`, and `CHANGELOG.md`. Preserve scientific reference populations, pseudo-true semantics, frozen seeds/manifests, and unchanged outputs.
+- **Choose the next version explicitly** (a defensible pre-1.0 release or `v1.0.0` with a stated API-stability commitment). Do not bump versions, create tags/releases, publish to PyPI, or close #15 automatically. Release artifacts and Git history actions require the user's separate approval after gates pass.
+- Issue #13 remains deferred and is **not** a release blocker. Do not fabricate Purcell sensing results, turn this into a physics-feature sprint, or imply experimental validity from synthetic examples.
 
 ## Codex working protocol
 
@@ -342,7 +355,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, #1, #2, #11, #3, and #12 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #14/#15 unless a concrete defect is discovered and the active issue explicitly requires it.
+Issues #6, #8, #4, #9, #1, #2, #11, #3, #12, and #14 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #15 unless a concrete defect is discovered and the active issue explicitly requires it.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -379,7 +392,7 @@ removed the 38 obsolete flat scientific modules. Five reviewed public package
 initializers, five genuine root support files and seven minimal namespace
 initializers remain: 61 production Python files in total.
 
-The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. Treat that as the pre-Issue-#12 repository baseline; new test counts may increase as #12 adds acceptance coverage.
+The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.
 
 For future work:
 
@@ -398,8 +411,8 @@ Consult Issues #3, #5, #11, #12, #14, and #15 for history, current sequencing, a
 Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions.
 
 Current task orientation:
-- proceed to #14 documentation/UX next;
-- proceed to #15 CI/release preparation after #14;
+- #14 documentation/UX is complete and merged; retain its user-facing contracts and validated examples;
+- proceed to #15 CI, packaging/release-readiness gates, coverage/tooling, and explicit version decision;
 - keep #13 open but deferred until realistic experiment-specific or photonic-simulation inputs are available;
 - do not let deferred #13 block release-readiness work;
-- do not start further package movement automatically.
+- do not start further package movement or automatic publishing/tagging.
