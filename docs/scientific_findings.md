@@ -5,6 +5,12 @@ development of the TCSPC Lifetime Toolkit. Detailed numerical evidence,
 plots, and exploratory analyses remain in the corresponding notebooks and
 reproducible benchmark workflows.
 
+For a concise current comparison, see the [results guide](results.md).
+Historical sections below retain their original context and anchors. Current
+Week-7–9 regression values come from the Issue-12 post-correction references,
+as identified in the guide and the [acceptance ledger](issue12_scientific_acceptance.md).
+Small executable example outputs are educational and are not benchmark evidence.
+
 ## Week 8 — Robust evaluation and OOD generalization
 
 Detailed analysis: `notebooks/13_generalization_and_robustness.ipynb`

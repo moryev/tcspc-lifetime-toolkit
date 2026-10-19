@@ -101,7 +101,7 @@ def run_fit(args: Namespace) -> None:
     print(f"Estimated lifetime: {fit_result.lifetime:.2f} ns")
     print(
         "Estimated uncertainty: "
-        f"{fit_result.lifetime_std:.2f} ns"
+        f"{fit_result.lifetime_std:.4g} ns"
     )
     print("Fit status: success")
 

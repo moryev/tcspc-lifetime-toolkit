@@ -1,5 +1,9 @@
 # Public API and estimator extensions
 
+For runnable tasks, start with the [example index](../examples/README.md) and
+[user guide](user_guide.md). This page preserves the detailed API contract and
+migration history; the [documentation index](README.md) maps the other guides.
+
 This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark
@@ -493,9 +497,9 @@ must continue to reflect the canonical implementation boundaries.
 
 The fitting and classical execution implementations do not broaden
 `estimation/__init__.py`; request their modules explicitly. Fitting uses the
-shared `physics.forward_model`. Classical execution retains its existing
-`evaluation.py` dependency for Poisson-deviance diagnostics; that legacy
-diagnostic module remains flat until its own migration. The generic factual
+shared `physics.forward_model`. Classical execution uses
+`evaluation.diagnostics` for Poisson-deviance diagnostics following the completed
+Stage-5A migration. The generic factual
 evaluation contracts do not depend on these estimators. Optimizers, objectives,
 initialization, validity/failure policy, diagnostics, and timing are unchanged.
 Schema-v1 source identities remain

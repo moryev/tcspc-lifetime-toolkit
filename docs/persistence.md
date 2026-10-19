@@ -1,5 +1,10 @@
 # SQLite persistence contract (Issue #9, schema v1)
 
+For an executable introduction, see the
+[roundtrip example](../examples/README.md#8-sqlite-persistence-roundtrip).
+Its Bayesian/PPC summaries are storage fixtures; actual inference is demonstrated
+by the separate [Bayesian script](../examples/bayesian_inference.py).
+
 The persistence module is an optional boundary around scientific results.
 Stage 1 provides schema v1, validated connections, transactions and canonical
 hashing. Stage 2 records scientific identities and provenance. Stage 3 records
@@ -1192,4 +1197,6 @@ full dataclass reconstruction are future work. The focused roundtrip example and
 Bayesian persistence tests use deterministic fixtures without live MCMC or an
 emcee dependency. Arbitrary SQL execution, automatic reference selection and
 scientific reconstruction remain outside the persistence access layer. This
-example does not mark Issue #9 final acceptance or release work complete.
+example alone was not Issue #9 final acceptance. Issue #9 is now complete;
+later integration acceptance is recorded in the
+[Issue-12 ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance).
