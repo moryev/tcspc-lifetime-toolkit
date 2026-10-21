@@ -2,7 +2,7 @@ include LICENSE CITATION.cff CHANGELOG.md README.md AGENTS.md pyproject.toml
 include .ruff-format-baseline.json
 include .gitignore .github/workflows/ci.yml
 recursive-include src *.py
-recursive-include tests *.py
+recursive-include tests *.py *.json
 recursive-include examples *.py *.md
 recursive-include scripts *.py
 recursive-include configs *.json

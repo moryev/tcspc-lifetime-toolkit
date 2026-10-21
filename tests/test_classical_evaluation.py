@@ -22,7 +22,9 @@ from tcspc_toolkit.benchmarks.bayesian_calibration import (
     sample_issue4_observation,
 )
 from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
-from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import (
+    monoexponential_reconvolution_expected_counts,
+)
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     generate_gaussian_irf_profile,
@@ -42,17 +44,15 @@ def _make_clean_measurement(
 ]:
     true_lifetime_ns = 0.5
 
-    counts, _ = (
-        simulate_irf_convolved_histogram(
-            time=time_axis,
-            lifetime_ns=true_lifetime_ns,
-            signal_photon_count=1_000_000,
-            background_per_bin=5.0,
-            irf_centre_ns=1.0,
-            irf_fwhm_ns=0.2,
-            irf_shift_ns=0.0,
-            rng=np.random.default_rng(42),
-        )
+    counts, _ = simulate_irf_convolved_histogram(
+        time=time_axis,
+        lifetime_ns=true_lifetime_ns,
+        signal_photon_count=1_000_000,
+        background_per_bin=5.0,
+        irf_centre_ns=1.0,
+        irf_fwhm_ns=0.2,
+        irf_shift_ns=0.0,
+        rng=np.random.default_rng(42),
     )
 
     return (
@@ -65,54 +65,37 @@ def test_reconvolution_initial_guess_is_physical(
     time_axis: NDArray[np.float64],
     irf: NDArray[np.float64],
 ) -> None:
-    counts, _ = _make_clean_measurement(
-        time_axis
+    counts, _ = _make_clean_measurement(time_axis)
+
+    guess = estimate_reconvolution_initial_guess(
+        time=time_axis,
+        counts=counts,
+        irf=irf,
     )
 
-    guess = (
-        estimate_reconvolution_initial_guess(
-            time=time_axis,
-            counts=counts,
-            irf=irf,
-        )
-    )
+    assert np.isfinite(guess.amplitude)
 
-    assert np.isfinite(
-        guess.amplitude
-    )
+    assert np.isfinite(guess.lifetime_ns)
 
-    assert np.isfinite(
-        guess.lifetime_ns
-    )
-
-    assert np.isfinite(
-        guess.background
-    )
+    assert np.isfinite(guess.background)
 
     assert guess.amplitude > 0.0
     assert guess.lifetime_ns > 0.0
     assert guess.background > 0.0
 
-    assert (
-        guess.temporal_shift_ns
-        == pytest.approx(0.0)
-    )
+    assert guess.temporal_shift_ns == pytest.approx(0.0)
 
 
 def test_reconvolution_initial_guess_estimates_background(
     time_axis: NDArray[np.float64],
     irf: NDArray[np.float64],
 ) -> None:
-    counts, _ = _make_clean_measurement(
-        time_axis
-    )
+    counts, _ = _make_clean_measurement(time_axis)
 
-    guess = (
-        estimate_reconvolution_initial_guess(
-            time=time_axis,
-            counts=counts,
-            irf=irf,
-        )
+    guess = estimate_reconvolution_initial_guess(
+        time=time_axis,
+        counts=counts,
+        irf=irf,
     )
 
     assert guess.background == pytest.approx(
@@ -125,46 +108,31 @@ def test_single_reconvolution_curve_recovers_clean_lifetime(
     time_axis: NDArray[np.float64],
     irf: NDArray[np.float64],
 ) -> None:
-    counts, true_lifetime_ns = (
-        _make_clean_measurement(
-            time_axis
-        )
-    )
+    counts, true_lifetime_ns = _make_clean_measurement(time_axis)
 
-    result = (
-        fit_single_reconvolution_curve(
-            time=time_axis,
-            counts=counts,
-            irf=irf,
-            temporal_shift_bounds=(
-                -0.5,
-                0.5,
-            ),
-            objective="poisson",
-        )
+    result = fit_single_reconvolution_curve(
+        time=time_axis,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+        objective="poisson",
     )
 
     assert result.optimizer_success
     assert result.valid_fit
 
-    assert np.isfinite(
-        result.fitted_lifetime_ns
-    )
+    assert np.isfinite(result.fitted_lifetime_ns)
 
-    assert abs(
-        result.fitted_lifetime_ns
-        - true_lifetime_ns
-    ) < 0.10
+    assert abs(result.fitted_lifetime_ns - true_lifetime_ns) < 0.10
 
     assert result.runtime_ms > 0.0
 
-    assert np.isfinite(
-        result.poisson_nll
-    )
+    assert np.isfinite(result.poisson_nll)
 
-    assert np.isfinite(
-        result.poisson_deviance
-    )
+    assert np.isfinite(result.poisson_deviance)
 
     assert result.failure_reason is None
     assert result.exception_message is None
@@ -179,35 +147,25 @@ def test_single_reconvolution_curve_records_initialization_failure(
         dtype=np.int64,
     )
 
-    result = (
-        fit_single_reconvolution_curve(
-            time=time_axis,
-            counts=counts,
-            irf=irf,
-            temporal_shift_bounds=(
-                -0.5,
-                0.5,
-            ),
-            objective="poisson",
-        )
+    result = fit_single_reconvolution_curve(
+        time=time_axis,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+        objective="poisson",
     )
 
     assert not result.optimizer_success
     assert not result.valid_fit
 
-    assert (
-        result.failure_reason
-        == "initialization_error"
-    )
+    assert result.failure_reason == "initialization_error"
 
-    assert (
-        result.exception_message
-        is not None
-    )
+    assert result.exception_message is not None
 
-    assert np.isnan(
-        result.fitted_lifetime_ns
-    )
+    assert np.isnan(result.fitted_lifetime_ns)
 
 
 def test_reconvolution_benchmark_counts_failures(
@@ -233,50 +191,32 @@ def test_reconvolution_benchmark_counts_failures(
         }
     )
 
-    result = (
-        evaluate_reconvolution_benchmark(
-            time=time_axis,
-            X_histograms=X_histograms,
-            y_true=y_true,
-            metadata=metadata,
-            irf=irf,
-            temporal_shift_bounds=(
-                -0.5,
-                0.5,
-            ),
-            objective="poisson",
-        )
+    result = evaluate_reconvolution_benchmark(
+        time=time_axis,
+        X_histograms=X_histograms,
+        y_true=y_true,
+        metadata=metadata,
+        irf=irf,
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+        objective="poisson",
     )
 
     assert result.summary.n_samples == 2
 
-    assert (
-        result.summary.n_successful_fits
-        == 0
-    )
+    assert result.summary.n_successful_fits == 0
 
-    assert (
-        result.summary.n_failed_fits
-        == 2
-    )
+    assert result.summary.n_failed_fits == 2
 
-    assert (
-        result.summary.success_rate
-        == pytest.approx(0.0)
-    )
+    assert result.summary.success_rate == pytest.approx(0.0)
 
-    assert (
-        result.summary.failure_rate
-        == pytest.approx(1.0)
-    )
+    assert result.summary.failure_rate == pytest.approx(1.0)
 
-    assert np.isnan(
-        result.summary.mae_valid_ns
-    )
+    assert np.isnan(result.summary.mae_valid_ns)
 
-    assert np.isnan(
-        result.summary.rmse_valid_ns
-    )
+    assert np.isnan(result.summary.rmse_valid_ns)
 
 
 def test_reconvolution_benchmark_preserves_sample_alignment(
@@ -309,33 +249,25 @@ def test_reconvolution_benchmark_preserves_sample_alignment(
         }
     )
 
-    result = (
-        evaluate_reconvolution_benchmark(
-            time=time_axis,
-            X_histograms=X_histograms,
-            y_true=y_true,
-            metadata=metadata,
-            irf=irf,
-            temporal_shift_bounds=(
-                -0.5,
-                0.5,
-            ),
-        )
-    )
-
-    np.testing.assert_array_equal(
-        result.per_curve[
-            "sample_id"
-        ].to_numpy(),
-        np.array(
-            [101, 202]
+    result = evaluate_reconvolution_benchmark(
+        time=time_axis,
+        X_histograms=X_histograms,
+        y_true=y_true,
+        metadata=metadata,
+        irf=irf,
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
         ),
     )
 
+    np.testing.assert_array_equal(
+        result.per_curve["sample_id"].to_numpy(),
+        np.array([101, 202]),
+    )
+
     np.testing.assert_allclose(
-        result.per_curve[
-            "true_lifetime_ns"
-        ].to_numpy(),
+        result.per_curve["true_lifetime_ns"].to_numpy(),
         y_true,
     )
 
@@ -383,8 +315,9 @@ def test_reconvolution_benchmark_rejects_target_length_mismatch(
         )
 
 
-def test_single_poisson_reconvolution_curve_recovers_high_count_lifetime_from_histogram_guess(
-) -> None:
+def test_single_poisson_reconvolution_curve_recovers_high_count_lifetime_from_histogram_guess() -> (
+    None
+):
     """Regression test for Poisson optimizer parameter scaling."""
 
     time = np.arange(
@@ -407,102 +340,78 @@ def test_single_poisson_reconvolution_curve_recovers_high_count_lifetime_from_hi
         irf=irf,
     )
 
-    counts, _ = (
-        simulate_irf_convolved_histogram(
-            time=time,
-            lifetime_ns=(
-                true_lifetime_ns
-            ),
-            signal_photon_count=(
-                100_000
-            ),
-            background_per_bin=0.5,
-            irf_centre_ns=1.0,
-            irf_fwhm_ns=0.25,
-            irf_shift_ns=0.05,
-            rng=np.random.default_rng(
-                61_999
-            ),
-        )
+    counts, _ = simulate_irf_convolved_histogram(
+        time=time,
+        lifetime_ns=(true_lifetime_ns),
+        signal_photon_count=(100_000),
+        background_per_bin=0.5,
+        irf_centre_ns=1.0,
+        irf_fwhm_ns=0.25,
+        irf_shift_ns=0.05,
+        rng=np.random.default_rng(61_999),
     )
 
-    initial_guess = (
-        estimate_reconvolution_initial_guess(
-            time=time,
-            counts=counts,
-            irf=irf,
-        )
+    initial_guess = estimate_reconvolution_initial_guess(
+        time=time,
+        counts=counts,
+        irf=irf,
     )
 
     # This realization deliberately produces a noticeably
     # imperfect histogram-derived lifetime guess.
-    assert (
-        abs(
-            initial_guess.lifetime_ns
-            - true_lifetime_ns
-        )
-        > 0.10
-    )
+    assert abs(initial_guess.lifetime_ns - true_lifetime_ns) > 0.10
 
-    result = (
-        fit_single_reconvolution_curve(
-            time=time,
-            counts=counts,
-            irf=irf,
-            temporal_shift_bounds=(
-                -0.5,
-                0.5,
-            ),
-            objective="poisson",
-        )
+    result = fit_single_reconvolution_curve(
+        time=time,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(
+            -0.5,
+            0.5,
+        ),
+        objective="poisson",
     )
 
     assert result.optimizer_success
     assert result.valid_fit
 
-    assert (
-        abs(
-            result.fitted_lifetime_ns
-            - true_lifetime_ns
-        )
-        < 0.02
-    )
+    assert abs(result.fitted_lifetime_ns - true_lifetime_ns) < 0.02
 
-    assert (
-        abs(
-            result.fitted_temporal_shift_ns
-            - 0.05
-        )
-        < 0.02
-    )
+    assert abs(result.fitted_temporal_shift_ns - 0.05) < 0.02
 
-    assert np.isfinite(
-        result.poisson_nll
-    )
+    assert np.isfinite(result.poisson_nll)
 
 
 def test_stage5_tau4_realization_22_is_not_falsely_accepted() -> None:
     """Reproduce the frozen observation, without reading generated results."""
     manifest = json.loads(
-        (Path(__file__).resolve().parents[1] / "configs" /
-         "issue4_bayesian_workflow.json").read_text(encoding="utf-8")
+        (
+            Path(__file__).resolve().parents[1]
+            / "configs"
+            / "issue4_bayesian_workflow.json"
+        ).read_text(encoding="utf-8")
     )
     grid = manifest["time_grid_ns"]
     time = np.arange(grid["start"], grid["stop"], grid["step"])
     irf_spec = manifest["irf"]
     prepared = prepare_irf(
         generate_gaussian_irf_profile(
-            time, gaussian_centre_ns=irf_spec["centre_ns"],
+            time,
+            gaussian_centre_ns=irf_spec["centre_ns"],
             gaussian_fwhm_ns=irf_spec["fwhm_ns"],
             provenance={"workflow": "issue4_stage5_matched"},
-        ), time,
+        ),
+        time,
     )
-    spec = next(item for item in manifest["conditions"]
-                if item["id"] == "tau4_n10000_b0p5")
+    spec = next(
+        item for item in manifest["conditions"] if item["id"] == "tau4_n10000_b0p5"
+    )
     model = manifest["common_model"]
     condition = BayesianClassicalCondition(
-        condition_id=spec["id"], time_ns=time,
-        generating_irf=prepared, assumed_irf=prepared,
+        condition_id=spec["id"],
+        time_ns=time,
+        generating_irf=prepared,
+        assumed_irf=prepared,
         true_lifetime_ns=spec["lifetime_ns"],
         signal_photon_count=spec["signal_photon_count"],
         background_per_bin=spec["background_per_bin"],
@@ -510,13 +419,18 @@ def test_stage5_tau4_realization_22_is_not_falsely_accepted() -> None:
         n_repeats=manifest["profiles"]["scientific"]["n_repeats_per_condition"],
     )
     seed = derive_issue4_seed(
-        manifest["randomness"]["base_seed"], condition.condition_id, 22,
+        manifest["randomness"]["base_seed"],
+        condition.condition_id,
+        22,
         "observation",
     )
     assert seed == 17339757615716598031
     expected, _ = build_issue4_expected_counts(condition)
     counts = sample_issue4_observation(
-        condition, expected, seed, 22,
+        condition,
+        expected,
+        seed,
+        22,
     ).require_raw_counts()
     assert hashlib.sha256(np.ascontiguousarray(counts).tobytes()).hexdigest() == (
         "af659370fe88e8d9080edc1454af70f7699698fd6379d286fddb290af206088d"
@@ -526,20 +440,28 @@ def test_stage5_tau4_realization_22_is_not_falsely_accepted() -> None:
         return poisson_negative_log_likelihood(
             counts,
             monoexponential_reconvolution_expected_counts(
-                time, prepared.kernel, *parameters,
+                time,
+                prepared.kernel,
+                *parameters,
             ),
         )
 
-    historical = np.array([
-        125.02722273171824, 4.139127277582876,
-        3.3232667423982516, 0.007020469422371944,
-    ])
+    historical = np.array(
+        [
+            125.02722273171824,
+            4.139127277582876,
+            3.3232667423982516,
+            0.007020469422371944,
+        ]
+    )
     lower_background = historical.copy()
     lower_background[2] -= 0.01
     assert nll(historical) - nll(lower_background) > 0.3
 
     fitted = fit_single_reconvolution_curve(
-        time=time, counts=counts, irf=prepared.kernel,
+        time=time,
+        counts=counts,
+        irf=prepared.kernel,
         temporal_shift_bounds=tuple(model["temporal_shift_bounds_ns"]),
         objective="poisson",
         background_fraction=model["classical_background_fraction"],
@@ -548,22 +470,32 @@ def test_stage5_tau4_realization_22_is_not_falsely_accepted() -> None:
     assert fitted.valid_fit
     assert fitted.numerical_validation_passed is True
     assert fitted.max_coordinate_descent_nll <= 0.01
-    parameters = np.array([
-        fitted.fitted_amplitude, fitted.fitted_lifetime_ns,
-        fitted.fitted_background, fitted.fitted_temporal_shift_ns,
-    ])
+    parameters = np.array(
+        [
+            fitted.fitted_amplitude,
+            fitted.fitted_lifetime_ns,
+            fitted.fitted_background,
+            fitted.fitted_temporal_shift_ns,
+        ]
+    )
     assert nll(historical) - nll(parameters) > 1.0
 
     # Independently probe the accepted fit in the same dimensionless
     # coordinate system as the optimizer's numerical check.
-    scales = np.array([
-        max(abs(fitted.initial_amplitude), 1.0),
-        max(abs(fitted.initial_lifetime_ns), time[1] - time[0]),
-        max(abs(fitted.initial_background), 1.0),
-        max(abs(fitted.initial_temporal_shift_ns), 0.04, time[1] - time[0]),
-    ])
-    bounds = [(0.0, np.inf), (1e-12, np.inf),
-              (1e-12, np.inf), tuple(model["temporal_shift_bounds_ns"])]
+    scales = np.array(
+        [
+            max(abs(fitted.initial_amplitude), 1.0),
+            max(abs(fitted.initial_lifetime_ns), time[1] - time[0]),
+            max(abs(fitted.initial_background), 1.0),
+            max(abs(fitted.initial_temporal_shift_ns), 0.04, time[1] - time[0]),
+        ]
+    )
+    bounds = [
+        (0.0, np.inf),
+        (1e-12, np.inf),
+        (1e-12, np.inf),
+        tuple(model["temporal_shift_bounds_ns"]),
+    ]
     for index in range(4):
         for direction in (-1.0, 1.0):
             trial = parameters.copy()
@@ -577,20 +509,33 @@ def test_nonfinite_optimizer_output_is_recorded_as_invalid(monkeypatch) -> None:
     irf = normalize_irf(time, generate_gaussian_irf(time, centre=1.0, fwhm=0.3))
     counts = np.random.default_rng(42).poisson(
         monoexponential_reconvolution_expected_counts(
-            time, irf, 1000.0, 1.5, 1.0, 0.0,
+            time,
+            irf,
+            1000.0,
+            1.5,
+            1.0,
+            0.0,
         )
     )
 
     def invalid_minimize(*, x0, **kwargs):
         return OptimizeResult(
-            x=np.full_like(x0, np.nan), fun=np.nan, success=True, status=0,
-            message="spurious success", nfev=1, njev=1,
+            x=np.full_like(x0, np.nan),
+            fun=np.nan,
+            success=True,
+            status=0,
+            message="spurious success",
+            nfev=1,
+            njev=1,
         )
 
     monkeypatch.setattr(fitting, "minimize", invalid_minimize)
     result = fit_single_reconvolution_curve(
-        time=time, counts=counts, irf=irf,
-        temporal_shift_bounds=(-0.2, 0.2), objective="poisson",
+        time=time,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(-0.2, 0.2),
+        objective="poisson",
     )
     assert result.optimizer_success
     assert not result.valid_fit
@@ -613,30 +558,49 @@ def _record_poisson_starts(monkeypatch):
 
 
 def test_frozen_test_c_26_recovers_from_truth_free_shift_starts(monkeypatch) -> None:
-    from tcspc_toolkit.benchmarks.generalization_datasets import generate_generalization_test_suite
-    from tcspc_toolkit.benchmarks.generalization_protocol import default_generalization_suite
+    from tcspc_toolkit.benchmarks.generalization_datasets import (
+        generate_generalization_test_suite,
+    )
+    from tcspc_toolkit.benchmarks.generalization_protocol import (
+        default_generalization_suite,
+    )
 
     definition = default_generalization_suite()
     assert definition.seed_for("C") == 50003
-    test_c = next(test for test in generate_generalization_test_suite(definition).tests
-                  if test.test_id == "C")
+    test_c = next(
+        test
+        for test in generate_generalization_test_suite(definition).tests
+        if test.test_id == "C"
+    )
     counts = test_c.X_histograms[26]
     assert test_c.metadata.iloc[26]["sample_id"] == 26
     assert hashlib.sha256(counts.tobytes()).hexdigest() == (
         "d93f92d1c8379c82ac79a1b1dfba9e966bf8668dd6ee85a668aa8d0a39ece63d"
     )
-    irf = normalize_irf(test_c.time, generate_gaussian_irf(test_c.time, centre=1.0, fwhm=0.6))
-    initial = estimate_reconvolution_initial_guess(time=test_c.time, counts=counts, irf=irf)
+    irf = normalize_irf(
+        test_c.time, generate_gaussian_irf(test_c.time, centre=1.0, fwhm=0.6)
+    )
+    initial = estimate_reconvolution_initial_guess(
+        time=test_c.time, counts=counts, irf=irf
+    )
     initial_nll = poisson_negative_log_likelihood(
-        counts, monoexponential_reconvolution_expected_counts(
-            test_c.time, irf, initial.amplitude, initial.lifetime_ns,
-            initial.background, initial.temporal_shift_ns,
+        counts,
+        monoexponential_reconvolution_expected_counts(
+            test_c.time,
+            irf,
+            initial.amplitude,
+            initial.lifetime_ns,
+            initial.background,
+            initial.temporal_shift_ns,
         ),
     )
     starts = _record_poisson_starts(monkeypatch)
     result = fit_single_reconvolution_curve(
-        time=test_c.time, counts=counts, irf=irf,
-        temporal_shift_bounds=(-0.5, 0.5), objective="poisson",
+        time=test_c.time,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(-0.5, 0.5),
+        objective="poisson",
     )
     assert result.valid_fit and result.optimizer_success
     assert result.numerical_validation_passed and result.recovery_attempted
@@ -649,37 +613,38 @@ def test_frozen_test_c_26_recovers_from_truth_free_shift_starts(monkeypatch) -> 
         assert start[3] == pytest.approx(shift)
 
 
-def test_frozen_week7_sample_770_recovers_without_relaxing_validation(monkeypatch) -> None:
-    from tcspc_toolkit.ml.evaluation import generate_benchmark_measurements
-
+def test_frozen_week7_sample_770_recovers_without_relaxing_validation(
+    monkeypatch,
+) -> None:
     time = np.arange(0.0, 20.0, 0.05)
-    measured = generate_benchmark_measurements(
-        time=time, lifetimes_ns=[0.5, 1.0, 2.0, 3.0, 4.5, 6.0],
-        signal_photon_counts=[1000, 10000, 100000], background_levels=[0.0, 0.5, 2.0],
-        irf_centre_ns=1.0, irf_fwhm_values_ns=[0.15, 0.30, 0.60],
-        irf_shift_values_ns=[-0.20, -0.05, 0.0, 0.05, 0.20], random_seed=42,
+    # The original 400-count realization is fixed across platforms; its
+    # fingerprint is checked independently in test_week7_portability.py.
+    reference = json.loads(
+        (
+            Path(__file__).parent / "fixtures/week7_sample_770_windows_reference.json"
+        ).read_text(encoding="utf-8")
     )
-    counts = measured.X_histograms[770]
-    assert measured.metadata.iloc[770]["sample_id"] == 770
-    assert hashlib.sha256(counts.tobytes()).hexdigest() == (
-        "035f408aa945ef4df47b43ab8c7cada90e05877f5f029323804d1c8a3e1e95ca"
-    )
+    counts = np.asarray(reference["counts"], dtype=np.int64)
     irf = normalize_irf(time, generate_gaussian_irf(time, centre=1.0, fwhm=0.3))
     # Frozen pre-fix endpoint, not a starting guess or an accepted reference.
     old_endpoint = (860.5594635040453, 6.051319475420611, 1e-12, -0.1999482723696253)
     old_nll = poisson_negative_log_likelihood(
-        counts, monoexponential_reconvolution_expected_counts(time, irf, *old_endpoint),
+        counts,
+        monoexponential_reconvolution_expected_counts(time, irf, *old_endpoint),
     )
     starts = _record_poisson_starts(monkeypatch)
     result = fit_single_reconvolution_curve(
-        time=time, counts=counts, irf=irf,
-        temporal_shift_bounds=(-0.5, 0.5), objective="poisson",
+        time=time,
+        counts=counts,
+        irf=irf,
+        temporal_shift_bounds=(-0.5, 0.5),
+        objective="poisson",
     )
     assert result.valid_fit and result.optimizer_success
     assert result.numerical_validation_passed and result.recovery_attempted
     assert result.max_coordinate_descent_nll <= 0.01
     assert old_nll - result.poisson_nll > 0.2
-    assert abs(result.fitted_lifetime_ns - measured.y[770]) < 0.1
+    assert abs(result.fitted_lifetime_ns - 6.0) < 0.1
     assert len(starts) == 4  # Primary, continuation, two original-guess offsets.
     for start, shift in zip(starts[-2:], [-0.25, 0.25], strict=True):
         np.testing.assert_array_equal(start[:3], starts[0][:3])

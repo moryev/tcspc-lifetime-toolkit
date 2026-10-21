@@ -62,6 +62,7 @@ pinned official actions and explicit timeouts.
 | Tests + coverage | Ubuntu 24.04 / Python 3.12 | Full pytest, branch coverage |
 | Quality | Ubuntu 24.04 / Python 3.12 | Ruff lint, formatting ratchet |
 | Distribution | Ubuntu 24.04 / Python 3.12 | Build, strict metadata check, isolated wheel/sdist installs |
+| Week-7 exact regeneration (manual dispatch) | Windows 2025 / Python 3.12.0, NumPy 2.5.1, SciPy 1.18.0 | Qualified-reference candidate; exact original fingerprint |
 
 Test reports, dependency versions and distribution logs are uploaded for review.
 Local Windows results do not qualify Linux or Python 3.11. The first successful
@@ -73,6 +74,57 @@ Actions were checked against official release tags and action metadata:
 [setup-python v7.0.0](https://github.com/actions/setup-python/releases/tag/v7.0.0),
 and [upload-artifact v7.0.2](https://github.com/actions/upload-artifact/releases/tag/v7.0.2).
 Updates require an explicit reviewed SHA change; the workflow does not publish.
+
+## Week-7 bitwise and numerical reproducibility
+
+The [second PR #25 diagnostic run](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39629791895)
+captured all 810 frozen Week-7 simulations through the existing library path.
+Its Python 3.11 and 3.12 test artifacts were compared with the saved Windows
+reference trace. The 400-bin sample #770 **Windows realization** remains fixed
+in [`tests/fixtures/week7_sample_770_windows_reference.json`](../tests/fixtures/week7_sample_770_windows_reference.json)
+with SHA-256 `035f408aa945ef4df47b43ab8c7cada90e05877f5f029323804d1c8a3e1e95ca`.
+It is the unchanged input to the fitter regression on every platform; no Linux
+hash replaces it.
+
+| Comparison with Windows 11 / Python 3.12.0 / NumPy 2.5.1 / SciPy 1.18.0 | Largest expected-count difference, all 810 × 400 bins | First count difference | First RNG-state difference before a sample |
+| --- | ---: | --- | --- |
+| Ubuntu / Python 3.11.17 / NumPy 2.4.6 / SciPy 1.17.1 | 1.82 × 10⁻¹² counts | sample 2, bin 17 | sample 2 |
+| Ubuntu / Python 3.12.15 / NumPy 2.5.4 / SciPy 1.18.1 | 4.55 × 10⁻¹³ counts | sample 407, bin 16 | sample 499 |
+
+Parameter order and non-realization metadata agree. The ideal-decay and
+unnormalized Gaussian IRF differences are at most 1.11 × 10⁻¹⁶; normalized
+IRF differences are at most 2.22 × 10⁻¹⁶. Against Linux 3.11, sample 1/bin 399
+has expected rate 2.342 × 10⁻¹⁷ counts on Windows and exactly zero on Linux;
+both draw zero,
+but the NumPy Poisson generator consumes a different random stream, so sample
+2 starts from a different RNG state. Against Linux 3.12, the streams entering
+sample 407 agree, while bin 16 has expected rates 0.039888822072901696 and
+0.03988882207290147: its sampled count changes from zero to one. The RNG
+states still agree before sample 408. This is floating-point/Poisson-threshold
+sensitivity, not a meaningful difference in the deterministic physical model.
+
+Three distinct checks now apply:
+
+1. **Fixture integrity:** assert the original count-array hash exactly.
+2. **Portable simulation:** check the frozen parameter order, raw nonnegative
+   integer counts, photon-budget/background metadata, and reference expected
+   counts for samples 1, 407 and 770. The per-bin criterion is `rtol=1e-13`,
+   `atol=1e-11` counts: the absolute allowance exceeds the largest observed
+   cross-platform difference by a factor above five, yet is negligible beside
+   one photon or Poisson counting variability.
+3. **Exact stochastic regeneration:** run only in the pinned Windows reference
+   environment with `TCSPC_VERIFY_WEEK7_REFERENCE=1` and compare the newly
+   generated sample #770 with the original hash and array. The dedicated
+   `workflow_dispatch` job is an explicitly configured Windows runner
+   **candidate**; it becomes a qualified remote reference environment only
+   after an actual passing run. A failure requires investigation, not a new
+   accepted hash.
+
+Bitwise identity of a long seeded Poisson stream is environment-specific;
+scientific numerical equivalence concerns the physical expected-count model
+and the fixed realization used to test fitting. Neither establishes
+experimental validity. Original Issue-12 references, seeds, fitter tolerances
+and frozen protocols are unchanged.
 
 ## Lint and formatting policy
 
@@ -117,8 +169,9 @@ code/baseline changes just as other CI configuration changes.
 Stage A Windows/Python 3.12 measurements were **82.34% combined**, **86.88%
 statements**, **70.14% branches**. The candidate floor is **80% combined**,
 configured for the Python 3.12 job. Final acceptance of that floor is pending
-actual Linux coverage; investigate material differences before accepting it,
-rather than lowering it to obtain a pass.
+successful Linux CI. The second PR #25 run measured **82.58%** Linux combined
+coverage, above the floor, while the former bitwise hash assertion still failed.
+Investigate material future differences rather than lowering the floor to pass.
 
 No scientific modules, benchmark code or inconvenient branches are omitted.
 Coverage is a change detector, not a certificate of scientific correctness.
