@@ -47,11 +47,6 @@ jobs:
           python -m pip check
           mkdir -p build/reports
           python -m pip freeze > build/reports/environment.txt
-      # Temporary Issue-15 evidence; remove after the sample-770 portability review.
-      - name: Capture Week-7 sample 770 diagnostics
-        run: >-
-          python scripts/diagnose_week7_sample_770.py
-          --output build/reports/week7-sample-770.npz
       - name: Full suite
         if: matrix.python == '3.11'
         run: python -m pytest --durations=25 --junitxml=build/reports/pytest.xml
@@ -69,6 +64,30 @@ jobs:
           name: tests-python-${{ matrix.python }}
           path: build/reports/
           retention-days: 14
+
+  week7-reference:
+    name: Week-7 exact regeneration / pinned Windows reference candidate
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.0"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install pinned reference numerical stack
+        run: python -m pip install -e ".[dev]" "numpy==2.5.1" "scipy==1.18.0"
+      - name: Check environment and exact generation fingerprint
+        env:
+          TCSPC_VERIFY_WEEK7_REFERENCE: "1"
+        run: |
+          python -m pip check
+          python -c "import numpy as np; np.show_runtime()"
+          python -m pytest -q tests/test_week7_portability.py::test_week7_sample_770_regenerates_in_reference_environment
 
   quality:
     name: Ruff lint and formatting / Python 3.12

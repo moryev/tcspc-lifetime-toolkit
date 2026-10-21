@@ -67,7 +67,6 @@
     "tests/test_bayesian_predictive.py": "460608aabed063fda88c945188d617bde0f20550d7bb96cb70edbd44c967691a",
     "tests/test_bayesian_sampling.py": "74899c2991eddf0da48f5af1dae56df0b1d06d771b4c3f9934a6aaa47f8b6e79",
     "tests/test_benchmark_plots.py": "21a7d771e6305e469a3528d85a4817f429e5846d0832cc2142acbea6a6478b41",
-    "tests/test_classical_evaluation.py": "2317db0b8ed2827ff0302065e063218e062d66eefb6c1d55420ac3eaf07f82cb",
     "tests/test_classical_instrument_acquisition_evaluation.py": "7cf5935705a6f860773d1e98ece997a6079ca64b9e40decb0d581182d4cbeaa2",
     "tests/test_classical_model_mismatch_evaluation.py": "b76969f903e87a9b3196924b04987d6889d1f71dd1c7cc628c045031ada32654",
     "tests/test_classical_point_evaluation.py": "3ffa964b9a0029ae1f2dd92a0fa4d38d08132d6ffe1f386fb8d8f6c7b28bce14",

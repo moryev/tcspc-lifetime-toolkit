@@ -159,7 +159,14 @@ def inspect_artifacts(
         "MANIFEST.in",
         ".ruff-format-baseline.json",
     }
-    required.update(name for name in tracked if name.startswith(prefixes))
+    # A reviewed deletion in an uncommitted release-preparation diff should
+    # disappear from the sdist; only files present in this checkout can ship.
+    required.update(
+        name
+        for name in tracked
+        if name.startswith(prefixes) and (root / name).is_file()
+    )
+    required.add("tests/fixtures/week7_sample_770_windows_reference.json")
     # Include new, uncommitted Issue-15 tooling too.
     required.update(
         path.relative_to(root).as_posix()

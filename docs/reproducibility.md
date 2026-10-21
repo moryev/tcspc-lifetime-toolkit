@@ -73,6 +73,10 @@ observation/bootstrap/Bayesian/posterior-predictive streams. Never reuse frozen
 A–F data for training, representation fitting, hyperparameter selection, or
 calibration. Numeric comparisons use the recorded tolerance/population policy;
 wall-clock times and floating-point last digits are not portable goldens.
+For the frozen Week-7 sample #770, see the [bitwise versus numerical
+reproducibility investigation](release_readiness.md#week-7-bitwise-and-numerical-reproducibility):
+the original raw-count realization is fixed for fitting, while portable
+simulation checks compare the deterministic expected-count model.
 
 ## Regenerate the quick-start figure
 
