@@ -280,7 +280,9 @@ class IRFProfile:
         except (TypeError, ValueError) as exc:
             raise ValueError("IRF time and values must be numeric") from exc
         if time.ndim != 1 or time.size < 2:
-            raise ValueError("IRF time must be one-dimensional with at least two values")
+            raise ValueError(
+                "IRF time must be one-dimensional with at least two values"
+            )
         if values.ndim != 1 or values.shape != time.shape:
             raise ValueError("IRF values must match the one-dimensional time grid")
         # Existing normalization validation also accepts strictly increasing
@@ -297,8 +299,12 @@ class IRFProfile:
             "source_parameters",
             _copy_irf_mapping(self.source_parameters, "source_parameters"),
         )
-        object.__setattr__(self, "metadata", _copy_irf_mapping(self.metadata, "metadata"))
-        object.__setattr__(self, "provenance", _copy_irf_mapping(self.provenance, "provenance"))
+        object.__setattr__(
+            self, "metadata", _copy_irf_mapping(self.metadata, "metadata")
+        )
+        object.__setattr__(
+            self, "provenance", _copy_irf_mapping(self.provenance, "provenance")
+        )
 
 
 def generate_emg_irf(
@@ -315,11 +321,19 @@ def generate_emg_irf(
     Its component centre/FWHM are generally not the EMG peak/full FWHM.
     The exponential tail time is in ns. This function does not normalize the
     sampled finite-window area; use ``prepare_irf`` for a forward kernel.
+
+    Positive tails below the validated reciprocal range are rejected. For
+    representable tails with ``K = tail_time_ns / sigma_ns <= eps**2``, the
+    EMG differs from its Gaussian limit by at most ``amplitude * K / sqrt(e)``.
+    A stable scaled-erfc asymptotic expression handles the remaining very small shapes;
+    ordinary tails retain SciPy's ``exponnorm.logpdf`` evaluation.
     """
     if not np.isfinite(tail_time_ns) or tail_time_ns < 0.0:
         raise ValueError("tail_time_ns must be finite and non-negative")
     if tail_time_ns == 0.0:
-        return generate_gaussian_irf(time, gaussian_centre_ns, gaussian_fwhm_ns, amplitude)
+        return generate_gaussian_irf(
+            time, gaussian_centre_ns, gaussian_fwhm_ns, amplitude
+        )
 
     time_array = np.asarray(time, dtype=np.float64)
     if time_array.ndim != 1 or time_array.size == 0:
@@ -344,13 +358,50 @@ def generate_emg_irf(
     with np.errstate(over="ignore", divide="ignore"):
         reciprocal_shape = np.divide(1.0, shape)
     if not np.isfinite(reciprocal_shape):
-        raise ValueError("tail_time_ns is below numerical resolution relative to Gaussian width")
+        raise ValueError(
+            "tail_time_ns is below numerical resolution relative to Gaussian width"
+        )
+
+    # Convolution with an exponential of mean K*sigma changes the Gaussian
+    # by at most E[delay] * sup|Gaussian'| = amplitude*K/sqrt(e). At eps**2
+    # this is far below float64 resolution even relative to the peak.
+    if shape <= np.finfo(np.float64).eps ** 2:
+        return generate_gaussian_irf(
+            time_array, gaussian_centre_ns, gaussian_fwhm_ns, amplitude
+        )
 
     log_scale = np.log(amplitude) + np.log(sigma_ns) + 0.5 * np.log(2.0 * np.pi)
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
-        log_density = exponnorm.logpdf(
-            time_array, K=shape, loc=gaussian_centre_ns, scale=sigma_ns
-        )
+        if shape <= np.finfo(np.float64).eps ** 0.25:
+            # SciPy 1.17 subtracts O(1/K**2) terms, with O(eps/K**2)
+            # rounding error. At K = eps**0.25 this is O(sqrt(eps)).
+            # Use erfcx(u) ~ (1 - 1/(2u**2) + 3/(4u**4)
+            # - 15/(8u**6)) / (sqrt(pi)*u). The next term is below
+            # 7e-16 for u > 100, and much smaller where the density is
+            # representable. u <= 100 requires z > 1/K - 142 > 8050;
+            # its EMG density underflows even at the largest finite amplitude.
+            z = (time_array - gaussian_centre_ns) / sigma_ns
+            u = (reciprocal_shape - z) / np.sqrt(2.0)
+            meaningful = u > 100.0
+            log_density = np.full_like(z, -np.inf)
+            inverse_u_squared = (1.0 / u[meaningful]) ** 2
+            correction = (
+                -0.5 * inverse_u_squared
+                + 0.75 * inverse_u_squared**2
+                - 1.875 * inverse_u_squared**3
+            )
+            log_density[meaningful] = (
+                -np.log(2.0)
+                - 0.5 * z[meaningful] ** 2
+                - np.log(shape)
+                - 0.5 * np.log(np.pi)
+                - np.log(u[meaningful])
+                + np.log1p(correction)
+            )
+        else:
+            log_density = exponnorm.logpdf(
+                time_array, K=shape, loc=gaussian_centre_ns, scale=sigma_ns
+            )
         values = np.exp(log_density + log_scale)
     if not np.all(np.isfinite(values)) or np.any(values < 0.0):
         raise ValueError("EMG evaluation produced invalid values")

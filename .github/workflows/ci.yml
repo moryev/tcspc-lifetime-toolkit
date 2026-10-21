@@ -47,6 +47,11 @@ jobs:
           python -m pip check
           mkdir -p build/reports
           python -m pip freeze > build/reports/environment.txt
+      # Temporary Issue-15 evidence; remove after the sample-770 portability review.
+      - name: Capture Week-7 sample 770 diagnostics
+        run: >-
+          python scripts/diagnose_week7_sample_770.py
+          --output build/reports/week7-sample-770.npz
       - name: Full suite
         if: matrix.python == '3.11'
         run: python -m pytest --durations=25 --junitxml=build/reports/pytest.xml

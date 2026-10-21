@@ -2,6 +2,8 @@
 
 import numpy as np
 import pytest
+from scipy.stats import exponnorm
+from unittest.mock import patch
 
 from tcspc_toolkit.irf.profiles import (
     IRFProfile,
@@ -48,8 +50,12 @@ def test_profile_copies_and_protects_inputs() -> None:
     metadata = {"instrument": {"channel": 2}}
     provenance = {"source": {"file": "irf.csv"}}
     profile = IRFProfile(
-        time, values, IRFSourceKind.IMPORTED_SAMPLED,
-        source_parameters=parameters, metadata=metadata, provenance=provenance,
+        time,
+        values,
+        IRFSourceKind.IMPORTED_SAMPLED,
+        source_parameters=parameters,
+        metadata=metadata,
+        provenance=provenance,
     )
     time[0] = 9.0
     values[1] = 9.0
@@ -75,8 +81,10 @@ def test_profile_rejects_invalid_origin_or_mapping() -> None:
         IRFProfile([0.0, 0.2, 0.4], [0.0, 2.0, 0.0], "measured")
     with pytest.raises(ValueError, match="source_parameters keys must be strings"):
         IRFProfile(
-            [0.0, 0.2, 0.4], [0.0, 2.0, 0.0],
-            IRFSourceKind.IMPORTED_SAMPLED, source_parameters={1: "invalid"},
+            [0.0, 0.2, 0.4],
+            [0.0, 2.0, 0.0],
+            IRFSourceKind.IMPORTED_SAMPLED,
+            source_parameters={1: "invalid"},
         )
 
 
@@ -115,8 +123,11 @@ def test_emg_zero_tail_is_exact_existing_gaussian(as_input) -> None:
     time = np.linspace(-2.0, 5.0, 701)
     expected = generate_gaussian_irf(time, centre=1.0, fwhm=0.4, amplitude=2.5)
     actual = generate_emg_irf(
-        as_input(time), gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.4,
-        tail_time_ns=0.0, amplitude=2.5,
+        as_input(time),
+        gaussian_centre_ns=1.0,
+        gaussian_fwhm_ns=0.4,
+        tail_time_ns=0.0,
+        amplitude=2.5,
     )
     assert isinstance(actual, np.ndarray)
     assert actual.dtype == np.float64
@@ -124,7 +135,9 @@ def test_emg_zero_tail_is_exact_existing_gaussian(as_input) -> None:
 
 
 @pytest.mark.parametrize("as_input", [np.asarray, list, tuple])
-def test_positive_emg_tail_has_positive_skew_and_preserves_source_scale(as_input) -> None:
+def test_positive_emg_tail_has_positive_skew_and_preserves_source_scale(
+    as_input,
+) -> None:
     time = np.linspace(-5.0, 12.0, 3401)
     centre_ns = 1.0
     tail_ns = 0.6
@@ -180,9 +193,78 @@ def test_emg_accepts_small_positive_tail_with_representable_reciprocal() -> None
     width = 2.0 * np.sqrt(2.0 * np.log(2.0))
     time = np.array([-1.0, 0.0, 1.0])
     values = generate_emg_irf(time, 0.0, width, 6e-309)
-    # The tail's effect is below roundoff here, but the EMG is still evaluated.
+    # The validated positive tail is inside the explicit Gaussian-limit region.
     np.testing.assert_allclose(values, np.exp(-0.5 * time**2), rtol=1e-12)
     assert np.all(values > 0.0)
+
+
+def test_emg_reciprocal_resolution_boundary() -> None:
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))  # sigma = 1 ns
+    rounded_boundary = 1.0 / np.finfo(np.float64).max
+    smallest_accepted = np.nextafter(rounded_boundary, np.inf)
+    time = np.array([-1.0, 0.0, 1.0])
+    with np.errstate(all="raise"):
+        with pytest.raises(ValueError, match="below numerical resolution"):
+            generate_emg_irf(time, 0.0, width, rounded_boundary)
+        accepted = generate_emg_irf(time, 0.0, width, smallest_accepted)
+    np.testing.assert_array_equal(accepted, generate_gaussian_irf(time, 0.0, width))
+
+
+def test_emg_near_zero_tail_boundaries_are_continuous() -> None:
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))  # sigma = 1 ns
+    time = np.array([-1.0, 0.0, 1.0])
+    gaussian = generate_gaussian_irf(time, 0.0, width)
+    gaussian_limit = np.finfo(np.float64).eps ** 2
+    stable_limit = np.finfo(np.float64).eps ** 0.25
+
+    for tail in (6e-309, gaussian_limit, np.nextafter(gaussian_limit, np.inf)):
+        np.testing.assert_allclose(
+            generate_emg_irf(time, 0.0, width, tail), gaussian, rtol=1e-14
+        )
+
+    below = generate_emg_irf(time, 0.0, width, stable_limit)
+    above = generate_emg_irf(time, 0.0, width, np.nextafter(stable_limit, np.inf))
+    np.testing.assert_allclose(below, above, rtol=5e-8, atol=1e-10)
+
+
+def test_emg_small_positive_tail_retains_first_order_shift() -> None:
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))  # sigma = 1 ns
+    time = np.array([-1.0, 0.0, 1.0])
+    tail = 1e-6
+    gaussian = generate_gaussian_irf(time, 0.0, width)
+    values = generate_emg_irf(time, 0.0, width, tail)
+    np.testing.assert_allclose(values, gaussian * (1.0 + time * tail), rtol=1e-10)
+    assert values[2] > values[0]
+
+
+def test_emg_small_tail_matches_independent_convolution_quadrature() -> None:
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))  # sigma = 1 ns
+    tail = np.finfo(np.float64).eps ** 0.25 / 2.0
+    time = np.array([-2.0, -1.0, 0.0, 1.0, 2.0])
+    nodes, weights = np.polynomial.laguerre.laggauss(32)
+    # E[G(t - E)] for E = tail * Exp(1), independently integrated.
+    shifted_gaussians = 1.7 * np.exp(-0.5 * (time[:, None] - tail * nodes) ** 2)
+    expected = shifted_gaussians @ weights
+    actual = generate_emg_irf(time, 0.0, width, tail, amplitude=1.7)
+    np.testing.assert_allclose(actual, expected, rtol=2e-13, atol=2e-14)
+
+
+def test_emg_small_tail_far_right_is_representably_zero() -> None:
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))  # sigma = 1 ns
+    values = generate_emg_irf(np.array([0.0, 1e6]), 0.0, width, 1e-6)
+    assert np.isfinite(values[0]) and values[0] > 0.0
+    assert values[1] == 0.0
+
+
+def test_ordinary_positive_emg_tails_use_existing_scipy_evaluation() -> None:
+    time = np.array([-1.0, 0.0, 1.0])
+    width = 2.0 * np.sqrt(2.0 * np.log(2.0))
+    original = exponnorm.logpdf
+    with patch("tcspc_toolkit.irf.profiles.exponnorm.logpdf", wraps=original) as logpdf:
+        for tail in (0.01, 0.1, 1.0):
+            values = generate_emg_irf(time, 0.0, width, tail)
+            assert np.all(np.isfinite(values))
+    assert logpdf.call_count == 3
 
 
 def test_profile_factories_record_source_parameters_and_provenance() -> None:
@@ -190,12 +272,20 @@ def test_profile_factories_record_source_parameters_and_provenance() -> None:
     metadata = {"instrument": {"run": 1}}
     provenance = {"study": "synthetic-check"}
     gaussian = generate_gaussian_irf_profile(
-        time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.4,
-        amplitude=3.0, metadata=metadata, provenance=provenance,
+        time,
+        gaussian_centre_ns=1.0,
+        gaussian_fwhm_ns=0.4,
+        amplitude=3.0,
+        metadata=metadata,
+        provenance=provenance,
     )
     emg = generate_emg_irf_profile(
-        time, gaussian_centre_ns=1.0, gaussian_fwhm_ns=0.4,
-        tail_time_ns=0.2, metadata=metadata, provenance=provenance,
+        time,
+        gaussian_centre_ns=1.0,
+        gaussian_fwhm_ns=0.4,
+        tail_time_ns=0.2,
+        metadata=metadata,
+        provenance=provenance,
     )
     assert gaussian.source_kind is IRFSourceKind.SYNTHETIC_GAUSSIAN
     assert gaussian.source_parameters["amplitude"] == 3.0
@@ -209,9 +299,7 @@ def test_profile_factories_record_source_parameters_and_provenance() -> None:
     assert emg.provenance["generator"] == "generate_emg_irf"
     assert emg.provenance["study"] == "synthetic-check"
     assert emg.metadata["instrument"]["run"] == 1
-    np.testing.assert_array_equal(
-        emg.values, generate_emg_irf(time, 1.0, 0.4, 0.2)
-    )
+    np.testing.assert_array_equal(emg.values, generate_emg_irf(time, 1.0, 0.4, 0.2))
 
 
 def test_profile_factory_rejects_conflicting_generator_provenance() -> None:
