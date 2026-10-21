@@ -18,6 +18,7 @@ only an installed checkout and the inputs already committed to this repository.
 | Use the command line | [CLI guide](cli.md) | `tcspc --help`, `tcspc simulate --help`, `tcspc fit --help` |
 | Inspect established scientific results | [Results summary](results.md) | [Scientific findings](scientific_findings.md) |
 | Reproduce a workflow or run tests | [Reproducibility guide](reproducibility.md) | [Issue-12 acceptance ledger](issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) |
+| Run quality/build checks or review release gates | [Release readiness](release_readiness.md) | [CI workflow](../.github/workflows/ci.yml) |
 
 ## Reference documents
 

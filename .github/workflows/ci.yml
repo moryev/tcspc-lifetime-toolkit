@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MPLBACKEND: Agg
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  tests:
+    name: Tests / Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install development and Bayesian dependencies
+        run: python -m pip install -e ".[dev,bayesian]"
+      - name: Record environment
+        run: |
+          python -m pip check
+          mkdir -p build/reports
+          python -m pip freeze > build/reports/environment.txt
+      - name: Full suite
+        if: matrix.python == '3.11'
+        run: python -m pytest --durations=25 --junitxml=build/reports/pytest.xml
+      - name: Full suite with branch coverage
+        if: matrix.python == '3.12'
+        run: >-
+          python -m pytest --durations=25 --junitxml=build/reports/pytest.xml
+          --cov=tcspc_toolkit --cov-branch --cov-report=term-missing
+          --cov-report=xml:build/reports/coverage.xml
+          --cov-report=json:build/reports/coverage.json
+      - name: Save test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-python-${{ matrix.python }}
+          path: build/reports/
+          retention-days: 14
+
+  quality:
+    name: Ruff lint and formatting / Python 3.12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install quality tools
+        run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: python -m ruff check src tests examples scripts
+      - name: Check formatting and baseline integrity
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        run: python scripts/check_format.py --base-ref "$BASE_REF"
+
+  distribution:
+    name: Build and isolated artifact installs / Python 3.12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install build tools
+        run: python -m pip install -e ".[dev]"
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Validate distribution metadata
+        run: python -m twine check --strict dist/*
+      - name: Validate contents and installed workflows
+        run: |
+          mkdir -p build/reports
+          python scripts/check_distribution.py --dist-dir dist | tee build/reports/distribution.txt
+      - name: Save build artifacts and qualification log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: distribution
+          path: |
+            dist/
+            build/reports/
+          retention-days: 14

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tcspc-lifetime-toolkit"
-version = "0.7.0"
+version = "0.8.0"
 description = "A scientific Python toolkit for simulating and analysing TCSPC decay data"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,17 +15,22 @@ authors = [
 ]
 
 dependencies = [
-    "numpy",
-    "scipy",
-    "pandas",
-    "matplotlib",
-    "scikit-learn",
+    "numpy>=2.0.0",
+    "scipy>=1.13.0",
+    "pandas>=2.2.2",
+    "matplotlib>=3.8.4",
+    "scikit-learn>=1.4.2",
 ]
 
 [project.optional-dependencies]
 dev = [
     "jupyter",
-    "pytest",
+    "pytest==9.1.1",
+    "ruff==0.17.1",
+    "pytest-cov==7.1.0",
+    "coverage==7.16.2",
+    "build==1.6.1",
+    "twine==7.0.0",
 ]
 bayesian = [
     "emcee>=3.1.6,<4",
@@ -45,3 +50,24 @@ addopts = "-ra"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+required-version = "==0.17.1"
+target-version = "py311"
+extend-exclude = ["notebooks", "data", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["tcspc_toolkit"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+# Candidate floor: confirm against the first Ubuntu/Python 3.12 CI result.
+fail_under = 80

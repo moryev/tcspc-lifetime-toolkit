@@ -19,6 +19,10 @@ dist/
 # Test and coverage caches
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
+coverage.json
+.ruff_cache/
 htmlcov/
 
 # Operating-system files

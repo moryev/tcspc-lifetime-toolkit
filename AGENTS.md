@@ -24,7 +24,7 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.7.0**. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
+The current package target is **v0.8.0 (unreleased)**; v0.7.0 remains the previous release. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
 
 **Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 (Week 12 continuous integration and release preparation) is now active.** **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
@@ -67,7 +67,14 @@ Run a targeted test file during development with:
 python -m pytest tests/test_<relevant_module>.py
 ```
 
-Prior to Issue #15, Ruff/format/coverage checks were not required repository gates. Issue #15 is responsible for choosing and documenting their configuration and identical local/CI commands. Do not assume a lint rule, formatter, coverage threshold, or Python-version matrix is already accepted before evaluating the existing codebase.
+Issue #15 introduces Ruff 0.17.1 (`E4,E7,E9,F`) and the Ruff formatter with an
+unchanged-debt hash baseline. Run `python -m ruff check src tests examples scripts`
+and `python scripts/check_format.py`. Never refresh baseline hashes to bypass
+formatting failures; new/modified Python files must be formatted.
+See [release readiness](docs/release_readiness.md) for coverage and artifact commands.
+The Ubuntu 24.04 Python 3.11/3.12 matrix and candidate 80% combined branch-coverage
+floor still require actual GitHub run qualification. Do not claim local Windows
+validation proves Linux portability. Tag/release creation needs separate approval.
 
 ## Source-of-truth priority
 

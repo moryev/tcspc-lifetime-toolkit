@@ -92,7 +92,7 @@ def run_fit(args: Namespace) -> None:
             initial_guess=initial_guess,
         )
     except Exception as error:
-        print(f"Fit status: failed")
+        print("Fit status: failed")
         raise SystemExit(
             f"Error: fitting failed: {error}"
         ) from error

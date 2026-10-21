@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from tcspc_toolkit.config import FeatureConfig
 from tcspc_toolkit.benchmarks.mismatch import (

@@ -22,7 +22,6 @@ from tcspc_toolkit.ml.evaluation import (
     BenchmarkDataset,
 )
 from tcspc_toolkit.uncertainty.ml import (
-    DEFAULT_BOOTSTRAP_REPLICATES,
     DEFAULT_LOWER_QUANTILE,
     DEFAULT_MEDIAN_QUANTILE,
     DEFAULT_QUANTILE_NOMINAL_COVERAGE,
@@ -34,7 +33,6 @@ from tcspc_toolkit.uncertainty.ml import (
     RandomForestTreeSpreadEstimator,
     QuantileGradientBoostingExternalResult,
     QuantileGradientBoostingIntervalEstimator,
-    evaluate_frozen_ml_uncertainty_score,
     evaluate_frozen_quantile_gradient_boosting,
     fit_and_evaluate_quantile_gradient_boosting,
     fit_and_evaluate_random_forest_tree_spread,
