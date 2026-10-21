@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from tcspc_toolkit.evaluation.plots import (
-    plot_error_histogram,
     plot_error_vs_condition,
     plot_paired_absolute_error_comparison,
     plot_true_vs_predicted,

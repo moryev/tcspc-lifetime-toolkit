@@ -18,7 +18,9 @@ from numpy.typing import ArrayLike, NDArray
 from tcspc_toolkit.exceptions import InvalidMeasurementError
 from tcspc_toolkit.irf.selection import _resolve_reconvolution_irf
 from tcspc_toolkit.estimation.fitting import poisson_negative_log_likelihood
-from tcspc_toolkit.physics.forward_model import monoexponential_reconvolution_expected_counts
+from tcspc_toolkit.physics.forward_model import (
+    monoexponential_reconvolution_expected_counts,
+)
 from tcspc_toolkit.irf.profiles import IRFProfile, IRFSourceKind
 from tcspc_toolkit.irf.preparation import PreparedIRF
 from tcspc_toolkit.measurement.records import SampledIRF, TCSPCMeasurement
@@ -44,7 +46,9 @@ class GammaPrior:
     rate: float
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "shape", _finite_real(self.shape, "shape", positive=True))
+        object.__setattr__(
+            self, "shape", _finite_real(self.shape, "shape", positive=True)
+        )
         object.__setattr__(self, "rate", _finite_real(self.rate, "rate", positive=True))
 
     def log_density(self, value: float) -> float:
@@ -100,7 +104,10 @@ class BoundedUniformPrior:
         object.__setattr__(self, "upper_ns", upper)
 
     def log_density(self, shift_ns: float) -> float:
-        if not math.isfinite(shift_ns) or not self.lower_ns <= shift_ns <= self.upper_ns:
+        if (
+            not math.isfinite(shift_ns)
+            or not self.lower_ns <= shift_ns <= self.upper_ns
+        ):
             return -math.inf
         return -math.log(self.upper_ns - self.lower_ns)
 
@@ -127,8 +134,12 @@ class BayesianPriorConfig:
             raise TypeError("lifetime_ns must be a LogNormalPrior")
         if not isinstance(self.background_per_bin, GammaPrior):
             raise TypeError("background_per_bin must be a GammaPrior")
-        if (self.temporal_shift_prior is None) == (self.fixed_temporal_shift_ns is None):
-            raise ValueError("provide exactly one of temporal_shift_prior or fixed_temporal_shift_ns")
+        if (self.temporal_shift_prior is None) == (
+            self.fixed_temporal_shift_ns is None
+        ):
+            raise ValueError(
+                "provide exactly one of temporal_shift_prior or fixed_temporal_shift_ns"
+            )
         if self.temporal_shift_prior is not None and not isinstance(
             self.temporal_shift_prior, BoundedUniformPrior
         ):
@@ -192,9 +203,13 @@ class BayesianModelContext:
         if not isinstance(self.irf_model_relation, IRFModelRelation):
             raise ValueError("irf_model_relation must be an IRFModelRelation")
         counts = self.measurement.require_raw_counts()
-        kernel, _ = _resolve_reconvolution_irf(self.measurement, counts, self.prepared_irf)
+        kernel, _ = _resolve_reconvolution_irf(
+            self.measurement, counts, self.prepared_irf
+        )
         if counts.size < 5:
-            raise InvalidMeasurementError("reconvolution requires at least five time bins")
+            raise InvalidMeasurementError(
+                "reconvolution requires at least five time bins"
+            )
         kernel_copy = np.array(kernel, dtype=np.float64, copy=True)
         kernel_copy.setflags(write=False)
         object.__setattr__(self, "_irf_kernel", kernel_copy)
@@ -213,7 +228,9 @@ class BayesianModelContext:
 
     @property
     def irf_selection(self) -> Literal["explicit_prepared", "attached_sampled"]:
-        return "explicit_prepared" if self.prepared_irf is not None else "attached_sampled"
+        return (
+            "explicit_prepared" if self.prepared_irf is not None else "attached_sampled"
+        )
 
     @property
     def irf_source(self) -> IRFProfile | SampledIRF:
@@ -234,7 +251,9 @@ class _InvalidProposal(ValueError):
     """Numerically or physically unusable transformed sampler proposal."""
 
 
-def _sampling_vector(coordinates: ArrayLike, prior: BayesianPriorConfig) -> NDArray[np.float64]:
+def _sampling_vector(
+    coordinates: ArrayLike, prior: BayesianPriorConfig
+) -> NDArray[np.float64]:
     if not isinstance(prior, BayesianPriorConfig):
         raise TypeError("prior must be a BayesianPriorConfig")
     try:
@@ -242,7 +261,9 @@ def _sampling_vector(coordinates: ArrayLike, prior: BayesianPriorConfig) -> NDAr
     except (TypeError, ValueError) as exc:
         raise TypeError("sampling coordinates must be numeric") from exc
     if vector.shape != (prior.n_sampling_coordinates,):
-        raise ValueError(f"sampling coordinates must have shape ({prior.n_sampling_coordinates},)")
+        raise ValueError(
+            f"sampling coordinates must have shape ({prior.n_sampling_coordinates},)"
+        )
     return vector
 
 
@@ -258,7 +279,11 @@ def sampling_to_physical_parameters(
         positive_values = np.exp(vector[:3])
     if not np.all(np.isfinite(positive_values)) or np.any(positive_values <= 0.0):
         raise _InvalidProposal("sampling coordinates produce non-physical values")
-    shift = float(vector[3]) if prior.infer_temporal_shift else prior.fixed_temporal_shift_ns
+    shift = (
+        float(vector[3])
+        if prior.infer_temporal_shift
+        else prior.fixed_temporal_shift_ns
+    )
     assert shift is not None
     return BayesianPhysicalParameters(
         amplitude=float(positive_values[0]),
@@ -283,10 +308,15 @@ def physical_to_sampling_coordinates(
         parameters.background_per_bin,
     )
     if not all(math.isfinite(value) and value > 0.0 for value in positive_values):
-        raise ValueError("amplitude, lifetime_ns, and background_per_bin must be finite and positive")
+        raise ValueError(
+            "amplitude, lifetime_ns, and background_per_bin must be finite and positive"
+        )
     if not math.isfinite(parameters.temporal_shift_ns):
         raise ValueError("temporal_shift_ns must be finite")
-    if not prior.infer_temporal_shift and parameters.temporal_shift_ns != prior.fixed_temporal_shift_ns:
+    if (
+        not prior.infer_temporal_shift
+        and parameters.temporal_shift_ns != prior.fixed_temporal_shift_ns
+    ):
         raise ValueError("temporal_shift_ns differs from the fixed shift")
     coordinates = [math.log(value) for value in positive_values]
     if prior.infer_temporal_shift:
@@ -322,10 +352,14 @@ def log_prior(
     ]
     if prior.infer_temporal_shift:
         assert prior.temporal_shift_prior is not None
-        terms.append(prior.temporal_shift_prior.log_density(parameters.temporal_shift_ns))
+        terms.append(
+            prior.temporal_shift_prior.log_density(parameters.temporal_shift_ns)
+        )
     elif parameters.temporal_shift_ns != prior.fixed_temporal_shift_ns:
         return -math.inf
-    return float(sum(terms)) if all(math.isfinite(term) for term in terms) else -math.inf
+    return (
+        float(sum(terms)) if all(math.isfinite(term) for term in terms) else -math.inf
+    )
 
 
 def log_likelihood(
@@ -368,8 +402,14 @@ def log_likelihood(
             raise
     if not np.all(np.isfinite(expected_counts)):
         return -math.inf
-    negative_log_likelihood = poisson_negative_log_likelihood(context.counts, expected_counts)
-    return -negative_log_likelihood if math.isfinite(negative_log_likelihood) else -math.inf
+    negative_log_likelihood = poisson_negative_log_likelihood(
+        context.counts, expected_counts
+    )
+    return (
+        -negative_log_likelihood
+        if math.isfinite(negative_log_likelihood)
+        else -math.inf
+    )
 
 
 def log_posterior(
@@ -400,10 +440,10 @@ def fit_bayesian_monoexponential_reconvolution(
     measurement: TCSPCMeasurement,
     *,
     priors: BayesianPriorConfig,
-    sampling_config: "BayesianSamplingConfig",
+    sampling_config: "BayesianSamplingConfig",  # noqa: F821 - sampler edge stays deferred
     prepared_irf: PreparedIRF | None = None,
     irf_model_relation: IRFModelRelation = IRFModelRelation.UNSPECIFIED,
-) -> "BayesianInferenceRun":
+) -> "BayesianInferenceRun":  # noqa: F821 - sampler edge stays deferred
     """Run optional emcee sampling against this module's posterior target."""
     from tcspc_toolkit.estimation.bayesian.sampling import (
         fit_bayesian_monoexponential_reconvolution as _fit,

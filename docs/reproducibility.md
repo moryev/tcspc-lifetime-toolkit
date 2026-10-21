@@ -9,7 +9,8 @@ live in [results](results.md) and [scientific findings](scientific_findings.md).
 
 Python **>= 3.11** is declared in [pyproject.toml](../pyproject.toml).
 The base install includes NumPy, SciPy, pandas, Matplotlib and scikit-learn.
-The `dev` extra adds pytest/Jupyter; `bayesian` adds `emcee>=3.1.6,<4`.
+The `dev` extra adds pytest/Jupyter and pinned quality/build tools;
+`bayesian` adds `emcee>=3.1.6,<4`.
 SQLite needs no extra dependency. Editable installation from a checkout gives
 access to examples, notebooks and committed input files as well as the package.
 
@@ -39,8 +40,16 @@ python examples/bayesian_inference.py
 The broader suite retains its existing Bayesian tests and optional-dependency
 behavior. Install both extras when reporting a full-suite result. The declared
 Python range is not evidence that every Python/dependency combination has been
-tested. Issue-12 clean-install acceptance was on Python 3.12; the broader CI
-matrix and release automation belong to Issue #15.
+tested. Issue-12 clean-install acceptance was on Python 3.12. Issue #15 adds an
+Ubuntu 24.04 Python 3.11/3.12 workflow, pending actual GitHub run qualification.
+See [release readiness](release_readiness.md) for identical local/CI quality,
+coverage and artifact-install commands, dependency floors and remaining gates.
+
+Run the full repository suite in an editable **Git checkout**: provenance and
+source-architecture guards intentionally inspect Git/source state. An installed
+wheel is qualified separately outside the checkout; its success does not require
+shipping tests or notebooks as runtime package data. The sdist includes the
+redistributable workflows but is not itself a Git checkout.
 
 ## Seeds, inputs and outputs
 

@@ -2,7 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Post-Week-9 integration and documentation
+## [0.8.0] — Unreleased
+
+Release target: GitHub Release first, with PyPI publication deferred. Publication
+date, tag creation and release authorization remain pending successful GitHub CI
+and maintainer review. This pre-1.0 release does not promise a v1.0 API freeze.
+
+### Release summary
+
+- Combine Poisson TCSPC simulation, shared-model mono-exponential reconvolution,
+  leakage-safe ML evaluation, frozen external A–F generalization, and statistical
+  uncertainty/calibration/failure-awareness workflows.
+- Support explicit experimental CSV semantics, generalized Gaussian/EMG/sampled
+  IRFs and preparation diagnostics, model-conditional Bayesian reconvolution,
+  and schema-v1 SQLite provenance and querying.
+- Preserve accepted Issue-12 evidence, historical identities and the ordered
+  66-name root API. Canonical subpackages replace the removed flat imports below.
+- Keep experimental accuracy, IRF uncertainty and physical-model correctness
+  separate from numerical convergence or narrow uncertainty intervals.
+  The Purcell sensing application (#13) remains deferred and experiment-dependent.
+
+### Quality and distribution — Issue #15
+
+- Add Ubuntu 24.04 Python 3.11/3.12 test jobs, Python 3.12 branch coverage,
+  conservative Ruff linting and a formatter-debt ratchet, and isolated wheel/sdist
+  installation checks. Actual GitHub run qualification remains pending.
+- Add regression checks for invalid Poisson inputs, invalid prepared IRFs,
+  autocorrelation failures, residual helpers and release tooling.
+- Declare NumPy >=2.0.0 for `np.trapezoid` and compatible dependency floors.
+  Minimum-stack smoke compatibility is distinct from full minimum-stack qualification.
+- Include redistributable examples, docs, notebooks, configurations and compact
+  references in the sdist; wheels contain the installed package and CLI.
+- Preserve scientific algorithms, sampling diagnostics and benchmark definitions.
+  Full Bayesian example sampling and long reference studies remain outside PR CI.
 
 ### Documentation and usability — Issue #14
 
@@ -19,8 +51,8 @@ All notable changes to this project will be documented in this file.
   is validated separately; package version, APIs, reference evidence and schema v1
   remain unchanged.
 
-Current roadmap: Issue #12 and the separate compatibility cleanup are complete;
-Issue #14 precedes #15 CI/release work. Issue #13 remains deferred until realistic
+Current roadmap: Issues #12 and #14 and the compatibility cleanup are complete;
+Issue #15 prepares CI/release qualification. Issue #13 remains deferred until realistic
 experiment-specific inputs are available and does not block release preparation.
 
 ### Breaking — post-Issue-12 import cleanup

@@ -1,13 +1,11 @@
 import numpy as np
 import pytest
-from numpy.typing import NDArray
 
 from tcspc_toolkit.physics.convolution import convolve_decay_with_irf
 from tcspc_toolkit.irf import (
     generate_gaussian_irf,
     normalize_irf,
 )
-from tcspc_toolkit.physics.models import monoexponential_decay
 
 
 def test_convolution_preserves_shape(

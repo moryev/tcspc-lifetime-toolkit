@@ -541,10 +541,11 @@ def test_classical_objective_controls_measurement_semantics(
                       configuration={"objective": objective, "method": "reconvolution"})
     assumption_id = _assumption(db, "objective/assumption",
                                 observation_model=observation_model)
-    record = lambda: persistence.record_reconvolution_fit(
-        db, _lower_fit(), run_id=run_id, measurement_id=measurement_id,
-        model_id=model_id, assumption_id=assumption_id,
-    )
+    def record():
+        return persistence.record_reconvolution_fit(
+            db, _lower_fit(), run_id=run_id, measurement_id=measurement_id,
+            model_id=model_id, assumption_id=assumption_id,
+        )
     if accepted:
         result_id = record()
         model = db.execute(
@@ -652,10 +653,11 @@ def test_valid_classical_fit_respects_fixed_shift(db, shift, accepted):
     model_id = _model(db, "shift/fixed-model", family="classical")
     assumption_id = _assumption(db, "shift/fixed-assumption",
                                 fixed_shift=0.01, shift_bounds=None)
-    record = lambda: persistence.record_reconvolution_fit(
-        db, _lower_fit(temporal_shift=shift), run_id=run_id,
-        measurement_id=measurement_id, model_id=model_id, assumption_id=assumption_id,
-    )
+    def record():
+        return persistence.record_reconvolution_fit(
+            db, _lower_fit(temporal_shift=shift), run_id=run_id,
+            measurement_id=measurement_id, model_id=model_id, assumption_id=assumption_id,
+        )
     if accepted:
         assert record() > 0
     else:
@@ -671,10 +673,11 @@ def test_valid_classical_fit_respects_bounded_shift(db, shift, accepted):
     measurement_id = _measurement(db, "shift/bounded-observation", run_id=run_id)
     model_id = _model(db, "shift/bounded-model", family="classical")
     assumption_id = _assumption(db, "shift/bounded-assumption")
-    record = lambda: persistence.record_reconvolution_fit(
-        db, _curve_fit(fitted_temporal_shift_ns=shift), run_id=run_id,
-        measurement_id=measurement_id, model_id=model_id, assumption_id=assumption_id,
-    )
+    def record():
+        return persistence.record_reconvolution_fit(
+            db, _curve_fit(fitted_temporal_shift_ns=shift), run_id=run_id,
+            measurement_id=measurement_id, model_id=model_id, assumption_id=assumption_id,
+        )
     if accepted:
         assert record() > 0
     else:

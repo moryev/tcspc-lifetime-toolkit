@@ -154,10 +154,6 @@ def normalize_irf(
     return irf_array / area
 
 
-from numpy.typing import NDArray
-import numpy as np
-
-
 def shift_irf(
     time: ArrayLike,
     irf: ArrayLike,

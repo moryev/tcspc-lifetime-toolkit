@@ -4,6 +4,12 @@ For runnable tasks, start with the [example index](../examples/README.md) and
 [user guide](user_guide.md). This page preserves the detailed API contract and
 migration history; the [documentation index](README.md) maps the other guides.
 
+The current target is **0.8.0 (unreleased)**. The ordered 66-name root surface,
+reviewed canonical interfaces and supported symbol aliases are preserved.
+Removed flat paths (and pickles naming their globals) remain unsupported; see
+the [migration mapping](package_structure.md#removed-flat-module-mapping).
+Release qualification does not introduce a v1.0 API-stability commitment.
+
 This document defines the Issue-#2 public API contract for version 0.7.0:
 a curated package-root convenience API, supported module-qualified workflows,
 and a generic estimator extension boundary separate from frozen benchmark

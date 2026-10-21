@@ -252,15 +252,15 @@ read the [reproducibility guide](docs/reproducibility.md) before running them.
 
 ## Development status and roadmap
 
-Package metadata remains **0.7.0**; the current checkout includes subsequent
-unreleased integration work and a breaking removal of obsolete flat imports.
+The release target is **0.8.0 (unreleased)**, including the post-0.7.0 integration
+work and a breaking removal of obsolete flat imports.
 Use the curated root API or [canonical module paths](docs/package_structure.md#removed-flat-module-mapping).
 Schema-v1 SQLite provenance identities remain unchanged.
 
-Issue #12 integration and the compatibility cleanup are complete.
-[Issue #14](https://github.com/moryev/tcspc-lifetime-toolkit/issues/14) covers this
-documentation/UX work; [Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15)
-follows with CI and release preparation.
+Issues #12 and #14 and the compatibility cleanup are complete.
+[Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15) prepares CI
+and release qualification; see [quality commands and release gates](docs/release_readiness.md).
+GitHub CI qualification and release approval remain pending; PyPI is deferred.
 [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13), the
 Purcell-enhanced sensing demonstration, is **deferred pending realistic
 experiment-specific inputs** and does not block release-readiness work.
@@ -270,8 +270,8 @@ records the sequence.
 ## Citation and contact
 
 Cite the software using [CITATION.cff](CITATION.cff) or GitHub's “Cite this repository”
-action: **Yevhenii Morozov, TCSPC Lifetime Toolkit, version 0.7.0 (2026)**.
-Also record the commit when using unreleased work. No associated article or
+action: **Yevhenii Morozov, TCSPC Lifetime Toolkit, version 0.8.0 (unreleased)**.
+Record the commit used; the release date is pending. No associated article or
 preprint is currently listed.
 
 Questions, reproducible bug reports and collaboration proposals are welcome via

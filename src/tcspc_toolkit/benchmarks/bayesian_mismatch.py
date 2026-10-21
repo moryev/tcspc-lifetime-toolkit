@@ -41,7 +41,6 @@ from tcspc_toolkit.estimation.bayesian.predictive import (
 )
 from tcspc_toolkit.estimation.bayesian.sampling import (
     BayesianSamplingConfig,
-    BayesianSamplingStatus,
 )
 from tcspc_toolkit.estimation.classical import fit_single_reconvolution_curve
 from tcspc_toolkit.uncertainty.classical import (

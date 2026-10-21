@@ -492,7 +492,7 @@ def week8(report):
     require([r[0] for r in expected_mae] == ["constant_mean", "mean_arrival_time", *METHODS, "classical_reconvolution"], "Scorecard method order")
     for row, ratios in zip(expected_mae[:-1], expected_degradation[:-1], strict=True):
         method = row[0]
-        representation = "none" if method == "constant_mean" else "engineered_features"
+        representation = "none" if method == "constant_mean" else "engineered_features"  # noqa: F841 - used by pandas query below
         selection = nonclassical.summary.query("estimator == @method and representation == @representation").set_index("test_id")
         for test_id, value in zip(TEST_IDS, row[1:], strict=True):
             compare(report, f"{method}/{test_id}/mae_ns", selection.loc[test_id, "mae_ns"], float(value), 4)
