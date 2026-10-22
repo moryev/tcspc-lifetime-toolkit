@@ -252,15 +252,19 @@ read the [reproducibility guide](docs/reproducibility.md) before running them.
 
 ## Development status and roadmap
 
-The release target is **0.8.0 (unreleased)**, including the post-0.7.0 integration
-work and a breaking removal of obsolete flat imports.
+The current package version is **0.8.0**, incorporating the post-0.7.0 integration
+work and a breaking removal of obsolete flat imports. GitHub release publication
+is a separately authorized step, not an effect of passing CI.
 Use the curated root API or [canonical module paths](docs/package_structure.md#removed-flat-module-mapping).
 Schema-v1 SQLite provenance identities remain unchanged.
 
 Issues #12 and #14 and the compatibility cleanup are complete.
-[Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15) prepares CI
-and release qualification; see [quality commands and release gates](docs/release_readiness.md).
-GitHub CI qualification and release approval remain pending; PyPI is deferred.
+[Issue #15](https://github.com/moryev/tcspc-lifetime-toolkit/issues/15) established
+and qualified the release gates: Ubuntu Python 3.11/3.12 suites, Ruff,
+distribution installs, and pinned Windows Week-7 regeneration passed in
+[GitHub Actions run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).
+See [release readiness](docs/release_readiness.md) for evidence and the separate
+publication steps. PyPI is deferred.
 [Issue #13](https://github.com/moryev/tcspc-lifetime-toolkit/issues/13), the
 Purcell-enhanced sensing demonstration, is **deferred pending realistic
 experiment-specific inputs** and does not block release-readiness work.
@@ -270,9 +274,10 @@ records the sequence.
 ## Citation and contact
 
 Cite the software using [CITATION.cff](CITATION.cff) or GitHub's “Cite this repository”
-action: **Yevhenii Morozov, TCSPC Lifetime Toolkit, version 0.8.0 (unreleased)**.
-Record the commit used; the release date is pending. No associated article or
-preprint is currently listed.
+action: **Yevhenii Morozov, TCSPC Lifetime Toolkit, version 0.8.0**.
+Use a tagged version after publication, or record the exact commit beforehand.
+The actual publication date is added to `CITATION.cff` at release time.
+No associated article or preprint is currently listed.
 
 Questions, reproducible bug reports and collaboration proposals are welcome via
 [GitHub issues](https://github.com/moryev/tcspc-lifetime-toolkit/issues) or
