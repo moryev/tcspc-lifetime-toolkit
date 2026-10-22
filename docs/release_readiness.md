@@ -1,9 +1,9 @@
 # Release readiness and quality gates
 
-**Target: 0.8.0, CI-qualified but not yet published.** GitHub Release first;
+**Version 0.8.0 — dated October 22, 2026; CI-qualified.** GitHub Release first;
 PyPI publication is deferred. The version reflects substantial work after 0.7.0
-without a premature v1.0 API-stability commitment. No tag or release is created
-by CI; the actual release date remains unset until publication.
+without a premature v1.0 API-stability commitment. Tags and releases are created
+only with separate maintainer authorization; CI does not publish them.
 Issue #13 remains deferred and is not a release blocker.
 
 The [changelog](../CHANGELOG.md) owns release notes and breaking changes.
@@ -235,10 +235,12 @@ inputs, commands and cost.
 - Retain the successful merged-main qualification as evidence; confirm the
   release-metadata PR CI also passes before merging or tagging.
 - Obtain separate approval for Git history actions and publication.
-- At publication, replace the citation's unreleased message and add the actual
-  `date-released`; date the 0.8.0 changelog entry consistently.
+- Confirm `CITATION.cff` has `date-released: 2026-10-22` and the 0.8.0
+  changelog entry is dated consistently. If publication does not happen on
+  October 22, 2026, correct both dates in a reviewed commit before tagging.
 - Only then create the approved `v0.8.0` tag/GitHub Release and attach qualified
   artifacts. Rebuild from the approved release commit. PyPI remains deferred.
 
 Current metadata uses version `0.8.0` in `pyproject.toml` and `CITATION.cff`;
-the citation deliberately has no release date. No old 0.7.0 date is reused.
+`CITATION.cff` and `CHANGELOG.md` consistently record October 22, 2026 as the
+intended publication date. No historical 0.7.0 date is reused.

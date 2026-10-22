@@ -2,13 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.8.0] — Unreleased (CI-qualified release candidate)
+## [0.8.0] — 2026-10-22
 
-GitHub Release first; PyPI publication is deferred. Release qualification passed
-on October 22, 2026 in
+GitHub Release is the intended publication channel; PyPI publication is deferred.
+Release qualification passed on October 22, 2026 in
 [GitHub Actions run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).
-The publication date, `v0.8.0` tag and GitHub Release still require separate
-maintainer approval. This pre-1.0 release does not promise a v1.0 API freeze.
+The `v0.8.0` tag and GitHub Release are created only after separate maintainer
+approval, from the final dated release commit. This pre-1.0 release does not
+promise a v1.0 API freeze.
 
 ### Release summary
 
