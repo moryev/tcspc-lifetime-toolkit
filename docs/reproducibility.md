@@ -40,8 +40,9 @@ python examples/bayesian_inference.py
 The broader suite retains its existing Bayesian tests and optional-dependency
 behavior. Install both extras when reporting a full-suite result. The declared
 Python range is not evidence that every Python/dependency combination has been
-tested. Issue-12 clean-install acceptance was on Python 3.12. Issue #15 adds an
-Ubuntu 24.04 Python 3.11/3.12 workflow, pending actual GitHub run qualification.
+tested. Issue-12 clean-install acceptance was on Python 3.12. Issue #15 qualified
+Ubuntu 24.04 Python 3.11/3.12 and pinned Windows exact regeneration in
+[GitHub Actions run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).
 See [release readiness](release_readiness.md) for identical local/CI quality,
 coverage and artifact-install commands, dependency floors and remaining gates.
 

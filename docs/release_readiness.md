@@ -1,8 +1,9 @@
 # Release readiness and quality gates
 
-**Target: 0.8.0, unreleased.** GitHub Release first; PyPI publication is deferred.
-The version reflects substantial work after 0.7.0 without a premature v1.0
-API-stability commitment. No tag or release is created by CI.
+**Target: 0.8.0, CI-qualified but not yet published.** GitHub Release first;
+PyPI publication is deferred. The version reflects substantial work after 0.7.0
+without a premature v1.0 API-stability commitment. No tag or release is created
+by CI; the actual release date remains unset until publication.
 Issue #13 remains deferred and is not a release blocker.
 
 The [changelog](../CHANGELOG.md) owns release notes and breaking changes.
@@ -65,9 +66,15 @@ pinned official actions and explicit timeouts.
 | Week-7 exact regeneration (manual dispatch) | Windows 2025 / Python 3.12.0, NumPy 2.5.1, SciPy 1.18.0 | Qualified-reference candidate; exact original fingerprint |
 
 Test reports, dependency versions and distribution logs are uploaded for review.
-Local Windows results do not qualify Linux or Python 3.11. The first successful
-remote run is a required acceptance gate, not something local execution can replace.
-Newer Python versions remain declared by `>=3.11` but are not in this CI matrix.
+Qualification passed in the [October 22, 2026 merged-main GitHub Actions run
+#39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724),
+commit `6872094bc31dc7b385db70f44daacfeda4deb773`. Both Ubuntu suites passed
+**1,927 tests**, with one intentionally skipped Windows-only test and two known
+non-failing model-mismatch warnings each. Python 3.12 achieved **82.58%**
+combined branch-inclusive coverage, above the 80% minimum. Ruff/formatting,
+wheel/sdist builds, strict metadata checks and isolated installs passed.
+The manually dispatched, pinned Windows job passed the exact Week-7 regeneration
+(1 test). Newer Python versions remain declared by `>=3.11` but are not in this CI matrix.
 
 Actions were checked against official release tags and action metadata:
 [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1),
@@ -115,10 +122,10 @@ Three distinct checks now apply:
 3. **Exact stochastic regeneration:** run only in the pinned Windows reference
    environment with `TCSPC_VERIFY_WEEK7_REFERENCE=1` and compare the newly
    generated sample #770 with the original hash and array. The dedicated
-   `workflow_dispatch` job is an explicitly configured Windows runner
-   **candidate**; it becomes a qualified remote reference environment only
-   after an actual passing run. A failure requires investigation, not a new
-   accepted hash.
+   `workflow_dispatch` job passed the exact regeneration on the pinned
+   Windows reference candidate in [run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724),
+   qualifying that hosted reference environment. A future failure requires
+   investigation, not a new accepted hash.
 
 Bitwise identity of a long seeded Poisson stream is environment-specific;
 scientific numerical equivalence concerns the physical expected-count model
@@ -167,11 +174,13 @@ code/baseline changes just as other CI configuration changes.
 ## Coverage policy and regression priorities
 
 Stage A Windows/Python 3.12 measurements were **82.34% combined**, **86.88%
-statements**, **70.14% branches**. The candidate floor is **80% combined**,
-configured for the Python 3.12 job. Final acceptance of that floor is pending
-successful Linux CI. The second PR #25 run measured **82.58%** Linux combined
-coverage, above the floor, while the former bitwise hash assertion still failed.
-Investigate material future differences rather than lowering the floor to pass.
+statements**, **70.14% branches**. The accepted floor is **80% combined**,
+configured for the Python 3.12 job. The successful merged-main run measured
+**82.58%** Linux combined coverage. An earlier PR diagnostic identified the
+platform-specific Poisson-stream fingerprint assumption; the regression now
+preserves the fixed Windows realization for fitting and checks portable
+forward-model expectations separately. Investigate material future differences
+rather than lowering the floor to pass.
 
 No scientific modules, benchmark code or inconvenient branches are omitted.
 Coverage is a change detector, not a certificate of scientific correctness.
@@ -223,8 +232,8 @@ inputs, commands and cost.
 
 - Review local validation and the complete diff, including frozen scientific
   contracts and metadata consistency.
-- Obtain successful actual GitHub runs on the proposed PR; confirm the Linux
-  coverage floor and inspect warnings, reports and dependency versions.
+- Retain the successful merged-main qualification as evidence; confirm the
+  release-metadata PR CI also passes before merging or tagging.
 - Obtain separate approval for Git history actions and publication.
 - At publication, replace the citation's unreleased message and add the actual
   `date-released`; date the 0.8.0 changelog entry consistently.

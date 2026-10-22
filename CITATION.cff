@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "This is the unreleased 0.8.0 development version. Cite this version and the commit used; release date is pending."
+message: "If you use TCSPC Lifetime Toolkit in your work, cite the software version and its tagged release, or the exact Git commit before publication."
 title: "TCSPC Lifetime Toolkit"
 authors:
   - family-names: "Morozov"

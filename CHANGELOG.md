@@ -2,11 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.8.0] — Unreleased
+## [0.8.0] — Unreleased (CI-qualified release candidate)
 
-Release target: GitHub Release first, with PyPI publication deferred. Publication
-date, tag creation and release authorization remain pending successful GitHub CI
-and maintainer review. This pre-1.0 release does not promise a v1.0 API freeze.
+GitHub Release first; PyPI publication is deferred. Release qualification passed
+on October 22, 2026 in
+[GitHub Actions run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).
+The publication date, `v0.8.0` tag and GitHub Release still require separate
+maintainer approval. This pre-1.0 release does not promise a v1.0 API freeze.
 
 ### Release summary
 
@@ -26,7 +28,10 @@ and maintainer review. This pre-1.0 release does not promise a v1.0 API freeze.
 
 - Add Ubuntu 24.04 Python 3.11/3.12 test jobs, Python 3.12 branch coverage,
   conservative Ruff linting and a formatter-debt ratchet, and isolated wheel/sdist
-  installation checks. Actual GitHub run qualification remains pending.
+  installation checks. The merged-main qualification passed both Linux suites
+  (1,927 tests passed and one deliberate Windows-only skip in each), 82.58%
+  combined coverage, Ruff, distribution installation, and pinned Windows
+  exact Week-7 regeneration.
 - Add regression checks for invalid Poisson inputs, invalid prepared IRFs,
   autocorrelation failures, residual helpers and release tooling.
 - Declare NumPy >=2.0.0 for `np.trapezoid` and compatible dependency floors.
@@ -35,6 +40,11 @@ and maintainer review. This pre-1.0 release does not promise a v1.0 API freeze.
   references in the sdist; wheels contain the installed package and CLI.
 - Preserve scientific algorithms, sampling diagnostics and benchmark definitions.
   Full Bayesian example sampling and long reference studies remain outside PR CI.
+- Stabilize extremely small positive EMG tails across SciPy implementations
+  while preserving ordinary-tail evaluation and existing validation.
+- Preserve the original Week-7 sample #770 as an immutable 400-count fitter
+  fixture, separating portable expected-count checks from qualified Windows
+  bitwise Poisson regeneration without changing accepted scientific references.
 
 ### Documentation and usability — Issue #14
 
@@ -51,9 +61,10 @@ and maintainer review. This pre-1.0 release does not promise a v1.0 API freeze.
   is validated separately; package version, APIs, reference evidence and schema v1
   remain unchanged.
 
-Current roadmap: Issues #12 and #14 and the compatibility cleanup are complete;
-Issue #15 prepares CI/release qualification. Issue #13 remains deferred until realistic
-experiment-specific inputs are available and does not block release preparation.
+Current roadmap: Issues #12 and #14, the compatibility cleanup, and Issue #15
+CI/release qualification are complete. Issue #15 remains open through final
+publication. Issue #13 is deferred until realistic experiment-specific inputs
+are available and does not block release.
 
 ### Breaking — post-Issue-12 import cleanup
 
