@@ -144,6 +144,121 @@ This inventory does not promote every implementation helper to public API.
 Private validation, prediction-table construction, SQL internals, and
 study-specific orchestration are not generic extension hooks.
 
+## Multi-exponential deterministic reconvolution (Issue #28, PR 1)
+
+These additions are available through canonical module-qualified imports.
+The root API and package facades are unchanged. This stage provides the
+deterministic model and statistical primitives; bi-exponential fitting and
+its scientific qualification belong to subsequent, separately reviewed stages.
+
+```python
+from tcspc_toolkit.physics.forward_model import (
+    multiexponential_reconvolution_component_counts,
+    multiexponential_reconvolution_expected_counts,
+)
+from tcspc_toolkit.evaluation.diagnostics import (
+    PoissonFitStatistics,
+    calculate_poisson_deviance,
+    calculate_poisson_fit_statistics,
+)
+```
+
+The two forward functions accept `time` and `irf` followed by keyword-only
+`amplitudes`, `lifetimes`, and `temporal_shift=0.0`. The total-count function
+also accepts `background=0.0`. Suitable array-like inputs are converted to
+float64 arrays. Amplitudes and lifetimes are matching nonempty one-dimensional
+arrays; amplitudes are finite and non-negative, lifetimes finite and positive.
+Background is finite and non-negative; shift is finite.
+
+`multiexponential_reconvolution_component_counts` returns a `(K, n_bins)`
+array of background-free component expectations in **input order**. Equal
+lifetimes and zero amplitudes are valid and are retained. The total-count
+function returns their sum plus one constant background in counts per bin.
+The K=1 result agrees exactly with the existing mono-exponential forward
+model, whose implementation and estimator behavior are preserved.
+
+Use an explicitly prepared, area-normalized kernel on the supplied uniform
+grid, for example `prepared_irf.kernel` with `prepared_irf.time_ns`. Kernel
+preparation and source provenance remain separate from the numerical array
+input. No normalization, registration, resampling, or time-origin change is
+performed here. Each component uses the existing mono-exponential model:
+positive shift moves the IRF later, the shifted kernel is **not renormalized**,
+convolution includes the bin width and truncates to the supplied window, and
+background is added after convolution. Time, lifetimes, and shift use the same
+units, conventionally nanoseconds. Periodic excitation and pile-up are not
+included.
+
+For components `c[k, i]` and pre-exponential parameters `A[k]`, distinguish:
+
+| Quantity | Definition and interpretation |
+| --- | --- |
+| Component amplitude | `A[k]` in `sum(A[k] * exp(-time / tau[k]))`; it is a scale, not a finite-window photon budget. |
+| Amplitude fraction | `A[k] / sum(A)` when total amplitude is positive. |
+| Detected signal photon fraction | `sum(c[k]) / sum(c)` on this grid/window with this shifted IRF; excludes background. |
+| Ideal infinite-window photon fraction | `A[k]*tau[k] / sum(A*tau)`, for the continuous untruncated ideal decay from time zero. |
+
+These fractions generally differ. Their corresponding lifetime averages also
+differ: `sum(A*tau)/sum(A)` is amplitude-weighted; `sum(A*tau**2)/sum(A*tau)`
+uses ideal infinite-window photon weights; finite-window component weighting
+uses the detected fractions above. None is automatically the observed mean
+arrival time or a unique physical lifetime. Fractions and averages are
+undefined for zero total signal; this stage returns curves and does not
+silently invent such summaries.
+
+### Poisson statistics and exact zero limits
+
+`calculate_poisson_deviance(observed, expected)` returns
+`2 * sum(mu - y + y*log(y/mu))` with stable evaluation near equality.
+Inputs must be finite, non-negative, nonempty matching one-dimensional arrays.
+It permits real-valued targets for **deterministic likelihood projections**;
+this does not grant Poisson observation semantics to processed intensities.
+Half the deviance is the centered negative log likelihood and can be used as
+an optimization objective with the same minimizer as the reduced NLL.
+
+No expectation floor is used. A zero observation and zero expectation
+contribute zero; a zero observation contributes `2*mu`; positive observed
+counts with zero expectation give infinite deviance. The near-equality series
+and full-likelihood calculation avoid subtracting large, nearly equal terms.
+
+For subnormal real-valued targets near the float64 underflow limit, intermediate
+centered terms can round to zero even when the final deviance would be a
+representable positive subnormal. This numerical limitation does not alter
+the exact zero limits above.
+
+`calculate_poisson_fit_statistics(observed, expected, *, n_parameters)` returns
+a frozen `PoissonFitStatistics` record:
+
+| Field | Meaning |
+| --- | --- |
+| `n_bins`, `n_parameters` | All observed bins, including zeros, and the caller-declared nominal parameter count. |
+| `negative_log_likelihood` | Historical reduced NLL, `sum(mu - y*log(mu))`, omitting log-factorials. |
+| `centered_negative_log_likelihood` | Reduced NLL relative to the saturated model; equals half the deviance. |
+| `log_likelihood` | Full Poisson log likelihood, including log-factorials. |
+| `deviance`, `deviance_residuals` | Total deviance and read-only signed per-bin square roots; positive residual means observed exceeds expected. |
+| `aic` | `2*p - 2*log_likelihood`. |
+| `bic_bins` | `p*log(n_bins) - 2*log_likelihood`; uses bins, not photon count, as sample size. |
+
+This summary requires raw integer-valued counts below `2**53` for exact float64
+integer representation. Integer-valued float arrays are accepted; fractional
+counts are rejected. The caller is responsible for raw-count provenance:
+numeric values cannot reveal earlier normalization or other processing.
+Canonical measurement workflows must first use `require_raw_counts()`.
+
+Parameter count is explicit (normally four for mono and six for bi
+reconvolution with all parameters fitted). It is not reduced automatically
+when components vanish or lifetimes coincide. Comparisons require identical
+observations, binning/window, and likelihood conventions; a decay-model
+comparison also holds the assumed IRF fixed. The regularity assumptions behind
+information criteria can fail for weak components, equal lifetimes, or
+boundary solutions. These are descriptive quantities, with no automatic model
+choice, model-validity claim, or chi-square likelihood-ratio p-value.
+
+The existing `estimation.fitting.poisson_negative_log_likelihood` and historical
+`evaluation.diagnostics.calculate_poisson_deviance_residuals` retain their
+numerical and validation behavior. In particular, the historical residual
+helper still rejects zero expectations; the new statistics handle their
+mathematical limits explicitly.
+
 ## Compatibility principles
 
 - Canonical/root imports, reviewed package APIs, argument signatures, result
