@@ -24,9 +24,9 @@ The toolkit combines:
 - Bayesian Poisson reconvolution, posterior sampling, posterior summaries, and posterior-predictive diagnostics;
 - controlled decay-model and IRF-model mismatch evaluation across classical and Bayesian inference.
 
-The current package version is **v0.8.0** (release metadata dated October 22, 2026). GitHub tagging and publication require explicit maintainer authorization and must use the final release commit; v0.7.0 is the preceding historical release. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
+The latest published GitHub release is **v0.8.0** (October 22, 2026; PyPI deferred). v0.7.0 is the preceding historical release. Do not change the published tag or release metadata merely because development continues; further version bumps and releases require separate maintainer authorization. Weeks 8–9 of the scientific roadmap are complete. Post-v0.7.0 Issues #6, #8, #4, #9, #1, #2, #11, and #3 have been implemented, merged, and closed. Issue #12 (full integration/regression verification) is complete, merged, and closed. The [acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance) records the evidence, validation status and limitations. The separate post-Issue-12 cleanup removed the 38 obsolete flat scientific module paths.
 
-**Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 CI and release qualification passed on merged `main` in [run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).** Its final publication and closure are separately authorized actions; check the issue/release state before claiming completion. **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
+**Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 CI and release qualification completed, with the merged-main reference qualification in [run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724); it is closed and v0.8.0 was published on GitHub on October 22, 2026.** **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
 ## Repository map
 
@@ -77,8 +77,8 @@ artifact installs, and pinned Windows Week-7 reference regeneration passed in
 [GitHub run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724).
 Coverage was 82.58%; both Linux suites passed 1,927 tests each (with one
 intentionally skipped reference-only check). Do not claim this qualifies every
-Python/platform combination or establishes experimental validity. Tag/release
-creation needs separate approval.
+Python/platform combination or establishes experimental validity. Future tags,
+releases, or distribution publications still need separate maintainer approval.
 
 ## Source-of-truth priority
 
@@ -102,13 +102,14 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - IRFs are generated/represented independently from decay models;
 - convolution is an independent operation;
 - the shared mono-exponential reconvolution expected-count model lives in `physics.forward_model` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
+- Issue #28 PR 1 adds general deterministic multi-exponential component/total expected-count functions that compose the unchanged mono model; it does not yet add a multi-exponential fitter;
 - noise sampling is independent from deterministic signal generation;
 - evaluation functions are organized by the quantity being evaluated, not merely by estimator family;
 - public APIs use explicit scientific names;
 - convenience wrappers may compose lower-level functions rather than duplicate their logic;
 - preprocessing is analysis-dependent: there is no universally correct TCSPC preprocessing pipeline.
 
-Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 has completed physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics during Issue #15 release qualification; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
+Issue #2 completed the public-API stabilization phase. The package now has a curated root API, a generic estimator execution contract independent of canonical benchmark estimator identities, and scientific/domain-oriented public names with legacy compatibility aliases. Issue #11 completed the deliberate evaluation-architecture consolidation: generic point/reference facts, explicit method identity, separate interval/score uncertainty attachments, and shared robustness/reporting orchestration now sit beneath specialized scientific diagnostics and compatibility views. Issue #3 has completed physical package/subpackage reorganization. Preserve the clarified Issue-#11 responsibilities and semantics during subsequent development; do not reopen scientific or metric-policy decisions merely to obtain a cleaner directory tree.
 
 ## Scientific guardrails
 
@@ -321,8 +322,9 @@ Current integration status:
 9. **#3** — reorganize `tcspc_toolkit` into coherent subpackages — **complete, merged, and closed**;
 10. **#12** — full integration and regression verification — **complete, merged, and closed**; see the acceptance ledger;
 11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
-12. **#15** — Week 12 continuous integration and release preparation — **next active issue**;
-13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**.
+12. **#15** — Week 12 continuous integration and release preparation — **complete and closed; v0.8.0 published**;
+13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
+14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 planning next, implementation requires separate approval; PR 3 later**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -333,20 +335,58 @@ Issue #2 established the current API-stability boundary:
 - Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical symbol names remain direct aliases in their canonical modules; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
-- Do not broaden the root export surface opportunistically during #15; preserve the reviewed public import contract unless the active issue explicitly changes it.
+- Do not broaden the root export surface opportunistically during #28; preserve the reviewed public import contract unless the active issue explicitly changes it.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during Issue #15 release preparation. Do not restart Issue #12-style integration work unless a concrete regression is found.
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during Issue #28. Do not restart Issue #12-style integration work unless a concrete regression is found.
 
-## Issue #15 CI and release guardrails
+## Completed v0.8.0 release qualification (historical)
 
-- Treat the merged Issue-#14 README, examples, generated quick-start figure, documentation guides, and tests as the current public usage baseline. The Issue-#14 local report was **1,877 passing tests** and a separate successful full Bayesian example; rerun validation in CI/clean environments rather than treating historical local results as CI evidence.
-- Add deterministic, reasonably fast CI quality gates on relevant pushes/PRs. Test Python support honestly: the package declares **Python >=3.11**, while documented clean-install acceptance so far is Python 3.12. Select and report a feasible version matrix; do not claim unsupported platform coverage.
-- Prefer Ruff for lint and one canonical formatter after an inventory of existing violations. Choose rules and rollout deliberately; do not mass-reformat or refactor scientific modules just to make a release PR green. Use a measured, justified coverage policy rather than an arbitrary percentage.
-- Keep ordinary CI separate from expensive reference regeneration, long uncertainty/bootstrap studies, and the full Bayesian user demonstration. Existing fast Bayesian unit/regression tests may still belong in CI; clearly document any optional or manually invoked expensive qualification checks.
-- Verify clean wheel/sdist builds and installs when release/distribution is in scope. Exercise the README quick start, CLI baseline, representative experimental/ML/uncertainty examples, optional Bayesian import/smoke, and SQLite read/write example without overwriting saved references.
-- Review compatibility of the curated 66-name root API, canonical package exports, removed-flat-module deny-list, schema-v1/fingerprint/provenance strings, version metadata, dependencies, license, `CITATION.cff`, and `CHANGELOG.md`. Preserve scientific reference populations, pseudo-true semantics, frozen seeds/manifests, and unchanged outputs.
-- **Choose the next version explicitly** (a defensible pre-1.0 release or `v1.0.0` with a stated API-stability commitment). Do not bump versions, create tags/releases, publish to PyPI, or close #15 automatically. Release artifacts and Git history actions require the user's separate approval after gates pass.
-- Issue #13 remains deferred and is **not** a release blocker. Do not fabricate Purcell sensing results, turn this into a physics-feature sprint, or imply experimental validity from synthetic examples.
+Issue #15 is closed. Its Ubuntu Python 3.11/3.12 tests, Ruff/formatting, 80% combined
+statement/branch-coverage floor, artifact installation checks, and separately
+qualified pinned Windows Week-7 reference were accepted for v0.8.0. The GitHub
+Release was published on October 22, 2026; PyPI is deferred. Preserve the
+release-readiness gates, deterministic reference evidence, citation metadata,
+and reviewed import/SQLite contracts. Do not re-run expensive reference
+regeneration by default or alter existing release artifacts. No future version,
+tag, or release publication is authorized merely by passing CI.
+
+## Issue #28 — staged multi-exponential reconvolution
+
+**PR 1 is complete and merged** as [PR #29](https://github.com/moryev/tcspc-lifetime-toolkit/pull/29)
+(squash commit `f888a515ef3a15753762a4a91e4790e015205b58`). The new
+module-qualified APIs in `physics.forward_model` provide background-free
+component counts and general-K total expectations. The new
+`evaluation.diagnostics` APIs provide stable Poisson deviance and a structured
+raw-count statistics record (full likelihood, centered NLL, signed residuals,
+AIC, and explicitly bin-based BIC). They retain the historical mono model,
+existing reduced NLL/residual behavior, curated root API, frozen benchmark
+results, and schema v1. PR 1 qualification reported 2,123 passing local tests,
+1 intentional skip, and 82.73% combined coverage; consult GitHub Actions for
+current CI state. Read [docs/api.md](docs/api.md) for the new scientific contract.
+
+**PR 2 is the next separate planning stage, not an automatic implementation
+authorization.** Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28)
+and prepare a file-level implementation and test plan for a bounded,
+bi-exponential Poisson reconvolution fitter in
+`estimation/multiexponential.py`. Require explicitly supplied finite lifetime
+and shift bounds; reuse the PR-1 forward model and centered objective; preserve
+positive-shift convention, IRF normalization/provenance, bin-width scaling,
+finite-window truncation, pre-exponential amplitudes, and one background.
+Benchmark deterministic economical/adaptive/exhaustive multi-start policies on
+**new independent development cases** before fixing default runtime costs.
+Canonicalize fitted components only after optimization; separate numerical
+success from weak-component, boundary, lifetime-separation, local information
+conditioning, and near-optimal-start disagreement warnings. Report grouped
+assumptions, optimization and identifiability diagnostics; do not claim
+physical identifiability merely from optimizer termination or AIC/BIC.
+Preserve all original mono APIs and diagnostic semantics.
+
+PR 3 (experimental adapter, independent repeated-Poisson qualification, user
+example, documentation) remains later work. Defer Bayesian/ML/CLI extensions,
+arbitrary-K fitting, model-order selection, profile likelihood, persistence
+schema changes, benchmark regeneration, and Issue #13. Use `Refs #28` in
+partial PRs so the issue stays open. No PR 2 code, commits, or branches should
+be created until the maintainer explicitly approves its plan and next actions.
 
 ## Codex working protocol
 
@@ -366,7 +406,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, #1, #2, #11, #3, #12, and #14 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #15 unless a concrete defect is discovered and the active issue explicitly requires it.
+Issues #6, #8, #4, #9, #1, #2, #11, #3, #12, #14, and #15 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #28 unless a concrete defect is discovered and the active issue explicitly requires it.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -418,12 +458,12 @@ For future work:
 - Do not extract conformal workflows or repartition settled modules merely for directory symmetry.
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
-Consult Issues #3, #5, #11, #12, #14, and #15 for history, current sequencing, and acceptance boundaries.
+Consult Issues #3, #5, #11, #12, #14, #15, and #28 for history, current sequencing, and acceptance boundaries.
 Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions.
 
 Current task orientation:
-- #14 documentation/UX is complete and merged; retain its user-facing contracts and validated examples;
-- proceed to #15 CI, packaging/release-readiness gates, coverage/tooling, and explicit version decision;
-- keep #13 open but deferred until realistic experiment-specific or photonic-simulation inputs are available;
-- do not let deferred #13 block release-readiness work;
-- do not start further package movement or automatic publishing/tagging.
+- v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
+- #28 PR 1 is merged; plan PR 2 under Issue #28, and await separate authorization before implementation;
+- preserve PR 1's deterministic forward/statistics contracts, the ordered 66-name root API, and frozen scientific evidence;
+- leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
+- do not start package movement, PR 3, or automatic publishing/tagging.
