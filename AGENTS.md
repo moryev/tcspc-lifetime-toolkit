@@ -325,7 +325,7 @@ Current integration status:
 11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
 12. **#15** — Week 12 continuous integration and release preparation — **complete and closed; v0.8.0 published**;
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
-14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 implementation approved October 24, 2026; PR 3 requires later authorization**.
+14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 merged in PR #31; PR 3 measurement integration and independent qualification are next for planning only**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -365,44 +365,72 @@ results, and schema v1. PR 1 qualification reported 2,123 passing local tests,
 1 intentional skip, and 82.73% combined coverage; consult GitHub Actions for
 current CI state. Read [docs/api.md](docs/api.md) for the new scientific contract.
 
-**PR 2 implementation was explicitly approved on October 24, 2026.** Its
-bounded bi-exponential Poisson fitter lives in `estimation/multiexponential.py`.
-Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28) and
-[the numerical development record](docs/issue28_pr2_numerics.md) for the
-predeclared experiment, measured defaults, validation and remaining limitations.
-Require explicitly supplied finite lifetime
-and shift bounds; reuse the PR-1 forward model and centered objective; preserve
-positive-shift convention, IRF normalization/provenance, bin-width scaling,
-finite-window truncation, pre-exponential amplitudes, and one background.
-Benchmark deterministic economical/adaptive/exhaustive multi-start policies on
-**new independent development cases** before fixing default runtime costs.
-Canonicalize fitted components only after optimization; separate numerical
-success from weak-component, boundary, lifetime-separation, local information
-conditioning, and near-optimal-start disagreement warnings. Report grouped
-assumptions, optimization and identifiability diagnostics; do not claim
-physical identifiability merely from optimizer termination or AIC/BIC.
-Preserve all original mono APIs and diagnostic semantics.
+**PR 2 is complete and merged** as [PR #31](https://github.com/moryev/tcspc-lifetime-toolkit/pull/31)
+(merge commit `96e88f16c7fcb032dc2c80b6f7e58c436569c530`). It adds the
+module-qualified constrained bi-exponential Poisson fitter in
+`estimation.multiexponential`, with explicit finite positive lifetime bounds,
+finite shift bounds, PreparedIRF or normalized-array inputs, canonical component
+ordering, separate numerical failure reporting, and descriptive identifiability
+diagnostics. Reuse the unchanged PR-1 forward model and centered objective;
+preserve positive-shift convention, IRF preparation/provenance, bin-width scaling,
+finite-window truncation, pre-exponential amplitude semantics, and one background.
+The root 66-name API, historical mono fitting, frozen references, schema v1,
+and release metadata remain unchanged.
 
-The public fitter accepts `PreparedIRF` or an already normalized array through
-one kernel path. Preserve supplied preparation/provenance records separately
-from caller-declared array assumptions. Neither normalization nor successful
-fitting establishes experimental correctness. Only development observation
-streams 0/1 select the default policy; stream 2 is evaluated after freezing the
-policy and must never be reused for selection. Initialization, optimization,
-validation and diagnostics have separate explicit work limits. Keep numerical
-termination, local conditioning, structural degeneracy and physical
-identifiability distinct. No warning threshold is a scientific-validity test.
+PR 2's predeclared development comparison selected the **exhaustive** deterministic
+multi-start default with **46 starts** and **56,000 optimization objective calls**;
+initialization, validation, and diagnostics have separate hard work limits.
+The original stream-2 held-out evaluation was locked before use. After a narrow
+initialization-overflow correction, an October 25 *post-correction regression
+replay* matched all 20 historical observations exactly in every non-timing
+field; it is not a fresh, untouched held-out evaluation. Preserve the original
+source-hash locks, configurations and qualification evidence. The merged PR
+reported 2,224 passing tests, one intentional skip, 83.40% combined coverage;
+[post-merge CI](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/40182315771)
+passed. Read [docs/api.md](docs/api.md) and
+[the PR-2 numerical record](docs/issue28_pr2_numerics.md) before extension.
 
-PR 3 (experimental adapter, independent repeated-Poisson qualification, user
-example, documentation) remains later work. Defer Bayesian/ML/CLI extensions,
-arbitrary-K fitting, model-order selection, profile likelihood, persistence
-schema changes, benchmark regeneration, and Issue #13. Use `Refs #28` in
-partial PRs so the issue stays open. PR-2 branch creation, commit, push and PR
-publication were explicitly authorized on October 25 subject to a separate
-post-correction replay of the 20 previously evaluated observations. Preserve
-the original evidence and source locks; this replay is regression verification,
-not a new untouched held-out evaluation. Stop after opening PR 2. Merge and
-PR 3 require separate maintainer authorization.
+Numerical convergence, local Jacobian rank, near-optimal-start agreement, and
+warning-free diagnostics do **not** certify physical identifiability or accurate
+component recovery. The reported warning-free 10.18% secondary-lifetime error
+on one noisy observation is a retained negative result, not a threshold-tuning
+opportunity. Do not alter the frozen PR-2 optimization policy or warning
+thresholds based on later qualification observations.
+
+**PR 3 is now the next *planning* stage; implementation is not yet authorized.**
+Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28)
+and audit existing `measurement.adapters`, `irf.selection`,
+`TCSPCMeasurement.require_raw_counts()`, `PreparedIRF`, the mono adapter,
+and PR-2 fit/result contracts before proposing changes. Design an explicit
+canonical raw-measurement bi-exponential adapter that resolves and preserves
+the assumed IRF and its provenance without silently preprocessing observations
+or altering either fitter. On the *same* histogram, grid/window, and assumed
+IRF, permit descriptive paired mono/bi Poisson statistics with coherent
+likelihood and nominal-parameter conventions; do not use an ordinary chi-square
+likelihood-ratio p-value for the singular mono/bi boundary.
+
+Predeclare the **independent repeated-Poisson qualification** (conditions,
+seeds, grids, replicate counts, denominators, fixed numerical settings,
+metrics, and audit procedure) before running it. Preserve Issue #28's fixed
+512-bin high-count baseline and qualification targets (at least 95% numerical
+acceptance, median component-lifetime relative error below 5%, relative bias
+below 2%), and report every miss without relaxing thresholds or filtering
+unfavorable cases. Include lower counts, weak/zero components, close/equal
+lifetimes, short windows, background, shifts, IRF-resolution limits, Gaussian,
+EMG, sampled and explicitly approximate proxy IRFs, plus matched/misspecified
+IRF comparisons. Distinguish generating truth, pseudo-true mono projections,
+and optional trusted experimental references. Assess runtime and plan the
+separately invoked study around the measured approximately 13-second default
+fit; keep CI deterministic and lightweight. Never tune fitter defaults or
+warnings on the qualification data, overwrite frozen Week-7/8/9 or PR-2 evidence,
+or present warning absence as a calibrated recovery guarantee.
+
+Defer Bayesian/ML/CLI extensions, arbitrary-K fitting, automatic model-order
+selection, component intervals, persistence schema changes, benchmark
+regeneration, new release publication, and Issue #13. Use `Refs #28` in any
+future partial PR so the issue stays open until PR 3 is completed and reviewed.
+A separate maintainer approval is required before implementing PR 3 or
+performing Git history operations for it.
 
 ## Codex working protocol
 
@@ -483,7 +511,7 @@ Issue #12's completed technical acceptance is recorded in the [historical accept
 
 Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
-- #28 PR 1 is merged; PR 2 publication is authorized after the post-correction consistency audit; evidence is in its numerical development record; merge and PR 3 require separate authorization;
-- preserve PR 1's deterministic forward/statistics contracts, the ordered 66-name root API, and frozen scientific evidence;
+- #28 PR 1 and PR 2 are merged and their post-merge CI passed; prepare a detailed PR 3 plan for maintainer review, with no PR 3 code or Git history operations before explicit approval;
+- preserve PR 1/2 physics, statistics, fitter settings, qualitative limitations, the ordered 66-name root API, and frozen scientific evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
-- do not start package movement, PR 3, or automatic publishing/tagging.
+- do not start package movement, PR 3 implementation, or automatic publishing/tagging.
