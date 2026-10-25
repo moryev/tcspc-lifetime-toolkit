@@ -103,6 +103,7 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - convolution is an independent operation;
 - the shared mono-exponential reconvolution expected-count model lives in `physics.forward_model` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
 - Issue #28 PR 1 adds general deterministic multi-exponential component/total expected-count functions that compose the unchanged mono model; it does not yet add a multi-exponential fitter;
+- Issue #28 PR 2 adds the separately qualified bi-exponential Poisson fitter in `estimation.multiexponential`, reusing those primitives with grouped numerical and descriptive identifiability diagnostics;
 - noise sampling is independent from deterministic signal generation;
 - evaluation functions are organized by the quantity being evaluated, not merely by estimator family;
 - public APIs use explicit scientific names;
@@ -324,7 +325,7 @@ Current integration status:
 11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
 12. **#15** — Week 12 continuous integration and release preparation — **complete and closed; v0.8.0 published**;
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
-14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 planning next, implementation requires separate approval; PR 3 later**.
+14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 implementation approved October 24, 2026; PR 3 requires later authorization**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -364,11 +365,12 @@ results, and schema v1. PR 1 qualification reported 2,123 passing local tests,
 1 intentional skip, and 82.73% combined coverage; consult GitHub Actions for
 current CI state. Read [docs/api.md](docs/api.md) for the new scientific contract.
 
-**PR 2 is the next separate planning stage, not an automatic implementation
-authorization.** Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28)
-and prepare a file-level implementation and test plan for a bounded,
-bi-exponential Poisson reconvolution fitter in
-`estimation/multiexponential.py`. Require explicitly supplied finite lifetime
+**PR 2 implementation was explicitly approved on October 24, 2026.** Its
+bounded bi-exponential Poisson fitter lives in `estimation/multiexponential.py`.
+Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28) and
+[the numerical development record](docs/issue28_pr2_numerics.md) for the
+predeclared experiment, measured defaults, validation and remaining limitations.
+Require explicitly supplied finite lifetime
 and shift bounds; reuse the PR-1 forward model and centered objective; preserve
 positive-shift convention, IRF normalization/provenance, bin-width scaling,
 finite-window truncation, pre-exponential amplitudes, and one background.
@@ -381,12 +383,26 @@ assumptions, optimization and identifiability diagnostics; do not claim
 physical identifiability merely from optimizer termination or AIC/BIC.
 Preserve all original mono APIs and diagnostic semantics.
 
+The public fitter accepts `PreparedIRF` or an already normalized array through
+one kernel path. Preserve supplied preparation/provenance records separately
+from caller-declared array assumptions. Neither normalization nor successful
+fitting establishes experimental correctness. Only development observation
+streams 0/1 select the default policy; stream 2 is evaluated after freezing the
+policy and must never be reused for selection. Initialization, optimization,
+validation and diagnostics have separate explicit work limits. Keep numerical
+termination, local conditioning, structural degeneracy and physical
+identifiability distinct. No warning threshold is a scientific-validity test.
+
 PR 3 (experimental adapter, independent repeated-Poisson qualification, user
 example, documentation) remains later work. Defer Bayesian/ML/CLI extensions,
 arbitrary-K fitting, model-order selection, profile likelihood, persistence
 schema changes, benchmark regeneration, and Issue #13. Use `Refs #28` in
-partial PRs so the issue stays open. No PR 2 code, commits, or branches should
-be created until the maintainer explicitly approves its plan and next actions.
+partial PRs so the issue stays open. PR-2 branch creation, commit, push and PR
+publication were explicitly authorized on October 25 subject to a separate
+post-correction replay of the 20 previously evaluated observations. Preserve
+the original evidence and source locks; this replay is regression verification,
+not a new untouched held-out evaluation. Stop after opening PR 2. Merge and
+PR 3 require separate maintainer authorization.
 
 ## Codex working protocol
 
@@ -443,6 +459,10 @@ removed the 38 obsolete flat scientific modules. Five reviewed public package
 initializers, five genuine root support files and seven minimal namespace
 initializers remain: 61 production Python files in total.
 
+That completed restructuring inventory is historical. Issue #28 PR 2 adds one
+canonical implementation, bringing the current inventory to 45 substantive
+implementations and 62 production Python files, with unchanged initializer APIs.
+
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.
 
 For future work:
@@ -463,7 +483,7 @@ Issue #12's completed technical acceptance is recorded in the [historical accept
 
 Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
-- #28 PR 1 is merged; plan PR 2 under Issue #28, and await separate authorization before implementation;
+- #28 PR 1 is merged; PR 2 publication is authorized after the post-correction consistency audit; evidence is in its numerical development record; merge and PR 3 require separate authorization;
 - preserve PR 1's deterministic forward/statistics contracts, the ordered 66-name root API, and frozen scientific evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
 - do not start package movement, PR 3, or automatic publishing/tagging.

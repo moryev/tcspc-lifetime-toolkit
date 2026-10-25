@@ -45,7 +45,7 @@ def package_contract(root: Path) -> dict:
         | literal(structure, "CLOSURE_SUPPORT_FILES")
         | {f"{name}/__init__.py" for name in retained}
     )
-    require(len(files) == 61, "Production module inventory changed")
+    require(len(files) == 62, "Production module inventory changed")
     return {
         "files": sorted(files),
         "removed": list(literal(structure, "REMOVED_FLAT_FACADES")),

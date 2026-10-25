@@ -259,6 +259,122 @@ numerical and validation behavior. In particular, the historical residual
 helper still rejects zero expectations; the new statistics handle their
 mathematical limits explicitly.
 
+## Constrained bi-exponential Poisson reconvolution
+
+The specialized PR-2 API is module-qualified; package initializers and the
+ordered 66-name root API are unchanged:
+
+```python
+from tcspc_toolkit.estimation.multiexponential import (
+    BiexponentialFitResult,
+    BiexponentialFitSettings,
+    BiexponentialParameters,
+    fit_biexponential_reconvolution,
+)
+
+result = fit_biexponential_reconvolution(
+    time_ns,
+    raw_counts,
+    prepared_irf,  # Or an explicitly prepared, area-normalized array.
+    lifetime_bounds_ns=(0.1, 8.0),
+    temporal_shift_bounds_ns=(-0.3, 0.3),
+)
+```
+
+Both bounds are mandatory, finite, and strictly increasing; the lifetime lower
+bound is positive. The same lifetime bounds apply to both components. Counts
+must be finite, non-negative, exactly integer-valued, and below `2**53`.
+Integer-valued floating arrays are accepted. Passing arrays asserts raw-count
+semantics; values cannot reveal prior processing. A future canonical-measurement
+adapter must call `require_raw_counts()` first. This function does not accept
+processed intensities or deterministic fractional expectations as observations.
+
+`PreparedIRF` inputs must have a compatible grid. Their supplied source metadata,
+provenance, and preparation diagnostics are retained separately from the kernel.
+Array inputs must match the grid shape and have finite, non-negative values and
+unit trapezoidal area (`rtol=1e-10`, `atol=1e-12`). Preparation for an array is
+caller-declared; its normalization is checked but its source is not inferred.
+There is no silent resampling, alignment, normalization, or time-origin change.
+Successful normalization or fitting does not establish experimental correctness.
+
+The six parameters are two pre-exponential amplitudes, two lifetimes, one
+background in counts/bin, and one shared temporal shift in ns. Amplitudes and
+background have closed zero boundaries. Lifetime coordinates are logarithmic,
+but the model permits exactly equal lifetimes and zero components. Positive
+shift moves the IRF later without renormalizing lost support. The PR-1 forward
+model supplies the same bin-width scaling and finite-window truncation; one
+constant background is added after component convolution.
+
+Optional `initial_guesses` is a sequence of `BiexponentialParameters` records.
+Each record contains `amplitudes`, `lifetimes_ns`, `background`, and
+`temporal_shift_ns`; guesses must respect the supplied bounds. They augment the
+deterministic seed bank and never change constraints. Lifetimes are sorted only
+in returned records, with corresponding amplitudes and component curves moved
+together. Exactly equal lifetimes use descending amplitude as a secondary key;
+no components are merged and no minimum lifetime gap is imposed.
+
+`BiexponentialFitResult` groups the following:
+
+| Field | Interpretation |
+| --- | --- |
+| `parameters` | Canonically ordered fitted component parameters and shared nuisance parameters; unavailable if no finite candidate exists. |
+| `expected_counts`, `component_counts` | Read-only total expectation and `(2, n_bins)` background-free component curves. |
+| `statistics` | PR-1 `PoissonFitStatistics`, with six nominal parameters even at degeneracies. |
+| `components` | Amplitude fractions, component detected photon totals/fractions, ideal fractions proportional to `A*tau`, and explicitly weighted lifetime averages. |
+| `optimization` | Every refinement's status and evaluated objective, selected candidate source, numerical checks, stopping reason, phase-specific evaluation counts/times and exhausted budgets. |
+| `assumptions` | Bounds, resolved settings and numerical scales, raw-count assumption, IRF input kind, area and available source/preparation records. |
+| `identifiability` | Separate structural, conditioning, boundary and multi-start warnings; weighted-Jacobian diagnostics and near-optimal parameter/contribution ranges. |
+
+The amplitude-weighted lifetime uses weights `A/sum(A)`. The ideal-photon-weighted
+lifetime uses `A*tau/sum(A*tau)`. The detected-signal-weighted lifetime uses
+component photon sums over the actual acquisition window. These are named
+summaries, not a unique physical truth or a mean photon arrival time. Fractions
+and associated averages are unavailable when their denominator vanishes.
+
+The objective is half the PR-1 stable Poisson deviance. No expectation floor is
+used. The fitter retains the lowest finite evaluated candidate, including a
+better validation probe when recovery cannot run. Optimizer termination is
+reported separately from independent local numerical validation. The validation
+record names its anchor parameters and the maximum descent found in its bounded
+coordinate/coupled-probe neighborhood; a passing result is not proof of a global
+minimum. The selected candidate can improve on that anchor within the declared
+NLL tolerance. Its source distinguishes optimizer, initialization, validation,
+and the analytical all-zero-observation solution.
+
+Settings expose deterministic `economical`, `adaptive`, and `exhaustive` policies,
+and separate hard budgets for initialization, optimization, validation, and
+diagnostics. Optimizer finite-difference calls count against the optimization
+budget. Start limits include recovery attempts. Incomplete numerical validation
+is represented by `None`, never a pass; budget exhaustion is inspectable even
+when a useful finite candidate is available. The selected default and its measured
+cost are recorded in [the numerical development report](issue28_pr2_numerics.md).
+
+Numerically invalid initialization trials are rejected without discarding other
+finite candidates. `starts_screened` includes rejected trials;
+`initialization_rejected_candidates` counts them, including templates that fail
+before objective screening. Every attempted forward call is charged to the
+initialization budget. `initialization_scaling_failed` separately records a
+failed scale-reference evaluation, which retains the original count-based scale
+and is not a screened candidate. With no finite candidate, parameter/curve fields
+are unavailable and the stopping reason is `no_finite_candidate`. Caller input
+and initial-guess validation remain strict.
+
+The weighted Jacobian uses the recorded dimensionless coordinates and Poisson
+weights `1/sqrt(mu)`. Its SVD rank tolerance includes measured finite-difference
+error, so numerical noise does not falsely resolve exact degeneracy. Conditioning
+is unavailable at nonregular zero-expectation bins, interpolation knots, unstable
+derivatives, or exhausted diagnostic budgets. At a vanishing component its
+lifetime is unconstrained even if a parameter value is returned.
+
+Warning thresholds are configurable descriptive conventions: weak detected
+fraction, lifetime similarity, proximity to bounds, and local conditioning. They
+do not set numerical acceptance or establish scientific validity. Near-optimal
+solutions are defined by a descriptive NLL window, not a confidence region.
+Neither optimizer success, local full rank, agreement across starts, deviance,
+AIC nor bin-based BIC certifies physical identifiability. There is no automatic
+model selection, ordinary chi-square likelihood-ratio p-value, or component
+confidence interval at the singular mono/bi boundary.
+
 ## Compatibility principles
 
 - Canonical/root imports, reviewed package APIs, argument signatures, result

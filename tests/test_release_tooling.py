@@ -109,6 +109,6 @@ def test_sdist_extraction_rejects_unsafe_members(tmp_path, kind):
 def test_distribution_contract_reuses_reviewed_inventory():
     checker = runpy.run_path(str(ROOT / "scripts/check_distribution.py"))
     contract = checker["package_contract"](ROOT)
-    assert len(contract["files"]) == 61
+    assert len(contract["files"]) == 62
     assert len(contract["exports"]) == 66
     assert len(contract["removed"]) == 38
