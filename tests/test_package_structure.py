@@ -354,6 +354,22 @@ PHYSICS_IMPORTS = {
     },
 }
 CLASSICAL_IMPORTS = {
+    f"{ESTIMATION}.multiexponential": {
+        "__future__",
+        "collections.abc",
+        "copy",
+        "dataclasses",
+        "time",
+        "types",
+        "typing",
+        "numpy",
+        "numpy.typing",
+        "scipy.optimize",
+        DIAGNOSTICS,
+        f"{PACKAGE}.irf.preparation",
+        f"{PACKAGE}.physics.forward_model",
+        f"{PREPROCESSING}.histograms",
+    },
     f"{ESTIMATION}.fitting": {
         "collections.abc",
         "dataclasses",
@@ -1031,6 +1047,7 @@ CLOSURE_CANONICAL_FILES = {
     "estimation/bayesian/sampling.py",
     "estimation/classical.py",
     "estimation/fitting.py",
+    "estimation/multiexponential.py",
     "evaluation/attachments.py",
     "evaluation/conditional.py",
     "evaluation/core.py",
@@ -1471,11 +1488,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 61
-    assert len(CLOSURE_CANONICAL_FILES) == 44
+    assert len(actual) == 62
+    assert len(CLOSURE_CANONICAL_FILES) == 45
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 44 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 45 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
@@ -3600,7 +3617,9 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("module", ["api", "baselines", "fitting", "classical"])
+@pytest.mark.parametrize(
+    "module", ["api", "baselines", "fitting", "classical", "multiexponential"]
+)
 def test_fresh_canonical_estimation_import_adds_only_its_own_dependencies(
     tmp_path, module
 ):

@@ -1,0 +1,1952 @@
+{
+  "purpose": "Post-correction regression replay of 20 previously seen observations",
+  "untouched_held_out_evaluation": false,
+  "started_utc": "2026-10-25T04:50:51.611343+00:00",
+  "historical_source_sha256": "4ac3d3e9b7a7904c91f2b169cf0ef7e5a56185de3a04049846a084dfdc44a332",
+  "corrected_source_sha256": "b89aebfcf4e9dba8cccd0758a48b47a621c685e90a0d68d024a273677409674f",
+  "audit_script_sha256": "a92815f76afaf1a4284eca82f848425922ca48955133878b42008b3dc668466e",
+  "protected_artifact_sha256": {
+    "docs\\validation\\issue28_pr2_results.json": "2e6896f002ae972fe646648abbcda6625ff32b650936d829d869c610c39722fe",
+    "data\\generated\\issue28_pr2_policy_lock_v1.json": "f762df779152f2329ba011772e232db52671c66084c3474524f03e8a506194df",
+    "data\\generated\\issue28_pr2_held_out_v1.jsonl": "0b8ba277aeffd3250dc72e9c47253bc971b5479741e21e8886912b4fa4523081",
+    "scripts\\benchmark_biexponential_initialization.py": "e8b91bbf8138076a06775d33fba910236ab5b02b3ac1b4a54ca0d8a7c4bb068f",
+    "configs\\issue28_pr2_initialization.json": "628bc437e5f4851c40719ac818ddb03a2ccfffb016c10deec8e6248682195b5f"
+  },
+  "environment": {
+    "python": "3.12.0",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "platform": "Windows-11-10.0.26300-SP0"
+  },
+  "settings": {
+    "policy": "exhaustive",
+    "max_starts": 46,
+    "max_objective_evaluations": 56000,
+    "max_initialization_evaluations": 128,
+    "max_validation_evaluations": 100,
+    "max_diagnostic_evaluations": 100,
+    "max_iterations": 1000,
+    "ftol": 1e-12,
+    "gtol": 1e-06,
+    "finite_difference_step": 1e-05,
+    "descent_tolerance": 0.01,
+    "near_optimal_nll": 1.0,
+    "near_optimal_lifetime_ratio": 1.1,
+    "near_optimal_fraction_span": 0.1,
+    "weak_fraction": 0.01,
+    "similar_lifetime_ratio": 1.1,
+    "boundary_tolerance": 0.001,
+    "condition_limit": 100000000.0,
+    "derivative_relative_tolerance": 0.01
+  },
+  "comparison": "Exact equality of all historical non-timing fields, including every start; mode differs by design. New diagnostic fields must be zero/false.",
+  "cases": [
+    {
+      "condition_id": 0,
+      "condition": "separated",
+      "stream": 2,
+      "counts_sha256": "5bc51ee0f0898fc104a1eb4a743defee2ea858b34ac2cdd7b01f536025d0062a",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 187.7949743710855,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2758.7297166483213,
+          1024.726328678047
+        ],
+        "lifetimes_ns": [
+          0.647737618389622,
+          2.787606601208265
+        ],
+        "background": 1.4541701386418466,
+        "temporal_shift_ns": 0.04613528234407676
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.1398689828186432,
+        "lifetime_ratio": 4.303604610982291,
+        "boundary_distances": [
+          0.5062428724898762,
+          0.18804321315545183,
+          0.4428286649554128,
+          0.24815854481133234,
+          0.005521182278060364,
+          0.40772943531184647
+        ],
+        "weighted_jacobian_singular_values": [
+          1502.9366424635207,
+          1043.9932827490309,
+          286.36719086840435,
+          219.04825619477944,
+          114.64233456156505,
+          46.552388794827586
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 32.28484469588618,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 6.42598903457409e-08,
+        "near_optimal_solution_count": 13,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6477376025020724,
+            0.6477377116584748
+          ],
+          [
+            2.7876065582896143,
+            2.7876066980344425
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.3919085594426944,
+            0.3919086076781427
+          ],
+          [
+            0.6080913923218574,
+            0.6080914405573056
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 19901,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 39
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 12.201657099998556,
+      "replay_total_seconds": 14.267547599999943
+    },
+    {
+      "condition_id": 1,
+      "condition": "short_separated",
+      "stream": 2,
+      "counts_sha256": "c784cebf8170497e13d7b4ee9c6ea4462809324a15bbb9d74f28e3551bec0986",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 218.5220813340752,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          5857.243650264985,
+          1527.3519093193954
+        ],
+        "lifetimes_ns": [
+          0.301179547565918,
+          1.8039130158097427
+        ],
+        "background": 1.4747592374894227,
+        "temporal_shift_ns": 0.04725905542172462
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 1.5027334682438247,
+        "lifetime_ratio": 5.989493743478471,
+        "boundary_distances": [
+          1.0817260467911478,
+          0.28207403372271117,
+          0.2806887753415318,
+          0.34030961113331065,
+          0.0056352373992073,
+          0.40548188915655076
+        ],
+        "weighted_jacobian_singular_values": [
+          2282.92049390858,
+          785.2682083364865,
+          239.97620232528286,
+          223.44007702575234,
+          96.5432865429933,
+          43.11943239434326
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 52.94412210787986,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 8.820589236544446e-08,
+        "near_optimal_solution_count": 8,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.30117954144631365,
+            0.30117955411631164
+          ],
+          [
+            1.8039129859726928,
+            1.8039130197992512
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.4056983548650629,
+            0.40569836955283217
+          ],
+          [
+            0.5943016304471678,
+            0.5943016451349371
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 16693,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 34
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 10.151512500000536,
+      "replay_total_seconds": 10.481485099999873
+    },
+    {
+      "condition_id": 2,
+      "condition": "long_separated",
+      "stream": 2,
+      "counts_sha256": "24290c0e9653a042bb55e4ed937106f9c5ef6b7863bcee7d6d58f998bc1ccfc7",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 186.26095005792678,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          1554.877899816657,
+          547.6193219594173
+        ],
+        "lifetimes_ns": [
+          1.2543813081522834,
+          5.145414305253281
+        ],
+        "background": 1.3043303686928318,
+        "temporal_shift_ns": 0.044698162372688255
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 3.8910329971009974,
+        "lifetime_ratio": 4.101953904935438,
+        "boundary_distances": [
+          0.28616377979427066,
+          0.10078528679246183,
+          0.4172351525373909,
+          0.11838327826909321,
+          0.004966758838769646,
+          0.4106036752546235
+        ],
+        "weighted_jacobian_singular_values": [
+          2070.4449887858686,
+          907.9295831636449,
+          443.5228706471649,
+          167.47083898828834,
+          111.13838814245626,
+          40.90152389098615
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 50.62024080824411,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 2.8479131010730576e-08,
+        "near_optimal_solution_count": 7,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            1.2543812137653831,
+            1.2543814225729162
+          ],
+          [
+            5.145414172372021,
+            5.145414608841337
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.4213845503457099,
+            0.4213846108117899
+          ],
+          [
+            0.5786153891882102,
+            0.5786154496542901
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 18132,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 33
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 11.011726400000043,
+      "replay_total_seconds": 12.40453360000015
+    },
+    {
+      "condition_id": 3,
+      "condition": "close",
+      "stream": 2,
+      "counts_sha256": "4e783dba70bce16b718fbdc44c690829442930fe6e8e334a85f57198bd980059",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 210.5060767717279,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2928.358816990923,
+          1.4074637058581638
+        ],
+        "lifetimes_ns": [
+          1.5826345378690745,
+          5.649434167354752
+        ],
+        "background": 1.8088973730509061,
+        "temporal_shift_ns": 0.048085127937717825
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [
+          "weak_detected_component"
+        ],
+        "boundary_warnings": [
+          "amplitude_2"
+        ],
+        "multistart_warnings": [
+          "near_optimal_lifetime_disagreement",
+          "near_optimal_contribution_disagreement"
+        ],
+        "lifetime_difference_ns": 4.066799629485677,
+        "lifetime_ratio": 3.569639125253381,
+        "boundary_distances": [
+          0.5384355485306574,
+          0.0002587894926344613,
+          0.3680184004188539,
+          0.09859703509865657,
+          0.006881616351141769,
+          0.40382974412456435
+        ],
+        "weighted_jacobian_singular_values": [
+          5251.480664688646,
+          1221.4794902667104,
+          518.5085290668798,
+          209.23749813684043,
+          140.0465809083226,
+          0.25696846457316785
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 20436.284558930256,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 1.0204139221927776e-07,
+        "near_optimal_solution_count": 13,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.08000000000001092,
+            1.583631202638528
+          ],
+          [
+            1.5851361047479233,
+            8.99952145773336
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.0,
+            0.9989546950117378
+          ],
+          [
+            0.0010453049882622044,
+            1.0
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 16105,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 39
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 9.867486399998597,
+      "replay_total_seconds": 10.577170300000034
+    },
+    {
+      "condition_id": 4,
+      "condition": "equal",
+      "stream": 2,
+      "counts_sha256": "59064bbae18fbe32119d204dd575e301c681d0e9249a8cf9b503a2cd944b21ad",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 213.7557276454492,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          1122.885498801209,
+          1984.0900099142907
+        ],
+        "lifetimes_ns": [
+          1.3624741848525335,
+          1.5645969956705437
+        ],
+        "background": 1.5444865897503208,
+        "temporal_shift_ns": 0.0499106229381648
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [
+          "near_optimal_lifetime_disagreement",
+          "near_optimal_contribution_disagreement"
+        ],
+        "lifetime_difference_ns": 0.2021228108180102,
+        "lifetime_ratio": 1.148349827883078,
+        "boundary_distances": [
+          0.2068310585097048,
+          0.3654615162162263,
+          0.3997334270019138,
+          0.370445400399318,
+          0.005886152606358967,
+          0.40017875412367043
+        ],
+        "weighted_jacobian_singular_values": [
+          2431.6313270729147,
+          798.6343341726657,
+          235.61213874561895,
+          149.18067086557565,
+          16.82537596696772,
+          0.22049692405126867
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 11027.960310718556,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 1.0221837492938571e-07,
+        "near_optimal_solution_count": 13,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.08,
+            1.4954927478986346
+          ],
+          [
+            1.4987990440007244,
+            8.999513875524142
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.0038248111261044485,
+            0.9988870802519492
+          ],
+          [
+            0.0011129197480509022,
+            0.9961751888738956
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 25781,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 39
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 15.636780100001488,
+      "replay_total_seconds": 15.160478499999954
+    },
+    {
+      "condition_id": 5,
+      "condition": "zero_secondary",
+      "stream": 2,
+      "counts_sha256": "09df28fdd97d8dc26bae744226010159bf4dd838b28ee9f893d9f40eefaf7b75",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 217.69349158346742,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          619.107923048612,
+          6861.345188074337
+        ],
+        "lifetimes_ns": [
+          0.08,
+          0.6518338539326072
+        ],
+        "background": 1.6630432070259356,
+        "temporal_shift_ns": 0.05341835277252578
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [
+          "log_lifetime_1"
+        ],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 0.5718338539326072,
+        "lifetime_ratio": 8.14792317415759,
+        "boundary_distances": [
+          0.1141403109603194,
+          1.26497504589584,
+          0.0,
+          0.44416342298477085,
+          0.006343709932629627,
+          0.39316329445494846
+        ],
+        "weighted_jacobian_singular_values": [
+          3276.0527233743574,
+          471.2715338007615,
+          255.77856909385068,
+          145.32268409965246,
+          16.326442907191232,
+          0.7198050597426215
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 4551.305494498421,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 2.798711543302791e-05,
+        "near_optimal_solution_count": 5,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.08,
+            0.08
+          ],
+          [
+            0.6518338539326072,
+            0.6518338821568364
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.013931001754482572,
+            0.0139314216440068
+          ],
+          [
+            0.986068578355993,
+            0.9860689982455175
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 17323,
+        "validation_evaluations": 46,
+        "diagnostic_evaluations": 31
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 10.279108300001099,
+      "replay_total_seconds": 10.154954699999962
+    },
+    {
+      "condition_id": 6,
+      "condition": "weak_005",
+      "stream": 2,
+      "counts_sha256": "6545cee32122ec0983088034e534b4110aed318d2bb52c70ef9b7d50b1c9bae3",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 200.91717529708598,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          6916.778563148556,
+          23.514998426660846
+        ],
+        "lifetimes_ns": [
+          0.6495734270657385,
+          1.786335341948812
+        ],
+        "background": 1.5527880526533981,
+        "temporal_shift_ns": 0.045929879544311
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [
+          "weak_detected_component"
+        ],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 1.1367619148830734,
+        "lifetime_ratio": 2.750012958531985,
+        "boundary_distances": [
+          1.2760314762179492,
+          0.004338129070012609,
+          0.4434279037803085,
+          0.34238288527751803,
+          0.005927025429105831,
+          0.408140240911378
+        ],
+        "weighted_jacobian_singular_values": [
+          3313.781242180893,
+          1292.2741326348287,
+          330.87622278971367,
+          287.2198913056026,
+          140.5049794902299,
+          2.261288951758398
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 1465.4390981763158,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 2.4320478630854536e-07,
+        "near_optimal_solution_count": 9,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6495733844891135,
+            0.6495734699001184
+          ],
+          [
+            1.7863271826509162,
+            1.7863386808414055
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.9909451025318209,
+            0.9909452114249774
+          ],
+          [
+            0.009054788575022604,
+            0.00905489746817914
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 22829,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 35
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 14.133426699998381,
+      "replay_total_seconds": 13.67320339999992
+    },
+    {
+      "condition_id": 7,
+      "condition": "weak_02",
+      "stream": 2,
+      "counts_sha256": "02258c5044e206351682de23cba58161c3b16c4234de22189092e013f6166b0d",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 199.4163427945242,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          6843.71234157686,
+          29.761481744281518
+        ],
+        "lifetimes_ns": [
+          0.6503374222521227,
+          2.8560240445211362
+        ],
+        "background": 1.332071493975484,
+        "temporal_shift_ns": 0.04823808917607696
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.2056866222690137,
+        "lifetime_ratio": 4.391603415086751,
+        "boundary_distances": [
+          1.2638962408061067,
+          0.005496348037438115,
+          0.4436767857615393,
+          0.24302466276485693,
+          0.005089959238634617,
+          0.40352382164784606
+        ],
+        "weighted_jacobian_singular_values": [
+          3797.845031956449,
+          2119.6102202765305,
+          393.8808493332166,
+          242.69867953173312,
+          131.10649982878763,
+          6.523104167282239
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 582.2143774746386,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 2.2635279514949754e-07,
+        "near_optimal_solution_count": 6,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6503372975429068,
+            0.6503374222521227
+          ],
+          [
+            2.8560096210302004,
+            2.8560240445211362
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.9818075359454477,
+            0.9818076111246582
+          ],
+          [
+            0.018192388875341865,
+            0.01819246405455231
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 17897,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 32
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 10.68885489999957,
+      "replay_total_seconds": 11.010119799999984
+    },
+    {
+      "condition_id": 8,
+      "condition": "weak_10",
+      "stream": 2,
+      "counts_sha256": "f5f81861f220c15a4772754d1d928b686d15d4d57d44c8cbac7acdfb0c00573e",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 195.87343347114535,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          6240.391675558295,
+          207.40071902527575
+        ],
+        "lifetimes_ns": [
+          0.6410395063993406,
+          2.514958428878095
+        ],
+        "background": 1.8184574995506049,
+        "temporal_shift_ns": 0.04767742746344448
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 1.8739189224787542,
+        "lifetime_ratio": 3.92325028921288,
+        "boundary_distances": [
+          1.1562719317897094,
+          0.03842893884068193,
+          0.4406277926401429,
+          0.26995149927619266,
+          0.0069713740311229695,
+          0.40464514507311106
+        ],
+        "weighted_jacobian_singular_values": [
+          2308.8856797888448,
+          1417.517338527347,
+          307.3446940556335,
+          237.47191221641413,
+          117.66075316771402,
+          25.525536822483787
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 90.45395189319181,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 1.4541361189035458e-07,
+        "near_optimal_solution_count": 10,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6410394741624323,
+            0.641039534318666
+          ],
+          [
+            2.5149579067018983,
+            2.514959539654408
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.8874990203686068,
+            0.8874991162269702
+          ],
+          [
+            0.1125008837730298,
+            0.11250097963139312
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 20238,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 36
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 12.315564300002734,
+      "replay_total_seconds": 12.222045199999911
+    },
+    {
+      "condition_id": 9,
+      "condition": "photons_100",
+      "stream": 2,
+      "counts_sha256": "2eb984a77589fffd70605757dcc2f2c5de93cfeb5db888f206050f3c424618f6",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 225.26156163597034,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2.473485499323407,
+          0.0
+        ],
+        "lifetimes_ns": [
+          1.7915488083886273,
+          8.925765735700361
+        ],
+        "background": 1.4439435911076532,
+        "temporal_shift_ns": -0.1331673126368163
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [
+          "zero_component_lifetime_unconstrained"
+        ],
+        "conditioning_warnings": [
+          "weak_detected_component",
+          "rank_deficient_weighted_jacobian"
+        ],
+        "boundary_warnings": [
+          "amplitude_2"
+        ],
+        "multistart_warnings": [
+          "near_optimal_lifetime_disagreement",
+          "near_optimal_contribution_disagreement"
+        ],
+        "lifetime_difference_ns": 7.1342169273117335,
+        "lifetime_ratio": 4.982150468860774,
+        "boundary_distances": [
+          0.07062527338172704,
+          0.0,
+          0.341765840093744,
+          0.0017536605265876415,
+          0.853037444592829,
+          0.2336653747263674
+        ],
+        "weighted_jacobian_singular_values": [
+          249.86107107264922,
+          61.666545416470825,
+          10.709837954316633,
+          2.629414977808356,
+          1.6994633022635128,
+          7.492623405556676e-18
+        ],
+        "weighted_jacobian_rank": 5,
+        "weighted_jacobian_condition": null,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 3.2703423348261673e-10,
+        "near_optimal_solution_count": 46,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.08,
+            1.8195196591417644
+          ],
+          [
+            1.79154824881937,
+            9.0
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 21288,
+        "validation_evaluations": 46,
+        "diagnostic_evaluations": 72
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 12.936081199997716,
+      "replay_total_seconds": 12.64066989999992
+    },
+    {
+      "condition_id": 10,
+      "condition": "photons_1000",
+      "stream": 2,
+      "counts_sha256": "cd8a37254a8d87ebb7bcc452a2fc9358b53837d45ab1a0deefb7ed28cc771502",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 224.7605497586689,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          28.510788610249364,
+          2.5569254790057507
+        ],
+        "lifetimes_ns": [
+          1.1974920725516478,
+          9.0
+        ],
+        "background": 1.1576200088121484,
+        "temporal_shift_ns": 0.02558515436586966
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [
+          "log_lifetime_2"
+        ],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 7.802507927448352,
+        "lifetime_ratio": 7.5157073740142275,
+        "boundary_distances": [
+          0.33009567766163306,
+          0.029603882946235942,
+          0.42706227489408194,
+          0.0,
+          0.277308848024869,
+          0.44882969126826067
+        ],
+        "weighted_jacobian_singular_values": [
+          407.3937168102065,
+          65.25379156691316,
+          26.42532809032662,
+          15.695074606331499,
+          10.521235692399701,
+          1.9540390032769814
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 208.4880169367117,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 2.7734043010434948e-05,
+        "near_optimal_solution_count": 40,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            1.1974915398083734,
+            1.1974931246695455
+          ],
+          [
+            9.0,
+            9.0
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.6394637606064377,
+            0.639464102542271
+          ],
+          [
+            0.36053589745772885,
+            0.3605362393935623
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 42171,
+        "validation_evaluations": 46,
+        "diagnostic_evaluations": 66
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 25.49885659999927,
+      "replay_total_seconds": 25.87324999999987
+    },
+    {
+      "condition_id": 11,
+      "condition": "photons_10000",
+      "stream": 2,
+      "counts_sha256": "0c680a2828f86597a50674e47c1c36333574b0acdbaa360241ac65263b32b6e3",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 194.58656152659302,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          301.8846545785371,
+          100.23543675402695
+        ],
+        "lifetimes_ns": [
+          0.6073439224388855,
+          2.8445644666729097
+        ],
+        "background": 1.3381074778824766,
+        "temporal_shift_ns": 0.058592113831510036
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.2372205442340243,
+        "lifetime_ratio": 4.683613948502377,
+        "boundary_distances": [
+          0.5250984640746554,
+          0.17434961693854137,
+          0.42919514435290496,
+          0.24387592989146245,
+          0.048156820197457456,
+          0.38281577233697994
+        ],
+        "weighted_jacobian_singular_values": [
+          402.535067588197,
+          238.1245707381503,
+          86.1344622205916,
+          57.72728171574163,
+          30.68420533996641,
+          13.31020058952
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 30.242599642347948,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 1.263114606423023e-08,
+        "near_optimal_solution_count": 26,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6073436717973875,
+            0.6073441757262458
+          ],
+          [
+            2.844563626788119,
+            2.8445652204741756
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.3991783170627142,
+            0.3991785798548799
+          ],
+          [
+            0.6008214201451201,
+            0.6008216829372858
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 22895,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 52
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 13.919986099997914,
+      "replay_total_seconds": 14.492947999999842
+    },
+    {
+      "condition_id": 12,
+      "condition": "photons_1000000",
+      "stream": 2,
+      "counts_sha256": "23b5b12aa09299238a8cb62b9df97afc2b0c97f9a8b66ad5a2f9c8083e67a9a3",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 176.5947163855738,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          27878.868838763028,
+          9968.77706535494
+        ],
+        "lifetimes_ns": [
+          0.6503562577729878,
+          2.8059769460586392
+        ],
+        "background": 1.0341596912154436,
+        "temporal_shift_ns": 0.04638099945231096
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [
+          "background"
+        ],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.1556206882856515,
+        "lifetime_ratio": 4.31452286730835,
+        "boundary_distances": [
+          0.5178684490324837,
+          0.18517663494323522,
+          0.44368291799888804,
+          0.2467678075432616,
+          0.0003974651033921985,
+          0.4072380010953781
+        ],
+        "weighted_jacobian_singular_values": [
+          9392.47763443124,
+          3626.6604082705076,
+          938.1224415676201,
+          714.6151137377948,
+          405.601539644096,
+          163.47962005920704
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 57.453507850272636,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 4.467830332922979e-07,
+        "near_optimal_solution_count": 24,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6503547593161595,
+            0.6503562577729878
+          ],
+          [
+            2.8059743316156034,
+            2.8059772864468377
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.4004076267517806,
+            0.400408486591921
+          ],
+          [
+            0.599591513408079,
+            0.5995923732482195
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 31943,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 50
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 19.07991629999742,
+      "replay_total_seconds": 18.81749170000012
+    },
+    {
+      "condition_id": 13,
+      "condition": "zero_background",
+      "stream": 2,
+      "counts_sha256": "9d0ba72fd9402c09b0ab98913b1e2afb1cba1a7ad39fc8c126de9a3f7223f6ce",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 190.28075138890105,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2797.419795879001,
+          1004.8106829393807
+        ],
+        "lifetimes_ns": [
+          0.6450489683933484,
+          2.790899275678823
+        ],
+        "background": 0.0,
+        "temporal_shift_ns": 0.047627755692506026
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [
+          "background"
+        ],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.1458503072854747,
+        "lifetime_ratio": 4.32664714220106,
+        "boundary_distances": [
+          0.519948891086047,
+          0.18676145822496446,
+          0.44194797222722215,
+          0.24790859817106006,
+          0.0,
+          0.40474448861498796
+        ],
+        "weighted_jacobian_singular_values": null,
+        "weighted_jacobian_rank": null,
+        "weighted_jacobian_condition": null,
+        "jacobian_unavailable_reason": "zero_expectation_nonregular_information",
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": null,
+        "near_optimal_solution_count": 35,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.645048906077293,
+            0.6450489820945924
+          ],
+          [
+            2.790899248959632,
+            2.7908993214497655
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.398694688822782,
+            0.39869472683060264
+          ],
+          [
+            0.6013052731693973,
+            0.6013053111772181
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 24106,
+        "validation_evaluations": 46,
+        "diagnostic_evaluations": 61
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 14.927723199998582,
+      "replay_total_seconds": 14.472523199999841
+    },
+    {
+      "condition_id": 14,
+      "condition": "high_background",
+      "stream": 2,
+      "counts_sha256": "62bcd900b95788ef2a3be5339ca568a4461868a904f94f6ddf4f8619b5fa0a4b",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 218.47051403708662,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2754.376458905029,
+          990.3371179168018
+        ],
+        "lifetimes_ns": [
+          0.6716922330515909,
+          2.786797761593846
+        ],
+        "background": 20.48884252104523,
+        "temporal_shift_ns": 0.04836004068346025
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.115105528542255,
+        "lifetime_ratio": 4.148920628325621,
+        "boundary_distances": [
+          0.47456435493551,
+          0.17062979681423573,
+          0.45051761356852255,
+          0.24821998892715885,
+          0.07303925517393745,
+          0.4032799186330795
+        ],
+        "weighted_jacobian_singular_values": [
+          1235.725848774825,
+          684.0102665598869,
+          278.2966924535336,
+          168.5397542123656,
+          89.39723172936833,
+          36.14544991033668
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 34.18759074351538,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 3.239304729659373e-08,
+        "near_optimal_solution_count": 32,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6716921214075787,
+            0.6716925688393713
+          ],
+          [
+            2.7867973361593528,
+            2.786798331772229
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.4081981777021558,
+            0.4081984273284913
+          ],
+          [
+            0.5918015726715087,
+            0.5918018222978442
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 25232,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 58
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 15.818256599999586,
+      "replay_total_seconds": 14.692520699999932
+    },
+    {
+      "condition_id": 15,
+      "condition": "negative_shift",
+      "stream": 2,
+      "counts_sha256": "3cbd3b528f2f1791ec569f9c5c88022a91dec9953b30616a49e139a0704a845d",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 182.7101702802492,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2791.084692490183,
+          1016.7141935221939
+        ],
+        "lifetimes_ns": [
+          0.6411927988331928,
+          2.765427177313013
+        ],
+        "background": 1.5447277809405426,
+        "temporal_shift_ns": -0.1884778521360274
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.1242343784798203,
+        "lifetime_ratio": 4.312941727270463,
+        "boundary_distances": [
+          0.5164285371781862,
+          0.18812049132787562,
+          0.44067841826058046,
+          0.2498499147481876,
+          0.005913658882630833,
+          0.12304429572794517
+        ],
+        "weighted_jacobian_singular_values": [
+          1459.3723192933803,
+          1018.1667524021333,
+          281.9143653805978,
+          219.23447819465528,
+          111.28638826067109,
+          45.709101968658985
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 31.927389872897024,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 5.4687666110098864e-08,
+        "near_optimal_solution_count": 33,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6411926919185035,
+            0.6411930400648631
+          ],
+          [
+            2.7654270847666638,
+            2.7654273768384767
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.3960553161699727,
+            0.3960554168601911
+          ],
+          [
+            0.6039445831398089,
+            0.6039446838300274
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 28414,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 59
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 17.069163600001048,
+      "replay_total_seconds": 16.59925770000018
+    },
+    {
+      "condition_id": 16,
+      "condition": "positive_shift",
+      "stream": 2,
+      "counts_sha256": "2cf7daed250c058a29cdf76d9cb279fec68103f9e4a12c9a63ed9d6be008748c",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 190.19412446431446,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2820.113894347498,
+          1017.877467819143
+        ],
+        "lifetimes_ns": [
+          0.6321933113378905,
+          2.7714112276496596
+        ],
+        "background": 1.433684186257563,
+        "temporal_shift_ns": 0.18980023264315385
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.139217916311769,
+        "lifetime_ratio": 4.383803463191679,
+        "boundary_distances": [
+          0.5217581360995407,
+          0.18832070983073396,
+          0.4376855937509955,
+          0.2493922474201997,
+          0.005488114595399488,
+          0.1203995347136923
+        ],
+        "weighted_jacobian_singular_values": [
+          1527.759153416127,
+          1048.3125322764338,
+          280.3613263836646,
+          179.5982357895502,
+          108.14300080539914,
+          44.46329993961971
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 34.360003766944736,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 6.026624961589131e-08,
+        "near_optimal_solution_count": 7,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6321932803875998,
+            0.6321933113378905
+          ],
+          [
+            2.7714110826840073,
+            2.7714112276496596
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.3945608861262799,
+            0.39456091217435507
+          ],
+          [
+            0.6054390878256449,
+            0.6054391138737202
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 13944,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 33
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 8.25225010000213,
+      "replay_total_seconds": 8.235001799999964
+    },
+    {
+      "condition_id": 17,
+      "condition": "short_window",
+      "stream": 2,
+      "counts_sha256": "952f08bcd17438b6a80b691bf86e9b86f1a624b146e4563ef6829c28635d78cc",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 178.52744995215744,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          930.2697363662547,
+          418.4392651844295
+        ],
+        "lifetimes_ns": [
+          0.6350507705145341,
+          2.7353925751895707
+        ],
+        "background": 1.329675391500991,
+        "temporal_shift_ns": 0.04718251264933194
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.1003418046750366,
+        "lifetime_ratio": 4.307360453989036,
+        "boundary_distances": [
+          0.5050277296810959,
+          0.22716361055770032,
+          0.4386404474841604,
+          0.2521620601191701,
+          0.005083029042382659,
+          0.40563497470133614
+        ],
+        "weighted_jacobian_singular_values": [
+          1490.488894418622,
+          911.5094852294468,
+          246.46062175642305,
+          176.52255061849107,
+          66.48557310336145,
+          17.82744478479796
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 83.60642326541435,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 4.2761280693907725e-08,
+        "near_optimal_solution_count": 12,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6350505477748332,
+            0.6350509400829637
+          ],
+          [
+            2.7353916654285113,
+            2.735392885907437
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.3818726504427438,
+            0.3818729247540814
+          ],
+          [
+            0.6181270752459187,
+            0.6181273495572562
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 21848,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 38
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 12.956357999999454,
+      "replay_total_seconds": 12.740680800000064
+    },
+    {
+      "condition_id": 18,
+      "condition": "emg",
+      "stream": 2,
+      "counts_sha256": "e2bc7b29410f43e91e94bfb000202e121a7d1081c826b2bc74c749969164dbfd",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 195.91497152801674,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2769.260764738504,
+          1028.3645993326206
+        ],
+        "lifetimes_ns": [
+          0.650464571069409,
+          2.758524594735796
+        ],
+        "background": 1.5142794242951148,
+        "temporal_shift_ns": 0.04590633705120602
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.108060023666387,
+        "lifetime_ratio": 4.240852949455172,
+        "boundary_distances": [
+          0.5085977956094561,
+          0.18886772057118303,
+          0.4437181778637662,
+          0.25037906415089917,
+          0.005754183891081245,
+          0.408187325897588
+        ],
+        "weighted_jacobian_singular_values": [
+          1498.6807738712944,
+          1036.0006461576404,
+          282.0005068810234,
+          179.86170292890841,
+          108.47462982259368,
+          42.84786610923966
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 34.97678904360002,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 4.954554259245266e-08,
+        "near_optimal_solution_count": 10,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6504645004269414,
+            0.650464571069409
+          ],
+          [
+            2.7585243305173948,
+            2.758524594735796
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.39542244035863006,
+            0.3954224788917424
+          ],
+          [
+            0.6045775211082576,
+            0.6045775596413699
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 19813,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 36
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 11.601472400001512,
+      "replay_total_seconds": 11.62533170000006
+    },
+    {
+      "condition_id": 19,
+      "condition": "sampled_double_peak",
+      "stream": 2,
+      "counts_sha256": "df91e8b652904cd6d2d2cf4c89bb45eaf133ae053a1664dfbd30a027a05c198b",
+      "lifetime_bounds_ns": [
+        0.08,
+        9.0
+      ],
+      "temporal_shift_bounds_ns": [
+        -0.25,
+        0.25
+      ],
+      "exact_non_timing_match": true,
+      "differing_fields": [],
+      "centered_nll": 200.07080901195422,
+      "nll_difference": 0.0,
+      "parameters": {
+        "amplitudes": [
+          2794.237883697141,
+          1003.913614294168
+        ],
+        "lifetimes_ns": [
+          0.6375725440766424,
+          2.7899139271598594
+        ],
+        "background": 1.8277437816309974,
+        "temporal_shift_ns": 0.0456419913640562
+      },
+      "numerical_validation_passed": true,
+      "identifiability": {
+        "structural_warnings": [],
+        "conditioning_warnings": [],
+        "boundary_warnings": [],
+        "multistart_warnings": [],
+        "lifetime_difference_ns": 2.152341383083217,
+        "lifetime_ratio": 4.375837625191847,
+        "boundary_distances": [
+          0.5186562608097258,
+          0.18634278935365908,
+          0.4394795656671561,
+          0.24798336496150303,
+          0.007019378446876654,
+          0.4087160172718876
+        ],
+        "weighted_jacobian_singular_values": [
+          1438.8199212745872,
+          1017.716068720791,
+          279.14640267933027,
+          201.10033189428955,
+          110.05004330115563,
+          44.73557282988078
+        ],
+        "weighted_jacobian_rank": 6,
+        "weighted_jacobian_condition": 32.162769587104485,
+        "jacobian_unavailable_reason": null,
+        "jacobian_relative_step": 1e-05,
+        "jacobian_rank_tolerance": 4.9376421971727966e-08,
+        "near_optimal_solution_count": 13,
+        "near_optimal_lifetime_ranges_ns": [
+          [
+            0.6375724899073174,
+            0.6375725598121699
+          ],
+          [
+            2.7899137710763213,
+            2.789914022230957
+          ]
+        ],
+        "near_optimal_detected_fraction_ranges": [
+          [
+            0.39603977848660804,
+            0.39603984014246135
+          ],
+          [
+            0.6039601598575386,
+            0.6039602215133919
+          ]
+        ]
+      },
+      "exhausted_budgets": [],
+      "evaluations": {
+        "initialization_evaluations": 92,
+        "objective_evaluations": 17742,
+        "validation_evaluations": 49,
+        "diagnostic_evaluations": 39
+      },
+      "new_initialization_diagnostics": {
+        "initialization_rejected_candidates": 0,
+        "initialization_scaling_failed": false
+      },
+      "historical_total_seconds": 10.58313029999772,
+      "replay_total_seconds": 10.341191700000081
+    }
+  ],
+  "protected_artifacts_unchanged": true,
+  "raw_output_sha256": "270650dbbb392cd2c824d5b8d5c23afd3709106159d37e5a23b5295b18e92758",
+  "completed_utc": "2026-10-25T04:55:22.338373+00:00",
+  "passed": true
+}

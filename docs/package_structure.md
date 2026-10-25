@@ -47,10 +47,15 @@ conformal workflow remains inside `benchmarks.uncertainty`; it was not extracted
 
 ## Current production inventory
 
-There are **61 production Python files**: 44 canonical implementation files,
+There are **62 production Python files**: 45 canonical implementation files,
 five retained public package initializers (`irf`, `preprocessing`, `simulation`,
 `evaluation`, `persistence`), and 12 root/support files (five root files and seven
 docstring-only namespace initializers). No obsolete flat facade remains.
+
+Issue #28 PR 2 adds `estimation/multiexponential.py` for constrained
+bi-exponential Poisson fitting. It reuses the shared physical forward model and
+Poisson diagnostics and adds no initializer or root exports. The historical
+Issue-3 inventory below remains unchanged.
 
 The ordered root API is exactly 66 names, with direct canonical object identity.
 Supported symbol aliases, canonical serialization and retained package API lookup
