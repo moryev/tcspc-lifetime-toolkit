@@ -7,6 +7,19 @@ establish performance on acquired TCSPC measurements.
 
 ## Which evidence is current?
 
+Issue #28 PR 3's [completed independent study](issue28_pr3_qualification.md)
+preserves all 1,850 paired comparisons and 205 audit attempts. C00 numerical
+acceptance (98/100), both component median errors and both biases passed their
+targets. Independent objective agreement **failed in two designated cases**
+(119/121 passed); both production fits were rejected by local validation.
+Low counts, weak components, short windows and wrong IRFs can still yield poor
+recovery in accepted, warning-free fits. Inspect the complete
+[summary JSON](validation/issue28_pr3_results_2026-10-27.json) and
+[attempt CSV](validation/issue28_pr3_results_2026-10-27.csv). The accepted reporting
+disposition retains these limitations and a proposed numerical follow-up; it
+does not claim all qualification targets passed. This study does not replace
+the historical evidence below.
+
 For Weeks 7–9, the authoritative current regression records are the three
 committed Issue-12 post-correction references:
 

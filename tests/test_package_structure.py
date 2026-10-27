@@ -591,12 +591,16 @@ MEASUREMENT_IMPORTS = {
         "pandas",
         "numpy.typing",
         f"{ESTIMATION}.classical",
+        f"{ESTIMATION}.multiexponential",
+        f"{PACKAGE}.evaluation.reconvolution",
+        f"{PACKAGE}.physics.forward_model",
         f"{PACKAGE}.config",
         DIAGNOSTICS,
         f"{PACKAGE}.exceptions",
         f"{PREPROCESSING}.features",
         f"{PREPROCESSING}.histograms",
         f"{IRF}.preparation",
+        f"{IRF}.profiles",
         f"{IRF}.selection",
         f"{MEASUREMENT}.records",
     },
@@ -1038,6 +1042,7 @@ CLOSURE_CANONICAL_FILES = {
     "benchmarks/generalization_protocol.py",
     "benchmarks/irf.py",
     "benchmarks/mismatch.py",
+    "benchmarks/multiexponential.py",
     "benchmarks/timing.py",
     "benchmarks/uncertainty.py",
     "estimation/api.py",
@@ -1053,6 +1058,7 @@ CLOSURE_CANONICAL_FILES = {
     "evaluation/core.py",
     "evaluation/diagnostics.py",
     "evaluation/plots.py",
+    "evaluation/reconvolution.py",
     "evaluation/results.py",
     "irf/estimation.py",
     "irf/preparation.py",
@@ -1488,11 +1494,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 62
-    assert len(CLOSURE_CANONICAL_FILES) == 45
+    assert len(actual) == 64
+    assert len(CLOSURE_CANONICAL_FILES) == 47
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 45 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 47 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
@@ -2968,7 +2974,11 @@ assert seen[{EVALUATION!r}] == {{{DIAGNOSTICS!r}}}
 assert seen[{DIAGNOSTICS!r}] == {DIAGNOSTIC_IMPORTS!r}
 assert 'tcspc_toolkit.estimation.fitting' in sys.modules
 expected = {{{module!r}, {EVALUATION + ".results"!r}}}
-assert set(seen) == expected | {{{EVALUATION!r}, {DIAGNOSTICS!r}}}
+comparison = {EVALUATION + ".reconvolution"!r}
+# The new measurement comparison is imported by the historical root adapter.
+# Its statistics-only dependencies must not leak into the factual layer itself.
+assert set(seen) == expected | {{{EVALUATION!r}, {DIAGNOSTICS!r}, comparison}}
+assert seen[comparison] == {{'dataclasses', 'numpy', 'numpy.typing', {DIAGNOSTICS!r}}}
 for caller in expected:
     assert seen[caller] == {FACTUAL_IMPORTS!r}[caller], (caller, seen[caller])
 assert tuple(sys.modules[{EVALUATION!r}].__all__) == {DIAGNOSTIC_EXPORTS!r}

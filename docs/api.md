@@ -1234,3 +1234,65 @@ The Day/Week audit classifies the remaining occurrences as follows:
 Issue #11 has since implemented the factual evaluation/reporting layer described
 in [evaluation.md](evaluation.md). Issue #3 has completed physical package movement;
 neither change was part of the Issue-#2 naming pass documented above.
+
+## Experimental bi-exponential reconvolution (Issue #28 PR 3)
+
+The following APIs are module-qualified in `measurement.adapters`; root and
+subpackage exports remain unchanged:
+
+```python
+from tcspc_toolkit.measurement.adapters import (
+    fit_experimental_biexponential_reconvolution,
+    compare_experimental_reconvolution,
+)
+
+result = fit_experimental_biexponential_reconvolution(
+    measurement, prepared_irf=prepared,
+    lifetime_bounds_ns=(0.1, 8.0), temporal_shift_bounds_ns=(-0.3, 0.3),
+)
+```
+
+Both consume `TCSPCMeasurement.require_raw_counts()`. Integer-looking processed
+intensities are rejected. No observation normalization, background subtraction,
+resampling, registration or zero-time inference occurs. `initial_guesses` and
+`settings` forward to the unchanged PR-2 fitter; finite lifetime/shift bounds
+remain explicit. `ExperimentalBiexponentialResult.fit` is its unchanged structured
+result. `context` snapshots the measurement and selected source, copies read-only
+arrays and deep-copies metadata (protected at the top level, following existing
+record semantics).
+
+An explicit compatible `PreparedIRF` takes precedence and retains its source
+parameters, metadata, provenance and preparation diagnostics. Otherwise the
+existing resolver normalizes a copy of the attached same-grid `SampledIRF`;
+context records that selection, areas and operation. It does not fabricate
+`IRFPreparationDiagnostics`. The low-level fitter still labels this kernel as
+a declared normalized array. Source identity, numerical preparation facts and
+experimental correctness are different claims.
+
+`compare_experimental_reconvolution(...)` additionally accepts the existing
+mono `background_fraction` (default .1), requires at least five bins and shift
+bounds including zero, and returns `ExperimentalReconvolutionComparison`:
+shared context, original mono result, original bi result, reconstructed read-only
+mono expectation, actual bounds, and `ReconvolutionStatisticsComparison`.
+Unavailable curves remain `None`; finite failed fits retain descriptive statistics
+alongside their original validity flags.
+
+The pure `evaluation.reconvolution.compare_reconvolution_statistics(y, mono_mu,
+bi_mu)` recomputes the PR-1 full Poisson likelihood (including factorial terms),
+deviance, AIC and bin-based BIC. Use nominal p=4/6 even at zero-component/equal-tau
+boundaries, and n=all bins including zeros. All differences are **bi minus mono**.
+Invalid arrays raise; missing curves or nonfinite likelihoods produce explained
+unavailable differences, with no expectation floor. The unchanged mono bounds
+are A>=0, tau>=1e-12 with no upper bound, B>=1e-12; bi has A,B>=0 and the supplied
+finite tau interval. Shared shift bounds do not make the feasible sets identical.
+Mono tau outside bi bounds is explicitly flagged. No automatic model order,
+ordinary chi-square likelihood-ratio p-value or physical-validity certificate
+is returned.
+
+See the [executable example](../examples/biexponential_reconvolution.py) and
+[completed qualification record](issue28_pr3_qualification.md). Primary C00
+numerical-acceptance, component-median-error and bias targets passed. Independent
+optimizer agreement failed in two designated cases (119/121 passed); both were
+rejected by local validation. The exact optimizer-level cause remains unresolved.
+The numerical failure contract retains the best finite candidate with explicit
+diagnostics; it does not promise global optimality or physical identifiability.

@@ -1,0 +1,2474 @@
+{
+  "kind": "nonqualification_runtime_pilot",
+  "created_utc": "2026-10-26T05:01:31.378073+00:00",
+  "scientific_observations_generated": 0,
+  "scientific_calibration_observations_generated": 0,
+  "matrix_totals": {
+    "conditions": 30,
+    "observations": 1550,
+    "comparisons": 1850,
+    "production_fits": 3700,
+    "scheduled_audits": 205
+  },
+  "runs": [
+    {
+      "version": 1,
+      "lock": {
+        "environment": {
+          "packages": {
+            "numpy": "2.5.1",
+            "pandas": "3.0.3",
+            "scipy": "1.18.0",
+            "threadpoolctl": "3.6.0"
+          },
+          "platform": "Windows-11-10.0.26300-SP0",
+          "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]"
+        },
+        "numerical_threads": 1,
+        "protocol_sha256": "bb96b796252ac025b35f3a654f19589c98e12fb4141c324961b4ec99374dc877",
+        "sources_lf_sha256": {
+          "configs/issue28_pr3_qualification.json": "911bcdc66e01bfdf52d0fcd81fb0f81de244ee94d0158f3a93c0f180f5fe79fd",
+          "scripts/qualify_biexponential_reconvolution.py": "27a5fb34f32259028a304aeb063ec957e0c222de188900644cdaaf1173698dc2",
+          "src/tcspc_toolkit/__init__.py": "110ec547cb9dcc9e356d1ddb15d8bec67123539801bff1f5ddad576f0e220dd6",
+          "src/tcspc_toolkit/__main__.py": "41abcd1ba6b7a64133bfc2030bfc81b19c962ca9705eabbceb4235210bd700cb",
+          "src/tcspc_toolkit/benchmarks/__init__.py": "121f229a1d32371a9e68b13f0580d716da79bab9dbd262222ed0519144e81b43",
+          "src/tcspc_toolkit/benchmarks/bayesian_calibration.py": "175d69dad2f774c0aba11ccf96354ecd06cfcf8a490572747ca75b4c1c6e11ff",
+          "src/tcspc_toolkit/benchmarks/bayesian_mismatch.py": "87490171e46876ad8363e6aaaeff3d33ee2c0808c758a1347d3b34d3310220a8",
+          "src/tcspc_toolkit/benchmarks/generalization.py": "2eff970859b0f07b427d6915cf0ab77f12cfa85ace6d6783d67bf088e59fc173",
+          "src/tcspc_toolkit/benchmarks/generalization_datasets.py": "0e0973eb61351edec1034aa344e752d254b440713f857e5f17a682b62f236747",
+          "src/tcspc_toolkit/benchmarks/generalization_protocol.py": "6aa0a938c3ea495ab76217b358b2bf586af4360a7cb8061f2cad27e7c5a4961e",
+          "src/tcspc_toolkit/benchmarks/irf.py": "ca189495b5eb1b8ba3979998bcf1fa8188fafa023bc4db5a0f32af1ce83e707a",
+          "src/tcspc_toolkit/benchmarks/mismatch.py": "f64b285f0fd1bc758c8e44629997fb6ac48d2480494dda85c1f4dde05ffedb19",
+          "src/tcspc_toolkit/benchmarks/multiexponential.py": "06bd36a62471db3498b88f6b0a97929a9b92eada5d07d6a3d6c4382ebaf4f6b4",
+          "src/tcspc_toolkit/benchmarks/timing.py": "9b27f75c649db49399816b815b6ee4538f04b681625ed4fb20609922c27f1cce",
+          "src/tcspc_toolkit/benchmarks/uncertainty.py": "09781891a1ee0bc2d53e8252d5af1eba22b38fa0b52e8e1dba43bb0e7068fd73",
+          "src/tcspc_toolkit/cli.py": "d3120157c2bbf1684f5e600c0a13eadbb0db8dedf353ac668dea50f6a9835f7b",
+          "src/tcspc_toolkit/config.py": "d0a1d612366990bfebc38a3cc96c7ebc2bb2f3a9d9092b3181d6412f8d4b826f",
+          "src/tcspc_toolkit/estimation/__init__.py": "35e1f200becd46510227f9601e8cd0aeb73c6e36ca8e576166307608cb219121",
+          "src/tcspc_toolkit/estimation/api.py": "de3f5c0c9e3ceacff44a110aff6b991d752d775b7b81aefdde70eb7baf644a70",
+          "src/tcspc_toolkit/estimation/baselines.py": "07bb9c01cf1fea38c964cf7533e11a39918d136de3d0f527c22dbdecbee200ff",
+          "src/tcspc_toolkit/estimation/bayesian/__init__.py": "64ef94b5c1bdaaedeeabe5fa60b3386447180955bbba77523ec284f6570e969b",
+          "src/tcspc_toolkit/estimation/bayesian/posterior.py": "6b6c06569139e9fafe1322718c0c279c46744038db6f5b6b16e66dd921ad8957",
+          "src/tcspc_toolkit/estimation/bayesian/predictive.py": "e449ea934d6497bf881bccdeec432f5a7098cc4de47b6497db56d23a72d4e293",
+          "src/tcspc_toolkit/estimation/bayesian/sampling.py": "9cdf96d07a42082b7570a36bcf0f3ee869c0c3f945e48f8d028e2bd6bc897a02",
+          "src/tcspc_toolkit/estimation/classical.py": "6ac496b93ce1242c16b8d99700ba1af783cadfa89168f93f1c9c19c4eea86e5d",
+          "src/tcspc_toolkit/estimation/fitting.py": "861fbd5fd452f5a437d406340b45b13ca0e1c7f62859d09206296f7bcf6dcc79",
+          "src/tcspc_toolkit/estimation/multiexponential.py": "b89aebfcf4e9dba8cccd0758a48b47a621c685e90a0d68d024a273677409674f",
+          "src/tcspc_toolkit/evaluation/__init__.py": "2f89be6978ed58c3039c930b828d75c5a7a0e815273504e2c9a2df98de6f1300",
+          "src/tcspc_toolkit/evaluation/attachments.py": "e28b7222daa5c71ba89575636f1f0768e021bded2174359cfd304229cdc2b998",
+          "src/tcspc_toolkit/evaluation/conditional.py": "921fc66234aa772524d2148912f4f587b1bf19e53ee975fbff588a23e550cc27",
+          "src/tcspc_toolkit/evaluation/core.py": "17e2ee863bc39084e256033771f8219f5a376523178659ae8dec170f59ce0495",
+          "src/tcspc_toolkit/evaluation/diagnostics.py": "2ca2d50536dc7b3205186d4a789335e9d3a4db17a026fe26830c7463355ba6e4",
+          "src/tcspc_toolkit/evaluation/plots.py": "9e06a5d23ea919b83be14eb9b890a57baf5bac67ce00bf465b8dd5a7a3497856",
+          "src/tcspc_toolkit/evaluation/reconvolution.py": "0b736f46e78a910abca56f3888cd309e9e8ccc92cc7512cd9cab94de5f95f530",
+          "src/tcspc_toolkit/evaluation/results.py": "b0a0784c5df5571614f662df5e1cc4a2d87c5dd5ab19e1987332ba6e2709542f",
+          "src/tcspc_toolkit/exceptions.py": "6a7e3e21713d83a953af43e9fb3e165f36976f6a84f6f007004e3ca1c9c5d3a3",
+          "src/tcspc_toolkit/irf/__init__.py": "99a53bc8c57691ad3ba40c88b08d4a9912c48a29af759eaea1417513bdf4d9a5",
+          "src/tcspc_toolkit/irf/estimation.py": "9eb9bc91ebaaa1eb6b4c57cb64989ff293d81b8a1cc7d1e03f7d283871cb0d40",
+          "src/tcspc_toolkit/irf/preparation.py": "dcc220067a8266da6fe41617ada174ba9a012124e87251c6521ad842a357da83",
+          "src/tcspc_toolkit/irf/profiles.py": "b3db44d3a58b6ad5fc3b1cdb6e54ffac2b589055fedffed544afdcfa8f3b3a3d",
+          "src/tcspc_toolkit/irf/selection.py": "a1045c2018cbf522608fc4ba212570d7917e931b5df5746725a951ed7027745e",
+          "src/tcspc_toolkit/measurement/__init__.py": "1e7e5f113a3f41f31a3d43f823e60a847b7f68a9dfc4589efce92122a968d905",
+          "src/tcspc_toolkit/measurement/adapters.py": "9779289c98302f3473429c3302552fb332c82b17189935d31f99d4439f8f956e",
+          "src/tcspc_toolkit/measurement/io.py": "4541962061de2791ba7e5b221000415a88e6ece249db47b127d75f53965d14e1",
+          "src/tcspc_toolkit/measurement/records.py": "728abb4eebdee6c55f9558b45ed2011e08650fd69295615e9a57b8c542d120dd",
+          "src/tcspc_toolkit/ml/__init__.py": "222f407a6275f3083adda03a127aebcf6265e3d19e2725ebfdbb8c262a5ec706",
+          "src/tcspc_toolkit/ml/cross_validation.py": "1ab7a135d404ecfb2719bfcc840ada997945f25a156e4d404ba5ff16b45b4ee4",
+          "src/tcspc_toolkit/ml/evaluation.py": "7c98677c324230bb2775c6ce35a6f7144bc18e49091ac3d4ff1170f2b2c90226",
+          "src/tcspc_toolkit/ml/models.py": "8b1221f81d9b54fbb7add53dcf67addb4991a3f5ba61bca26f9cc90293f6d4ef",
+          "src/tcspc_toolkit/persistence/__init__.py": "a7627de9bde823ff22a091d78668e360c5c662455546733f22e815e99cc43fb9",
+          "src/tcspc_toolkit/persistence/sqlite.py": "da3eadf0f6695fba99e7b5b13f44654bc7130aa600561827a5fc3eda1660b336",
+          "src/tcspc_toolkit/physics/__init__.py": "8ded58643818a77bb16d644cbb869f4dba8d9dba36bd081e1303b5d9beef5c11",
+          "src/tcspc_toolkit/physics/convolution.py": "8620e4e8f0da3b7159a542273e030841077fcb5cdcb120b98c32c426c524eabc",
+          "src/tcspc_toolkit/physics/forward_model.py": "c090276d5719cf9ceb558de3ce03e5da42e03f96d086b6e49f54875fcbaa88f3",
+          "src/tcspc_toolkit/physics/models.py": "5d5edc940d8089be8ffea6d3d7a66e06a94e82041ef11e0ea8ff575cc7403197",
+          "src/tcspc_toolkit/preprocessing/__init__.py": "b426e812da2984f033c45c7724f47445b02fe7a1a421b7ef356f388e25cbd5e3",
+          "src/tcspc_toolkit/preprocessing/features.py": "eab6dfdb03d46faaa0782e88a1ba1265e8bb11458a7f072e00cd875516d381cf",
+          "src/tcspc_toolkit/preprocessing/histograms.py": "b33a8f6ae9b5af9575e4d7daaaa607d105a02a4b7b9dbae1361d57a84521272f",
+          "src/tcspc_toolkit/preprocessing/representations.py": "408e1bf7e19a2fe56f1a07fa3403a3e734989ba3d6e334051bfbc9f262393472",
+          "src/tcspc_toolkit/simulation/__init__.py": "9c4a801a9037a75b161d29756eda2f99612cd8220f3e1534d13344caebd91cc0",
+          "src/tcspc_toolkit/simulation/datasets.py": "0d806a8b8925a1caecfb3246f61ff35c676f19989578f6b9850982e715827293",
+          "src/tcspc_toolkit/simulation/histograms.py": "539787768e60730f0e8694d8e94f5d1b7748d33d10acb81730f915a0c8716e38",
+          "src/tcspc_toolkit/uncertainty/__init__.py": "3459dd95790588e1d9f69ed6f56f376d0c25dcc094e3fdc0c0b223063e963917",
+          "src/tcspc_toolkit/uncertainty/classical.py": "5769fdd318adcbc6de945de3909a3c5d9754e4e673c432d26ab10ee5976ead1e",
+          "src/tcspc_toolkit/uncertainty/evaluation.py": "b0ec7c29cb8c5dcaaf04507b45d861e2cdcd56b320a90d0bd8cec642ba80028a",
+          "src/tcspc_toolkit/uncertainty/ml.py": "51061c67b4373a48357f955d0e0a285749fc32dc446d7485c3820774947169ba"
+        }
+      },
+      "rows": [
+        {
+          "condition_id": 0,
+          "arm": "matched",
+          "observation_sha256": "900d1cc41ec77982f358a4aee7791b89ee5b63ce6de591a5457d9c553d6b91a5",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 7.8889328000000205,
+          "mono_seconds": 0.04067129999998542,
+          "bi_seconds": 7.845169799999894,
+          "external_recheck_seconds": 0.0007960999998886109,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 282.5609390471034
+          },
+          "parameters": {
+            "amplitudes": [
+              19102.40678120641,
+              7314.208366992591
+            ],
+            "background": 1.7266904228881963,
+            "lifetimes_ns": [
+              0.7976067540112968,
+              3.200544580770489
+            ],
+            "temporal_shift_ns": 0.07470326746143573
+          },
+          "objective_calls": 12177,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 27,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "background"
+            ],
+            "multistart_warnings": [
+              "insufficient_starts_for_agreement_assessment"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 1.823667616918101e-08,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 282.5609390288671,
+            "complete": true,
+            "condition_id": 0,
+            "elapsed_seconds": 0.19033549999994648,
+            "forward_calls": 601,
+            "observation_sha256": "900d1cc41ec77982f358a4aee7791b89ee5b63ce6de591a5457d9c553d6b91a5",
+            "parameters": {
+              "amplitudes": [
+                19102.408926258748,
+                7314.205342635569
+              ],
+              "background": 1.7266282856270192,
+              "lifetimes_ns": [
+                0.7976069194317414,
+                3.2005453745971453
+              ],
+              "temporal_shift_ns": 0.07470326198992891
+            },
+            "production_centered_nll": 282.5609390471034,
+            "replicate": 0,
+            "shared_centered_nll": 282.5609390288667,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 282.56093902886875,
+                "forward_calls": 74,
+                "nfev": 13,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288671,
+                "forward_calls": 72,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886965,
+                "forward_calls": 79,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288704,
+                "forward_calls": 82,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288722,
+                "forward_calls": 72,
+                "nfev": 17,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288727,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886767,
+                "forward_calls": 73,
+                "nfev": 18,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886727,
+                "forward_calls": 71,
+                "nfev": 10,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": true
+          }
+        },
+        {
+          "condition_id": 4,
+          "arm": "matched",
+          "observation_sha256": "c73bbecf688dd8ab26ffc89afe3287ffe3b68adf60205a2b581cf724ef1c6a8b",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 14.104152600000134,
+          "mono_seconds": 0.05643559999998615,
+          "bi_seconds": 14.043370299999879,
+          "external_recheck_seconds": 0.0006562999999459862,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 298.1458463306734
+          },
+          "parameters": {
+            "amplitudes": [
+              3.000391379753569,
+              0.08250955318056631
+            ],
+            "background": 2.1074241469214106,
+            "lifetimes_ns": [
+              0.9021695632047024,
+              7.999999999999998
+            ],
+            "temporal_shift_ns": 0.06978324961059938
+          },
+          "objective_calls": 21171,
+          "initialization_calls": 92,
+          "validation_calls": 46,
+          "diagnostic_calls": 72,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "log_lifetime_2"
+            ],
+            "multistart_warnings": [
+              "near_optimal_lifetime_disagreement",
+              "near_optimal_contribution_disagreement"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 1.2505552149377763e-12,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 298.14584633067466,
+            "complete": true,
+            "condition_id": 4,
+            "elapsed_seconds": 0.6154243000000861,
+            "forward_calls": 1658,
+            "observation_sha256": "c73bbecf688dd8ab26ffc89afe3287ffe3b68adf60205a2b581cf724ef1c6a8b",
+            "parameters": {
+              "amplitudes": [
+                3.000390824889567,
+                0.08250908147044088
+              ],
+              "background": 2.107424246101189,
+              "lifetimes_ns": [
+                0.902170217011982,
+                7.999999999999999
+              ],
+              "temporal_shift_ns": 0.0697832171647879
+            },
+            "production_centered_nll": 298.1458463306734,
+            "replicate": 0,
+            "shared_centered_nll": 298.14584633067466,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 298.1458463307174,
+                "forward_calls": 197,
+                "nfev": 28,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633070626,
+                "forward_calls": 190,
+                "nfev": 27,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.1458463308238,
+                "forward_calls": 163,
+                "nfev": 24,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633076595,
+                "forward_calls": 198,
+                "nfev": 29,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633067466,
+                "forward_calls": 226,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.1458463306972,
+                "forward_calls": 220,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633069137,
+                "forward_calls": 246,
+                "nfev": 35,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.145846330808,
+                "forward_calls": 218,
+                "nfev": 31,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 8,
+          "arm": "matched",
+          "observation_sha256": "63c26f5076b721b0fe66f299b33af8a10f2a5cb0123ca3173cac025220d3f048",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 10.86784590000002,
+          "mono_seconds": 0.04548290000002453,
+          "bi_seconds": 10.814301699999987,
+          "external_recheck_seconds": 0.0035103000000162865,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 254.00812206621447
+          },
+          "parameters": {
+            "amplitudes": [
+              32.71724888836783,
+              1883.6347050246013
+            ],
+            "background": 2.0511456554709797,
+            "lifetimes_ns": [
+              0.3228531418950547,
+              2.063914496271526
+            ],
+            "temporal_shift_ns": 0.07888891772690122
+          },
+          "objective_calls": 14175,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 33,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [
+              "weak_detected_component"
+            ],
+            "boundary_warnings": [],
+            "multistart_warnings": [
+              "near_optimal_lifetime_disagreement",
+              "near_optimal_contribution_disagreement"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 0.010587700016657209,
+            "agreement_within_0_01": false,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 254.0187097662311,
+            "complete": true,
+            "condition_id": 8,
+            "elapsed_seconds": 1.2379980999999134,
+            "forward_calls": 3504,
+            "observation_sha256": "63c26f5076b721b0fe66f299b33af8a10f2a5cb0123ca3173cac025220d3f048",
+            "parameters": {
+              "amplitudes": [
+                22.551980160724785,
+                1885.1345377643365
+              ],
+              "background": 2.0513940883972186,
+              "lifetimes_ns": [
+                0.36821422908347695,
+                2.063560368127659
+              ],
+              "temporal_shift_ns": 0.07799824710946389
+            },
+            "production_centered_nll": 254.00812206621447,
+            "replicate": 0,
+            "shared_centered_nll": 254.01870976623113,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 254.20995669508207,
+                "forward_calls": 117,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.0187097662311,
+                "forward_calls": 658,
+                "nfev": 105,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.15292138466978,
+                "forward_calls": 107,
+                "nfev": 16,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.15292138467038,
+                "forward_calls": 121,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.01870976667152,
+                "forward_calls": 938,
+                "nfev": 145,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.01870976636354,
+                "forward_calls": 389,
+                "nfev": 64,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.2100666436594,
+                "forward_calls": 628,
+                "nfev": 123,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.20999747745765,
+                "forward_calls": 546,
+                "nfev": 101,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 10,
+          "arm": "matched",
+          "observation_sha256": "ea8b7cca3d316356f01d7e1b623d97a0289e9f873476c38cedbe8a7bbc1f392f",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 15.515317100000175,
+          "mono_seconds": 0.05626490000008744,
+          "bi_seconds": 15.452907200000027,
+          "external_recheck_seconds": 0.0011139000000639498,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 253.4671834835649
+          },
+          "parameters": {
+            "amplitudes": [
+              4751.12763143371,
+              5.397810521357151
+            ],
+            "background": 1.9136711254765035,
+            "lifetimes_ns": [
+              0.8017154684385264,
+              3.6555192123741285
+            ],
+            "temporal_shift_ns": 0.07498985972222484
+          },
+          "objective_calls": 23687,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 36,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [
+              "weak_detected_component"
+            ],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 3.2481466405442916e-09,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 253.46718348031703,
+            "complete": true,
+            "condition_id": 10,
+            "elapsed_seconds": 1.579334099999869,
+            "forward_calls": 4532,
+            "observation_sha256": "ea8b7cca3d316356f01d7e1b623d97a0289e9f873476c38cedbe8a7bbc1f392f",
+            "parameters": {
+              "amplitudes": [
+                4751.127282892894,
+                5.397397631088797
+              ],
+              "background": 1.9136623631949647,
+              "lifetimes_ns": [
+                0.8017156932097065,
+                3.655674354803311
+              ],
+              "temporal_shift_ns": 0.0749898407267678
+            },
+            "production_centered_nll": 253.4671834835649,
+            "replicate": 0,
+            "shared_centered_nll": 253.46718348031675,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 253.4671834803533,
+                "forward_calls": 207,
+                "nfev": 44,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348139763,
+                "forward_calls": 286,
+                "nfev": 57,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348031703,
+                "forward_calls": 544,
+                "nfev": 93,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348034906,
+                "forward_calls": 245,
+                "nfev": 40,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348051468,
+                "forward_calls": 181,
+                "nfev": 30,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 5589.692130117375,
+                "forward_calls": 2376,
+                "nfev": 407,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348104298,
+                "forward_calls": 310,
+                "nfev": 57,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348473445,
+                "forward_calls": 383,
+                "nfev": 70,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 21,
+          "arm": "matched",
+          "observation_sha256": "4526e34f79018d518cd55fb86f0262a8c3f1203a9700b2637f19374e9c82e61d",
+          "assumed_irf_sha256": "3059949813dcf6213c1e6462f1cf9f65854ab39b7c5fe2ed3a5dd2b506417c68",
+          "production_seconds": 10.44340780000016,
+          "mono_seconds": 0.054557200000090234,
+          "bi_seconds": 10.386601700000028,
+          "external_recheck_seconds": 0.0005615000000034343,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 36.34677063091715
+          },
+          "parameters": {
+            "amplitudes": [
+              2475.479555822258,
+              608.9141039695412
+            ],
+            "background": 2.272853239837376,
+            "lifetimes_ns": [
+              1.0029382590872478,
+              7.999999999999998
+            ],
+            "temporal_shift_ns": 0.07291393502589327
+          },
+          "objective_calls": 19211,
+          "initialization_calls": 92,
+          "validation_calls": 46,
+          "diagnostic_calls": 32,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "log_lifetime_2"
+            ],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 2.538058652135078e-11,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "3059949813dcf6213c1e6462f1cf9f65854ab39b7c5fe2ed3a5dd2b506417c68",
+            "budget_exhausted": false,
+            "centered_nll": 36.346770630891754,
+            "complete": true,
+            "condition_id": 21,
+            "elapsed_seconds": 0.2030578000001242,
+            "forward_calls": 1978,
+            "observation_sha256": "4526e34f79018d518cd55fb86f0262a8c3f1203a9700b2637f19374e9c82e61d",
+            "parameters": {
+              "amplitudes": [
+                2475.4794866740535,
+                608.9139918713851
+              ],
+              "background": 2.2728531095656974,
+              "lifetimes_ns": [
+                1.0029384026295696,
+                7.999999999999994
+              ],
+              "temporal_shift_ns": 0.07291393011668225
+            },
+            "production_centered_nll": 36.34677063091715,
+            "replicate": 0,
+            "shared_centered_nll": 36.34677063089177,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 36.346770630891754,
+                "forward_calls": 251,
+                "nfev": 40,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089205,
+                "forward_calls": 266,
+                "nfev": 43,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089255,
+                "forward_calls": 214,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089178,
+                "forward_calls": 212,
+                "nfev": 37,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089237,
+                "forward_calls": 259,
+                "nfev": 42,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089588,
+                "forward_calls": 234,
+                "nfev": 35,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.346770630891804,
+                "forward_calls": 294,
+                "nfev": 47,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.346770630892024,
+                "forward_calls": 248,
+                "nfev": 43,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 22,
+          "arm": "matched",
+          "observation_sha256": "018836c7623bc8e68fd7a15dd09e30d761ce64c454e8b4b57f30338ea9f1b5c4",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 14.62954220000006,
+          "mono_seconds": 0.04056550000018433,
+          "bi_seconds": 14.58554009999989,
+          "external_recheck_seconds": 0.0006481000000349013,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 278.18874077814695
+          },
+          "parameters": {
+            "amplitudes": [
+              11162.595170589393,
+              5715.9372764782765
+            ],
+            "background": 2.039004926711448,
+            "lifetimes_ns": [
+              0.11587513089375212,
+              0.39685863689088324
+            ],
+            "temporal_shift_ns": 0.07561200385412324
+          },
+          "objective_calls": 22892,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 39,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 3.780087354243733e-11,
+            "agreement_within_0_01": false,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 278.188740778112,
+            "complete": false,
+            "condition_id": 22,
+            "elapsed_seconds": 3.959894200000008,
+            "forward_calls": 11836,
+            "observation_sha256": "018836c7623bc8e68fd7a15dd09e30d761ce64c454e8b4b57f30338ea9f1b5c4",
+            "parameters": {
+              "amplitudes": [
+                11162.594613545403,
+                5715.937196175567
+              ],
+              "background": 2.0390043532494033,
+              "lifetimes_ns": [
+                0.11587513856306857,
+                0.3968586363427837
+              ],
+              "temporal_shift_ns": 0.07561200067170437
+            },
+            "production_centered_nll": 278.18874077814695,
+            "replicate": 0,
+            "shared_centered_nll": 278.18874077810915,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 59691.538547911485,
+                "forward_calls": 454,
+                "nfev": 81,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 278.188740778113,
+                "forward_calls": 143,
+                "nfev": 22,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 63249.63893063669,
+                "forward_calls": 418,
+                "nfev": 75,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 671.7935654722086,
+                "forward_calls": 8581,
+                "nfev": 1500,
+                "status": 0,
+                "success": false
+              },
+              {
+                "centered_nll": 35086.79852846151,
+                "forward_calls": 1797,
+                "nfev": 302,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 278.188740778112,
+                "forward_calls": 129,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 278.18874077811336,
+                "forward_calls": 208,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 278.1887407781127,
+                "forward_calls": 106,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 26,
+          "arm": "gaussian_0.3",
+          "observation_sha256": "4a1982954a7283941b2f6e7fc424bc4951b5d856b89c9a3e9ca625eb215c6144",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 7.895207199999959,
+          "mono_seconds": 0.03869319999989784,
+          "bi_seconds": 7.853575799999817,
+          "external_recheck_seconds": 0.0006550999999035412,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 431.0277149304887
+          },
+          "parameters": {
+            "amplitudes": [
+              1640.8975451050228,
+              604.4459515798056
+            ],
+            "background": 2.14707589185321,
+            "lifetimes_ns": [
+              1.1043438933597751,
+              3.4142501092212214
+            ],
+            "temporal_shift_ns": 0.18680689333870498
+          },
+          "objective_calls": 12086,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 33,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": true,
+          "audit": {
+            "absolute_nll_difference": 1.5859313862165436e-11,
+            "agreement_within_0_01": true,
+            "arm": "gaussian_0.3",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 431.027714930504,
+            "complete": true,
+            "condition_id": 26,
+            "elapsed_seconds": 0.3513985000001867,
+            "forward_calls": 1003,
+            "observation_sha256": "4a1982954a7283941b2f6e7fc424bc4951b5d856b89c9a3e9ca625eb215c6144",
+            "parameters": {
+              "amplitudes": [
+                1640.897515394904,
+                604.4460370283223
+              ],
+              "background": 2.1470759209656487,
+              "lifetimes_ns": [
+                1.1043438175093574,
+                3.414249936049248
+              ],
+              "temporal_shift_ns": 0.1868068957368537
+            },
+            "production_centered_nll": 431.0277149304887,
+            "replicate": 0,
+            "shared_centered_nll": 431.02771493050454,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 431.027714930511,
+                "forward_calls": 120,
+                "nfev": 17,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305149,
+                "forward_calls": 99,
+                "nfev": 14,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305231,
+                "forward_calls": 142,
+                "nfev": 21,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305043,
+                "forward_calls": 141,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305074,
+                "forward_calls": 127,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.02771493050756,
+                "forward_calls": 127,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305541,
+                "forward_calls": 134,
+                "nfev": 19,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.02771493052177,
+                "forward_calls": 113,
+                "nfev": 16,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 28,
+          "arm": "calibration_proxy",
+          "observation_sha256": "3aaffcea45c5be7f854b7e1d2af26f51ce15972ebc1cef18c35bc7226aa04066",
+          "assumed_irf_sha256": "b62438142077c609ceef8ce525243198841cf977b6073f254b633235c1a711bf",
+          "production_seconds": 7.104847599999857,
+          "mono_seconds": 0.048782600000095044,
+          "bi_seconds": 7.0507557999999335,
+          "external_recheck_seconds": 0.0011309999999866704,
+          "process_wall_seconds": {
+            "production": null,
+            "audit": null
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 268.0068769282333
+          },
+          "parameters": {
+            "amplitudes": [
+              1850.2770189223334,
+              724.8371283025498
+            ],
+            "background": 1.6742509027241201,
+            "lifetimes_ns": [
+              0.8399421161799003,
+              3.212403525653022
+            ],
+            "temporal_shift_ns": 0.10544963531970288
+          },
+          "objective_calls": 10083,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 35,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 6.0254023992456496e-12,
+            "agreement_within_0_01": true,
+            "arm": "calibration_proxy",
+            "assumed_irf_sha256": "b62438142077c609ceef8ce525243198841cf977b6073f254b633235c1a711bf",
+            "budget_exhausted": false,
+            "centered_nll": 268.00687692822834,
+            "complete": true,
+            "condition_id": 28,
+            "elapsed_seconds": 0.13868430000002263,
+            "forward_calls": 687,
+            "observation_sha256": "3aaffcea45c5be7f854b7e1d2af26f51ce15972ebc1cef18c35bc7226aa04066",
+            "parameters": {
+              "amplitudes": [
+                1850.2770662893558,
+                724.8370877780198
+              ],
+              "background": 1.6742502196700189,
+              "lifetimes_ns": [
+                0.8399421343492831,
+                3.212403619340664
+              ],
+              "temporal_shift_ns": 0.10544963577252307
+            },
+            "production_centered_nll": 268.0068769282333,
+            "replicate": 0,
+            "shared_centered_nll": 268.00687692822726,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 268.0068769282407,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692823266,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282292,
+                "forward_calls": 106,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282328,
+                "forward_calls": 92,
+                "nfev": 13,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.006876928234,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692822834,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282293,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692822953,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        }
+      ]
+    },
+    {
+      "version": 2,
+      "lock": {
+        "environment": {
+          "packages": {
+            "numpy": "2.5.1",
+            "pandas": "3.0.3",
+            "scipy": "1.18.0",
+            "threadpoolctl": "3.6.0"
+          },
+          "platform": "Windows-11-10.0.26300-SP0",
+          "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]"
+        },
+        "numerical_threads": 1,
+        "protocol_sha256": "bb96b796252ac025b35f3a654f19589c98e12fb4141c324961b4ec99374dc877",
+        "sources_lf_sha256": {
+          "configs/issue28_pr3_qualification.json": "911bcdc66e01bfdf52d0fcd81fb0f81de244ee94d0158f3a93c0f180f5fe79fd",
+          "scripts/qualify_biexponential_reconvolution.py": "a37113efa35f7f5772f5c1dda18c88fcda4a32ebe4187264309c1ab3d4eefbee",
+          "src/tcspc_toolkit/__init__.py": "110ec547cb9dcc9e356d1ddb15d8bec67123539801bff1f5ddad576f0e220dd6",
+          "src/tcspc_toolkit/__main__.py": "41abcd1ba6b7a64133bfc2030bfc81b19c962ca9705eabbceb4235210bd700cb",
+          "src/tcspc_toolkit/benchmarks/__init__.py": "121f229a1d32371a9e68b13f0580d716da79bab9dbd262222ed0519144e81b43",
+          "src/tcspc_toolkit/benchmarks/bayesian_calibration.py": "175d69dad2f774c0aba11ccf96354ecd06cfcf8a490572747ca75b4c1c6e11ff",
+          "src/tcspc_toolkit/benchmarks/bayesian_mismatch.py": "87490171e46876ad8363e6aaaeff3d33ee2c0808c758a1347d3b34d3310220a8",
+          "src/tcspc_toolkit/benchmarks/generalization.py": "2eff970859b0f07b427d6915cf0ab77f12cfa85ace6d6783d67bf088e59fc173",
+          "src/tcspc_toolkit/benchmarks/generalization_datasets.py": "0e0973eb61351edec1034aa344e752d254b440713f857e5f17a682b62f236747",
+          "src/tcspc_toolkit/benchmarks/generalization_protocol.py": "6aa0a938c3ea495ab76217b358b2bf586af4360a7cb8061f2cad27e7c5a4961e",
+          "src/tcspc_toolkit/benchmarks/irf.py": "ca189495b5eb1b8ba3979998bcf1fa8188fafa023bc4db5a0f32af1ce83e707a",
+          "src/tcspc_toolkit/benchmarks/mismatch.py": "f64b285f0fd1bc758c8e44629997fb6ac48d2480494dda85c1f4dde05ffedb19",
+          "src/tcspc_toolkit/benchmarks/multiexponential.py": "4b9931700d43a46133766934e4622f46b8c995bdfa618b2592881327fcef412b",
+          "src/tcspc_toolkit/benchmarks/timing.py": "9b27f75c649db49399816b815b6ee4538f04b681625ed4fb20609922c27f1cce",
+          "src/tcspc_toolkit/benchmarks/uncertainty.py": "09781891a1ee0bc2d53e8252d5af1eba22b38fa0b52e8e1dba43bb0e7068fd73",
+          "src/tcspc_toolkit/cli.py": "d3120157c2bbf1684f5e600c0a13eadbb0db8dedf353ac668dea50f6a9835f7b",
+          "src/tcspc_toolkit/config.py": "d0a1d612366990bfebc38a3cc96c7ebc2bb2f3a9d9092b3181d6412f8d4b826f",
+          "src/tcspc_toolkit/estimation/__init__.py": "35e1f200becd46510227f9601e8cd0aeb73c6e36ca8e576166307608cb219121",
+          "src/tcspc_toolkit/estimation/api.py": "de3f5c0c9e3ceacff44a110aff6b991d752d775b7b81aefdde70eb7baf644a70",
+          "src/tcspc_toolkit/estimation/baselines.py": "07bb9c01cf1fea38c964cf7533e11a39918d136de3d0f527c22dbdecbee200ff",
+          "src/tcspc_toolkit/estimation/bayesian/__init__.py": "64ef94b5c1bdaaedeeabe5fa60b3386447180955bbba77523ec284f6570e969b",
+          "src/tcspc_toolkit/estimation/bayesian/posterior.py": "6b6c06569139e9fafe1322718c0c279c46744038db6f5b6b16e66dd921ad8957",
+          "src/tcspc_toolkit/estimation/bayesian/predictive.py": "e449ea934d6497bf881bccdeec432f5a7098cc4de47b6497db56d23a72d4e293",
+          "src/tcspc_toolkit/estimation/bayesian/sampling.py": "9cdf96d07a42082b7570a36bcf0f3ee869c0c3f945e48f8d028e2bd6bc897a02",
+          "src/tcspc_toolkit/estimation/classical.py": "6ac496b93ce1242c16b8d99700ba1af783cadfa89168f93f1c9c19c4eea86e5d",
+          "src/tcspc_toolkit/estimation/fitting.py": "861fbd5fd452f5a437d406340b45b13ca0e1c7f62859d09206296f7bcf6dcc79",
+          "src/tcspc_toolkit/estimation/multiexponential.py": "b89aebfcf4e9dba8cccd0758a48b47a621c685e90a0d68d024a273677409674f",
+          "src/tcspc_toolkit/evaluation/__init__.py": "2f89be6978ed58c3039c930b828d75c5a7a0e815273504e2c9a2df98de6f1300",
+          "src/tcspc_toolkit/evaluation/attachments.py": "e28b7222daa5c71ba89575636f1f0768e021bded2174359cfd304229cdc2b998",
+          "src/tcspc_toolkit/evaluation/conditional.py": "921fc66234aa772524d2148912f4f587b1bf19e53ee975fbff588a23e550cc27",
+          "src/tcspc_toolkit/evaluation/core.py": "17e2ee863bc39084e256033771f8219f5a376523178659ae8dec170f59ce0495",
+          "src/tcspc_toolkit/evaluation/diagnostics.py": "2ca2d50536dc7b3205186d4a789335e9d3a4db17a026fe26830c7463355ba6e4",
+          "src/tcspc_toolkit/evaluation/plots.py": "9e06a5d23ea919b83be14eb9b890a57baf5bac67ce00bf465b8dd5a7a3497856",
+          "src/tcspc_toolkit/evaluation/reconvolution.py": "0b736f46e78a910abca56f3888cd309e9e8ccc92cc7512cd9cab94de5f95f530",
+          "src/tcspc_toolkit/evaluation/results.py": "b0a0784c5df5571614f662df5e1cc4a2d87c5dd5ab19e1987332ba6e2709542f",
+          "src/tcspc_toolkit/exceptions.py": "6a7e3e21713d83a953af43e9fb3e165f36976f6a84f6f007004e3ca1c9c5d3a3",
+          "src/tcspc_toolkit/irf/__init__.py": "99a53bc8c57691ad3ba40c88b08d4a9912c48a29af759eaea1417513bdf4d9a5",
+          "src/tcspc_toolkit/irf/estimation.py": "9eb9bc91ebaaa1eb6b4c57cb64989ff293d81b8a1cc7d1e03f7d283871cb0d40",
+          "src/tcspc_toolkit/irf/preparation.py": "dcc220067a8266da6fe41617ada174ba9a012124e87251c6521ad842a357da83",
+          "src/tcspc_toolkit/irf/profiles.py": "b3db44d3a58b6ad5fc3b1cdb6e54ffac2b589055fedffed544afdcfa8f3b3a3d",
+          "src/tcspc_toolkit/irf/selection.py": "a1045c2018cbf522608fc4ba212570d7917e931b5df5746725a951ed7027745e",
+          "src/tcspc_toolkit/measurement/__init__.py": "1e7e5f113a3f41f31a3d43f823e60a847b7f68a9dfc4589efce92122a968d905",
+          "src/tcspc_toolkit/measurement/adapters.py": "9779289c98302f3473429c3302552fb332c82b17189935d31f99d4439f8f956e",
+          "src/tcspc_toolkit/measurement/io.py": "4541962061de2791ba7e5b221000415a88e6ece249db47b127d75f53965d14e1",
+          "src/tcspc_toolkit/measurement/records.py": "728abb4eebdee6c55f9558b45ed2011e08650fd69295615e9a57b8c542d120dd",
+          "src/tcspc_toolkit/ml/__init__.py": "222f407a6275f3083adda03a127aebcf6265e3d19e2725ebfdbb8c262a5ec706",
+          "src/tcspc_toolkit/ml/cross_validation.py": "1ab7a135d404ecfb2719bfcc840ada997945f25a156e4d404ba5ff16b45b4ee4",
+          "src/tcspc_toolkit/ml/evaluation.py": "7c98677c324230bb2775c6ce35a6f7144bc18e49091ac3d4ff1170f2b2c90226",
+          "src/tcspc_toolkit/ml/models.py": "8b1221f81d9b54fbb7add53dcf67addb4991a3f5ba61bca26f9cc90293f6d4ef",
+          "src/tcspc_toolkit/persistence/__init__.py": "a7627de9bde823ff22a091d78668e360c5c662455546733f22e815e99cc43fb9",
+          "src/tcspc_toolkit/persistence/sqlite.py": "da3eadf0f6695fba99e7b5b13f44654bc7130aa600561827a5fc3eda1660b336",
+          "src/tcspc_toolkit/physics/__init__.py": "8ded58643818a77bb16d644cbb869f4dba8d9dba36bd081e1303b5d9beef5c11",
+          "src/tcspc_toolkit/physics/convolution.py": "8620e4e8f0da3b7159a542273e030841077fcb5cdcb120b98c32c426c524eabc",
+          "src/tcspc_toolkit/physics/forward_model.py": "c090276d5719cf9ceb558de3ce03e5da42e03f96d086b6e49f54875fcbaa88f3",
+          "src/tcspc_toolkit/physics/models.py": "5d5edc940d8089be8ffea6d3d7a66e06a94e82041ef11e0ea8ff575cc7403197",
+          "src/tcspc_toolkit/preprocessing/__init__.py": "b426e812da2984f033c45c7724f47445b02fe7a1a421b7ef356f388e25cbd5e3",
+          "src/tcspc_toolkit/preprocessing/features.py": "eab6dfdb03d46faaa0782e88a1ba1265e8bb11458a7f072e00cd875516d381cf",
+          "src/tcspc_toolkit/preprocessing/histograms.py": "b33a8f6ae9b5af9575e4d7daaaa607d105a02a4b7b9dbae1361d57a84521272f",
+          "src/tcspc_toolkit/preprocessing/representations.py": "408e1bf7e19a2fe56f1a07fa3403a3e734989ba3d6e334051bfbc9f262393472",
+          "src/tcspc_toolkit/simulation/__init__.py": "9c4a801a9037a75b161d29756eda2f99612cd8220f3e1534d13344caebd91cc0",
+          "src/tcspc_toolkit/simulation/datasets.py": "0d806a8b8925a1caecfb3246f61ff35c676f19989578f6b9850982e715827293",
+          "src/tcspc_toolkit/simulation/histograms.py": "539787768e60730f0e8694d8e94f5d1b7748d33d10acb81730f915a0c8716e38",
+          "src/tcspc_toolkit/uncertainty/__init__.py": "3459dd95790588e1d9f69ed6f56f376d0c25dcc094e3fdc0c0b223063e963917",
+          "src/tcspc_toolkit/uncertainty/classical.py": "5769fdd318adcbc6de945de3909a3c5d9754e4e673c432d26ab10ee5976ead1e",
+          "src/tcspc_toolkit/uncertainty/evaluation.py": "b0ec7c29cb8c5dcaaf04507b45d861e2cdcd56b320a90d0bd8cec642ba80028a",
+          "src/tcspc_toolkit/uncertainty/ml.py": "51061c67b4373a48357f955d0e0a285749fc32dc446d7485c3820774947169ba"
+        }
+      },
+      "rows": [
+        {
+          "condition_id": 0,
+          "arm": "matched",
+          "observation_sha256": "900d1cc41ec77982f358a4aee7791b89ee5b63ce6de591a5457d9c553d6b91a5",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 8.405638399999816,
+          "mono_seconds": 0.05334379999999328,
+          "bi_seconds": 8.348732599999948,
+          "external_recheck_seconds": 0.0008207000000766129,
+          "process_wall_seconds": {
+            "production": 12.137652899999921,
+            "audit": 6.8270455000001675
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 282.5609390471034
+          },
+          "parameters": {
+            "amplitudes": [
+              19102.40678120641,
+              7314.208366992591
+            ],
+            "background": 1.7266904228881963,
+            "lifetimes_ns": [
+              0.7976067540112968,
+              3.200544580770489
+            ],
+            "temporal_shift_ns": 0.07470326746143573
+          },
+          "objective_calls": 12177,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 27,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "background"
+            ],
+            "multistart_warnings": [
+              "insufficient_starts_for_agreement_assessment"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 1.823667616918101e-08,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 282.5609390288671,
+            "complete": true,
+            "condition_id": 0,
+            "elapsed_seconds": 0.2642785000000458,
+            "exhausted_budgets": [],
+            "forward_calls": 601,
+            "observation_sha256": "900d1cc41ec77982f358a4aee7791b89ee5b63ce6de591a5457d9c553d6b91a5",
+            "parameters": {
+              "amplitudes": [
+                19102.408926258748,
+                7314.205342635569
+              ],
+              "background": 1.7266282856270192,
+              "lifetimes_ns": [
+                0.7976069194317414,
+                3.2005453745971453
+              ],
+              "temporal_shift_ns": 0.07470326198992891
+            },
+            "production_centered_nll": 282.5609390471034,
+            "replicate": 0,
+            "shared_centered_nll": 282.5609390288667,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 282.56093902886875,
+                "forward_calls": 74,
+                "nfev": 13,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288671,
+                "forward_calls": 72,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886965,
+                "forward_calls": 79,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288704,
+                "forward_calls": 82,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288722,
+                "forward_calls": 72,
+                "nfev": 17,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 282.5609390288727,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886767,
+                "forward_calls": 73,
+                "nfev": 18,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 282.56093902886727,
+                "forward_calls": 71,
+                "nfev": 10,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": true
+          }
+        },
+        {
+          "condition_id": 4,
+          "arm": "matched",
+          "observation_sha256": "c73bbecf688dd8ab26ffc89afe3287ffe3b68adf60205a2b581cf724ef1c6a8b",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 15.504115199999887,
+          "mono_seconds": 0.054456500000014785,
+          "bi_seconds": 15.44516469999985,
+          "external_recheck_seconds": 0.00071010000010574,
+          "process_wall_seconds": {
+            "production": 19.85376190000011,
+            "audit": 6.747848900000008
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 298.1458463306734
+          },
+          "parameters": {
+            "amplitudes": [
+              3.000391379753569,
+              0.08250955318056631
+            ],
+            "background": 2.1074241469214106,
+            "lifetimes_ns": [
+              0.9021695632047024,
+              7.999999999999998
+            ],
+            "temporal_shift_ns": 0.06978324961059938
+          },
+          "objective_calls": 21171,
+          "initialization_calls": 92,
+          "validation_calls": 46,
+          "diagnostic_calls": 72,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "log_lifetime_2"
+            ],
+            "multistart_warnings": [
+              "near_optimal_lifetime_disagreement",
+              "near_optimal_contribution_disagreement"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 1.2505552149377763e-12,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 298.14584633067466,
+            "complete": true,
+            "condition_id": 4,
+            "elapsed_seconds": 1.0133481999998821,
+            "exhausted_budgets": [],
+            "forward_calls": 1658,
+            "observation_sha256": "c73bbecf688dd8ab26ffc89afe3287ffe3b68adf60205a2b581cf724ef1c6a8b",
+            "parameters": {
+              "amplitudes": [
+                3.000390824889567,
+                0.08250908147044088
+              ],
+              "background": 2.107424246101189,
+              "lifetimes_ns": [
+                0.902170217011982,
+                7.999999999999999
+              ],
+              "temporal_shift_ns": 0.0697832171647879
+            },
+            "production_centered_nll": 298.1458463306734,
+            "replicate": 0,
+            "shared_centered_nll": 298.14584633067466,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 298.1458463307174,
+                "forward_calls": 197,
+                "nfev": 28,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633070626,
+                "forward_calls": 190,
+                "nfev": 27,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.1458463308238,
+                "forward_calls": 163,
+                "nfev": 24,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633076595,
+                "forward_calls": 198,
+                "nfev": 29,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633067466,
+                "forward_calls": 226,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.1458463306972,
+                "forward_calls": 220,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.14584633069137,
+                "forward_calls": 246,
+                "nfev": 35,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 298.145846330808,
+                "forward_calls": 218,
+                "nfev": 31,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 8,
+          "arm": "matched",
+          "observation_sha256": "63c26f5076b721b0fe66f299b33af8a10f2a5cb0123ca3173cac025220d3f048",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 10.20933489999993,
+          "mono_seconds": 0.057737099999940256,
+          "bi_seconds": 10.14688850000016,
+          "external_recheck_seconds": 0.0006872999999814056,
+          "process_wall_seconds": {
+            "production": 16.65244400000006,
+            "audit": 6.511977500000057
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 254.00812206621447
+          },
+          "parameters": {
+            "amplitudes": [
+              32.71724888836783,
+              1883.6347050246013
+            ],
+            "background": 2.0511456554709797,
+            "lifetimes_ns": [
+              0.3228531418950547,
+              2.063914496271526
+            ],
+            "temporal_shift_ns": 0.07888891772690122
+          },
+          "objective_calls": 14175,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 33,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [
+              "weak_detected_component"
+            ],
+            "boundary_warnings": [],
+            "multistart_warnings": [
+              "near_optimal_lifetime_disagreement",
+              "near_optimal_contribution_disagreement"
+            ]
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 0.010587700016657209,
+            "agreement_within_0_01": false,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 254.0187097662311,
+            "complete": true,
+            "condition_id": 8,
+            "elapsed_seconds": 1.2358798000000206,
+            "exhausted_budgets": [],
+            "forward_calls": 3504,
+            "observation_sha256": "63c26f5076b721b0fe66f299b33af8a10f2a5cb0123ca3173cac025220d3f048",
+            "parameters": {
+              "amplitudes": [
+                22.551980160724785,
+                1885.1345377643365
+              ],
+              "background": 2.0513940883972186,
+              "lifetimes_ns": [
+                0.36821422908347695,
+                2.063560368127659
+              ],
+              "temporal_shift_ns": 0.07799824710946389
+            },
+            "production_centered_nll": 254.00812206621447,
+            "replicate": 0,
+            "shared_centered_nll": 254.01870976623113,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 254.20995669508207,
+                "forward_calls": 117,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.0187097662311,
+                "forward_calls": 658,
+                "nfev": 105,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.15292138466978,
+                "forward_calls": 107,
+                "nfev": 16,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.15292138467038,
+                "forward_calls": 121,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.01870976667152,
+                "forward_calls": 938,
+                "nfev": 145,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.01870976636354,
+                "forward_calls": 389,
+                "nfev": 64,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.2100666436594,
+                "forward_calls": 628,
+                "nfev": 123,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 254.20999747745765,
+                "forward_calls": 546,
+                "nfev": 101,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 10,
+          "arm": "matched",
+          "observation_sha256": "ea8b7cca3d316356f01d7e1b623d97a0289e9f873476c38cedbe8a7bbc1f392f",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 16.335253200000125,
+          "mono_seconds": 0.050459400000136156,
+          "bi_seconds": 16.277997799999866,
+          "external_recheck_seconds": 0.0008912999999211024,
+          "process_wall_seconds": {
+            "production": 23.953184799999917,
+            "audit": 8.623758500000122
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 253.4671834835649
+          },
+          "parameters": {
+            "amplitudes": [
+              4751.12763143371,
+              5.397810521357151
+            ],
+            "background": 1.9136711254765035,
+            "lifetimes_ns": [
+              0.8017154684385264,
+              3.6555192123741285
+            ],
+            "temporal_shift_ns": 0.07498985972222484
+          },
+          "objective_calls": 23687,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 36,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [
+              "weak_detected_component"
+            ],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 3.2481466405442916e-09,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 253.46718348031703,
+            "complete": true,
+            "condition_id": 10,
+            "elapsed_seconds": 1.7536342000000786,
+            "exhausted_budgets": [],
+            "forward_calls": 4532,
+            "observation_sha256": "ea8b7cca3d316356f01d7e1b623d97a0289e9f873476c38cedbe8a7bbc1f392f",
+            "parameters": {
+              "amplitudes": [
+                4751.127282892894,
+                5.397397631088797
+              ],
+              "background": 1.9136623631949647,
+              "lifetimes_ns": [
+                0.8017156932097065,
+                3.655674354803311
+              ],
+              "temporal_shift_ns": 0.0749898407267678
+            },
+            "production_centered_nll": 253.4671834835649,
+            "replicate": 0,
+            "shared_centered_nll": 253.46718348031675,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 253.4671834803533,
+                "forward_calls": 207,
+                "nfev": 44,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348139763,
+                "forward_calls": 286,
+                "nfev": 57,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348031703,
+                "forward_calls": 544,
+                "nfev": 93,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348034906,
+                "forward_calls": 245,
+                "nfev": 40,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348051468,
+                "forward_calls": 181,
+                "nfev": 30,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 5589.692130117375,
+                "forward_calls": 2376,
+                "nfev": 407,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348104298,
+                "forward_calls": 310,
+                "nfev": 57,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 253.46718348473445,
+                "forward_calls": 383,
+                "nfev": 70,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 21,
+          "arm": "matched",
+          "observation_sha256": "4526e34f79018d518cd55fb86f0262a8c3f1203a9700b2637f19374e9c82e61d",
+          "assumed_irf_sha256": "3059949813dcf6213c1e6462f1cf9f65854ab39b7c5fe2ed3a5dd2b506417c68",
+          "production_seconds": 10.606942899999922,
+          "mono_seconds": 0.05964569999991909,
+          "bi_seconds": 10.54423480000014,
+          "external_recheck_seconds": 0.000575600000047416,
+          "process_wall_seconds": {
+            "production": 16.576202199999898,
+            "audit": 7.207877000000053
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 36.34677063091715
+          },
+          "parameters": {
+            "amplitudes": [
+              2475.479555822258,
+              608.9141039695412
+            ],
+            "background": 2.272853239837376,
+            "lifetimes_ns": [
+              1.0029382590872478,
+              7.999999999999998
+            ],
+            "temporal_shift_ns": 0.07291393502589327
+          },
+          "objective_calls": 19211,
+          "initialization_calls": 92,
+          "validation_calls": 46,
+          "diagnostic_calls": 32,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [
+              "log_lifetime_2"
+            ],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 2.538058652135078e-11,
+            "agreement_within_0_01": true,
+            "arm": "matched",
+            "assumed_irf_sha256": "3059949813dcf6213c1e6462f1cf9f65854ab39b7c5fe2ed3a5dd2b506417c68",
+            "budget_exhausted": false,
+            "centered_nll": 36.346770630891754,
+            "complete": true,
+            "condition_id": 21,
+            "elapsed_seconds": 0.19798790000004374,
+            "exhausted_budgets": [],
+            "forward_calls": 1978,
+            "observation_sha256": "4526e34f79018d518cd55fb86f0262a8c3f1203a9700b2637f19374e9c82e61d",
+            "parameters": {
+              "amplitudes": [
+                2475.4794866740535,
+                608.9139918713851
+              ],
+              "background": 2.2728531095656974,
+              "lifetimes_ns": [
+                1.0029384026295696,
+                7.999999999999994
+              ],
+              "temporal_shift_ns": 0.07291393011668225
+            },
+            "production_centered_nll": 36.34677063091715,
+            "replicate": 0,
+            "shared_centered_nll": 36.34677063089177,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 36.346770630891754,
+                "forward_calls": 251,
+                "nfev": 40,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089205,
+                "forward_calls": 266,
+                "nfev": 43,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089255,
+                "forward_calls": 214,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089178,
+                "forward_calls": 212,
+                "nfev": 37,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089237,
+                "forward_calls": 259,
+                "nfev": 42,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.34677063089588,
+                "forward_calls": 234,
+                "nfev": 35,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.346770630891804,
+                "forward_calls": 294,
+                "nfev": 47,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 36.346770630892024,
+                "forward_calls": 248,
+                "nfev": 43,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 22,
+          "arm": "matched",
+          "observation_sha256": "018836c7623bc8e68fd7a15dd09e30d761ce64c454e8b4b57f30338ea9f1b5c4",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 16.122154799999862,
+          "mono_seconds": 0.04523820000008527,
+          "bi_seconds": 16.07179690000021,
+          "external_recheck_seconds": 0.0006680000001324515,
+          "process_wall_seconds": {
+            "production": 24.10312420000014,
+            "audit": 11.798045600000023
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 278.18874077814695
+          },
+          "parameters": {
+            "amplitudes": [
+              11162.595170589393,
+              5715.9372764782765
+            ],
+            "background": 2.039004926711448,
+            "lifetimes_ns": [
+              0.11587513089375212,
+              0.39685863689088324
+            ],
+            "temporal_shift_ns": 0.07561200385412324
+          },
+          "objective_calls": 22892,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 39,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 3.780087354243733e-11,
+            "agreement_within_0_01": false,
+            "arm": "matched",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 278.188740778112,
+            "complete": false,
+            "condition_id": 22,
+            "elapsed_seconds": 4.4050679000001765,
+            "exhausted_budgets": [
+              "start_nfev"
+            ],
+            "forward_calls": 11836,
+            "observation_sha256": "018836c7623bc8e68fd7a15dd09e30d761ce64c454e8b4b57f30338ea9f1b5c4",
+            "parameters": {
+              "amplitudes": [
+                11162.594613545403,
+                5715.937196175567
+              ],
+              "background": 2.0390043532494033,
+              "lifetimes_ns": [
+                0.11587513856306857,
+                0.3968586363427837
+              ],
+              "temporal_shift_ns": 0.07561200067170437
+            },
+            "production_centered_nll": 278.18874077814695,
+            "replicate": 0,
+            "shared_centered_nll": 278.18874077810915,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 59691.538547911485,
+                "forward_calls": 454,
+                "nfev": 81,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 278.188740778113,
+                "forward_calls": 143,
+                "nfev": 22,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 63249.63893063669,
+                "forward_calls": 418,
+                "nfev": 75,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 671.7935654722086,
+                "forward_calls": 8581,
+                "nfev": 1500,
+                "status": 0,
+                "success": false
+              },
+              {
+                "centered_nll": 35086.79852846151,
+                "forward_calls": 1797,
+                "nfev": 302,
+                "status": 3,
+                "success": true
+              },
+              {
+                "centered_nll": 278.188740778112,
+                "forward_calls": 129,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 278.18874077811336,
+                "forward_calls": 208,
+                "nfev": 33,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 278.1887407781127,
+                "forward_calls": 106,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 26,
+          "arm": "gaussian_0.3",
+          "observation_sha256": "4a1982954a7283941b2f6e7fc424bc4951b5d856b89c9a3e9ca625eb215c6144",
+          "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+          "production_seconds": 8.2236240000002,
+          "mono_seconds": 0.05019640000000436,
+          "bi_seconds": 8.167044599999826,
+          "external_recheck_seconds": 0.0006365000003825116,
+          "process_wall_seconds": {
+            "production": 14.524182799999835,
+            "audit": 5.8766624999998385
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 431.0277149304887
+          },
+          "parameters": {
+            "amplitudes": [
+              1640.8975451050228,
+              604.4459515798056
+            ],
+            "background": 2.14707589185321,
+            "lifetimes_ns": [
+              1.1043438933597751,
+              3.4142501092212214
+            ],
+            "temporal_shift_ns": 0.18680689333870498
+          },
+          "objective_calls": 12086,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 33,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": true,
+          "audit": {
+            "absolute_nll_difference": 1.5859313862165436e-11,
+            "agreement_within_0_01": true,
+            "arm": "gaussian_0.3",
+            "assumed_irf_sha256": "fdf9cdb7d3a53a7d4e8ebd2ec7214c913b4e94e935ab45605717d1903d335e89",
+            "budget_exhausted": false,
+            "centered_nll": 431.027714930504,
+            "complete": true,
+            "condition_id": 26,
+            "elapsed_seconds": 0.33199039999999513,
+            "exhausted_budgets": [],
+            "forward_calls": 1003,
+            "observation_sha256": "4a1982954a7283941b2f6e7fc424bc4951b5d856b89c9a3e9ca625eb215c6144",
+            "parameters": {
+              "amplitudes": [
+                1640.897515394904,
+                604.4460370283223
+              ],
+              "background": 2.1470759209656487,
+              "lifetimes_ns": [
+                1.1043438175093574,
+                3.414249936049248
+              ],
+              "temporal_shift_ns": 0.1868068957368537
+            },
+            "production_centered_nll": 431.0277149304887,
+            "replicate": 0,
+            "shared_centered_nll": 431.02771493050454,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 431.027714930511,
+                "forward_calls": 120,
+                "nfev": 17,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305149,
+                "forward_calls": 99,
+                "nfev": 14,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305231,
+                "forward_calls": 142,
+                "nfev": 21,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305043,
+                "forward_calls": 141,
+                "nfev": 20,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305074,
+                "forward_calls": 127,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.02771493050756,
+                "forward_calls": 127,
+                "nfev": 18,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.0277149305541,
+                "forward_calls": 134,
+                "nfev": 19,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 431.02771493052177,
+                "forward_calls": 113,
+                "nfev": 16,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        },
+        {
+          "condition_id": 28,
+          "arm": "calibration_proxy",
+          "observation_sha256": "3aaffcea45c5be7f854b7e1d2af26f51ce15972ebc1cef18c35bc7226aa04066",
+          "assumed_irf_sha256": "b62438142077c609ceef8ce525243198841cf977b6073f254b633235c1a711bf",
+          "production_seconds": 6.535063400000126,
+          "mono_seconds": 0.04512089999980162,
+          "bi_seconds": 6.486617800000204,
+          "external_recheck_seconds": 0.0006460999998125772,
+          "process_wall_seconds": {
+            "production": 10.288818500000161,
+            "audit": 4.735752000000048
+          },
+          "assessment": {
+            "accepted": true,
+            "diagnostic_budget_complete": true,
+            "diagnostic_unavailable_reason": null,
+            "external_forward_evaluations": 1,
+            "jacobian_available": true,
+            "objective_difference": 0.0,
+            "reasons": [],
+            "recomputed_centered_nll": 268.0068769282333
+          },
+          "parameters": {
+            "amplitudes": [
+              1850.2770189223334,
+              724.8371283025498
+            ],
+            "background": 1.6742509027241201,
+            "lifetimes_ns": [
+              0.8399421161799003,
+              3.212403525653022
+            ],
+            "temporal_shift_ns": 0.10544963531970288
+          },
+          "objective_calls": 10083,
+          "initialization_calls": 92,
+          "validation_calls": 49,
+          "diagnostic_calls": 35,
+          "production_budgets_exhausted": [],
+          "warnings": {
+            "structural_warnings": [],
+            "conditioning_warnings": [],
+            "boundary_warnings": [],
+            "multistart_warnings": []
+          },
+          "warning_free_error_above_5_percent": false,
+          "audit": {
+            "absolute_nll_difference": 6.0254023992456496e-12,
+            "agreement_within_0_01": true,
+            "arm": "calibration_proxy",
+            "assumed_irf_sha256": "b62438142077c609ceef8ce525243198841cf977b6073f254b633235c1a711bf",
+            "budget_exhausted": false,
+            "centered_nll": 268.00687692822834,
+            "complete": true,
+            "condition_id": 28,
+            "elapsed_seconds": 0.17435790000035922,
+            "exhausted_budgets": [],
+            "forward_calls": 687,
+            "observation_sha256": "3aaffcea45c5be7f854b7e1d2af26f51ce15972ebc1cef18c35bc7226aa04066",
+            "parameters": {
+              "amplitudes": [
+                1850.2770662893558,
+                724.8370877780198
+              ],
+              "background": 1.6742502196700189,
+              "lifetimes_ns": [
+                0.8399421343492831,
+                3.212403619340664
+              ],
+              "temporal_shift_ns": 0.10544963577252307
+            },
+            "production_centered_nll": 268.0068769282333,
+            "replicate": 0,
+            "shared_centered_nll": 268.00687692822726,
+            "shared_forward_recheck_calls": 1,
+            "starts": [
+              {
+                "centered_nll": 268.0068769282407,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692823266,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282292,
+                "forward_calls": 106,
+                "nfev": 15,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282328,
+                "forward_calls": 92,
+                "nfev": 13,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.006876928234,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692822834,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.0068769282293,
+                "forward_calls": 78,
+                "nfev": 11,
+                "status": 2,
+                "success": true
+              },
+              {
+                "centered_nll": 268.00687692822953,
+                "forward_calls": 85,
+                "nfev": 12,
+                "status": 2,
+                "success": true
+              }
+            ],
+            "status": "completed",
+            "stream": 2,
+            "target_applies": false
+          }
+        }
+      ]
+    }
+  ],
+  "second_pass_reason": "Explicit per-start budget labels, atomic checkpoint transport and process-wall timings; no fitter, numerical policy, matrix, thresholds or audit solver changes.",
+  "non_timing_compared_fields_identical": true,
+  "cost_estimate": {
+    "production_pair_seconds": {
+      "mean": 11.492765849999984,
+      "median": 10.408138899999926,
+      "minimum": 6.535063400000126,
+      "maximum": 16.335253200000125
+    },
+    "audit_seconds": {
+      "mean": 1.1720681000000752,
+      "median": 0.6726692999999386,
+      "minimum": 0.17435790000035922,
+      "maximum": 4.4050679000001765
+    },
+    "production_wall_mean_seconds": 17.261171412500005,
+    "audit_wall_mean_seconds": 7.29112093750004,
+    "production_compute_hours": 5.906004672916659,
+    "production_with_startup_hours": 8.87032419809028,
+    "audit_compute_minutes": 4.00456600833359,
+    "audits_with_startup_minutes": 24.911329869791803,
+    "production_wall_range_hours": [
+      5.287309506944528,
+      12.38632771388896
+    ],
+    "audit_wall_range_minutes": [
+      16.180486000000162,
+      40.30998913333341
+    ]
+  },
+  "interpretation": "Eight heterogeneous stream-2 cases are a runtime feasibility pilot, not a representative statistical qualification sample; ranges are scenario extrapolations, not confidence intervals."
+}

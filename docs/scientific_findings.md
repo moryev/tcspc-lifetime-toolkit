@@ -1,5 +1,63 @@
 # Scientific findings
 
+Issue #28 PR 3's frozen [independent qualification](issue28_pr3_qualification.md)
+is complete: 1,550 observations, 1,850 paired comparisons, 205 scheduled audit
+attempts and 36 projection-status records. Successful execution is distinct from
+numerical acceptance, physical parameter recovery and optimizer agreement.
+
+The high-count C00 numerical-acceptance target **PASSes at 98/100**. Both
+component median-error targets **PASS** (0.396%/0.153%, required <5%); both
+absolute-bias targets **PASS** (signed biases +0.022%/+0.027%, required <2%).
+All 98 accepted fits have both components available. The 95% Wilson acceptance
+interval is 92.999%–99.450%; this does not prove a population acceptance
+probability of at least 95%. The all-finite sensitivity population retains 100
+fits, with median errors 0.415%/0.155% and biases +0.028%/+0.031%.
+
+The independent objective-agreement target **FAILS: 119/121 designated cases**.
+C00 r11/r58 have centered-NLL gaps 980.597/72.851; both production fits were
+rejected by local numerical validation. R11 used 45 seeds plus one recovery;
+r58 used 46 seeds with no recovery slot. R58 included one projected-gradient
+termination with a nonfinite endpoint; its other 45 starts and all 46 r11 starts
+reported relative-function-reduction convergence. The returned best finite
+validation candidates remain explicit failures. The exact optimizer-level cause
+is unresolved; a nonfinite-cost/zero-gradient callback hazard is a hypothesis
+for investigation, not an established explanation of the gaps. The maintainer
+accepted Disposition A: preserve this failed target and prepare a
+[separate numerical follow-up](issue28_optimizer_followup.md), not a claim that
+all qualification targets passed.
+
+Across all arms, 1,844/1,850 bi fits were numerically accepted. Median component
+errors rose to 26.9%/28.8% at 1,000 signal photons and 74.1%/60.0% at 100.
+A 0.5% secondary contribution had 53.8% median secondary-lifetime error; nearly
+equal lifetimes produced unavailable components and large signed biases despite
+modest medians. A short window retained 0.52% median signal-curve error while
+lifetime errors reached 11.3%/20.6%. Equal-lifetime, true-mono, zero-component
+and background-only conditions have no arbitrary two-component truth errors.
+
+Matched Gaussian, EMG and synthetic sampled IRFs supported accurate separated
+recovery. Wrong Gaussian widths caused 21–23% primary-component errors; Gaussian
+substitution for EMG/sampled EMG caused 40–41%. The independently calibrated
+approximate proxy gave 5.59%/1.62% median errors, conditional on one calibration.
+Every fit in these mismatched bi-generating arms was numerically accepted.
+There were **447 accepted warning-free errors above 5% among 1,041 warning-free
+accepted fits with defined component errors**. These paired, deliberately difficult
+populations are not a universal warning-performance estimate. Neither warning
+absence nor favorable AIC/BIC establishes an experimentally correct IRF/model.
+
+Of 205 audit attempts, 204 completed and 195 completed with agreement within .01.
+One C22 audit remained incomplete after a per-start limit, despite its close best
+objective. Seven additional descriptive gaps occurred in degenerate regimes,
+with production lower in five. Only three of six eligible pseudo-true projections
+passed their unchanged checks; three failed and 30 other arms were unavailable
+by protocol. Failures were not replaced by stochastic estimates. Full denominators,
+uncertainty intervals, all condition summaries and limitations are retained in the
+[final JSON](validation/issue28_pr3_results_2026-10-27.json) and
+[attempt CSV](validation/issue28_pr3_results_2026-10-27.csv).
+
+PR 2's warning-free 10.18% secondary-lifetime error also remains a limitation of
+statistical recovery and descriptive diagnostics. Neither that finding nor the
+PR-3 observations was used to tune fitter settings or warning thresholds.
+
 This document records durable scientific conclusions established during
 development of the TCSPC Lifetime Toolkit. Detailed numerical evidence,
 plots, and exploratory analyses remain in the corresponding notebooks and

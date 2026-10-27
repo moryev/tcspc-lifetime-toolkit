@@ -1,5 +1,14 @@
 # Package architecture and post-Issue-12 import cleanup
 
+Issue #28 PR 3 adds `evaluation.reconvolution` (pure paired Poisson statistics)
+and `benchmarks.multiexponential` (independent qualification machinery), bringing
+the current inventory to **47 substantive implementations and 64 production
+Python files**. `measurement.adapters` composes the unchanged mono/bi estimators
+and shared IRF resolver. Root and initializer exports remain unchanged. Scientific
+qualification is recorded in the [completed study](issue28_pr3_qualification.md):
+primary C00 targets passed, while independent objective agreement failed in two
+designated cases. The numerical implementation and its execution lock are unchanged.
+
 Issues #3 and #12 are complete, merged, and closed. The separate breaking cleanup
 removes the 38 flat scientific compatibility modules retained through Issue #12.
 Use the curated 66-name root API or canonical hierarchy. The five reviewed public
