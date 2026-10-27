@@ -12,6 +12,7 @@ see the separate [results guide](../docs/results.md) for accepted evidence.
 | --- | --- | --- | --- |
 | [quickstart.py](quickstart.py) | Simulate and fit an IRF-convolved Poisson histogram | Base install; generated synthetic data | Seconds |
 | [experimental_csv.py](experimental_csv.py) | Import separate decay/IRF CSVs and reconvolve | Base; committed synthetic CSVs | Seconds |
+| [biexponential_reconvolution.py](biexponential_reconvolution.py) | Descriptive paired mono/bi raw-measurement fits | Base; committed synthetic CSVs; exhaustive bi policy | Tens of seconds |
 | [preprocessing_features.py](preprocessing_features.py) | Validate counts and extract physical features | Base; committed synthetic decay CSV | Seconds |
 | [ml_lifetime_prediction.py](ml_lifetime_prediction.py) | Train and evaluate a small Ridge pipeline | Base; generated synthetic data | Seconds |
 | [uncertainty_example.py](uncertainty_example.py) | Compare local covariance and Poisson bootstrap | Base; generated synthetic data, 100 refits | Usually under 30 seconds |
@@ -178,3 +179,17 @@ SQLite support is in Python's standard library. Schema v1 stores scalar facts
 and provenance; histograms and posterior chains are not embedded as large BLOBs.
 See the [persistence contract](../docs/persistence.md) for query semantics,
 duplicates, references and aggregation validity policies.
+
+## 9. Experimental mono/bi comparison
+
+```bash
+python examples/biexponential_reconvolution.py
+```
+
+Uses the same explicitly prepared synthetic CSV fixtures and original raw bins
+for both models. Prints parameter estimates, local numerical validation, budget
+status, identifiability diagnostics and descriptive AIC/bin-based BIC differences.
+The mono lifetime is unbounded above; the bi bounds are [.1,8] ns. No trusted
+experimental reference, physical model-order decision or likelihood-ratio p-value
+is inferred. This example is separate from the not-yet-run
+[PR-3 qualification study](../docs/issue28_pr3_qualification.md).

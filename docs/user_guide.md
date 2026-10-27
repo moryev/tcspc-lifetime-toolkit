@@ -6,6 +6,19 @@ supported imports, and [scientific findings](scientific_findings.md) records evi
 
 ## Simulation and reconvolution
 
+For raw experimental histograms requiring two components, use the module-qualified
+`measurement.adapters.fit_experimental_biexponential_reconvolution` with explicit
+lifetime/shift bounds and a prepared IRF (or the attached same-grid sampled trace).
+The [paired example](../examples/biexponential_reconvolution.py) uses identical
+raw bins and assumed IRF for mono/bi fits, retains source provenance and reports
+descriptive AIC/bin-based BIC. No preprocessing is inferred. Review numerical
+failure and identifiability diagnostics separately; warning absence is not a
+component-recovery guarantee. See [API details](api.md#experimental-bi-exponential-reconvolution-issue-28-pr-3)
+and the [completed independent qualification](issue28_pr3_qualification.md).
+Its primary high-count targets passed, but two independent optimizer-agreement
+targets failed; low counts, weak components and incorrect IRFs can defeat recovery
+even when fitting is numerically accepted.
+
 The [quick start](../examples/quickstart.py) separates deterministic physics from
 photon sampling. On a uniform time grid in nanoseconds, its model is
 
@@ -198,7 +211,7 @@ computed; its Bayesian records are explicitly labeled fixtures with no MCMC.
 The [persistence contract](persistence.md) is the authoritative schema-v1 reference.
 
 Current limits include single-curve CSV import rather than vendor formats;
-mono-exponential inverse fitting despite multi-component simulation; constant
+mono- and constrained bi-exponential inverse fitting (no arbitrary-K fitter); constant
 background; no pile-up, dead-time, or afterpulsing model; no blind IRF recovery;
 and no validated synthetic-to-real or arbitrary-shift uncertainty guarantee.
 The toolkit is research software, not a validated replacement for experimental

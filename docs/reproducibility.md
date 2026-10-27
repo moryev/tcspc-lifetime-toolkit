@@ -1,9 +1,40 @@
 # Reproducibility and execution guide
 
 Start with [installation](../README.md#installation) and the
-[eight executable examples](../examples/README.md). This guide locates the
+[executable examples](../examples/README.md). This guide locates the
 reproducible evidence and explains execution cost; scientific interpretations
 live in [results](results.md) and [scientific findings](scientific_findings.md).
+
+## Issue #28 PR 3 completed evidence
+
+The [qualification manifest](../configs/issue28_pr3_qualification.json) and
+[scientific report](issue28_pr3_qualification.md) account for all 1,550 observations,
+1,850 paired comparisons and 205 independent audit attempts. Execution finished
+October 26. Primary C00 targets passed; the independent objective-agreement target
+failed in two designated cases (119/121 passed). Execution success is not universal
+scientific qualification.
+
+Read the [summary JSON](validation/issue28_pr3_results_2026-10-27.json) and
+[per-attempt CSV](validation/issue28_pr3_results_2026-10-27.csv) without fitting.
+Full raw records remain in ignored
+`data/generated/issue28_pr3_qualification_20261026/`. These raw files are required
+to reproduce aggregation; they are not included in source distributions or
+available through a linked public archive. With that original directory and the
+locked environment, the following command only verifies and summarizes saved
+records, including the frozen aggregate bootstrap. Use a new output prefix;
+existing evidence is never overwritten:
+
+```bash
+python scripts/report_biexponential_qualification.py --directory data/generated/issue28_pr3_qualification_20261026 --execution-lock docs/validation/issue28_pr3_execution_lock_2026-10-26.json --output-prefix build/reports/issue28_pr3_summary_recheck
+```
+
+The execution lock covers 64 package Python files, the qualification runner and
+scientific configuration. It excludes documentation and the reporting script.
+Their final hashes are recorded separately in the
+[post-study reporting record](validation/issue28_pr3_reporting_2026-10-27.json).
+The original execution identity, PR-2 evidence and Week-7/8/9 references remain
+unchanged. Do not invoke `study` to reproduce reporting or silently reuse these
+reviewed observations as untouched evaluation data for a modified fitter.
 
 ## Environment and quick validation
 
