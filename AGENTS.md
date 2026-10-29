@@ -28,6 +28,8 @@ The latest published GitHub release is **v0.8.0** (October 22, 2026; PyPI deferr
 
 **Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 CI and release qualification completed, with the merged-main reference qualification in [run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724); it is closed and v0.8.0 was published on GitHub on October 22, 2026.** **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
+**Post-v0.8.0 research status (October 29, 2026):** Issue #28 PRs #29/#31/#34 and Issue #33 PR #35 are merged. General fixed-K deterministic reconvolution is available, but production Poisson reconvolution fitting remains mono- or bi-exponential only. The original #28 independent-audit criterion failed at 119/121; the corrected #33 Stage 3 strict criterion failed at 99/100. [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33) is **open and deferred** for future recovery-capacity/qualification work. The next *proposed*, not yet authorized, development direction is fixed-K multi-exponential fitting beginning with K=3; first review its architecture and create a separately scoped issue before implementation.
+
 ## Repository map
 
 - `src/tcspc_toolkit/` — canonical implementations in `physics`, `irf`, `measurement`, `simulation`, `preprocessing`, `estimation`, `ml`, `evaluation`, `uncertainty`, `benchmarks`, and `persistence`; only five genuine support files remain at package root.
@@ -102,8 +104,9 @@ Preserve the scientific separation expressed in `docs/design/master_design_docum
 - IRFs are generated/represented independently from decay models;
 - convolution is an independent operation;
 - the shared mono-exponential reconvolution expected-count model lives in `physics.forward_model` and is reused by classical fitting, uncertainty, and Bayesian inference rather than reimplemented per estimator;
-- Issue #28 PR 1 adds general deterministic multi-exponential component/total expected-count functions that compose the unchanged mono model; it does not yet add a multi-exponential fitter;
-- Issue #28 PR 2 adds the separately qualified bi-exponential Poisson fitter in `estimation.multiexponential`, reusing those primitives with grouped numerical and descriptive identifiability diagnostics;
+- Issue #28 PR 1 added general deterministic K-component reconvolution expected-count/component functions that compose the unchanged mono model; this is a forward model, **not** an arbitrary-K optimizer;
+- Issue #28 PR 2 added the constrained bi-exponential Poisson fitter in `estimation.multiexponential`, reusing those primitives with grouped numerical and descriptive identifiability diagnostics; PR 3 added raw-measurement integration and independent qualification with a preserved failed audit target;
+- Issue #33 PR #35 added objective/gradient safeguards and exhaustive seed-first scheduling, with an independently documented remaining recovery-capacity limitation; do not describe the bi-exponential fitter as fully scientifically qualified;
 - noise sampling is independent from deterministic signal generation;
 - evaluation functions are organized by the quantity being evaluated, not merely by estimator family;
 - public APIs use explicit scientific names;
@@ -325,8 +328,9 @@ Current integration status:
 11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
 12. **#15** — Week 12 continuous integration and release preparation — **complete and closed; v0.8.0 published**;
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
-14. **#28** — multi-exponential reconvolution — **PRs #29/#31/#34 merged; PR 3 measurement integration and qualification complete, with the failed historical 119/121 audit target preserved**.
-15. **#33** — optimizer safeguards and seed scheduling — **corrected; Stage 3 completed with failed strict agreement at 99/100 against 100/100. Robustness improvement accepted for publication; issue remains open**.
+14. **#28** — general K-component forward reconvolution and bi-exponential Poisson fitting — **PRs #29/#31/#34 merged; Issue #28 remains open and the failed historical 119/121 audit target is preserved**.
+15. **#33** — bi-exponential optimizer safeguards and seed-first scheduling — **PR #35 merged; strict new Stage 3 agreement failed at 99/100 against 100/100. Issue #33 is open but deferred for future recovery-capacity/qualification work**.
+16. **Prospective next work (not yet a GitHub issue)** — **fixed-K multi-exponential Poisson fitting, beginning with K=3**. Architecture review and separately authorized scope precede implementation; this is not a continuation of the old #28 PR 3 qualification.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -337,9 +341,9 @@ Issue #2 established the current API-stability boundary:
 - Generic estimator execution must not know canonical estimator identities. Canonical Ridge, Random-Forest, and HistGradientBoosting specifications are supplied separately by `ml.models`.
 - Caller-supplied representations remain caller-owned matrix-like inputs with positional row alignment; the generic execution layer does not fit representations or infer sample identity.
 - Public roadmap-specific Day/Week names replaced during Issue #2 now have scientific/domain-oriented canonical names. The historical symbol names remain direct aliases in their canonical modules; frozen protocol strings, persisted identities, seeds, and study provenance remain unchanged.
-- Do not broaden the root export surface opportunistically during #28; preserve the reviewed public import contract unless the active issue explicitly changes it.
+- Do not broaden the root export surface opportunistically for future K>=3 fitting; preserve the reviewed public import contract unless a new active issue explicitly changes it.
 
-Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts during Issue #28. Do not restart Issue #12-style integration work unless a concrete regression is found.
+Preserve the completed generalized-IRF, Bayesian, persistence, experimental-measurement, uncertainty, API-stability, and frozen-benchmark scientific contracts in future K>=3 work. Do not restart Issue #12-style integration work unless a concrete regression is found.
 
 ## Completed v0.8.0 release qualification (historical)
 
@@ -431,15 +435,19 @@ fit; keep CI deterministic and lightweight. Never tune fitter defaults or
 warnings on the qualification data, overwrite frozen Week-7/8/9 or PR-2 evidence,
 or present warning absence as a calibrated recovery guarantee.
 
-Defer Bayesian/ML/CLI extensions, arbitrary-K fitting, automatic model-order
-selection, component intervals, persistence schema changes, benchmark
-regeneration, new release publication, and Issue #13. Use `Refs #28` for further
-partial work; completing an implementation does not itself authorize issue closure.
+The original Issue #28 scope deferred Bayesian/ML/CLI extensions, arbitrary-K
+fitting, automatic model-order selection, component intervals, persistence schema
+changes, benchmark regeneration, new release publication, and Issue #13. A new,
+separately scoped K>=3 fitting issue may supersede the **arbitrary-K fitting
+exclusion only for its explicitly approved scope**; the historical #28 evidence
+and scientific contracts remain unchanged. Use `Refs #28` for remaining #28
+work; implementation alone does not authorize issue closure.
 A separate maintainer approval is required for further numerical changes,
 scientific execution, releases or Git history operations beyond an explicit task.
 
-**Issue #33 current disposition:** Stage 1 is preserved at `3bff378f`; Stage 2/2B
-is committed as `5be88edda17ad6612a8447dca0e11a6543502b85`. Nonfinite objectives
+**Issue #33 — merged and deferred:** [PR #35](https://github.com/moryev/tcspc-lifetime-toolkit/pull/35)
+is merged; Stage 1 is preserved at `3bff378f`, Stage 2/2B at
+`5be88edda17ad6612a8447dca0e11a6543502b85`, and Stage 3 at `55530dfc`. Nonfinite objectives
 and failed derivatives cannot fabricate stationary success; finite candidates
 are retained, and exhaustive scheduling completes required seeds first. The
 46-start and evaluation limits, physical model and Poisson semantics remain.
@@ -454,9 +462,23 @@ failed at 99/100 against 100/100. Four fits were numerically rejected; new C00
 r050 completed all 46 seeds, detected further descent and correctly reported
 required recovery unavailable. Optional continuation omission is distinct from
 incomplete required work. Agreement never proves global optimality or physical
-identifiability. The maintainer accepts the robustness improvement for
-publication, not full qualification or closure. Use `Refs #33`, never `Closes #33`.
-Do not rerun or tune on qualification outcomes without separate authorization.
+identifiability. The robustness improvement was published through merged PR #35,
+**not** fully qualified. [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33)
+remains **open but deferred** for future investigation of r050 and three true-mono
+recovery-capacity failures; it is **not a blocker** for separately planned K>=3
+fitting. Do not rerun or tune on qualification outcomes without separate
+authorization. Preserve both historical failed audit criteria (119/121 and
+99/100). Future work should use `Refs #33`, not `Closes #33`, until actually resolved.
+
+## Prospective next direction — fixed-K multi-exponential fitting
+
+- **Current numerical baseline:** `physics.forward_model` already computes general K-component reconvolved expectations with a shared shift and one post-convolution background. Production inference remains mono-exponential or **bi-exponential**; `fit_biexponential_reconvolution` is explicitly K=2. Neither general-K Poisson fitting nor K=3 fitting nor automatic model-order selection is implemented.
+- **First milestone — architecture review only:** inspect Issue #28 and deferred #33; the existing K-component forward model, Poisson statistics, `estimation.multiexponential`, experimental measurement adapters, fit diagnostics, and numerical regression contracts. Propose a distinct, reviewable GitHub issue and staged PR plan. **No new fitting code, expensive scientific experiment or PR is authorized by this roadmap note.**
+- **Preferred initial scientific scope:** fixed **K=3** (eight nominal parameters: three nonnegative amplitudes, three positive bounded lifetimes, one nonnegative background and one bounded shared shift); design reusable internals for later fixed K>3 without promising arbitrary-K production support now. Preserve exact zero components, equal lifetimes, input/returned component ordering semantics and explicit singularities.
+- **Scientific requirements:** constrain and scale parameters, design deterministic yet computationally bounded starts, retain feasible finite best candidates and correctly charged evaluations, distinguish optimizer convergence from identifiability and physical correctness, and treat component permutations, weak components, close lifetimes, IRF-resolution limits and nonidentifiability explicitly. No automatic model-order choice or invalid ordinary chi-square LRT across singular component boundaries.
+- **Compatibility first:** preserve existing mono/bi APIs and their qualified/frozen numerical behavior, historical PR-1/2/3 and #33 evidence, IRF preparation/provenance, raw-count Poisson guard, exact-zero/background and shared-shift conventions, 66-name root API and SQLite schema v1. Do not rewrite the bi-exponential fitter merely to generalize it without an approved design and regression evidence.
+- **Potential implementation stages (not yet authorized):** (1) isolated fixed-K architecture and numerical contracts; (2) focused K=3 Poisson fitter and deterministic development regressions; (3) separately frozen independent repeated-Poisson qualification, including held-out optimizer audits and hard regimes. Only an approved issue/plan establishes actual PR boundaries, budgets, acceptance criteria and source/seed locks.
+- [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33) and Issue #13 remain deferred; don't conflate their outstanding work with the proposed K=3 project or assume that general-K deterministic forward modelling implies a qualified general-K optimizer.
 
 ## Codex working protocol
 
@@ -476,7 +498,7 @@ For each substantial issue:
 
 ## Current integration orientation
 
-Issues #6, #8, #4, #9, #1, #2, #11, #3, #12, #14, and #15 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts during #28 unless a concrete defect is discovered and the active issue explicitly requires it.
+Issues #6, #8, #4, #9, #1, #2, #11, #3, #12, #14, and #15 are complete and closed. Do not reopen or redesign their established scientific, evaluation, package-structure, public-API, or integration contracts in future multi-exponential development unless a concrete defect is discovered and the active issue explicitly requires it.
 
 Issue #9 established schema-v1 persistence, scientific recording adapters, read-only query/DataFrame helpers, and an end-to-end SQL aggregation example. Continue to preserve these persistence boundaries:
 
@@ -533,13 +555,14 @@ For future work:
 - Do not extract conformal workflows or repartition settled modules merely for directory symmetry.
 - Keep Issue #12 separate: clean-install/package acceptance, reference-workflow reruns, cross-feature integration, and performance/release qualification are its scope, not completed by Issue #3's repository regression run.
 
-Consult Issues #3, #5, #11, #12, #14, #15, and #28 for history, current sequencing, and acceptance boundaries.
+Consult Issues #3, #5, #11, #12, #14, #15, #28 and deferred #33 for history, current sequencing, and acceptance boundaries.
 Issue #12's completed technical acceptance is recorded in the [historical acceptance ledger](docs/issue12_scientific_acceptance.md#stage-5-final-technical-acceptance). The [post-Issue-12 removal record](docs/package_structure.md#post-issue-12-compatibility-cleanup-handoff) documents the separate breaking cleanup. Preserve schema v1 and all seven historical persistence identity strings verbatim: these are opaque provenance labels, never import instructions.
 
 Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
-- #28 PRs 1–3 are merged; preserve the original failed PR-3 audit target and evidence;
-- #33 safeguards and seed scheduling are corrected, but strict new Stage-3 agreement failed; keep #33 open and report the remaining required-recovery-capacity limitation;
-- preserve PR 1/2 physics, statistics, numerical budgets, qualitative limitations, the ordered 66-name root API, and frozen scientific evidence;
+- #28 PRs 1–3 are merged; #28 remains open and its original failed 119/121 audit criterion and evidence are immutable;
+- #33 PR #35 is merged; **#33 remains open but deferred**, with the new failed 99/100 strict audit target and required-recovery-capacity limitation explicitly retained;
+- **next prospective direction:** perform an architecture review for **fixed K=3 Poisson reconvolution fitting**, then define and authorize a new issue; no multi-exponential fitting implementation is yet approved;
+- preserve PR 1/2 physics/statistics, existing bi-exponential numerical contracts, the ordered 66-name root API, and all historical evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
-- do not start package movement, additional scientific qualification, or automatic publishing/tagging without explicit authorization.
+- do not start package movement, new scientific qualification, or automatic publishing/tagging without explicit authorization.
