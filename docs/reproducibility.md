@@ -5,7 +5,33 @@ Start with [installation](../README.md#installation) and the
 reproducible evidence and explains execution cost; scientific interpretations
 live in [results](results.md) and [scientific findings](scientific_findings.md).
 
-## Issue #28 PR 3 completed evidence
+## Issue #33 Stage 3 completed evidence
+
+The [new scientific report](issue33_stage3_qualification_v1.md) and
+[compact results](validation/issue33_stage3_results_v1.json) retain 200 observations,
+210 production fits and 133 complete independent audits. Primary numerical
+acceptance and component recovery/bias passed; strict audit agreement failed at
+99/100 against 100/100. Issue #33 remains open. The original execution digest is
+`7abb3188578458b57f9372572a8d5f0e9567c30864c1bf9cfbc3460f554be73a`.
+Final documentation and evidence tests have separate reporting provenance;
+they do not change that execution identity or its terminal outcomes.
+
+Raw checkpoints remain locally in ignored
+`data/generated/issue33_stage3_qualification_v1/`. They are excluded from the PR
+and distributions, and no public raw-data archive has been established. With
+that saved directory, reproduce aggregation without any fitting or new draws:
+
+```bash
+python scripts/report_issue33_stage3.py --directory data/generated/issue33_stage3_qualification_v1 --mode qualification --output build/reports/issue33_stage3_recheck.json --report build/reports/issue33_stage3_recheck.md
+```
+
+Use new output paths; existing evidence is write-once. The earlier candidate
+protocol and denied-authorization record are historical checkpoints. The separate
+approved authorization is bound to the frozen execution lock. Do not invoke the
+execution runner to reproduce reporting or treat these reviewed observations as
+untouched qualification data for a future method change.
+
+## Historical Issue #28 PR 3 completed evidence
 
 The [qualification manifest](../configs/issue28_pr3_qualification.json) and
 [scientific report](issue28_pr3_qualification.md) account for all 1,550 observations,

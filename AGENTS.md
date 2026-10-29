@@ -325,7 +325,8 @@ Current integration status:
 11. **#14** — Week 11 documentation and user experience — **complete, merged in PR #23, and closed**;
 12. **#15** — Week 12 continuous integration and release preparation — **complete and closed; v0.8.0 published**;
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
-14. **#28** — multi-exponential reconvolution — **PR 1 merged in PR #29; PR 2 merged in PR #31; PR 3 measurement integration and independent qualification are next for planning only**.
+14. **#28** — multi-exponential reconvolution — **PRs #29/#31/#34 merged; PR 3 measurement integration and qualification complete, with the failed historical 119/121 audit target preserved**.
+15. **#33** — optimizer safeguards and seed scheduling — **corrected; Stage 3 completed with failed strict agreement at 99/100 against 100/100. Robustness improvement accepted for publication; issue remains open**.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -397,7 +398,12 @@ on one noisy observation is a retained negative result, not a threshold-tuning
 opportunity. Do not alter the frozen PR-2 optimization policy or warning
 thresholds based on later qualification observations.
 
-**PR 3 is now the next *planning* stage; implementation is not yet authorized.**
+**PR 3 is complete and merged as PR #34.** The historical study contains 1,550
+observations, 1,850 paired outcomes and 205 audits; the designated independent
+agreement target failed at 119/121. Preserve its 66-file lock, raw evidence,
+saved observations and scientific conclusions. The following integration and
+qualification principles describe that completed scope, not authorization to
+repeat the study.
 Read [Issue #28](https://github.com/moryev/tcspc-lifetime-toolkit/issues/28)
 and audit existing `measurement.adapters`, `irf.selection`,
 `TCSPCMeasurement.require_raw_counts()`, `PreparedIRF`, the mono adapter,
@@ -427,10 +433,30 @@ or present warning absence as a calibrated recovery guarantee.
 
 Defer Bayesian/ML/CLI extensions, arbitrary-K fitting, automatic model-order
 selection, component intervals, persistence schema changes, benchmark
-regeneration, new release publication, and Issue #13. Use `Refs #28` in any
-future partial PR so the issue stays open until PR 3 is completed and reviewed.
-A separate maintainer approval is required before implementing PR 3 or
-performing Git history operations for it.
+regeneration, new release publication, and Issue #13. Use `Refs #28` for further
+partial work; completing an implementation does not itself authorize issue closure.
+A separate maintainer approval is required for further numerical changes,
+scientific execution, releases or Git history operations beyond an explicit task.
+
+**Issue #33 current disposition:** Stage 1 is preserved at `3bff378f`; Stage 2/2B
+is committed as `5be88edda17ad6612a8447dca0e11a6543502b85`. Nonfinite objectives
+and failed derivatives cannot fabricate stationary success; finite candidates
+are retained, and exhaustive scheduling completes required seeds first. The
+46-start and evaluation limits, physical model and Poisson semantics remain.
+All fourteen saved development regressions passed. They are not untouched
+qualification observations.
+
+The new [Stage 3 qualification](docs/issue33_stage3_qualification_v1.md) completed
+200 independent observations, 210 production fits and 133 complete audits under
+its unchanged execution lock. Primary numerical acceptance passed at 99/100,
+as did both component recovery and bias targets. Strict independent agreement
+failed at 99/100 against 100/100. Four fits were numerically rejected; new C00
+r050 completed all 46 seeds, detected further descent and correctly reported
+required recovery unavailable. Optional continuation omission is distinct from
+incomplete required work. Agreement never proves global optimality or physical
+identifiability. The maintainer accepts the robustness improvement for
+publication, not full qualification or closure. Use `Refs #33`, never `Closes #33`.
+Do not rerun or tune on qualification outcomes without separate authorization.
 
 ## Codex working protocol
 
@@ -487,9 +513,10 @@ removed the 38 obsolete flat scientific modules. Five reviewed public package
 initializers, five genuine root support files and seven minimal namespace
 initializers remain: 61 production Python files in total.
 
-That completed restructuring inventory is historical. Issue #28 PR 2 adds one
-canonical implementation, bringing the current inventory to 45 substantive
-implementations and 62 production Python files, with unchanged initializer APIs.
+That completed restructuring inventory is historical. Issue #28 PR 2 added one
+canonical implementation; PR 3 added two more. The current inventory is 47
+substantive implementations and 64 production Python files, with unchanged
+initializer APIs.
 
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.
 
@@ -511,7 +538,8 @@ Issue #12's completed technical acceptance is recorded in the [historical accept
 
 Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
-- #28 PR 1 and PR 2 are merged and their post-merge CI passed; prepare a detailed PR 3 plan for maintainer review, with no PR 3 code or Git history operations before explicit approval;
-- preserve PR 1/2 physics, statistics, fitter settings, qualitative limitations, the ordered 66-name root API, and frozen scientific evidence;
+- #28 PRs 1–3 are merged; preserve the original failed PR-3 audit target and evidence;
+- #33 safeguards and seed scheduling are corrected, but strict new Stage-3 agreement failed; keep #33 open and report the remaining required-recovery-capacity limitation;
+- preserve PR 1/2 physics, statistics, numerical budgets, qualitative limitations, the ordered 66-name root API, and frozen scientific evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
-- do not start package movement, PR 3 implementation, or automatic publishing/tagging.
+- do not start package movement, additional scientific qualification, or automatic publishing/tagging without explicit authorization.

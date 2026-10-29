@@ -285,8 +285,8 @@ Both bounds are mandatory, finite, and strictly increasing; the lifetime lower
 bound is positive. The same lifetime bounds apply to both components. Counts
 must be finite, non-negative, exactly integer-valued, and below `2**53`.
 Integer-valued floating arrays are accepted. Passing arrays asserts raw-count
-semantics; values cannot reveal prior processing. A future canonical-measurement
-adapter must call `require_raw_counts()` first. This function does not accept
+semantics; values cannot reveal prior processing. The canonical-measurement
+adapter calls `require_raw_counts()` first. This function does not accept
 processed intensities or deterministic fractional expectations as observations.
 
 `PreparedIRF` inputs must have a compatible grid. Their supplied source metadata,
@@ -370,8 +370,13 @@ Incomplete required work or failed/unavailable validation still prevents full
 numerical acceptance, independently of optimizer success. The external
 qualification assessment also rechecks physical feasibility, curves and objective
 with one separately accounted forward call. See the
-[Stage 2B scheduling record](issue33_stage2b_scheduling.md). This correction has
-development/regression evidence only, pending independent requalification.
+[Stage 2B scheduling record](issue33_stage2b_scheduling.md). The subsequent
+[independent Stage 3 study](issue33_stage3_qualification_v1.md) passed primary
+numerical acceptance at 99/100 and both component recovery/bias targets, but
+failed its strict 100/100 independent agreement target at 99/100. A complete
+46-seed bank can still leave no slot for required recovery after failed local
+validation. The robustness correction is suitable for publication; Issue #33
+remains open and the fitter is not fully qualified under that frozen gate.
 
 Numerically invalid initialization trials are rejected without discarding other
 finite candidates. `starts_screened` includes rejected trials;
@@ -1279,8 +1284,9 @@ result = fit_experimental_biexponential_reconvolution(
 Both consume `TCSPCMeasurement.require_raw_counts()`. Integer-looking processed
 intensities are rejected. No observation normalization, background subtraction,
 resampling, registration or zero-time inference occurs. `initial_guesses` and
-`settings` forward to the unchanged PR-2 fitter; finite lifetime/shift bounds
-remain explicit. `ExperimentalBiexponentialResult.fit` is its unchanged structured
+`settings` forward to the bi-exponential fitter, including the Issue-33 numerical
+safeguards; finite lifetime/shift bounds remain explicit.
+`ExperimentalBiexponentialResult.fit` retains its structured
 result. `context` snapshots the measurement and selected source, copies read-only
 arrays and deep-copies metadata (protected at the top level, following existing
 record semantics).
@@ -1317,6 +1323,9 @@ See the [executable example](../examples/biexponential_reconvolution.py) and
 [completed qualification record](issue28_pr3_qualification.md). Primary C00
 numerical-acceptance, component-median-error and bias targets passed. Independent
 optimizer agreement failed in two designated cases (119/121 passed); both were
-rejected by local validation. The exact optimizer-level cause remains unresolved.
+rejected by local validation. That historical outcome remains immutable. The
+subsequent [Issue-33 study](issue33_stage3_qualification_v1.md) uses new observations:
+99/100 primary numerical acceptance and passing component recovery/bias, but a
+failed strict independent-agreement target of 99/100 against 100/100.
 The numerical failure contract retains the best finite candidate with explicit
 diagnostics; it does not promise global optimality or physical identifiability.

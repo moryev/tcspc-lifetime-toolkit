@@ -272,6 +272,12 @@ experiment-specific inputs** and does not block release-readiness work.
 The [orchestration issue](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5)
 records the sequence.
 
+The development bi-exponential optimizer includes Issue-33 numerical safeguards.
+Its [independent qualification](docs/issue33_stage3_qualification_v1.md) passed
+primary numerical acceptance and lifetime-recovery targets, but failed strict
+independent objective agreement at 99/100 against 100/100. Issue #33 remains open;
+numerical acceptance and warning absence do not establish physical identifiability.
+
 ## Citation and contact
 
 Cite the software using [CITATION.cff](CITATION.cff) or GitHub's “Cite this repository”

@@ -7,6 +7,17 @@ establish performance on acquired TCSPC measurements.
 
 ## Which evidence is current?
 
+The corrected bi-exponential optimizer's [Issue-33 Stage 3 study](issue33_stage3_qualification_v1.md)
+completed 200 new observations, 210 fits and 133 independent audits. Primary C00
+numerical acceptance **passed at 99/100**, with both component median-error and
+bias targets passing. The strict independent-agreement target **failed at
+99/100 against 100/100**. All audits were complete. Four of 210 fits were
+numerically rejected, including C00 r050 where all 46 seeds ran but required
+recovery had no remaining slot. The robustness improvement is accepted for
+publication; Issue #33 remains open. Weak components and wrong IRFs can yield
+poor recovery in accepted, warning-free fits. Agreement is not proof of global
+optimality. These new results do not replace the historical PR-3 evidence below.
+
 Issue #28 PR 3's [completed independent study](issue28_pr3_qualification.md)
 preserves all 1,850 paired comparisons and 205 audit attempts. C00 numerical
 acceptance (98/100), both component median errors and both biases passed their
@@ -16,7 +27,7 @@ Low counts, weak components, short windows and wrong IRFs can still yield poor
 recovery in accepted, warning-free fits. Inspect the complete
 [summary JSON](validation/issue28_pr3_results_2026-10-27.json) and
 [attempt CSV](validation/issue28_pr3_results_2026-10-27.csv). The accepted reporting
-disposition retains these limitations and a proposed numerical follow-up; it
+disposition retains these limitations and the separate Issue-33 follow-up; it
 does not claim all qualification targets passed. This study does not replace
 the historical evidence below.
 
