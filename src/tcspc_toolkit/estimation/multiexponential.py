@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from time import perf_counter
 from types import MappingProxyType
 from typing import Any, Literal
@@ -97,8 +97,11 @@ class BiexponentialFitSettings:
 
     Evaluation limits count actual shared forward-model calls, including finite
     differences. Initialization, optimization, validation and diagnostics each
-    have their own hard limit. Defaults were selected on the declared development
-    observations only; see the Issue-28 numerical development record.
+    have their own hard limit. The limits were selected on the Issue-28
+    development observations. Issue 33 retains them and counts every solver
+    invocation as a separate start. Exhaustive fits attempt the entire finite
+    seed bank before validation and any required recovery. Other policies
+    retain their tiered scheduling, including guarded continuations.
     """
 
     policy: InitializationPolicy = "exhaustive"
@@ -222,6 +225,10 @@ class BiexponentialOptimizationDiagnostics:
     total_seconds: float
     initialization_rejected_candidates: int
     initialization_scaling_failed: bool
+    recovery_unavailable_reason: str | None = None
+    finite_seed_candidates: int = 0
+    unattempted_seed_candidates: int = 0
+    optional_continuations_omitted: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -306,6 +313,10 @@ class _BudgetExceeded(Exception):
     pass
 
 
+class _UnusableEvaluation(Exception):
+    """An objective/gradient pair that must never be handed to the solver."""
+
+
 class _Problem:
     """One kernel/objective path; explicit accounting for every forward call."""
 
@@ -367,6 +378,9 @@ class _Problem:
         self.initialization_rejected_candidates = 0
         self.initialization_scaling_failed = False
         self.validation_anchor = None
+        self.evaluation_curve = self.evaluation_components = None
+        self.recovery_x = None
+        self.recovery_unavailable_reason = None
 
     def physical(self, x) -> BiexponentialParameters:
         tau = np.clip(np.exp(self.log_mid + np.asarray(x)[2:4]), *self.lifetime_bounds)
@@ -413,6 +427,7 @@ class _Problem:
         return components.sum(axis=0) + p.background, components
 
     def evaluate(self, x, phase="optimization") -> float:
+        self.evaluation_curve = self.evaluation_components = None
         if not self.feasible(x):
             return np.inf
         try:
@@ -421,6 +436,8 @@ class _Problem:
                 value = 0.5 * calculate_poisson_deviance(self.targets, curve)
         except (ValueError, FloatingPointError):
             return np.inf
+        if np.isfinite(value):
+            self.evaluation_curve, self.evaluation_components = curve, components
         if phase in ("initialization", "optimization", "validation") and np.isfinite(
             value
         ):
@@ -434,19 +451,44 @@ class _Problem:
         return value
 
     def value_and_gradient(self, x):
-        """Bound-aware differences without differencing infinite objectives.
+        """Exact linear-coordinate score and safeguarded shape differences.
 
-        A line-search trial with an impossible expectation has infinite cost.
-        Its placeholder gradient is never accepted as a stationarity check;
-        the infinite cost forces backtracking. At finite points, use actual
-        finite objective differences, reducing the step if the domain requires
-        it. All probes are charged to the optimization budget.
+        Invalid pairs raise out of SciPy rather than fabricating stationarity
+        or relying on its line search to handle infinity/NaN. All model probes,
+        including zero-amplitude derivatives, use the optimization counter.
         """
         value = self.evaluate(x)
-        gradient = np.zeros(6)
         if not np.isfinite(value):
-            return value, gradient
-        for index in range(6):
+            raise _UnusableEvaluation("nonfinite_objective")
+        curve, components = self.evaluation_curve, self.evaluation_components
+        gradient = np.empty(6)
+        # d(mu - y*log(mu))/dmu = 1-y/mu. At y=mu=0 the
+        # one-sided derivative is exactly one, not 0/0 and not a floor.
+        score = np.ones_like(curve)
+        positive = self.targets > 0
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            score[positive] -= self.targets[positive] / curve[positive]
+            gradient[4] = self.b_scale * np.sum(score)
+            for index in (0, 1):
+                if x[index] > 0:
+                    column = components[index] / x[index]
+                else:
+                    amplitudes = [0.0, 0.0]
+                    amplitudes[index] = self.a_scale
+                    try:
+                        _, unit = self.model(
+                            replace(self.physical(x), amplitudes=tuple(amplitudes)),
+                            "optimization",
+                        )
+                    except (ValueError, FloatingPointError) as error:
+                        raise _UnusableEvaluation(
+                            "amplitude_derivative_failed"
+                        ) from error
+                    column = unit[index]
+                gradient[index] = np.dot(score, column)
+        if not np.all(np.isfinite(gradient[[0, 1, 4]])):
+            raise _UnusableEvaluation("nonfinite_linear_derivative")
+        for index in (2, 3, 5):
             h = self.settings.finite_difference_step * max(1.0, abs(x[index]))
             for _ in range(8):
                 left, right = x[index] - self.lower[index], self.upper[index] - x[index]
@@ -454,24 +496,48 @@ class _Problem:
                     plus, minus = x.copy(), x.copy()
                     plus[index] += h
                     minus[index] -= h
+                    if plus[index] == x[index] or minus[index] == x[index]:
+                        raise _UnusableEvaluation(
+                            "finite_difference_step_unrepresentable"
+                        )
                     high, low = self.evaluate(plus), self.evaluate(minus)
                     derivative = (high - low) / (2 * h)
+                    # A finite side can supply an inward three-point stencil
+                    # when the opposite Poisson expectation is impossible.
+                    if not np.isfinite(derivative):
+                        for sign, first in ((1, high), (-1, low)):
+                            if not np.isfinite(first):
+                                continue
+                            second = x.copy()
+                            second[index] += sign * 2 * h
+                            if not self.feasible(second):
+                                continue
+                            f2 = self.evaluate(second)
+                            derivative = (
+                                sign * ((first - value) * 4 - (f2 - value)) / (2 * h)
+                            )
+                            if np.isfinite(derivative):
+                                break
                 else:
                     sign = 1 if right >= left else -1
                     step = min(h, (right if sign == 1 else left) / 2)
                     first, second = x.copy(), x.copy()
                     first[index] += sign * step
                     second[index] += sign * 2 * step
+                    if first[index] == x[index] or second[index] == first[index]:
+                        raise _UnusableEvaluation(
+                            "finite_difference_step_unrepresentable"
+                        )
                     f1, f2 = self.evaluate(first), self.evaluate(second)
-                    derivative = sign * (-3 * value + 4 * f1 - f2) / (2 * step)
+                    derivative = sign * ((f1 - value) * 4 - (f2 - value)) / (2 * step)
                 if np.isfinite(derivative):
                     gradient[index] = derivative
                     break
                 h *= 0.1
             else:
-                # This is a failed derivative, not evidence of convergence.
-                # Keep the best candidate and let independent validation fail.
-                return value, np.full(6, np.nan)
+                raise _UnusableEvaluation(
+                    f"finite_difference_failed:{PARAMETER_NAMES[index]}"
+                )
         return value, gradient
 
 
@@ -614,6 +680,8 @@ def _initial_points(problem: _Problem, guesses) -> list[FloatArray]:
 def _local_validation(problem: _Problem, x):
     """Independent feasible objective probes, including coupled directions."""
     started = perf_counter()
+    if not problem.feasible(x):
+        return False, None, np.array(x, copy=True)
     problem.validation_anchor = _canonical(problem.physical(x))[0]
     best_x = np.array(x, copy=True)
     try:
@@ -642,6 +710,35 @@ def _local_validation(problem: _Problem, x):
         problem.seconds["validation"] += perf_counter() - started
 
 
+def _safeguarded_descent(problem: _Problem, anchor):
+    """Finite Armijo descent, never a surrogate objective or solver retry.
+
+    The 40 trial limit matches the declared line-search work limit. A new
+    solver invocation, if requested, must consume a separate start in _fit_core.
+    """
+    if anchor is None:
+        return None
+    x, value, gradient = anchor
+    direction = np.clip(x - gradient, problem.lower, problem.upper) - x
+    with np.errstate(over="ignore", invalid="ignore"):
+        slope = float(np.dot(gradient, direction))
+    if not np.isfinite(slope) or slope >= 0:
+        return None
+    for exponent in range(40):
+        step = 0.5**exponent
+        trial = np.clip(x + step * direction, problem.lower, problem.upper)
+        if np.array_equal(trial, x):
+            break
+        candidate = problem.evaluate(trial)
+        if (
+            np.isfinite(candidate)
+            and candidate < value
+            and candidate <= value + 1e-4 * step * slope
+        ):
+            return trial
+    return None
+
+
 def _refine(
     problem: _Problem, x, index: int, kind: str
 ) -> BiexponentialStartDiagnostics:
@@ -649,6 +746,18 @@ def _refine(
     initial_parameters = problem.physical(x)
     problem.active_start = index
     problem.local_value, problem.local_x = np.inf, None
+    problem.recovery_x = None
+    anchor = None
+
+    def objective(point):
+        nonlocal anchor
+        value, gradient = problem.value_and_gradient(point)
+        if not np.isfinite(value) or not np.all(np.isfinite(gradient)):
+            raise _UnusableEvaluation("nonfinite_objective_or_gradient")
+        if anchor is None or value < anchor[1]:
+            anchor = (np.array(point, copy=True), value, np.array(gradient, copy=True))
+        return value, gradient
+
     success, status, message, endpoint = (
         None,
         None,
@@ -657,7 +766,7 @@ def _refine(
     )
     try:
         result = minimize(
-            problem.value_and_gradient,
+            objective,
             x,
             method="L-BFGS-B",
             jac=True,
@@ -675,8 +784,21 @@ def _refine(
             str(result.message),
         )
         endpoint = problem.evaluate(result.x)
+        if not np.isfinite(endpoint):
+            message += "; invalid_solver_endpoint"
+    except _UnusableEvaluation as error:
+        message = str(error)
+        try:
+            problem.recovery_x = _safeguarded_descent(problem, anchor)
+            message += (
+                "; safeguarded_descent_available"
+                if problem.recovery_x is not None
+                else "; no_usable_safeguarded_descent"
+            )
+        except _BudgetExceeded:
+            message += "; optimization_budget_exhausted_during_safeguard"
     except _BudgetExceeded:
-        pass
+        message = "optimization_budget_exhausted"
     elapsed = perf_counter() - started
     problem.seconds["optimization"] += elapsed
     return BiexponentialStartDiagnostics(
@@ -971,6 +1093,17 @@ def _fit_core(
             raise ValueError("initial guess lies outside supplied bounds")
     problem = _Problem(time, y, kernel, lifetime_bounds, shift_bounds, settings)
     starts, points = [], []
+    next_point = 0
+    omitted_continuations = []
+
+    def defer_optional_continuation():
+        # A finite safeguard probe is already retained by evaluate(). Only a
+        # further solver invocation is omitted. Required recovery is decided
+        # independently by validation, never by this per-start request.
+        if settings.policy == "exhaustive" and problem.recovery_x is not None:
+            omitted_continuations.append(starts[-1].start_index)
+            problem.recovery_x = None
+
     accepted, descent, stopping = None, None, "no_finite_candidate"
     if not np.any(y):
         p = BiexponentialParameters(
@@ -999,12 +1132,17 @@ def _fit_core(
         )
         next_point, previous_value = 0, np.inf
         for tier in tiers:
+            problem.recovery_unavailable_reason = None
             while (
-                next_point < min(tier, len(points))
-                and len(starts) < settings.max_starts
-            ):
-                starts.append(_refine(problem, points[next_point], len(starts), "seed"))
-                next_point += 1
+                next_point < min(tier, len(points)) or problem.recovery_x is not None
+            ) and len(starts) < settings.max_starts:
+                if problem.recovery_x is not None:
+                    point, kind = problem.recovery_x, "safeguarded_recovery"
+                else:
+                    point, kind = points[next_point], "seed"
+                    next_point += 1
+                starts.append(_refine(problem, point, len(starts), kind))
+                defer_optional_continuation()
                 if "optimization" in problem.exhausted:
                     break
             if problem.best_x is not None:
@@ -1021,9 +1159,28 @@ def _fit_core(
                     starts.append(
                         _refine(problem, improved, len(starts), "validation_recovery")
                     )
+                    defer_optional_continuation()
                     accepted, descent, improved = _local_validation(
                         problem, problem.best_x
                     )
+                if accepted is None and "validation" in problem.exhausted:
+                    problem.recovery_unavailable_reason = "validation_budget_exhausted"
+                elif accepted is False or problem.recovery_x is not None:
+                    if len(starts) >= settings.max_starts:
+                        problem.exhausted.add("starts")
+                        problem.recovery_unavailable_reason = "start_budget_exhausted"
+                    elif "optimization" in problem.exhausted:
+                        problem.recovery_unavailable_reason = (
+                            "optimization_budget_exhausted"
+                        )
+                    elif "validation" in problem.exhausted:
+                        problem.recovery_unavailable_reason = (
+                            "validation_budget_exhausted"
+                        )
+                    elif accepted is False:
+                        problem.recovery_unavailable_reason = (
+                            "validation_recovery_limit_reached"
+                        )
             if "optimization" in problem.exhausted:
                 stopping = "optimization_budget_exhausted"
                 break
@@ -1050,6 +1207,9 @@ def _fit_core(
                 stopping = "adaptive_stable_tiers"
                 break
             previous_value = problem.best_value
+            if problem.recovery_unavailable_reason == "start_budget_exhausted":
+                stopping = "recovery_start_budget_exhausted"
+                break
             if next_point == len(points):
                 stopping = "candidate_bank_completed"
                 break
@@ -1098,6 +1258,10 @@ def _fit_core(
         perf_counter() - started,
         problem.initialization_rejected_candidates,
         problem.initialization_scaling_failed,
+        problem.recovery_unavailable_reason,
+        len(points),
+        len(points) - next_point,
+        tuple(omitted_continuations),
     )
     assumptions = BiexponentialFitAssumptions(
         lifetime_bounds,

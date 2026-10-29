@@ -1,0 +1,319 @@
+{
+  "protocol": "issue33_stage3_qualification_v1",
+  "execution_status": "proposed",
+  "implementation_commit": "5be88edda17ad6612a8447dca0e11a6543502b85",
+  "production_source_lf_sha256": "56ed8bf360ce500c8df26d7e6f555028cdbfe95785440a38721531a7e11413f6",
+  "historical_protocol": {
+    "path": "configs/issue28_pr3_qualification.json",
+    "lf_sha256": "8e46da4f8c53935f931501cb84b23a361e3bcb73d171a184414ce5eba0525c76"
+  },
+  "root_entropy": [
+    33,
+    3,
+    20261029,
+    1
+  ],
+  "streams": {
+    "qualification": 0,
+    "reserved_calibration": 1,
+    "nonqualification": 2,
+    "summary_bootstrap": 3,
+    "protocol_tests": 4
+  },
+  "observation_rng": {
+    "bit_generator": "PCG64",
+    "seed_sequence": "root_entropy + [qualification_stream, original_condition_id, replicate_index]",
+    "arms_share_observation": true,
+    "draws_authorized": false
+  },
+  "grid": {
+    "start_ns": 0,
+    "stop_ns": 20,
+    "bins": 512,
+    "endpoint": true
+  },
+  "baseline": {
+    "lifetimes_ns": [
+      0.8,
+      3.2
+    ],
+    "detected_fractions": [
+      0.4,
+      0.6
+    ],
+    "signal_photons": 100000,
+    "background": 2,
+    "shift_ns": 0.075,
+    "generating_irf": "gaussian_0.3",
+    "lifetime_bounds_ns": [
+      0.1,
+      8
+    ],
+    "temporal_shift_bounds_ns": [
+      -0.3,
+      0.3
+    ]
+  },
+  "conditions": [
+    {
+      "id": 0,
+      "name": "confirmatory_high_count",
+      "replicates": 100,
+      "signal_photons": 1000000,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "signal_100",
+      "replicates": 10,
+      "signal_photons": 100,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "mono_high_count",
+      "replicates": 10,
+      "lifetimes_ns": [
+        2
+      ],
+      "detected_fractions": [
+        1
+      ],
+      "signal_photons": 1000000,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "close_lifetimes",
+      "replicates": 10,
+      "lifetimes_ns": [
+        2,
+        2.1
+      ],
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "zero_secondary",
+      "replicates": 10,
+      "detected_fractions": [
+        1,
+        0
+      ],
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "weak_secondary_005",
+      "replicates": 10,
+      "detected_fractions": [
+        0.995,
+        0.005
+      ],
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "zero_background",
+      "replicates": 10,
+      "background": 0,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "lower_shift_boundary",
+      "replicates": 10,
+      "shift_ns": -0.3,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "upper_shift_boundary",
+      "replicates": 10,
+      "shift_ns": 0.3,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "short_window",
+      "replicates": 10,
+      "first_bins": 103,
+      "arms": [
+        "matched"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "emg_irf_mismatch",
+      "replicates": 10,
+      "generating_irf": "emg",
+      "arms": [
+        "matched",
+        "gaussian_0.3"
+      ]
+    }
+  ],
+  "irf": {
+    "center_ns": 1,
+    "emg_fwhm_ns": 0.3,
+    "emg_tail_ns": 0.2,
+    "sampled_bins": 257
+  },
+  "fit_settings": {
+    "policy": "exhaustive",
+    "max_starts": 46,
+    "max_objective_evaluations": 56000,
+    "max_initialization_evaluations": 128,
+    "max_validation_evaluations": 100,
+    "max_diagnostic_evaluations": 100,
+    "max_iterations": 1000,
+    "ftol": 1e-12,
+    "gtol": 1e-06,
+    "finite_difference_step": 1e-05,
+    "descent_tolerance": 0.01,
+    "near_optimal_nll": 1,
+    "near_optimal_lifetime_ratio": 1.1,
+    "near_optimal_fraction_span": 0.1,
+    "weak_fraction": 0.01,
+    "similar_lifetime_ratio": 1.1,
+    "boundary_tolerance": 0.001,
+    "condition_limit": 100000000.0,
+    "derivative_relative_tolerance": 0.01
+  },
+  "acceptance": {
+    "minimum_baseline_numerical_fraction": 0.95,
+    "maximum_component_median_absolute_relative_error_exclusive": 0.05,
+    "maximum_component_absolute_relative_bias_exclusive": 0.02,
+    "objective_recheck_atol": 1e-08,
+    "objective_recheck_rtol": 1e-10,
+    "required_budget_stages": [
+      "initialization",
+      "optimization",
+      "validation",
+      "starts"
+    ],
+    "diagnostics_separate": true,
+    "component_denominator": "numerically accepted; finite positive amplitude and detected contribution; finite bounded lifetime; two positive distinct generating components; no warning-based exclusion",
+    "vanishing_fitted_component": "numerical acceptance retained; that component unavailable and excluded from component-error denominator; counted in unavailable and all-attempt joint failure rates",
+    "noise_free_parameter_relative_tolerance": 0.001,
+    "noise_free_shift_absolute_tolerance_ns": 0.0001,
+    "noise_free_curve_relative_l2_exclusive": 1e-06,
+    "bootstrap_replicates": 5000,
+    "confidence_level": 0.95
+  },
+  "primary": {
+    "condition_id": 0,
+    "attempts": 100,
+    "minimum_numerically_accepted": 95,
+    "component_metrics": "unchanged accepted/available-component denominator; explicit per-component n, missingness and all-attempt joint outcomes; undefined metrics fail",
+    "audit_rule": "all 100 scheduled baseline audits complete and all 100 finite production/audit shared-objective pairs agree within absolute 0.01",
+    "overall_pass_requires": [
+      "baseline_numerical_target",
+      "both_component_median_error_targets",
+      "both_component_absolute_bias_targets",
+      "baseline_audit_target",
+      "complete_untampered_population"
+    ],
+    "secondary_diagnostic_only": true
+  },
+  "audit": {
+    "baseline_replicates": "all",
+    "secondary_replicates": [
+      0,
+      4,
+      9
+    ],
+    "lifetime_grid_points": 7,
+    "lifetime_index_pairs": [
+      [
+        1,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "initial_shifts_ns": [
+      -0.1,
+      0.1
+    ],
+    "max_forward_calls": 100000,
+    "max_nfev_per_start": 1500,
+    "ftol": 1e-12,
+    "xtol": 1e-12,
+    "gtol": 1e-09,
+    "maximum_centered_nll_difference": 0.01,
+    "target_matched_conditions": [
+      0
+    ],
+    "primary_required_agreements": 100,
+    "secondary_diagnostic_only": true,
+    "complete_requires": "all eight starts successful with finite endpoints, no exhausted budget, feasible finite best candidate and finite shared-objective recheck",
+    "incomplete_counts_as_disagreement": false
+  },
+  "expected_totals": {
+    "conditions": 11,
+    "observations": 200,
+    "production_biexponential_fits": 210,
+    "production_mono_fits": 0,
+    "scheduled_audits": 133,
+    "confirmatory_audits": 100,
+    "diagnostic_audits": 33,
+    "audit_solver_starts": 1064,
+    "paired_irf_observations": 10
+  },
+  "execution": {
+    "workers": 1,
+    "numerical_threads": 1,
+    "production_case_timeout_seconds": 300,
+    "audit_timeout_seconds": 300,
+    "observations_saved_before_fit": true,
+    "retry_completed_failures": false,
+    "resume_only_never_started_tasks": true,
+    "orphan_started_task": "terminal interrupted; no automatic retry",
+    "generation_forward_calls_separate": true,
+    "external_production_assessment_forward_calls_per_available_candidate": 1,
+    "audit_shared_recheck_forward_calls_per_available_candidate": 1
+  },
+  "outputs": {
+    "raw_directory": "data/generated/issue33_stage3_qualification_v1",
+    "execution_lock": "docs/validation/issue33_stage3_execution_lock_v1.json",
+    "results": "docs/validation/issue33_stage3_results_v1.json",
+    "scientific_report": "docs/issue33_stage3_qualification_v1.md"
+  },
+  "execution_lock_requirements": [
+    "separate maintainer execution approval",
+    "reviewed new execution runner and denominator/integrity tests",
+    "all production/generation/audit/runner/protocol hashes",
+    "exact interpreter, dependency freeze, platform and numerical-thread environment",
+    "explicit complete task lists and entropy identities",
+    "new output directory; refuse historical checkpoint resume"
+  ]
+}

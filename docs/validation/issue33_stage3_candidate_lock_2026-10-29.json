@@ -1,0 +1,5151 @@
+{
+  "schema": 1,
+  "status": "review_candidate_not_execution_authorization",
+  "created_utc": "2026-10-29T04:30:57.094295+00:00",
+  "protocol": "issue33_stage3_qualification_v1",
+  "protocol_lf_sha256": "47c516b5d0c3173fc6c7582ac01ace7d398d19fe25e84febda1ca63fbb2d608f",
+  "implementation_commit": "5be88edda17ad6612a8447dca0e11a6543502b85",
+  "stage1_commit": "3bff378fd7a41a6c46ff3bf21696cb101b8402bb",
+  "sources_lf_sha256": {
+    "src/tcspc_toolkit/__init__.py": "110ec547cb9dcc9e356d1ddb15d8bec67123539801bff1f5ddad576f0e220dd6",
+    "src/tcspc_toolkit/__main__.py": "41abcd1ba6b7a64133bfc2030bfc81b19c962ca9705eabbceb4235210bd700cb",
+    "src/tcspc_toolkit/benchmarks/__init__.py": "121f229a1d32371a9e68b13f0580d716da79bab9dbd262222ed0519144e81b43",
+    "src/tcspc_toolkit/benchmarks/bayesian_calibration.py": "175d69dad2f774c0aba11ccf96354ecd06cfcf8a490572747ca75b4c1c6e11ff",
+    "src/tcspc_toolkit/benchmarks/bayesian_mismatch.py": "87490171e46876ad8363e6aaaeff3d33ee2c0808c758a1347d3b34d3310220a8",
+    "src/tcspc_toolkit/benchmarks/generalization.py": "2eff970859b0f07b427d6915cf0ab77f12cfa85ace6d6783d67bf088e59fc173",
+    "src/tcspc_toolkit/benchmarks/generalization_datasets.py": "0e0973eb61351edec1034aa344e752d254b440713f857e5f17a682b62f236747",
+    "src/tcspc_toolkit/benchmarks/generalization_protocol.py": "6aa0a938c3ea495ab76217b358b2bf586af4360a7cb8061f2cad27e7c5a4961e",
+    "src/tcspc_toolkit/benchmarks/irf.py": "ca189495b5eb1b8ba3979998bcf1fa8188fafa023bc4db5a0f32af1ce83e707a",
+    "src/tcspc_toolkit/benchmarks/mismatch.py": "f64b285f0fd1bc758c8e44629997fb6ac48d2480494dda85c1f4dde05ffedb19",
+    "src/tcspc_toolkit/benchmarks/multiexponential.py": "4b9931700d43a46133766934e4622f46b8c995bdfa618b2592881327fcef412b",
+    "src/tcspc_toolkit/benchmarks/timing.py": "9b27f75c649db49399816b815b6ee4538f04b681625ed4fb20609922c27f1cce",
+    "src/tcspc_toolkit/benchmarks/uncertainty.py": "09781891a1ee0bc2d53e8252d5af1eba22b38fa0b52e8e1dba43bb0e7068fd73",
+    "src/tcspc_toolkit/cli.py": "d3120157c2bbf1684f5e600c0a13eadbb0db8dedf353ac668dea50f6a9835f7b",
+    "src/tcspc_toolkit/config.py": "d0a1d612366990bfebc38a3cc96c7ebc2bb2f3a9d9092b3181d6412f8d4b826f",
+    "src/tcspc_toolkit/estimation/__init__.py": "35e1f200becd46510227f9601e8cd0aeb73c6e36ca8e576166307608cb219121",
+    "src/tcspc_toolkit/estimation/api.py": "de3f5c0c9e3ceacff44a110aff6b991d752d775b7b81aefdde70eb7baf644a70",
+    "src/tcspc_toolkit/estimation/baselines.py": "07bb9c01cf1fea38c964cf7533e11a39918d136de3d0f527c22dbdecbee200ff",
+    "src/tcspc_toolkit/estimation/bayesian/__init__.py": "64ef94b5c1bdaaedeeabe5fa60b3386447180955bbba77523ec284f6570e969b",
+    "src/tcspc_toolkit/estimation/bayesian/posterior.py": "6b6c06569139e9fafe1322718c0c279c46744038db6f5b6b16e66dd921ad8957",
+    "src/tcspc_toolkit/estimation/bayesian/predictive.py": "e449ea934d6497bf881bccdeec432f5a7098cc4de47b6497db56d23a72d4e293",
+    "src/tcspc_toolkit/estimation/bayesian/sampling.py": "9cdf96d07a42082b7570a36bcf0f3ee869c0c3f945e48f8d028e2bd6bc897a02",
+    "src/tcspc_toolkit/estimation/classical.py": "6ac496b93ce1242c16b8d99700ba1af783cadfa89168f93f1c9c19c4eea86e5d",
+    "src/tcspc_toolkit/estimation/fitting.py": "861fbd5fd452f5a437d406340b45b13ca0e1c7f62859d09206296f7bcf6dcc79",
+    "src/tcspc_toolkit/estimation/multiexponential.py": "56ed8bf360ce500c8df26d7e6f555028cdbfe95785440a38721531a7e11413f6",
+    "src/tcspc_toolkit/evaluation/__init__.py": "2f89be6978ed58c3039c930b828d75c5a7a0e815273504e2c9a2df98de6f1300",
+    "src/tcspc_toolkit/evaluation/attachments.py": "e28b7222daa5c71ba89575636f1f0768e021bded2174359cfd304229cdc2b998",
+    "src/tcspc_toolkit/evaluation/conditional.py": "921fc66234aa772524d2148912f4f587b1bf19e53ee975fbff588a23e550cc27",
+    "src/tcspc_toolkit/evaluation/core.py": "17e2ee863bc39084e256033771f8219f5a376523178659ae8dec170f59ce0495",
+    "src/tcspc_toolkit/evaluation/diagnostics.py": "2ca2d50536dc7b3205186d4a789335e9d3a4db17a026fe26830c7463355ba6e4",
+    "src/tcspc_toolkit/evaluation/plots.py": "9e06a5d23ea919b83be14eb9b890a57baf5bac67ce00bf465b8dd5a7a3497856",
+    "src/tcspc_toolkit/evaluation/reconvolution.py": "0b736f46e78a910abca56f3888cd309e9e8ccc92cc7512cd9cab94de5f95f530",
+    "src/tcspc_toolkit/evaluation/results.py": "b0a0784c5df5571614f662df5e1cc4a2d87c5dd5ab19e1987332ba6e2709542f",
+    "src/tcspc_toolkit/exceptions.py": "6a7e3e21713d83a953af43e9fb3e165f36976f6a84f6f007004e3ca1c9c5d3a3",
+    "src/tcspc_toolkit/irf/__init__.py": "99a53bc8c57691ad3ba40c88b08d4a9912c48a29af759eaea1417513bdf4d9a5",
+    "src/tcspc_toolkit/irf/estimation.py": "9eb9bc91ebaaa1eb6b4c57cb64989ff293d81b8a1cc7d1e03f7d283871cb0d40",
+    "src/tcspc_toolkit/irf/preparation.py": "dcc220067a8266da6fe41617ada174ba9a012124e87251c6521ad842a357da83",
+    "src/tcspc_toolkit/irf/profiles.py": "b3db44d3a58b6ad5fc3b1cdb6e54ffac2b589055fedffed544afdcfa8f3b3a3d",
+    "src/tcspc_toolkit/irf/selection.py": "a1045c2018cbf522608fc4ba212570d7917e931b5df5746725a951ed7027745e",
+    "src/tcspc_toolkit/measurement/__init__.py": "1e7e5f113a3f41f31a3d43f823e60a847b7f68a9dfc4589efce92122a968d905",
+    "src/tcspc_toolkit/measurement/adapters.py": "9779289c98302f3473429c3302552fb332c82b17189935d31f99d4439f8f956e",
+    "src/tcspc_toolkit/measurement/io.py": "4541962061de2791ba7e5b221000415a88e6ece249db47b127d75f53965d14e1",
+    "src/tcspc_toolkit/measurement/records.py": "728abb4eebdee6c55f9558b45ed2011e08650fd69295615e9a57b8c542d120dd",
+    "src/tcspc_toolkit/ml/__init__.py": "222f407a6275f3083adda03a127aebcf6265e3d19e2725ebfdbb8c262a5ec706",
+    "src/tcspc_toolkit/ml/cross_validation.py": "1ab7a135d404ecfb2719bfcc840ada997945f25a156e4d404ba5ff16b45b4ee4",
+    "src/tcspc_toolkit/ml/evaluation.py": "7c98677c324230bb2775c6ce35a6f7144bc18e49091ac3d4ff1170f2b2c90226",
+    "src/tcspc_toolkit/ml/models.py": "8b1221f81d9b54fbb7add53dcf67addb4991a3f5ba61bca26f9cc90293f6d4ef",
+    "src/tcspc_toolkit/persistence/__init__.py": "a7627de9bde823ff22a091d78668e360c5c662455546733f22e815e99cc43fb9",
+    "src/tcspc_toolkit/persistence/sqlite.py": "da3eadf0f6695fba99e7b5b13f44654bc7130aa600561827a5fc3eda1660b336",
+    "src/tcspc_toolkit/physics/__init__.py": "8ded58643818a77bb16d644cbb869f4dba8d9dba36bd081e1303b5d9beef5c11",
+    "src/tcspc_toolkit/physics/convolution.py": "8620e4e8f0da3b7159a542273e030841077fcb5cdcb120b98c32c426c524eabc",
+    "src/tcspc_toolkit/physics/forward_model.py": "c090276d5719cf9ceb558de3ce03e5da42e03f96d086b6e49f54875fcbaa88f3",
+    "src/tcspc_toolkit/physics/models.py": "5d5edc940d8089be8ffea6d3d7a66e06a94e82041ef11e0ea8ff575cc7403197",
+    "src/tcspc_toolkit/preprocessing/__init__.py": "b426e812da2984f033c45c7724f47445b02fe7a1a421b7ef356f388e25cbd5e3",
+    "src/tcspc_toolkit/preprocessing/features.py": "eab6dfdb03d46faaa0782e88a1ba1265e8bb11458a7f072e00cd875516d381cf",
+    "src/tcspc_toolkit/preprocessing/histograms.py": "b33a8f6ae9b5af9575e4d7daaaa607d105a02a4b7b9dbae1361d57a84521272f",
+    "src/tcspc_toolkit/preprocessing/representations.py": "408e1bf7e19a2fe56f1a07fa3403a3e734989ba3d6e334051bfbc9f262393472",
+    "src/tcspc_toolkit/simulation/__init__.py": "9c4a801a9037a75b161d29756eda2f99612cd8220f3e1534d13344caebd91cc0",
+    "src/tcspc_toolkit/simulation/datasets.py": "0d806a8b8925a1caecfb3246f61ff35c676f19989578f6b9850982e715827293",
+    "src/tcspc_toolkit/simulation/histograms.py": "539787768e60730f0e8694d8e94f5d1b7748d33d10acb81730f915a0c8716e38",
+    "src/tcspc_toolkit/uncertainty/__init__.py": "3459dd95790588e1d9f69ed6f56f376d0c25dcc094e3fdc0c0b223063e963917",
+    "src/tcspc_toolkit/uncertainty/classical.py": "5769fdd318adcbc6de945de3909a3c5d9754e4e673c432d26ab10ee5976ead1e",
+    "src/tcspc_toolkit/uncertainty/evaluation.py": "b0ec7c29cb8c5dcaaf04507b45d861e2cdcd56b320a90d0bd8cec642ba80028a",
+    "src/tcspc_toolkit/uncertainty/ml.py": "51061c67b4373a48357f955d0e0a285749fc32dc446d7485c3820774947169ba",
+    "configs/issue33_stage3_qualification_v1.json": "47c516b5d0c3173fc6c7582ac01ace7d398d19fe25e84febda1ca63fbb2d608f",
+    "scripts/validate_issue33_stage3_protocol.py": "ec74e3a38d30e2e9e160ef87aa41b55be5e93ea6b79b02eb81669e64b11eeab3",
+    "tests/test_issue33_stage3_protocol.py": "cb4e7b99c4dfd4c3ccef216eafe6714ef2178e6b3f6f1cf3958ee92e82e24a4f",
+    "docs/issue33_stage3_protocol_v1.md": "556ac56eb4dd7dea20ed6979c083e5fa61bcacca258fe6ef1bd50c8e9efcb307",
+    "scripts/qualify_biexponential_reconvolution.py": "a37113efa35f7f5772f5c1dda18c88fcda4a32ebe4187264309c1ab3d4eefbee",
+    "configs/issue28_pr3_qualification.json": "8e46da4f8c53935f931501cb84b23a361e3bcb73d171a184414ce5eba0525c76"
+  },
+  "environment": {
+    "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+    "executable": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe",
+    "python_executable_sha256": "d55736b9f3d6b4ca7985b82db8ce11edfa09994cf93ce31c6b506543b74f32eb",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 165 Stepping 5, GenuineIntel",
+    "packages": [
+      {
+        "name": "anyio",
+        "version": "4.14.2"
+      },
+      {
+        "name": "argon2-cffi",
+        "version": "25.1.0"
+      },
+      {
+        "name": "argon2-cffi-bindings",
+        "version": "25.1.0"
+      },
+      {
+        "name": "arrow",
+        "version": "1.4.0"
+      },
+      {
+        "name": "asttokens",
+        "version": "3.0.2"
+      },
+      {
+        "name": "async-lru",
+        "version": "2.3.0"
+      },
+      {
+        "name": "attrs",
+        "version": "26.1.0"
+      },
+      {
+        "name": "babel",
+        "version": "2.18.0"
+      },
+      {
+        "name": "beautifulsoup4",
+        "version": "4.15.0"
+      },
+      {
+        "name": "bleach",
+        "version": "6.4.0"
+      },
+      {
+        "name": "build",
+        "version": "1.6.1"
+      },
+      {
+        "name": "certifi",
+        "version": "2026.6.17"
+      },
+      {
+        "name": "cffi",
+        "version": "2.1.0"
+      },
+      {
+        "name": "charset-normalizer",
+        "version": "3.4.9"
+      },
+      {
+        "name": "colorama",
+        "version": "0.4.6"
+      },
+      {
+        "name": "comm",
+        "version": "0.2.3"
+      },
+      {
+        "name": "contourpy",
+        "version": "1.3.3"
+      },
+      {
+        "name": "coverage",
+        "version": "7.16.2"
+      },
+      {
+        "name": "cycler",
+        "version": "0.12.1"
+      },
+      {
+        "name": "debugpy",
+        "version": "1.8.21"
+      },
+      {
+        "name": "decorator",
+        "version": "5.3.1"
+      },
+      {
+        "name": "defusedxml",
+        "version": "0.7.1"
+      },
+      {
+        "name": "docutils",
+        "version": "0.23"
+      },
+      {
+        "name": "emcee",
+        "version": "3.1.6"
+      },
+      {
+        "name": "executing",
+        "version": "2.2.1"
+      },
+      {
+        "name": "fastjsonschema",
+        "version": "2.21.2"
+      },
+      {
+        "name": "fonttools",
+        "version": "4.63.0"
+      },
+      {
+        "name": "fqdn",
+        "version": "1.5.1"
+      },
+      {
+        "name": "h11",
+        "version": "0.16.0"
+      },
+      {
+        "name": "httpcore",
+        "version": "1.0.9"
+      },
+      {
+        "name": "httpx",
+        "version": "0.28.1"
+      },
+      {
+        "name": "id",
+        "version": "1.6.1"
+      },
+      {
+        "name": "idna",
+        "version": "3.18"
+      },
+      {
+        "name": "iniconfig",
+        "version": "2.3.0"
+      },
+      {
+        "name": "ipykernel",
+        "version": "7.3.0"
+      },
+      {
+        "name": "ipython",
+        "version": "9.15.0"
+      },
+      {
+        "name": "ipython_pygments_lexers",
+        "version": "1.1.1"
+      },
+      {
+        "name": "ipywidgets",
+        "version": "8.1.8"
+      },
+      {
+        "name": "isoduration",
+        "version": "20.11.0"
+      },
+      {
+        "name": "jaraco.classes",
+        "version": "3.4.0"
+      },
+      {
+        "name": "jaraco.context",
+        "version": "6.1.2"
+      },
+      {
+        "name": "jaraco.functools",
+        "version": "4.6.0"
+      },
+      {
+        "name": "jedi",
+        "version": "0.20.0"
+      },
+      {
+        "name": "Jinja2",
+        "version": "3.1.6"
+      },
+      {
+        "name": "joblib",
+        "version": "1.5.3"
+      },
+      {
+        "name": "json5",
+        "version": "0.15.0"
+      },
+      {
+        "name": "jsonpointer",
+        "version": "3.1.1"
+      },
+      {
+        "name": "jsonschema",
+        "version": "4.26.0"
+      },
+      {
+        "name": "jsonschema-specifications",
+        "version": "2025.9.1"
+      },
+      {
+        "name": "jupyter",
+        "version": "1.1.1"
+      },
+      {
+        "name": "jupyter-console",
+        "version": "6.6.3"
+      },
+      {
+        "name": "jupyter-events",
+        "version": "0.12.1"
+      },
+      {
+        "name": "jupyter-lsp",
+        "version": "2.3.1"
+      },
+      {
+        "name": "jupyter_builder",
+        "version": "1.1.1"
+      },
+      {
+        "name": "jupyter_client",
+        "version": "8.9.1"
+      },
+      {
+        "name": "jupyter_core",
+        "version": "5.9.1"
+      },
+      {
+        "name": "jupyter_server",
+        "version": "2.20.0"
+      },
+      {
+        "name": "jupyter_server_terminals",
+        "version": "0.5.4"
+      },
+      {
+        "name": "jupyterlab",
+        "version": "4.6.1"
+      },
+      {
+        "name": "jupyterlab_pygments",
+        "version": "0.3.0"
+      },
+      {
+        "name": "jupyterlab_server",
+        "version": "2.28.0"
+      },
+      {
+        "name": "jupyterlab_widgets",
+        "version": "3.0.16"
+      },
+      {
+        "name": "keyring",
+        "version": "25.7.0"
+      },
+      {
+        "name": "kiwisolver",
+        "version": "1.5.0"
+      },
+      {
+        "name": "lark",
+        "version": "1.3.1"
+      },
+      {
+        "name": "markdown-it-py",
+        "version": "4.2.0"
+      },
+      {
+        "name": "MarkupSafe",
+        "version": "3.0.3"
+      },
+      {
+        "name": "matplotlib",
+        "version": "3.11.1"
+      },
+      {
+        "name": "matplotlib-inline",
+        "version": "0.2.2"
+      },
+      {
+        "name": "mdurl",
+        "version": "0.1.2"
+      },
+      {
+        "name": "mistune",
+        "version": "3.3.3"
+      },
+      {
+        "name": "more-itertools",
+        "version": "11.2.1"
+      },
+      {
+        "name": "narwhals",
+        "version": "2.24.0"
+      },
+      {
+        "name": "nbclient",
+        "version": "0.11.0"
+      },
+      {
+        "name": "nbconvert",
+        "version": "7.17.1"
+      },
+      {
+        "name": "nbformat",
+        "version": "5.10.4"
+      },
+      {
+        "name": "nest-asyncio2",
+        "version": "1.7.2"
+      },
+      {
+        "name": "nh3",
+        "version": "0.3.7"
+      },
+      {
+        "name": "notebook",
+        "version": "7.6.0"
+      },
+      {
+        "name": "notebook_shim",
+        "version": "0.2.4"
+      },
+      {
+        "name": "numpy",
+        "version": "2.5.1"
+      },
+      {
+        "name": "packaging",
+        "version": "26.2"
+      },
+      {
+        "name": "pandas",
+        "version": "3.0.3"
+      },
+      {
+        "name": "pandocfilters",
+        "version": "1.5.1"
+      },
+      {
+        "name": "parso",
+        "version": "0.8.7"
+      },
+      {
+        "name": "pillow",
+        "version": "12.3.0"
+      },
+      {
+        "name": "pip",
+        "version": "26.2"
+      },
+      {
+        "name": "platformdirs",
+        "version": "4.10.1"
+      },
+      {
+        "name": "pluggy",
+        "version": "1.6.0"
+      },
+      {
+        "name": "prometheus_client",
+        "version": "0.25.0"
+      },
+      {
+        "name": "prompt_toolkit",
+        "version": "3.0.52"
+      },
+      {
+        "name": "psutil",
+        "version": "7.2.2"
+      },
+      {
+        "name": "pure_eval",
+        "version": "0.2.3"
+      },
+      {
+        "name": "pycparser",
+        "version": "3.0"
+      },
+      {
+        "name": "Pygments",
+        "version": "2.20.0"
+      },
+      {
+        "name": "pyparsing",
+        "version": "3.3.2"
+      },
+      {
+        "name": "pyproject_hooks",
+        "version": "1.3.3"
+      },
+      {
+        "name": "pytest",
+        "version": "9.1.1"
+      },
+      {
+        "name": "pytest-cov",
+        "version": "7.1.0"
+      },
+      {
+        "name": "python-dateutil",
+        "version": "2.9.0.post0"
+      },
+      {
+        "name": "python-json-logger",
+        "version": "4.1.0"
+      },
+      {
+        "name": "pywin32-ctypes",
+        "version": "0.2.3"
+      },
+      {
+        "name": "pywinpty",
+        "version": "3.0.5"
+      },
+      {
+        "name": "PyYAML",
+        "version": "6.0.3"
+      },
+      {
+        "name": "pyzmq",
+        "version": "27.1.0"
+      },
+      {
+        "name": "readme_renderer",
+        "version": "46.0"
+      },
+      {
+        "name": "referencing",
+        "version": "0.37.0"
+      },
+      {
+        "name": "requests",
+        "version": "2.34.2"
+      },
+      {
+        "name": "requests-toolbelt",
+        "version": "1.0.0"
+      },
+      {
+        "name": "rfc3339-validator",
+        "version": "0.1.4"
+      },
+      {
+        "name": "rfc3986",
+        "version": "2.0.0"
+      },
+      {
+        "name": "rfc3986-validator",
+        "version": "0.1.1"
+      },
+      {
+        "name": "rfc3987-syntax",
+        "version": "1.1.0"
+      },
+      {
+        "name": "rich",
+        "version": "15.0.0"
+      },
+      {
+        "name": "rpds-py",
+        "version": "2026.6.3"
+      },
+      {
+        "name": "ruff",
+        "version": "0.17.1"
+      },
+      {
+        "name": "scikit-learn",
+        "version": "1.9.0"
+      },
+      {
+        "name": "scipy",
+        "version": "1.18.0"
+      },
+      {
+        "name": "Send2Trash",
+        "version": "2.1.0"
+      },
+      {
+        "name": "six",
+        "version": "1.17.0"
+      },
+      {
+        "name": "soupsieve",
+        "version": "2.9"
+      },
+      {
+        "name": "stack-data",
+        "version": "0.6.3"
+      },
+      {
+        "name": "tcspc-lifetime-toolkit",
+        "version": "0.8.0"
+      },
+      {
+        "name": "tcspc-lifetime-toolkit",
+        "version": "0.8.0"
+      },
+      {
+        "name": "terminado",
+        "version": "0.18.1"
+      },
+      {
+        "name": "threadpoolctl",
+        "version": "3.6.0"
+      },
+      {
+        "name": "tinycss2",
+        "version": "1.5.1"
+      },
+      {
+        "name": "tornado",
+        "version": "6.5.7"
+      },
+      {
+        "name": "traitlets",
+        "version": "5.15.1"
+      },
+      {
+        "name": "twine",
+        "version": "7.0.0"
+      },
+      {
+        "name": "typing_extensions",
+        "version": "4.16.0"
+      },
+      {
+        "name": "tzdata",
+        "version": "2026.3"
+      },
+      {
+        "name": "uri-template",
+        "version": "1.3.0"
+      },
+      {
+        "name": "urllib3",
+        "version": "2.7.0"
+      },
+      {
+        "name": "wcwidth",
+        "version": "0.8.2"
+      },
+      {
+        "name": "webcolors",
+        "version": "25.10.0"
+      },
+      {
+        "name": "webencodings",
+        "version": "0.5.1"
+      },
+      {
+        "name": "websocket-client",
+        "version": "1.9.0"
+      },
+      {
+        "name": "widgetsnbextension",
+        "version": "4.0.15"
+      }
+    ],
+    "numpy_scipy_binary_sha256": {
+      "numpy:numpy.libs/libscipy_openblas64_-b788215d9d47792bcba3a2e2a7114320.dll": "b788215d9d47792bcba3a2e2a71143205a57282828a483f1fb071ca2c159f616",
+      "numpy:numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde",
+      "numpy:numpy/_core/_multiarray_tests.cp312-win_amd64.pyd": "2a6bb596e7f9f5336ea06ce3ddffa232001dfcf89cb00c6eb146390447179e7a",
+      "numpy:numpy/_core/_multiarray_umath.cp312-win_amd64.pyd": "a764477b092cead9514d848d68a302966038c6735a0c746b940a2adc422589cb",
+      "numpy:numpy/_core/_operand_flag_tests.cp312-win_amd64.pyd": "c332f1f2d5ba762b6486fa7c656bef1ca102c8c212c0f9aac03425ccc276a52d",
+      "numpy:numpy/_core/_rational_tests.cp312-win_amd64.pyd": "882a4a0c45b84efb749bb802762cc1540dde5bd1f35e5b04ca6d17854fd02bd5",
+      "numpy:numpy/_core/_simd.cp312-win_amd64.pyd": "04e453bb77c87765dd10443f442d7c284ef621e00909c7756173a6af4c24d8e2",
+      "numpy:numpy/_core/_struct_ufunc_tests.cp312-win_amd64.pyd": "6815f7bb47acd2e8c6652617db87184111441470dc5651acc538d2038061fb6d",
+      "numpy:numpy/_core/_umath_tests.cp312-win_amd64.pyd": "cd8bdf24c7621452387b8d2cb15804adb14c45c6e883d21be54c73e3b92635f5",
+      "numpy:numpy/fft/_pocketfft_umath.cp312-win_amd64.pyd": "2c82437aa10d0647f5ccbf27cfd93b062f06bad64d1bed5c96abeec60b078e48",
+      "numpy:numpy/linalg/_umath_linalg.cp312-win_amd64.pyd": "99b8aabee0f2b5bb857cb2f15046680a40ed12cd39599a075cd0ae0d17dc1dc5",
+      "numpy:numpy/linalg/lapack_lite.cp312-win_amd64.pyd": "58869b533ab45f88915dd574271cb610cbc0917e1f3dfea4bacbaf1b3aae36f7",
+      "numpy:numpy/random/_bounded_integers.cp312-win_amd64.pyd": "01b3e2ad35f0d6695396690a7d41c378fbb15de9ea0504ada340a300eb9d1721",
+      "numpy:numpy/random/_common.cp312-win_amd64.pyd": "b14fd8e85b26eb0246f4eaa91b470b1f8e4d48eaca399212c290460391be5baa",
+      "numpy:numpy/random/_generator.cp312-win_amd64.pyd": "f054f21f924e2b176f376c52b921d8742497e900639fb3a0d4e91fe6a796e461",
+      "numpy:numpy/random/_mt19937.cp312-win_amd64.pyd": "21dce5ec93e81e513c743a038bf80f7592e535ac56ed0cac1e70a81d9da43b55",
+      "numpy:numpy/random/_pcg64.cp312-win_amd64.pyd": "d601e321609b25c0a023b16148b17cc69ac7d379635d4485d1ae93e5e18984f5",
+      "numpy:numpy/random/_philox.cp312-win_amd64.pyd": "4489180aead91920f59001b3219600668a9533273b98be46f426e986c57b9f67",
+      "numpy:numpy/random/_sfc64.cp312-win_amd64.pyd": "a4ed6791cb365afa297acf562587e94a3eb448330a02bd86a112606a6f2e272b",
+      "numpy:numpy/random/bit_generator.cp312-win_amd64.pyd": "23dd33798ccc76e896c0361b0712b9944d87d96ef21a8568d86bc0daf300a8d8",
+      "numpy:numpy/random/mtrand.cp312-win_amd64.pyd": "73239d2ff22f632bfc948087b10a3088918d25fb1f62dff76f52d8bed3878819",
+      "scipy:scipy.libs/libscipy_openblas-197ee2fc9b4d071f7e048078cac74115.dll": "197ee2fc9b4d071f7e048078cac741151a6585d871061cf5f88c0c73e31963a5",
+      "scipy:scipy/_cyutility.cp312-win_amd64.pyd": "b3102b5a84e4bd1bcc6c86bdd8d6c9fdc4f39ce0dafef7b50cf18d710fac7b81",
+      "scipy:scipy/_lib/_ccallback_c.cp312-win_amd64.pyd": "b3a9892a3d2d8ffdcaaff24d8fb5a9c0daacb4ad38308c961361b37a74659525",
+      "scipy:scipy/_lib/_fpumode.cp312-win_amd64.pyd": "7e2138c3e707b9439e30d77defa27106821e02dd36c0c27e8b4c56c0c6c14c31",
+      "scipy:scipy/_lib/_test_ccallback.cp312-win_amd64.pyd": "59f42c9faca8e8b1dcebd1ae2536239e118222ac50b28ed97100d9aa69f9c13b",
+      "scipy:scipy/_lib/_test_deprecation_call.cp312-win_amd64.pyd": "f1778a313e2379bf7b61f0c77cd85a75f2efc67ca09388a1dd89dfb1fe28b7e9",
+      "scipy:scipy/_lib/_test_deprecation_def.cp312-win_amd64.pyd": "097892fddfd27a9d963599dbc9e58139a30a0240a523b428f261c14987da5bc5",
+      "scipy:scipy/_lib/_uarray/_uarray.cp312-win_amd64.pyd": "c58665ad352ec673e39f041d1ce5927a546e946d19fd5d3a3f19add02ddd9a3c",
+      "scipy:scipy/_lib/messagestream.cp312-win_amd64.pyd": "3f2449f1b0711c9711bd65588618e29684777c9927f89446ec077dd0fa9d8f25",
+      "scipy:scipy/cluster/hierarchy/_hierarchy.cp312-win_amd64.pyd": "07eabb4d0ae2e9568bd81ff33e1d8415c726d0aea2e69555a81d7c37ef78369e",
+      "scipy:scipy/cluster/hierarchy/_optimal_leaf_ordering.cp312-win_amd64.pyd": "2dd1cdf4b2a413b57ad2a710bde90e10c10487e158e5458f71644956c0ddb0b1",
+      "scipy:scipy/cluster/vq/_vq.cp312-win_amd64.pyd": "86d1fdaa7cbd0fa2e7008f60a7da6e7682b17419e02e207c1fde7d7dfd3bd7f6",
+      "scipy:scipy/fft/_duccfft/pyduccfft.cp312-win_amd64.pyd": "0d9b1653acc08a326f9801d39d27dccf5566090c18558053243634995f2f9ac9",
+      "scipy:scipy/fftpack/convolve.cp312-win_amd64.pyd": "bc0e9349cde2ad07d3ea0e0700397dabe034bfa9e5be6953b73088a1a14d03f6",
+      "scipy:scipy/integrate/_dop.cp312-win_amd64.pyd": "bf8f46ff9623f69935154caf049412f314ee635c232b613156acf09a490d6faa",
+      "scipy:scipy/integrate/_odepack.cp312-win_amd64.pyd": "6b1ce4cae9d9393bc838fe8c6b48e4558fa52eb41d90a1a02b51b0c468849aff",
+      "scipy:scipy/integrate/_quadpack.cp312-win_amd64.pyd": "4dfc861b537ca00a2294f1b1100a1358f47e3b924174fa1ed00e341d12c6945f",
+      "scipy:scipy/integrate/_test_multivariate.cp312-win_amd64.pyd": "f8397ef47a950fe8f02eebf6a70aaaf7044cc3aa8deacf99d958689858425ba4",
+      "scipy:scipy/integrate/_vode.cp312-win_amd64.pyd": "adc023a48f98cde6220a45d96f661f7a801cf5d8f1837748cbf8479fd8b39624",
+      "scipy:scipy/interpolate/_dierckx.cp312-win_amd64.pyd": "f82ae73f0bd09ef3d8d1aa8cbdbf8ffe60cf59ef258949a61fc0f45cbd9d33c6",
+      "scipy:scipy/interpolate/_fitpack.cp312-win_amd64.pyd": "ec4715e4a372cfbdff9868d07911f37a099b571be55f7551d22a768b77597f56",
+      "scipy:scipy/interpolate/_interpnd.cp312-win_amd64.pyd": "b62776b303687243bcab819aed7b28674e71a1d7752c9894a246452b50bec49a",
+      "scipy:scipy/interpolate/_ppoly.cp312-win_amd64.pyd": "fe527c23befb193c5b5348ad4a8a5a3c1b4b88e001075a273dc3edc131273763",
+      "scipy:scipy/interpolate/_rbfinterp_pythran.cp312-win_amd64.pyd": "7594b79f92db928aaf3f43e0ac75c95d6c843367dd91b3820eff23f5d4609271",
+      "scipy:scipy/interpolate/_rgi_cython.cp312-win_amd64.pyd": "c0804260b98f9b114a1cbc7d9699df4e2112e9462526f8ddc1bce36396079214",
+      "scipy:scipy/io/_fast_matrix_market/_fmm_core.cp312-win_amd64.pyd": "c76e58336983e095a79a11df4b78175dd18368cf6ec27f44d7db6b297d4af717",
+      "scipy:scipy/io/matlab/_mio5_utils.cp312-win_amd64.pyd": "3a81130f7209d8d76a0ab1a6ce1c45cbf61f541b71c71849a95707e0e584c516",
+      "scipy:scipy/io/matlab/_mio_utils.cp312-win_amd64.pyd": "ff7631947b6562501d42f4d2012df0c1b50ab5a7fc6fe53577eb9b575a4b0079",
+      "scipy:scipy/io/matlab/_streams.cp312-win_amd64.pyd": "537f81a37cdfec4d1456b70601da81895efa063249f09fc5ef2ac512ab64eeb8",
+      "scipy:scipy/linalg/_batched_linalg.cp312-win_amd64.pyd": "3291596e2033faff7f45b0c2caa480168f49851843a01ec2cd3ebabc2363b646",
+      "scipy:scipy/linalg/_cythonized_array_utils.cp312-win_amd64.pyd": "bc6643e7b48ad19d971d85bba3ced0df67b3f62d8be484daaf803314afb42635",
+      "scipy:scipy/linalg/_decomp_interpolative.cp312-win_amd64.pyd": "8297583168753a0df2ee0c1888719d892534bf64b3665a9c04586b66ced0d1fd",
+      "scipy:scipy/linalg/_decomp_update.cp312-win_amd64.pyd": "444a91bf90cd6b16deb2125cfe51e6955021d9376f15802ed6efd3a1f2d498d1",
+      "scipy:scipy/linalg/_fblas.cp312-win_amd64.pyd": "2f95de5299fe4c18c60cacaa801b31d41e6525572c8a029046636eebccf4e4d9",
+      "scipy:scipy/linalg/_flapack.cp312-win_amd64.pyd": "cd4d1cca918fb1fdb4f1a3bd514349525e25461b534a8095443bf351269b0d07",
+      "scipy:scipy/linalg/_internal_matfuncs.cp312-win_amd64.pyd": "0900a5bfcd56db5b7782a3d9f5d0ab4f445d9bfb14bf159c95a47500371ba037",
+      "scipy:scipy/linalg/_linalg_pythran.cp312-win_amd64.pyd": "e9ed3ab048f3cfb5a3f95f0bef1f48c551ff22ea149577b0c3b5e86330851b63",
+      "scipy:scipy/linalg/_matfuncs_sqrtm_triu.cp312-win_amd64.pyd": "b74afff39cb890ce1c44f68cb454788d82cf6e54b85ca70ecabce9cae59fc5c7",
+      "scipy:scipy/linalg/_solve_toeplitz.cp312-win_amd64.pyd": "cf4a4fe54435976b3a29a10cf1b9d4b640c7fe475c0cee41c0ac2d1f306dec33",
+      "scipy:scipy/linalg/cython_blas.cp312-win_amd64.pyd": "27311c1013f41aa76bf703bbc686d814094f9e709a5f949144547ccf8842a4a5",
+      "scipy:scipy/linalg/cython_lapack.cp312-win_amd64.pyd": "fe440cd21012f3d0ff3d33430172b9ed69915c0e234f0e124f3e3a642926d3d3",
+      "scipy:scipy/ndimage/_ctest.cp312-win_amd64.pyd": "f9896d283f2751502da68f2f7c68df5054fc742064c986e2c0a627f10699dd20",
+      "scipy:scipy/ndimage/_cytest.cp312-win_amd64.pyd": "51ea8829c97198b53c3bc75ede1383c389df9929f6acbedae5f791e77401b0fd",
+      "scipy:scipy/ndimage/_nd_image.cp312-win_amd64.pyd": "e4f04864269e03a647d11bf6a440e12d71daf71e84fe91baad60404bb99e3064",
+      "scipy:scipy/ndimage/_ni_label.cp312-win_amd64.pyd": "505714be16bd4038210ad53f63c42aa3754447fe233c5ff5d676674e96d7f702",
+      "scipy:scipy/ndimage/_rank_filter_1d.cp312-win_amd64.pyd": "4ccf7324ca00163fc058101026e8c2d429b9654ab10cca74357901c5f0462a40",
+      "scipy:scipy/odr/__odrpack.cp312-win_amd64.pyd": "90ab98f813f968f957c0ba085e19a438bd2bf06603d1c6d2d0134eca303c44f9",
+      "scipy:scipy/optimize/_bglu_dense.cp312-win_amd64.pyd": "2989b140a9059fb7e00aa0693f3272c183e94f2bf7455f599b12ee77732799c8",
+      "scipy:scipy/optimize/_direct.cp312-win_amd64.pyd": "ee7a95824c4f8ddcd7c71eb103330e1cc3144798198af0a99716d24e10817317",
+      "scipy:scipy/optimize/_group_columns.cp312-win_amd64.pyd": "39833f8700fa832161eb446009141e26c62bb0be62ee789acbb707264e3d01c8",
+      "scipy:scipy/optimize/_highspy/_core.cp312-win_amd64.pyd": "f2c065c1249d9dad26589f8645a8af7a7095478998aba9c94f8dc98bd84b0565",
+      "scipy:scipy/optimize/_highspy/_highs_options.cp312-win_amd64.pyd": "cc8b3a794868457a6a88f3e60d138cee088e578deefbbbf8b9ea2d30665dffd2",
+      "scipy:scipy/optimize/_lbfgsb.cp312-win_amd64.pyd": "ed5ddc8659da296ab924fe2486b8d3783fb26bd3ec10af47171ccb5e3017f0b7",
+      "scipy:scipy/optimize/_lsap.cp312-win_amd64.pyd": "26bd5f7a2af5653045523b2d4b033695d42a33f6269351cace25f46a7afb740a",
+      "scipy:scipy/optimize/_lsq/givens_elimination.cp312-win_amd64.pyd": "caf47d5a60b0ee4caa0904fe4d844d8c55511f8ed1b13fb8aaeab12bb7223365",
+      "scipy:scipy/optimize/_minpack.cp312-win_amd64.pyd": "5c6e0f34460ac06c8728b57437e202eb59323cc5307037460295ee6dda719d49",
+      "scipy:scipy/optimize/_moduleTNC.cp312-win_amd64.pyd": "709604cfa4efd4e6ed9a8345b72550921d2d388617ffa7f5441e425dff608e30",
+      "scipy:scipy/optimize/_pava_pybind.cp312-win_amd64.pyd": "beb1f4e13d88b184dabfdb6ff7ac8f47635807b07efba9e60f986f08929c2eba",
+      "scipy:scipy/optimize/_slsqplib.cp312-win_amd64.pyd": "d0dc4ee1407b0b6c3a3e2c4c8a4ae84a2eb8706f56cb9aad16772c2f78585793",
+      "scipy:scipy/optimize/_trlib/_trlib.cp312-win_amd64.pyd": "1b7220c9d0a4ea8ccbac20a9b555391c450bbd33b38759cbcf45a06bbeb13be6",
+      "scipy:scipy/optimize/_zeros.cp312-win_amd64.pyd": "ef2dc69dd2dbeb2a81d29e5bb83255e096eeebb31e2e224a34357fd563c711ed",
+      "scipy:scipy/optimize/cython_optimize/_zeros.cp312-win_amd64.pyd": "f4f0ca5e428171fbd9deaa6c6ac7732b59eb267beccd2a09dacbf09fdb78aae3",
+      "scipy:scipy/signal/_max_len_seq_inner.cp312-win_amd64.pyd": "c84cc87d876d63b0527450e47e7ccbc3f7f38db8b4752436734d8d33315f8746",
+      "scipy:scipy/signal/_peak_finding_utils.cp312-win_amd64.pyd": "b9a71f52279d7d4026bf5c7092970c813a5101d153000695b24c35c27202061d",
+      "scipy:scipy/signal/_sigtools.cp312-win_amd64.pyd": "9cae9eca5351db1d7e35618a55ca235a0086edc996c51be5edf08b5189948405",
+      "scipy:scipy/signal/_sosfilt.cp312-win_amd64.pyd": "76361df3096f82c037148515b6a9678e1a812762714e20d4ff54a41b4dabf84f",
+      "scipy:scipy/signal/_spline.cp312-win_amd64.pyd": "aea9cea0fb12776f20483f7e5757493f6fb56e3901f8d16a8703d6c1f28ab3d5",
+      "scipy:scipy/signal/_upfirdn_apply.cp312-win_amd64.pyd": "9cd7f060113f1f722a124876a5e7595ae734f00fa22db696c66273c6f9512098",
+      "scipy:scipy/sparse/_csparsetools.cp312-win_amd64.pyd": "e3d77b0f77777728677c443258f58bb9fcccbe59b4dfedf39d19e265e1f2b0ed",
+      "scipy:scipy/sparse/_sparsetools.cp312-win_amd64.pyd": "48fb42789ccb90c39919b58f9a88d41470ac7ae0856f2f534ee23ae25fdef9f3",
+      "scipy:scipy/sparse/csgraph/_flow.cp312-win_amd64.pyd": "d230683c71df557cba065ecccba2702354ce525c8bcf2f17fe5fc685c37fe496",
+      "scipy:scipy/sparse/csgraph/_matching.cp312-win_amd64.pyd": "cc8ca428d3bdd5fe24bdb85425eb5f77d37a109acf4668effcf2ff90f9e9d919",
+      "scipy:scipy/sparse/csgraph/_min_spanning_tree.cp312-win_amd64.pyd": "1029423e4f3822fa1bd0c04ff72913c94c026f237962f3b11d499059702345ff",
+      "scipy:scipy/sparse/csgraph/_reordering.cp312-win_amd64.pyd": "ce8c123f2a01049db5e88bcf7e2825c67179d6c447a45bc3b7f4d899831062b9",
+      "scipy:scipy/sparse/csgraph/_shortest_path.cp312-win_amd64.pyd": "1fd8f29482627109df11cbcb55c5f71a5925f1ece92d33e283ee11bfc64d418d",
+      "scipy:scipy/sparse/csgraph/_tools.cp312-win_amd64.pyd": "cbf5f7ee907a92372ab8167428fb189e40e27f6d4d8aad6078fa6ab1e46a018d",
+      "scipy:scipy/sparse/csgraph/_traversal.cp312-win_amd64.pyd": "df75f70f8a6184445f7920c1972e762a5edd46a98c3ad605cb1c1083cf3a1105",
+      "scipy:scipy/sparse/linalg/_dsolve/_superlu.cp312-win_amd64.pyd": "a8f15f8bcaa1208752f19d73b3311ef75935a6c87d0d314a3149eb1d10c1b48c",
+      "scipy:scipy/sparse/linalg/_eigen/arpack/_arpacklib.cp312-win_amd64.pyd": "4a99f14889f948855ad2e0ab5c4fda9123c095e28789f3f7867707c2ee9ac48a",
+      "scipy:scipy/sparse/linalg/_propack.cp312-win_amd64.pyd": "7b64cb572d2f9d410f5f7d955fad3881d7de3c41ab52cec806c336f569d88a93",
+      "scipy:scipy/spatial/_ckdtree.cp312-win_amd64.pyd": "65f4ccc35c9d2480e12e824959025c964a29f4f2d61996009abbe05ad3949034",
+      "scipy:scipy/spatial/_distance_pybind.cp312-win_amd64.pyd": "fc9e3b22242ed6fdcdbbb3e4593fd6de71d5e426d7c34b3fc6c2fdcb9fe1427f",
+      "scipy:scipy/spatial/_distance_wrap.cp312-win_amd64.pyd": "b2dd96a9e5836acf9b4e8ecdb452a3cbab88952dac3fa5ec39bde9fa654d078d",
+      "scipy:scipy/spatial/_hausdorff.cp312-win_amd64.pyd": "1b19b2dd27dddaa03c1ca5b2f77830f0b4f2a16b4ebc15aacf1d1c5636757a1b",
+      "scipy:scipy/spatial/_qhull.cp312-win_amd64.pyd": "694626c04bba299113587b47234e09f4ce44893919e6186ded6f8e4aa1306544",
+      "scipy:scipy/spatial/_voronoi.cp312-win_amd64.pyd": "2ccd39ea2c8ab4301036b8abbd415ca6fe0e761183a165b66db24a2ddc7ab953",
+      "scipy:scipy/spatial/transform/_rigid_transform_cy.cp312-win_amd64.pyd": "e23cde3634744dd61f5bbdfc39fa44eecd733b1fcc2d18a71440aad7c5a78e4a",
+      "scipy:scipy/spatial/transform/_rotation_cy.cp312-win_amd64.pyd": "6740269b7584398495a6f45b3dbfa661495ebcc4aabaee2d2dcceb8371caf164",
+      "scipy:scipy/special/_comb.cp312-win_amd64.pyd": "d69b3f9677d72c263d2ae951373950e7864cde8539e44436a63b1c7d9c0e0faf",
+      "scipy:scipy/special/_ellip_harm_2.cp312-win_amd64.pyd": "c4b0a6edbfa2ca8d421efb2c53a507ab289db38fe2406b1bb49af6383b9e3cb2",
+      "scipy:scipy/special/_gufuncs.cp312-win_amd64.pyd": "6b5edc19f9e6b8d1c212fd65695d756c04e14dd90aeacf8f60f06cba2f42c7f5",
+      "scipy:scipy/special/_specfun.cp312-win_amd64.pyd": "2ee3c9b32d34e4f58a7b8c83c267e5d7d25613743019b2960aa27eea0c56ec8f",
+      "scipy:scipy/special/_special_ufuncs.cp312-win_amd64.pyd": "17ec72133d7d6cca0eebf5ed41296bde5c6b98fbc344d798bfbe7092b76dc07f",
+      "scipy:scipy/special/_test_internal.cp312-win_amd64.pyd": "cec42bd739f93255ebe1802660d4ef78dc12a57bb8d74ddef8e459d765d6f345",
+      "scipy:scipy/special/_ufuncs.cp312-win_amd64.pyd": "ebf3f73317450c1cd2675e70be97837a777d383e0bd89c4c0ccb80a7e0394775",
+      "scipy:scipy/special/_ufuncs_cxx.cp312-win_amd64.pyd": "ad42de0cab220447867a3a436f5991f3c7f295d9db8b25370c6d5ba27f9ec4c2",
+      "scipy:scipy/special/cython_special.cp312-win_amd64.pyd": "6c1314a2b8b1ebbfcc6347ed1632e5acf77cff8c6aa97b46f4c2568495b42448",
+      "scipy:scipy/stats/_ansari_swilk_statistics.cp312-win_amd64.pyd": "9917cdb5475bc46d18601317f474ae53f7eff2a98863e860143c15fee84ef5fc",
+      "scipy:scipy/stats/_biasedurn.cp312-win_amd64.pyd": "2353930ee582c7b1040121cedd10136f4d65431a11118ad68cb888249d25cb37",
+      "scipy:scipy/stats/_levy_stable/levyst.cp312-win_amd64.pyd": "0e29b88f4eeb3ccf53db3cd016fd64ed18df4eed95df49c6a3960d9317d45365",
+      "scipy:scipy/stats/_qmc_cy.cp312-win_amd64.pyd": "24873b250faf1e09429eb67bc0e76ebfd86bfc9ae8228837a896dc89b83391e9",
+      "scipy:scipy/stats/_qmvnt_cy.cp312-win_amd64.pyd": "299958d1f87326d4ab4a40db871229993b8b5402296be77f1e4e912ae3bb0748",
+      "scipy:scipy/stats/_rcont/rcont.cp312-win_amd64.pyd": "d58ec3332d5c7b08f21269ca5fdbf43ebaa8d8e9bda576c681395b93d724a6f9",
+      "scipy:scipy/stats/_sobol.cp312-win_amd64.pyd": "d94d060e80016baeda823fd8aab6f0c88010aa561765bd99e3dbb49d35d31291",
+      "scipy:scipy/stats/_stats.cp312-win_amd64.pyd": "9d370bdf68117280c92e2e45879c95255eb76725e22a97a95a6790f6323d117a",
+      "scipy:scipy/stats/_stats_pythran.cp312-win_amd64.pyd": "c20d3ad527224a3749054443a26da6ab194f13ef054306da11fb45d2453d49a7",
+      "scipy:scipy/stats/_unuran/unuran_wrapper.cp312-win_amd64.pyd": "0fa37baccdf82b8edcaccd8dd133333b581ed6db6d5b945e336ea09c532ec36b"
+    },
+    "required_worker_count": 1,
+    "required_numerical_threads": 1,
+    "required_worker_environment": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    }
+  },
+  "expected_totals": {
+    "conditions": 11,
+    "observations": 200,
+    "production_biexponential_fits": 210,
+    "production_mono_fits": 0,
+    "scheduled_audits": 133,
+    "confirmatory_audits": 100,
+    "diagnostic_audits": 33,
+    "audit_solver_starts": 1064,
+    "paired_irf_observations": 10
+  },
+  "expected_populations": {
+    "observations": [
+      {
+        "condition_id": 0,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          2
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          3
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          4
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          5
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          6
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          7
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          8
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          9
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 10,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          10
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 11,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          11
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 12,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          12
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 13,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          13
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 14,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          14
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 15,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          15
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 16,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          16
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 17,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          17
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 18,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          18
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 19,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          19
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 20,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          20
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 21,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          21
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 22,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          22
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 23,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          23
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 24,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          24
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 25,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          25
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 26,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          26
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 27,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          27
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 28,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          28
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 29,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          29
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 30,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          30
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 31,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          31
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 32,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          32
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 33,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          33
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 34,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          34
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 35,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          35
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 36,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          36
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 37,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          37
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 38,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          38
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 39,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          39
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 40,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          40
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 41,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          41
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 42,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          42
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 43,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          43
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 44,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          44
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 45,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          45
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 46,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          46
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 47,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          47
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 48,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          48
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 49,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          49
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 50,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          50
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 51,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          51
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 52,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          52
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 53,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          53
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 54,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          54
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 55,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          55
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 56,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          56
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 57,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          57
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 58,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          58
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 59,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          59
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 60,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          60
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 61,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          61
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 62,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          62
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 63,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          63
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 64,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          64
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 65,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          65
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 66,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          66
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 67,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          67
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 68,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          68
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 69,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          69
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 70,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          70
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 71,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          71
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 72,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          72
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 73,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          73
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 74,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          74
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 75,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          75
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 76,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          76
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 77,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          77
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 78,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          78
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 79,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          79
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 80,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          80
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 81,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          81
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 82,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          82
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 83,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          83
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 84,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          84
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 85,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          85
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 86,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          86
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 87,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          87
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 88,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          88
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 89,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          89
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 90,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          90
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 91,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          91
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 92,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          92
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 93,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          93
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 94,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          94
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 95,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          95
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 96,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          96
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 97,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          97
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 98,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          98
+        ]
+      },
+      {
+        "condition_id": 0,
+        "replicate": 99,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          0,
+          99
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          0
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          1
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          2
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          3
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          4
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          5
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          6
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          7
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          8
+        ]
+      },
+      {
+        "condition_id": 4,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          4,
+          9
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          0
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          1
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          2
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          3
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          4
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          5
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          6
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          7
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          8
+        ]
+      },
+      {
+        "condition_id": 5,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          5,
+          9
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          0
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          1
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          2
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          3
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          4
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          5
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          6
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          7
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          8
+        ]
+      },
+      {
+        "condition_id": 8,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          8,
+          9
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          0
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          1
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          2
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          3
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          4
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          5
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          6
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          7
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          8
+        ]
+      },
+      {
+        "condition_id": 9,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          9,
+          9
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          0
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          1
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          2
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          3
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          4
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          5
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          6
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          7
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          8
+        ]
+      },
+      {
+        "condition_id": 10,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          10,
+          9
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          0
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          1
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          2
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          3
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          4
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          5
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          6
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          7
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          8
+        ]
+      },
+      {
+        "condition_id": 13,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          13,
+          9
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          0
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          1
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          2
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          3
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          4
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          5
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          6
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          7
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          8
+        ]
+      },
+      {
+        "condition_id": 16,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          16,
+          9
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          0
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          1
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          2
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          3
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          4
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          5
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          6
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          7
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          8
+        ]
+      },
+      {
+        "condition_id": 17,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          17,
+          9
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          0
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          1
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          2
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          3
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          4
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          5
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          6
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          7
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          8
+        ]
+      },
+      {
+        "condition_id": 21,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          21,
+          9
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 0,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          0
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 1,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          1
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 2,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          2
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 3,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          3
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 4,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          4
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 5,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          5
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 6,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          6
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 7,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          7
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 8,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          8
+        ]
+      },
+      {
+        "condition_id": 26,
+        "replicate": 9,
+        "entropy": [
+          33,
+          3,
+          20261029,
+          1,
+          0,
+          26,
+          9
+        ]
+      }
+    ],
+    "production": [
+      {
+        "condition_id": 0,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 10,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 11,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 12,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 13,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 14,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 15,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 16,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 17,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 18,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 19,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 20,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 21,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 22,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 23,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 24,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 25,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 26,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 27,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 28,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 29,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 30,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 31,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 32,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 33,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 34,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 35,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 36,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 37,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 38,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 39,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 40,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 41,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 42,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 43,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 44,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 45,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 46,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 47,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 48,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 49,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 50,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 51,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 52,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 53,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 54,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 55,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 56,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 57,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 58,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 59,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 60,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 61,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 62,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 63,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 64,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 65,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 66,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 67,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 68,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 69,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 70,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 71,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 72,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 73,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 74,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 75,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 76,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 77,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 78,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 79,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 80,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 81,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 82,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 83,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 84,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 85,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 86,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 87,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 88,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 89,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 90,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 91,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 92,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 93,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 94,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 95,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 96,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 97,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 98,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 99,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 0,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 1,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 2,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 3,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 4,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 5,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 6,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 7,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 8,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 9,
+        "arm": "gaussian_0.3"
+      }
+    ],
+    "audits": [
+      {
+        "condition_id": 0,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 1,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 2,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 3,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 5,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 6,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 7,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 8,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 10,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 11,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 12,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 13,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 14,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 15,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 16,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 17,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 18,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 19,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 20,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 21,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 22,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 23,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 24,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 25,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 26,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 27,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 28,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 29,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 30,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 31,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 32,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 33,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 34,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 35,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 36,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 37,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 38,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 39,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 40,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 41,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 42,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 43,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 44,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 45,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 46,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 47,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 48,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 49,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 50,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 51,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 52,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 53,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 54,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 55,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 56,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 57,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 58,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 59,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 60,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 61,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 62,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 63,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 64,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 65,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 66,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 67,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 68,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 69,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 70,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 71,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 72,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 73,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 74,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 75,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 76,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 77,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 78,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 79,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 80,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 81,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 82,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 83,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 84,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 85,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 86,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 87,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 88,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 89,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 90,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 91,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 92,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 93,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 94,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 95,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 96,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 97,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 98,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 0,
+        "replicate": 99,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 4,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 5,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 8,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 9,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 10,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 13,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 16,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 17,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 21,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 0,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 0,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 4,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 4,
+        "arm": "gaussian_0.3"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 9,
+        "arm": "matched"
+      },
+      {
+        "condition_id": 26,
+        "replicate": 9,
+        "arm": "gaussian_0.3"
+      }
+    ]
+  },
+  "populations_sha256": "9f1bf727dfdb8496600f391915ee507b15066e9ec4cecef601632638727a07e0",
+  "work_ceilings": {
+    "production_solver_invocations": 9660,
+    "independent_solver_starts": 1064,
+    "production_phase_forward_calls": 11828880,
+    "external_production_rechecks": 210,
+    "independent_direct_predictions": 13300000,
+    "external_audit_rechecks": 133,
+    "all_worker_timeout_seconds": 102900
+  },
+  "review_validation": {
+    "protocol_tests_passed": 36,
+    "junit_sha256": "220f618ef372d3d58a5ab1166d2acd76214490cb308de4f37f665be083983446",
+    "log_sha256": "11eab6c209df7849d4fdbb8299d260d5175660069ccfd1c9323e515c234c4563",
+    "ruff": "pass",
+    "format_ratchet": "pass; 129 unchanged audited debt files",
+    "stage2b_ledger_lf_sha256": "5c9d461fdda9ea7b9f1f1344e1f91f254480ed3e697c7dbfdfa22ae6f9ef766f",
+    "stage2b_full_suite": "verified retained evidence: 2352 passed, one intentional skip",
+    "stage2b_saved_regressions_full_gate": "14/14 verified",
+    "historical_pr3_inventory_sha256": "d2f9acc213768751a333fe1b78dc008fc932c3012d5889e606d429680d63ba14"
+  },
+  "execution_readiness": {
+    "scientific_observations_generated": 0,
+    "study_runner_implemented": false,
+    "execution_lock_created": false,
+    "scientific_output_paths_absent": true,
+    "remaining": [
+      "maintainer protocol approval",
+      "new runner implementation and execution-integrity tests",
+      "reviewed execution authorization and final source/settings/environment lock"
+    ]
+  },
+  "note": "This snapshot binds the review proposal only. A future execution lock must add the approved new runner and its tests before any observation draw; do not resume or modify historical PR3 evidence."
+}

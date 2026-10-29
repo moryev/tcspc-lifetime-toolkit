@@ -22,6 +22,9 @@ only an installed checkout and the inputs already committed to this repository.
 
 ## Reference documents
 
+- [Issue-33 independent qualification](issue33_stage3_qualification_v1.md): numerical
+  safeguards, passing primary recovery targets, failed strict audit agreement
+  (99/100 against 100/100), and the remaining recovery-capacity limitation.
 - [Public API](api.md): curated root exports, supported canonical modules,
   generic estimator extension, and retained symbol aliases.
 - [Package structure](package_structure.md): ownership, dependencies, and the

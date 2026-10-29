@@ -14,10 +14,13 @@ raw bins and assumed IRF for mono/bi fits, retains source provenance and reports
 descriptive AIC/bin-based BIC. No preprocessing is inferred. Review numerical
 failure and identifiability diagnostics separately; warning absence is not a
 component-recovery guarantee. See [API details](api.md#experimental-bi-exponential-reconvolution-issue-28-pr-3)
-and the [completed independent qualification](issue28_pr3_qualification.md).
-Its primary high-count targets passed, but two independent optimizer-agreement
-targets failed; low counts, weak components and incorrect IRFs can defeat recovery
-even when fitting is numerically accepted.
+and the [current Issue-33 qualification](issue33_stage3_qualification_v1.md).
+The corrected fitter passed primary numerical acceptance at 99/100 and both
+component recovery/bias targets, but independent agreement failed at 99/100
+against the strict 100/100 target. A full seed bank can leave no slot for required
+recovery. Inspect numerical rejection explicitly; low counts, weak components
+and incorrect IRFs can also defeat recovery in accepted fits. The
+[historical PR-3 study](issue28_pr3_qualification.md) remains separate evidence.
 
 The [quick start](../examples/quickstart.py) separates deterministic physics from
 photon sampling. On a uniform time grid in nanoseconds, its model is

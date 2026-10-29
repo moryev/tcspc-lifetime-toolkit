@@ -1,5 +1,55 @@
 # Scientific findings
 
+## Issue #33: corrected optimizer and independent Stage 3 disposition
+
+The original premature-termination mechanisms have been corrected by safeguarded
+objective/derivative handling and exhaustive seed-first scheduling. All fourteen
+saved development regressions passed the full numerical gate. Those regressions,
+including historical C00 r11/r58, are not new qualification data.
+
+The separately frozen [Stage 3 study](issue33_stage3_qualification_v1.md) completed
+200 new observations, 210 production fits and 133 independent audits. Its primary
+C00 numerical-acceptance target **PASSes at 99/100**. Both median absolute relative
+lifetime-error targets **PASS** at 0.332001%/0.236241% (<5%); both absolute mean
+signed relative bias targets **PASS** at 0.005075%/0.005351% (<2%). Both signed
+biases are positive. Each component statistic uses 99 accepted, available fits;
+no observation was removed from the original numerical or audit denominator.
+
+The new strict complete-independent-agreement target **FAILS at 99/100**, against
+100/100 within 0.01 centered NLL. All primary audits were complete and usable.
+New C00 r050 returned NLL 245.763159 versus independent 237.259286, a gap of
+8.503873. All 46 required finite seeds ran; local validation found further
+descent, but required recovery had no remaining start slot. Numerical rejection
+and audit disagreement were both recorded correctly. A further recovery's
+outcome is unknown: no fitting or independent optimization was rerun.
+
+Across all 210 fits, **four were numerically rejected**: C00 r050 and C05
+r001/r004/r009. All 133 audits were complete; 129 agreed and four disagreed.
+Production-minus-audit gaps were +8.503873 (C00 r050), +68.679130 (C05 r004),
++42.072432 (C05 r009), and -0.464421 (C10 r004). The first three production fits
+were rejected. C10 r004 was accepted and had a lower production objective than
+the independent search. This is an audit-search limitation, not evidence of a
+worse production solution. C05 r001 was not scheduled for audit.
+
+Numerical acceptance does not establish component recoverability. C10's 0.5%
+secondary component had 70.74% median secondary-lifetime error; close lifetimes
+and low counts also produced severe recovery limitations. On ten paired C26
+observations, the wrong Gaussian IRF arm was accepted and warning-free in every
+case, with median component errors 39.15%/7.11%. Both arms' scheduled audits
+agreed. Objective agreement does not establish global optimality, physical model
+validity or accurate components. Secondary conditions remain diagnostic, without
+applying primary high-count recovery thresholds to every regime.
+
+The maintainer accepts the numerical robustness improvement for publication,
+**not complete numerical qualification**. Issue #33 remains open because the
+frozen joint Stage 3 gate failed and required-recovery capacity remains limited.
+The [results](validation/issue33_stage3_results_v1.json) and
+[diagnostics](validation/issue33_stage3_diagnostics_v1.json) retain every
+denominator and failure. Historical PR 3 evidence and its failed 119/121 audit
+target below remain unchanged; Stage 3 is a new study, not a corrected PR 3 score.
+
+## Historical Issue #28 PR 3 disposition before Issue #33
+
 Issue #28 PR 3's frozen [independent qualification](issue28_pr3_qualification.md)
 is complete: 1,550 observations, 1,850 paired comparisons, 205 scheduled audit
 attempts and 36 projection-status records. Successful execution is distinct from

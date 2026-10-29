@@ -269,9 +269,8 @@ def test_impossible_expectations_keep_exact_poisson_limit():
     x = problem.coordinates(BiexponentialParameters((0, 0), (1, 2), 0, 0))
     assert np.isinf(problem.evaluate(x))
     assert problem.best_x is None
-    value, gradient = problem.value_and_gradient(x)
-    assert np.isinf(value)
-    assert np.all(np.isfinite(gradient))  # Invalid line-search trial, not accepted.
+    with pytest.raises(fitting._UnusableEvaluation, match="nonfinite_objective"):
+        problem.value_and_gradient(x)
 
 
 def test_false_optimizer_success_does_not_pass_local_validation(monkeypatch):

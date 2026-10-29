@@ -1,0 +1,19 @@
+{
+  "protocol": "issue33-stage1-v1",
+  "cases": [[11, 10], [11, 45], [58, 5], [58, 23]],
+  "maximum_forward_calls_per_replay": 2000,
+  "maximum_seconds_per_replay": 300,
+  "numerical_threads": 1,
+  "historical_directory": "data/generated/issue28_pr3_qualification_20261026",
+  "historical_execution_lock": "docs/validation/issue28_pr3_execution_lock_2026-10-26.json",
+  "historical_report": "docs/validation/issue28_pr3_results_2026-10-27.json",
+  "coordinate_reconstruction": "saved physical initial_parameters through original coordinates(), then original bounds clipping; saved parameter_scales, no initializer rerun",
+  "solver": "original _refine and original value_and_gradient; passive wrappers only; no new callback or solver option",
+  "post_replay_checks": ["original local validation at retained best", "independent analytic direct-convolution derivatives"],
+  "derivative_points_in_order": ["first finite solver callback", "last finite solver callback", "retained best before post checks", "saved production result", "saved independent audit result"],
+  "derivative_comparison": "original finite-difference gradient versus analytic direct-convolution gradient in identical scaled coordinates; report absolute and componentwise relative gaps, shift knots and curve/objective differences; no acceptance threshold tuning",
+  "accounting": "one charge per actual shared component-model invocation; additionally one conservative charge per independent direct convolution (six per analytic point); post-replay probes included; no reserved quota or hidden retry",
+  "trace_schema": ["forward_call", "objective", "value_gradient", "setulb_transition", "solver_result", "budget_stop"],
+  "nonfinite_json": "Infinity, -Infinity and NaN strings; never conflate with missing fields",
+  "no_retry": true
+}
