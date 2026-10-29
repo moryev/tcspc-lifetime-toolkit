@@ -349,6 +349,30 @@ is represented by `None`, never a pass; budget exhaustion is inspectable even
 when a useful finite candidate is available. The selected default and its measured
 cost are recorded in [the numerical development report](issue28_pr2_numerics.md).
 
+The development correction for [Issue #33](issue33_stage2_correction.md) keeps
+those numerical limits but changes invalid-trial handling. Nonfinite objectives
+or unavailable gradients terminate the current L-BFGS-B invocation explicitly.
+Linear amplitude/background derivatives use the exact Poisson score; shape
+derivatives use bounded finite differences with finite one-sided fallbacks.
+Safeguarded finite descent retains its finite probes. Exhaustive fits give every
+finite seed one bounded invocation before local validation and required recovery;
+optional per-start continuations cannot displace seeds. Economical and adaptive
+policies retain their continuation priority and tier/early-stop rules. Every
+solver invocation and model call is charged to the original work limits.
+`finite_seed_candidates` and `unattempted_seed_candidates` describe the whole
+finite bank, including seeds beyond an economical/adaptive early stop.
+`optional_continuations_omitted` lists originating start indices whose additional
+solver invocation was omitted under the exhaustive policy; their finite probes
+remain eligible for selection. `recovery_unavailable_reason` separately reports
+required validation recovery blocked by a limit (or pending continuations for
+the other policies). Exactly 46 completed starts is not itself exhaustion.
+Incomplete required work or failed/unavailable validation still prevents full
+numerical acceptance, independently of optimizer success. The external
+qualification assessment also rechecks physical feasibility, curves and objective
+with one separately accounted forward call. See the
+[Stage 2B scheduling record](issue33_stage2b_scheduling.md). This correction has
+development/regression evidence only, pending independent requalification.
+
 Numerically invalid initialization trials are rejected without discarding other
 finite candidates. `starts_screened` includes rejected trials;
 `initialization_rejected_candidates` counts them, including templates that fail

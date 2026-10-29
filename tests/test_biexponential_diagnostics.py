@@ -50,6 +50,11 @@ def test_exact_degeneracies_preserved(lifetimes, fractions, expected):
         bins=128, lifetimes=lifetimes, fractions=fractions
     )
     settings = BiexponentialFitSettings(policy="economical", max_starts=1)
+    # Exact structural warnings require an exact optimum of the evaluated
+    # model. Independent direct-convolution targets differ from the shared FFT
+    # by roundoff and can favor a nonzero 1e-14 amplitude / unequal-ulp lifetimes.
+    problem = fitting._Problem(t, mu, k, (0.1, 8), (-0.3, 0.3), settings)
+    mu, _ = problem.model(problem.physical(problem.coordinates(p)), "diagnostics")
     result = fitting._fit_core(
         t, mu, k, **BOUNDS, initial_guesses=[p], settings=settings, raw_counts=False
     )

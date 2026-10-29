@@ -319,7 +319,16 @@ def test_study_gate_precedes_proxy_or_observation_generation(
 
 
 def test_proxy_checkpoint_roundtrip_and_source_lock(tmp_path, runner, protocol):
-    lock = runner["source_lock"](protocol)
+    # Issue 33 must refuse to resume the historical qualification with a changed
+    # fitter. Exercise checkpoint transport using the saved lock, never refresh
+    # the old source hash to match development code.
+    with pytest.raises(ValueError, match="PR-2 source lock changed"):
+        runner["source_lock"](protocol)
+    lock = json.loads(
+        (
+            ROOT / "docs/validation/issue28_pr3_execution_lock_2026-10-26.json"
+        ).read_text()
+    )["lock"]
     assert (
         lock["sources_lf_sha256"]["src/tcspc_toolkit/estimation/multiexponential.py"]
         == protocol["frozen_pr2_lf_sha256"]
