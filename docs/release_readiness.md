@@ -43,7 +43,7 @@ python scripts/check_distribution.py --dist-dir dist
 ```
 
 `build` creates an sdist and then a wheel from that sdist. The checker examines
-metadata, license, 62-module inventory, and source materials. It installs each
+metadata, license, current 67-module inventory, and source materials. It installs each
 artifact into its own disposable environment outside the checkout and verifies
 installed import locations, the ordered 66-name root API, the fixed 38-module
 removal list, console entry point, README code and seven quick examples.

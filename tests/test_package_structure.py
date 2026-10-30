@@ -354,6 +354,35 @@ PHYSICS_IMPORTS = {
     },
 }
 CLASSICAL_IMPORTS = {
+    f"{ESTIMATION}._fixed_k": {
+        "__future__",
+        "copy",
+        "dataclasses",
+        "typing",
+        "numpy",
+        "numpy.typing",
+        "tcspc_toolkit.irf.preparation",
+        "tcspc_toolkit.irf.profiles",
+        "tcspc_toolkit.preprocessing.histograms",
+    },
+    f"{ESTIMATION}._fixed_k_objective": {
+        "__future__",
+        "dataclasses",
+        "time",
+        "types",
+        "numpy",
+        f"{ESTIMATION}._fixed_k",
+        DIAGNOSTICS,
+        "tcspc_toolkit.physics.forward_model",
+    },
+    f"{ESTIMATION}._fixed_k_diagnostics": {
+        "__future__",
+        "dataclasses",
+        "itertools",
+        "numpy",
+        f"{ESTIMATION}._fixed_k",
+        f"{ESTIMATION}._fixed_k_objective",
+    },
     f"{ESTIMATION}.multiexponential": {
         "__future__",
         "collections.abc",
@@ -1035,6 +1064,9 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
 # Final Issue-#3 inventory. Namespace-only initializers count as support, not
 # scientific implementations. Historical facades remain supported through #12.
 CLOSURE_CANONICAL_FILES = {
+    "estimation/_fixed_k.py",
+    "estimation/_fixed_k_objective.py",
+    "estimation/_fixed_k_diagnostics.py",
     "benchmarks/bayesian_calibration.py",
     "benchmarks/bayesian_mismatch.py",
     "benchmarks/generalization.py",
@@ -1494,11 +1526,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 64
-    assert len(CLOSURE_CANONICAL_FILES) == 47
+    assert len(actual) == 67
+    assert len(CLOSURE_CANONICAL_FILES) == 50
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 47 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 50 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))

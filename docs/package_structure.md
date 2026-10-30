@@ -1,8 +1,15 @@
 # Package architecture and post-Issue-12 import cleanup
 
-Issue #28 PR 3 adds `evaluation.reconvolution` (pure paired Poisson statistics)
+Issue #37 PR 1 adds three private foundations modules in `estimation`:
+`_fixed_k` (records/coordinates), `_fixed_k_objective` (counted evaluations and
+derivatives), and `_fixed_k_diagnostics` (candidate checks and local sensitivity).
+The current inventory is **50 substantive implementations and 67 production
+Python files**. Existing fitters and exports are unchanged; no K=3 fitter is
+publicly available. See the [PR-1 contract](design/issue37_fixed_k_foundations.md).
+
+Issue #28 PR 3 added `evaluation.reconvolution` (pure paired Poisson statistics)
 and `benchmarks.multiexponential` (independent qualification machinery), bringing
-the current inventory to **47 substantive implementations and 64 production
+the then-current inventory to **47 substantive implementations and 64 production
 Python files**. `measurement.adapters` composes the unchanged mono/bi estimators
 and shared IRF resolver. Root and initializer exports remain unchanged. Scientific
 qualification is recorded in the [completed study](issue28_pr3_qualification.md):
