@@ -28,7 +28,7 @@ The latest published GitHub release is **v0.8.0** (October 22, 2026; PyPI deferr
 
 **Issue #14 (Week 11 documentation/user experience) is complete, merged as [PR #23](https://github.com/moryev/tcspc-lifetime-toolkit/pull/23), and closed.** Its short README, task-oriented documentation, eight executable user examples, and quick-start figure are the accepted user-facing baseline. **Issue #15 CI and release qualification completed, with the merged-main reference qualification in [run #39717483724](https://github.com/moryev/tcspc-lifetime-toolkit/actions/runs/39717483724); it is closed and v0.8.0 was published on GitHub on October 22, 2026.** **#13 Purcell-enhanced TCSPC sensing is deferred / experiment-dependent** and is not a release blocker. Resume #13 only when there are sufficiently concrete experiment-specific or photonic-simulation inputs to make the application scientifically grounded. Do not invent an arbitrary synthetic sensing response merely to satisfy the old calendar ordering. Do not repeat completed scientific reference workflows or reopen package restructuring without a concrete defect and explicit task scope.
 
-**Post-v0.8.0 research status (October 29, 2026):** Issue #28 PRs #29/#31/#34 and Issue #33 PR #35 are merged. General fixed-K deterministic reconvolution is available, but production Poisson reconvolution fitting remains mono- or bi-exponential only. The original #28 independent-audit criterion failed at 119/121; the corrected #33 Stage 3 strict criterion failed at 99/100. [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33) is **open and deferred** for future recovery-capacity/qualification work. The next *proposed*, not yet authorized, development direction is fixed-K multi-exponential fitting beginning with K=3; first review its architecture and create a separately scoped issue before implementation.
+**Post-v0.8.0 research status (October 30, 2026):** Issue #28 PRs #29/#31/#34 and Issue #33 PR #35 are merged. General fixed-K deterministic reconvolution is available, but production Poisson reconvolution fitting remains mono- or bi-exponential only. The original #28 independent-audit criterion failed at 119/121; the corrected #33 Stage 3 strict criterion failed at 99/100. [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33) is **open and deferred** for future recovery-capacity/qualification work. [Issue #37](https://github.com/moryev/tcspc-lifetime-toolkit/issues/37) defines the reviewed three-stage K=3 roadmap. The maintainer authorized PR 1's private fixed-K numerical foundations only; implementation is awaiting review, with no public K=3 fitter or new scientific qualification.
 
 ## Repository map
 
@@ -330,7 +330,7 @@ Current integration status:
 13. **#13** — Week 10 Purcell-enhanced TCSPC sensing demonstration — **deferred / experiment-dependent; not a release blocker**;
 14. **#28** — general K-component forward reconvolution and bi-exponential Poisson fitting — **PRs #29/#31/#34 merged; Issue #28 remains open and the failed historical 119/121 audit target is preserved**.
 15. **#33** — bi-exponential optimizer safeguards and seed-first scheduling — **PR #35 merged; strict new Stage 3 agreement failed at 99/100 against 100/100. Issue #33 is open but deferred for future recovery-capacity/qualification work**.
-16. **Prospective next work (not yet a GitHub issue)** — **fixed-K multi-exponential Poisson fitting, beginning with K=3**. Architecture review and separately authorized scope precede implementation; this is not a continuation of the old #28 PR 3 qualification.
+16. **#37 — fixed-K multi-exponential Poisson fitting, beginning with K=3** — reviewed roadmap; PR 1 private foundations authorized and awaiting implementation review. PR 2 optimizer and PR 3 integration/qualification remain separate review gates; this is not a continuation of the old #28 PR 3 qualification.
 
 The completed Issue-#1 typing pass established the current array-input convention: public APIs that normalize suitable inputs through `np.asarray(...)` advertise `ArrayLike`, while APIs that genuinely require NumPy-array-specific behavior retain `NDArray[...]`. Do not reopen that distinction opportunistically during later refactors.
 
@@ -470,14 +470,14 @@ fitting. Do not rerun or tune on qualification outcomes without separate
 authorization. Preserve both historical failed audit criteria (119/121 and
 99/100). Future work should use `Refs #33`, not `Closes #33`, until actually resolved.
 
-## Prospective next direction — fixed-K multi-exponential fitting
+## Issue #37 — fixed-K multi-exponential fitting
 
 - **Current numerical baseline:** `physics.forward_model` already computes general K-component reconvolved expectations with a shared shift and one post-convolution background. Production inference remains mono-exponential or **bi-exponential**; `fit_biexponential_reconvolution` is explicitly K=2. Neither general-K Poisson fitting nor K=3 fitting nor automatic model-order selection is implemented.
-- **First milestone — architecture review only:** inspect Issue #28 and deferred #33; the existing K-component forward model, Poisson statistics, `estimation.multiexponential`, experimental measurement adapters, fit diagnostics, and numerical regression contracts. Propose a distinct, reviewable GitHub issue and staged PR plan. **No new fitting code, expensive scientific experiment or PR is authorized by this roadmap note.**
+- **Authorized current milestone — PR 1 only:** isolated private records/coordinates, counted objective infrastructure, safeguarded derivatives, canonicalization, candidate validation and structural diagnostics, with deterministic tests. Read [the numerical contract and PR-2 handoff](docs/design/issue37_fixed_k_foundations.md). No public fitter, expensive experiment, commit, push or PR creation is authorized by this milestone.
 - **Preferred initial scientific scope:** fixed **K=3** (eight nominal parameters: three nonnegative amplitudes, three positive bounded lifetimes, one nonnegative background and one bounded shared shift); design reusable internals for later fixed K>3 without promising arbitrary-K production support now. Preserve exact zero components, equal lifetimes, input/returned component ordering semantics and explicit singularities.
 - **Scientific requirements:** constrain and scale parameters, design deterministic yet computationally bounded starts, retain feasible finite best candidates and correctly charged evaluations, distinguish optimizer convergence from identifiability and physical correctness, and treat component permutations, weak components, close lifetimes, IRF-resolution limits and nonidentifiability explicitly. No automatic model-order choice or invalid ordinary chi-square LRT across singular component boundaries.
 - **Compatibility first:** preserve existing mono/bi APIs and their qualified/frozen numerical behavior, historical PR-1/2/3 and #33 evidence, IRF preparation/provenance, raw-count Poisson guard, exact-zero/background and shared-shift conventions, 66-name root API and SQLite schema v1. Do not rewrite the bi-exponential fitter merely to generalize it without an approved design and regression evidence.
-- **Potential implementation stages (not yet authorized):** (1) isolated fixed-K architecture and numerical contracts; (2) focused K=3 Poisson fitter and deterministic development regressions; (3) separately frozen independent repeated-Poisson qualification, including held-out optimizer audits and hard regimes. Only an approved issue/plan establishes actual PR boundaries, budgets, acceptance criteria and source/seed locks.
+- **Independent review stages:** (1) authorized private foundations and numerical contracts; (2) separately authorized focused K=3 fitter, measured policy selection and independent optimizer development benchmarks; (3) separately authorized measurement integration and frozen scientific qualification. Compact/balanced/exhaustive policies, TRF/Powell audit strategy/work limits and a proposed 100/100 audit target remain development candidates, not frozen production decisions.
 - [Issue #33](https://github.com/moryev/tcspc-lifetime-toolkit/issues/33) and Issue #13 remain deferred; don't conflate their outstanding work with the proposed K=3 project or assume that general-K deterministic forward modelling implies a qualified general-K optimizer.
 
 ## Codex working protocol
@@ -536,8 +536,9 @@ initializers, five genuine root support files and seven minimal namespace
 initializers remain: 61 production Python files in total.
 
 That completed restructuring inventory is historical. Issue #28 PR 2 added one
-canonical implementation; PR 3 added two more. The current inventory is 47
-substantive implementations and 64 production Python files, with unchanged
+canonical implementation; PR 3 added two more. Issue #37 PR 1 adds three private
+foundation modules. The current inventory is 50 substantive implementations
+and 67 production Python files, with unchanged
 initializer APIs.
 
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.
@@ -562,7 +563,7 @@ Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
 - #28 PRs 1–3 are merged; #28 remains open and its original failed 119/121 audit criterion and evidence are immutable;
 - #33 PR #35 is merged; **#33 remains open but deferred**, with the new failed 99/100 strict audit target and required-recovery-capacity limitation explicitly retained;
-- **next prospective direction:** perform an architecture review for **fixed K=3 Poisson reconvolution fitting**, then define and authorize a new issue; no multi-exponential fitting implementation is yet approved;
+- **current authorized scope:** Issue #37 PR 1 private fixed-K numerical foundations only; stop for review before PR 2 fitting orchestration or PR 3 measurement integration/scientific qualification;
 - preserve PR 1/2 physics/statistics, existing bi-exponential numerical contracts, the ordered 66-name root API, and all historical evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
 - do not start package movement, new scientific qualification, or automatic publishing/tagging without explicit authorization.

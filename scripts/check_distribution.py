@@ -45,7 +45,7 @@ def package_contract(root: Path) -> dict:
         | literal(structure, "CLOSURE_SUPPORT_FILES")
         | {f"{name}/__init__.py" for name in retained}
     )
-    require(len(files) == 64, "Production module inventory changed")
+    require(len(files) == 67, "Production module inventory changed")
     return {
         "files": sorted(files),
         "removed": list(literal(structure, "REMOVED_FLAT_FACADES")),
@@ -158,6 +158,11 @@ def inspect_artifacts(
         "AGENTS.md",
         "MANIFEST.in",
         ".ruff-format-baseline.json",
+        "docs/design/issue37_fixed_k_foundations.md",
+        "tests/test_fixed_k_foundations.py",
+        "tests/test_fixed_k_derivatives.py",
+        "tests/test_fixed_k_diagnostics.py",
+        "tests/test_fixed_k_contracts.py",
     }
     # A reviewed deletion in an uncommitted release-preparation diff should
     # disappear from the sdist; only files present in this checkout can ship.

@@ -1329,3 +1329,13 @@ subsequent [Issue-33 study](issue33_stage3_qualification_v1.md) uses new observa
 failed strict independent-agreement target of 99/100 against 100/100.
 The numerical failure contract retains the best finite candidate with explicit
 diagnostics; it does not promise global optimality or physical identifiability.
+
+## Issue #37 private numerical foundations
+
+PR 1 introduces internal `estimation._fixed_k`, `_fixed_k_objective` and
+`_fixed_k_diagnostics` modules for fixed-length records, counted numerical work,
+derivative safeguards and candidate-specific diagnostics. They are not public
+fitting APIs; production fitting remains mono/bi only. Existing fitters, root
+exports, IRF and Poisson contracts are unchanged. The
+[foundation contract and PR-2 handoff](design/issue37_fixed_k_foundations.md)
+describe availability, validation and accounting semantics.
