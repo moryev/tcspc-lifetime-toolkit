@@ -1,0 +1,112 @@
+{
+  "protocol_id": "issue37-pr2-development-v1-draft",
+  "status": "nonexecuting_draft_requires_review",
+  "execution_authorized": false,
+  "purpose": "Numerical development only; never untouched qualification evidence",
+  "defaults": {
+    "bins": 512, "bin_width_ns": 0.03125, "time_origin_ns": 0,
+    "lifetime_bounds_ns": [0.1, 10], "shift_bounds_ns": [-0.3, 0.3],
+    "lifetimes_ns": [0.45, 1.8, 5.4], "detected_signal_fractions": [0.25, 0.45, 0.30],
+    "signal_photons": 100000, "background_counts_per_bin": 0.5, "shift_ns": 0.037,
+    "generating_irf": "gaussian", "assumed_irfs": ["matched"],
+    "deterministic_targets": 1, "poisson_replicates": 3
+  },
+  "construction": {
+    "time": "arange(bins) * bin_width_ns; finite observation window",
+    "amplitudes": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+    "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+    "background": "Added after convolution, counts per bin",
+    "deterministic_target": "Exact generating expectation; private deterministic objective path, never relabel as raw counts",
+    "random_generator": "numpy.random.Generator(PCG64(SeedSequence(namespace)))",
+    "observation_namespace": [37, 2, 20261101, 1],
+    "namespace_suffix": ["condition integer 0..17", "replicate integer 0..2"],
+    "identity": "Dxx:mean or Dxx:poisson-r; assumed IRF appended only to problem ID, never random seed",
+    "pairing": "Generate once per observation identity and reuse exact bytes across all assumptions and policies",
+    "freeze_before_execution": ["Resolved conditions/settings", "Observation hashes", "Source and dependency versions", "Complete task inventory", "Platform/thread settings"]
+  },
+  "irfs": {
+    "gaussian": {"center_ns": 0.8, "fwhm_ns": 0.18},
+    "broad_gaussian": {"center_ns": 0.8, "fwhm_ns": 0.8},
+    "emg": {"center_ns": 0.8, "gaussian_fwhm_ns": 0.18, "tail_ns": 0.35},
+    "sampled": {"times_ns": [0, 0.5, 0.625, 0.75, 0.875, 1, 1.25, 1.75, "t_last"], "values": [0, 0, 0.15, 1, 0.7, 0.35, 0.08, 0, 0], "interpolation": "linear on actual target coordinates", "provenance": "explicit synthetic sampled fixture; not measured"},
+    "sampled_nonzero_endpoints": {"base": "sampled", "add_before_normalization": 0.02}
+  },
+  "conditions": [
+    {"id": "D00", "stratum": "control"},
+    {"id": "D01", "stratum": "control", "signal_photons": 10000},
+    {"id": "D02", "stratum": "low_count", "signal_photons": 1000},
+    {"id": "D03", "stratum": "weak_component", "signal_photons": 10000, "detected_signal_fractions": [0.495, 0.5, 0.005]},
+    {"id": "D04", "stratum": "zero_component", "detected_signal_fractions": [0.4, 0.6, 0]},
+    {"id": "D05", "stratum": "near_coincident", "lifetimes_ns": [0.9, 1, 4.5]},
+    {"id": "D06", "stratum": "equal_lifetimes", "lifetimes_ns": [1, 1, 4.5]},
+    {"id": "D07", "stratum": "mono_generation", "lifetimes_ns": [2], "detected_signal_fractions": [1]},
+    {"id": "D08", "stratum": "bi_generation", "lifetimes_ns": [0.7, 3.5], "detected_signal_fractions": [0.4, 0.6]},
+    {"id": "D09", "stratum": "zero_background", "background_counts_per_bin": 0},
+    {"id": "D10", "stratum": "high_background", "signal_photons": 10000, "background_counts_per_bin": 20},
+    {"id": "D11", "stratum": "shift_bound", "shift_ns": -0.3},
+    {"id": "D12", "stratum": "shift_bound", "shift_ns": 0.3},
+    {"id": "D13", "stratum": "short_window", "bins": 128, "signal_photons": 10000},
+    {"id": "D14", "stratum": "resolution_limited", "lifetimes_ns": [0.15, 0.6, 2.4], "generating_irf": "broad_gaussian"},
+    {"id": "D15", "stratum": "irf_assumptions", "generating_irf": "emg", "assumed_irfs": ["matched", "gaussian"]},
+    {"id": "D16", "stratum": "irf_assumptions", "generating_irf": "sampled", "assumed_irfs": ["matched", "gaussian"]},
+    {"id": "D17", "stratum": "support_discontinuity", "signal_photons": 10000, "background_counts_per_bin": 0, "shift_ns": 0, "generating_irf": "sampled_nonzero_endpoints"}
+  ],
+  "population": {"generating_conditions": 18, "distinct_targets": 72, "fitting_problems": 80, "solver_policy_configurations": 6, "production_fits": 480, "independent_audits": 80, "total_tasks": 560},
+  "candidate_policies": {
+    "compact": {"seed_starts": 16, "reserved_recovery_starts": 4, "total_starts": 20, "optimization_model_calls": 60000, "wall_seconds": 120, "validation_model_calls": 1024},
+    "balanced": {"seed_starts": 32, "reserved_recovery_starts": 8, "total_starts": 40, "optimization_model_calls": 120000, "wall_seconds": 300, "validation_model_calls": 1024},
+    "exhaustive": {"seed_starts": 109, "reserved_recovery_starts": 8, "total_starts": 117, "optimization_model_calls": 300000, "wall_seconds": 900, "validation_model_calls": 2048}
+  },
+  "work_contract": {
+    "solvers": ["safeguarded_lbfgsb", "bounded_trf_deferred"],
+    "initialization_model_calls": 512, "assessment_model_calls": 32, "diagnostic_model_calls": 256,
+    "recovery_fraction": 0.2, "continuations": false,
+    "model_call": "One K-component evaluation; charge three component convolutions, including failed calls with unknown partial work",
+    "count_separately": ["seed starts planned/attempted", "reserved/used recovery starts", "NNLS projections/failures", "objective requests/attempts/calculations", "model calls by phase and invocation", "charged/completed component convolutions", "failed partial work", "statistics calculations", "phase time", "overhead time", "total wall time"],
+    "ceilings": "Cooperative checks before every physical call; record overshoot from an in-flight call, NNLS or solver overhead"
+  },
+  "independent_audit_candidate": {
+    "implemented": false, "trf_starts": 16, "powell_starts": 8,
+    "direct_model_calls": 200000, "wall_seconds": 900,
+    "model": "Separately implemented direct convolution on actual coordinates; independently checked centered Poisson objective",
+    "initialization": "Data-only deterministic audit bank; forbid truth and production estimates",
+    "completion": "Every required start terminates within its declared work lease, objective consistency passes, final candidate is independently assessed; exhaustion or unavailable stages are explicit incomplete",
+    "boundary_gate": "Independent signed Poisson-deviance residual derivative tests at exact zero before TRF comparisons",
+    "interpretation": "Independent agreement is not global optimality"
+  },
+  "evaluation_rules": {
+    "mandatory_correctness": "Every attempt, including failure, must preserve physics/count semantics, budgets, exact returned-candidate assessment and truthful completeness. Any demonstrated correctness violation disqualifies that implementation until a versioned correction.",
+    "control_ids": ["D00", "D01"],
+    "control_problems": 8,
+    "control_quality_gate": "All eight predeclared positive-background, separated-lifetime control problems numerically accepted with complete independent audits and absolute signed centered-NLL gap <= 0.01; negative gaps below -0.01 indicate audit insufficiency and leave reference-based eligibility unresolved, not production failure.",
+    "signed_gap": "production centered NLL minus independent audit centered NLL, never clipped",
+    "gap_classifications": ["complete agreement: abs(gap)<=0.01", "production worse: gap>0.01", "production better: gap<-0.01", "audit incomplete: agreement unestablished", "production missing/nonfinite", "audit missing/nonfinite"],
+    "robustness": "Report remaining 72 problems by declared stratum and assumption, including acceptance, gaps, missingness, boundaries and work. Zero-background D09 is nonregular and belongs here. Do not silently drop or relabel difficult controls after inspecting data.",
+    "aspirational_target": "80/80 complete independent agreements is descriptive, not the sole production eligibility rule",
+    "recoverability": "Separate truth-based component recovery for separated positive matched cases; zero-component lifetime error undefined; equal components and mono/bi generation fitted with K=3 do not have unique labelled truth. IRF mismatch is not solely numerical error.",
+    "all_attempt_denominators": {"per_configuration": 80, "per_control_configuration": 8, "per_robustness_configuration": 72, "audits": 80},
+    "failure_classes": ["no_finite_candidate", "initialization_incomplete", "seed_coverage_incomplete", "derivative_unavailable", "solver_failed_with_finite_candidate", "validation_failed", "validation_incomplete", "recovery_start_limit", "recovery_call_limit", "deadline", "fresh_assessment_failed", "audit_incomplete", "exception", "missing_task"],
+    "reporting": "Acceptance and agreement use all-attempt denominators; additionally report completed denominators explicitly. Preserve signed gaps when audit incomplete as provisional only. Report median/p90/max wall time and all work counters; deadline times are censored observations, not omitted.",
+    "selection": "Among control-eligible correct candidates compare robustness failures/gaps and paired runtime/work distributions. Prefer a cheaper policy only if no newly observed unresolved worse-than-reference problems compared with a more expensive eligible candidate; otherwise return tradeoff for maintainer review. No automatic default selection.",
+    "no_eligible_candidate": "Stop and report every failure; version and re-review any algorithm, threshold, budget or population revision. Never automatically relax thresholds, increase limits or remove cases.",
+    "revision_rule": "Any settings change after preliminary observation requires a versioned protocol amendment and explicit affected-task replay labels; previous observations cease to be untouched evidence. Historical #28/#33 and A-F data cannot tune settings."
+  },
+  "operational_pilot": {
+    "execution_authorized": false, "role": "Separate operational measurements; not untouched qualification or comprehensive results",
+    "namespace": [37, 2, 20261101, 0], "replicates": {"deterministic": 1, "poisson": 1},
+    "conditions": [
+      {"id": "P00", "bins": 256, "signal_photons": 20000, "lifetimes_ns": [0.6, 2, 4.8], "irf": "gaussian", "background": 0.5, "shift_ns": 0.043},
+      {"id": "P01", "bins": 256, "signal_photons": 5000, "lifetimes_ns": [1, 1.2, 3], "irf": "emg", "background": 1, "shift_ns": -0.043},
+      {"id": "P02", "bins": 128, "signal_photons": 2000, "lifetimes_ns": [0.6, 2, 4.8], "irf": "sampled_nonzero_endpoints", "background": 0, "shift_ns": 0}
+    ],
+    "inherited_fields": "Common grid spacing, bounds, fractions and IRF definitions; matched assumptions only; seed namespace suffix condition integer then replicate 0",
+    "configurations": "Both adapters, compact start layout; operational-only cap 20000 optimization calls and 60 seconds per fit",
+    "audit": "Candidate 16 TRF plus 8 Powell layout, operational-only cap 40000 direct calls and 120 seconds",
+    "counts": {"problems": 6, "fits": 12, "audits": 6, "tasks": 18},
+    "max_worker_seconds": 1440,
+    "next_gate": "After implementation review and explicit authorization, measure actual bounded per-phase timings and throughput; estimate comprehensive wall time including incomplete/censored cases before requesting 560 tasks. Pilot-based revisions require protocol versions."
+  },
+  "qualification_boundary": "PR3 requires separately reviewed frozen protocol and disjoint namespace/observations. Strict 100/100 target remains a proposal, not a frozen criterion.",
+  "comprehensive_ceiling_worker_seconds": 283200,
+  "comprehensive_cost_status": "78.67 worker-hours is the sum of candidate wall ceilings, not a measured runtime estimate; no population generated or run"
+}

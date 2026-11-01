@@ -45,7 +45,7 @@ def package_contract(root: Path) -> dict:
         | literal(structure, "CLOSURE_SUPPORT_FILES")
         | {f"{name}/__init__.py" for name in retained}
     )
-    require(len(files) == 67, "Production module inventory changed")
+    require(len(files) == 71, "Production module inventory changed")
     return {
         "files": sorted(files),
         "removed": list(literal(structure, "REMOVED_FLAT_FACADES")),
@@ -163,6 +163,13 @@ def inspect_artifacts(
         "tests/test_fixed_k_derivatives.py",
         "tests/test_fixed_k_diagnostics.py",
         "tests/test_fixed_k_contracts.py",
+        "docs/design/issue37_pr2a_triexponential.md",
+        "configs/issue37_pr2_development_v1.json",
+        "tests/test_triexponential.py",
+        "tests/test_triexponential_initialization.py",
+        "tests/test_triexponential_solvers.py",
+        "tests/test_triexponential_scheduling.py",
+        "tests/test_triexponential_protocol.py",
     }
     # A reviewed deletion in an uncommitted release-preparation diff should
     # disappear from the sdist; only files present in this checkout can ship.
@@ -216,6 +223,22 @@ for name in contract["files"]:
     module = "tcspc_toolkit." + name.removesuffix(".py").replace("/", ".")
     importlib.import_module(module.removesuffix(".__init__"))
 print("Installed canonical imports, 66 exports, 38 removals and base-only optional isolation PASS")
+import numpy as np
+from tcspc_toolkit.estimation.triexponential import (
+    TriexponentialFitSettings, fit_triexponential_reconvolution,
+)
+t = np.arange(33) / 4
+kernel = np.zeros(33)
+kernel[2:5] = (1, 2, 1)
+result = fit_triexponential_reconvolution(
+    t, np.zeros(33), kernel, lifetime_bounds_ns=(0.1, 10),
+    temporal_shift_bounds_ns=(-0.4, 0.4),
+    settings=TriexponentialFitSettings(10, 0, 100, 60),
+)
+assert result.numerical.accepted and result.centered_nll == 0
+assert result.parameters.amplitudes == (0, 0, 0)
+assert not hasattr(tcspc_toolkit, "fit_triexponential_reconvolution")
+print("Installed explicit-settings K=3 analytical-zero smoke PASS")
 """
     run(
         [

@@ -63,6 +63,7 @@ class _WorkLimits:
 class _WorkLedger:
     limits: _WorkLimits
     clock: object = monotonic
+    reservation_guard: object = None
     requests: int = 0
     model_calls: int = 0
     objective_calls: int = 0
@@ -106,13 +107,25 @@ class _WorkLedger:
         reason = None
         if self.deadline_reached:
             reason = "wall_time_limit"
-        elif self.phases[phase]["model_calls"] >= limits.phase_model_calls[phase]:
+        elif self.reservation_guard is not None:
+            reason = self.reservation_guard(phase)
+        if (
+            reason is None
+            and self.phases[phase]["model_calls"] >= limits.phase_model_calls[phase]
+        ):
             reason = "phase_model_limit"
-        elif self.model_calls >= limits.model_calls:
+        elif reason is None and self.model_calls >= limits.model_calls:
             reason = "model_limit"
-        elif objective and self.objective_attempts >= limits.objective_calls:
+        elif (
+            reason is None
+            and objective
+            and self.objective_attempts >= limits.objective_calls
+        ):
             reason = "objective_limit"
-        elif self.charged_component_convolutions + k > limits.component_convolutions:
+        elif (
+            reason is None
+            and self.charged_component_convolutions + k > limits.component_convolutions
+        ):
             reason = "component_work_limit"
         if reason:
             self.blocked.append((phase, reason))
@@ -141,6 +154,8 @@ class _FixedKProblem:
         self.coordinates = coordinates
         self.work = _WorkLedger(limits, clock)
         self.best_finite = None
+        # Optional consumer retains evidence; it must explicitly select/promote it.
+        self.evaluation_observer = None
         self._evaluation_id = 0
         self._identity = object()
 
@@ -221,6 +236,8 @@ class _FixedKProblem:
             and (self.best_finite is None or value < self.best_finite.centered_nll)
         ):
             self.best_finite = result
+        if self.evaluation_observer is not None:
+            self.evaluation_observer(result)
         return result
 
 
@@ -338,10 +355,20 @@ def _shape_side(problem, base, index, sign, step, policy, phase):
 
 
 def _model_derivatives(
-    problem: _FixedKProblem, base: _Evaluation, policy: _DerivativePolicy, *, phase
+    problem: _FixedKProblem,
+    base: _Evaluation,
+    policy: _DerivativePolicy,
+    *,
+    phase,
+    active_indices=None,
 ):
     """Analytic linear columns; safeguarded nonlinear columns and sided scores."""
     p = problem.coordinates
+    active = set(range(p.dimension)) if active_indices is None else set(active_indices)
+    if not active or any(
+        type(i) is not int or not 0 <= i < p.dimension for i in active
+    ):
+        raise ValueError("active indices must be nonempty valid coordinate indices")
     unavailable = _CoordinateDerivative(None, None, None, "invalid_base", None)
     if (
         base.problem_id is not problem._identity
@@ -378,6 +405,11 @@ def _model_derivatives(
     problem.work.request(phase)
     basis, failure = problem._model(unit, phase, objective=False)
     for index in (*range(k), p.dimension - 2):
+        if index not in active:
+            descriptions[index] = _CoordinateDerivative(
+                None, None, None, "fixed_coordinate", None
+            )
+            continue
         column = (
             np.full(mu.size, p.background_scale)
             if index == p.dimension - 2
@@ -397,6 +429,11 @@ def _model_derivatives(
             None,
         )
     for index in (*range(k, 2 * k), p.dimension - 1):
+        if index not in active:
+            descriptions[index] = _CoordinateDerivative(
+                None, None, None, "fixed_coordinate", None
+            )
+            continue
         shift = index == p.dimension - 1
         if shift and not any(base.parameters.amplitudes):
             if geometry.region == "support_discontinuity":
@@ -495,5 +532,7 @@ def _model_derivatives(
     )
 
 
-def _objective_derivatives(problem, base, policy, *, phase):
-    return _model_derivatives(problem, base, policy, phase=phase).objective
+def _objective_derivatives(problem, base, policy, *, phase, active_indices=None):
+    return _model_derivatives(
+        problem, base, policy, phase=phase, active_indices=active_indices
+    ).objective
