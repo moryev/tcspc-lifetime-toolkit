@@ -290,6 +290,7 @@ class _ModelDerivatives:
     objective: _DerivativeEvaluation
     jacobian: object
     column_errors: object
+    columns: tuple = ()
 
 
 def _shape_side(problem, base, index, sign, step, policy, phase):
@@ -529,6 +530,7 @@ def _model_derivatives(
         _DerivativeEvaluation(base, tuple(descriptions), geometry.region, complete),
         jacobian,
         error_array,
+        tuple(_readonly(c) if c is not None else None for c in columns),
     )
 
 

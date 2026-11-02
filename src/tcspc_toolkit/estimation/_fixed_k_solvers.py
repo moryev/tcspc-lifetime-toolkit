@@ -4,12 +4,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, least_squares
 
 from tcspc_toolkit.estimation._fixed_k_objective import (
     _objective_derivatives,
     _shift_geometry,
+    _model_derivatives,
 )
+from tcspc_toolkit.estimation._poisson_residuals import _poisson_residuals
 
 
 class _UnusablePair(Exception):
@@ -58,6 +60,10 @@ class _Invocation:
     seconds: float
     derivative_statuses: tuple[str, ...]
     safeguard_trials: int
+    solver: str = "lbfgsb"
+    residual_evaluations: int = 0
+    jacobian_evaluations: int = 0
+    inward_start_coordinates: tuple | None = None
 
 
 def _run_lbfgsb(
@@ -211,4 +217,153 @@ def _run_lbfgsb(
         problem.work.clock() - started,
         statuses,
         trials,
+    )
+
+
+def _run_trf(
+    problem, candidate, settings, *, kind, seed_id, calls, seconds, fix_zero_face=False
+):
+    """One restricted or joint TRF call; every physical evaluation is charged.
+
+    SciPy's feasible inward adjustment is observed, not reproduced or used as
+    a hidden lower bound. The exact submitted boundary candidate is retained.
+    """
+    started = problem.work.clock()
+    before = problem.work.phases["optimization"]["model_calls"]
+    x0 = candidate.coordinates.copy()
+    fixed = set()
+    region = _shift_geometry(
+        problem.inputs.time_ns,
+        problem.inputs.kernel,
+        candidate.parameters.temporal_shift_ns,
+    ).region
+    if region in ("support_discontinuity", "continuous_nondifferentiable_knot"):
+        fixed.add(7)
+    if fix_zero_face:
+        fixed.update(i for i in (0, 1, 2, 6) if x0[i] == 0)
+        fixed.update(i + 3 for i in range(3) if i in fixed)
+    free = tuple(i for i in range(8) if i not in fixed)
+    best, endpoint = candidate, None
+    previous = problem.evaluation_observer
+    residual_calls = jacobian_calls = 0
+    inward = None
+    statuses = ()
+    success = status = None
+    termination = "not_invoked"
+
+    def observe(e):
+        nonlocal best
+        if e.finite and e.centered_nll < best.centered_nll:
+            best = e
+        if previous is not None:
+            previous(e)
+
+    def expand(values):
+        x = x0.copy()
+        x[list(free)] = values
+        return x
+
+    def evaluate(values, origin):
+        e = problem.evaluate(expand(values), phase="optimization", origin=origin)
+        if not e.finite:
+            raise _UnusablePair(e.status)
+        return e
+
+    def fun(values):
+        nonlocal residual_calls, inward
+        if residual_calls == 0 and not np.array_equal(expand(values), x0):
+            inward = tuple(map(float, expand(values)))
+        residual_calls += 1
+        e = evaluate(values, "trf_residual")
+        r = _poisson_residuals(problem.inputs.targets, e.expected_counts).values
+        if not np.all(np.isfinite(r)):
+            raise _UnusablePair("residual_unavailable")
+        return r
+
+    def jac(values):
+        nonlocal jacobian_calls, statuses
+        jacobian_calls += 1
+        e = evaluate(values, "trf_jacobian_anchor")
+        r = _poisson_residuals(problem.inputs.targets, e.expected_counts)
+        if not np.all(r.derivative_available):
+            # Conservative: a zero model slope alone does not prove that sqrt(mu)
+            # has zero derivative (mu may grow quadratically on a free face).
+            raise _UnusablePair("residual_derivative_unavailable")
+        model = _model_derivatives(
+            problem,
+            e,
+            settings.derivative_policy,
+            phase="optimization",
+            active_indices=free,
+        )
+        statuses = tuple(d.status for d in model.objective.derivatives)
+        if not model.columns or any(model.columns[i] is None for i in free):
+            raise _UnusablePair("model_jacobian_unavailable")
+        with np.errstate(over="ignore", invalid="ignore"):
+            result = (
+                np.column_stack([model.columns[i] for i in free])
+                * r.derivatives[:, None]
+            )
+        if not np.all(np.isfinite(result)) or problem.work.deadline_reached:
+            raise _UnusablePair("residual_jacobian_unavailable")
+        return result
+
+    problem.evaluation_observer = observe
+    try:
+        with _lease(problem, "optimization", calls, seconds):
+            try:
+                if not free:
+                    raise _UnusablePair("no_free_coordinates")
+                result = least_squares(
+                    fun,
+                    x0[list(free)],
+                    jac=jac,
+                    method="trf",
+                    bounds=(
+                        problem.coordinates.lower[list(free)],
+                        problem.coordinates.upper[list(free)],
+                    ),
+                    ftol=settings.ftol,
+                    xtol=settings.ftol,
+                    gtol=settings.gtol,
+                    x_scale=1.0,
+                    max_nfev=settings.max_iterations,
+                )
+                success, status = bool(result.success), int(result.status)
+                termination = str(result.message)
+                endpoint = problem.evaluate(
+                    expand(result.x), phase="optimization", origin="trf_endpoint"
+                )
+                if not endpoint.finite:
+                    termination += "; endpoint:" + endpoint.status
+            except _UnusablePair as error:
+                termination = str(error)
+            except (
+                ValueError,
+                FloatingPointError,
+                OverflowError,
+                np.linalg.LinAlgError,
+            ) as error:
+                termination = f"solver_numerical_failure:{type(error).__name__}:{error}"
+    finally:
+        problem.evaluation_observer = previous
+    return _Invocation(
+        kind,
+        seed_id,
+        candidate,
+        best,
+        endpoint,
+        success,
+        status,
+        termination,
+        tuple(sorted(fixed)),
+        calls,
+        problem.work.phases["optimization"]["model_calls"] - before,
+        problem.work.clock() - started,
+        statuses,
+        0,
+        "trf",
+        residual_calls,
+        jacobian_calls,
+        inward,
     )

@@ -22,7 +22,7 @@ from tcspc_toolkit.estimation._fixed_k_objective import (
     _shift_geometry,
 )
 from tcspc_toolkit.estimation._fixed_k_initialization import _build_seed_bank, _SeedBank
-from tcspc_toolkit.estimation._fixed_k_solvers import _run_lbfgsb, _lease
+from tcspc_toolkit.estimation._fixed_k_solvers import _run_lbfgsb, _run_trf, _lease
 from tcspc_toolkit.estimation._fixed_k_diagnostics import (
     _validate_candidate,
     _ValidationProbe,
@@ -369,7 +369,8 @@ def _fit_triexponential(
         allowance = seed_calls // n + int(i < seed_calls % n)
         if allowance == 0:
             break
-        invocation = _run_lbfgsb(
+        runner = _run_trf if settings.solver == "trf" else _run_lbfgsb
+        invocation = runner(
             problem,
             seed,
             settings,
@@ -423,7 +424,9 @@ def _fit_triexponential(
             if allowance == 0:
                 recovery_reason = "required_recovery_call_limit"
                 break
-            invocation = _run_lbfgsb(
+            recovery_solver = settings.recovery_solver or settings.solver
+            runner = _run_trf if recovery_solver == "trf" else _run_lbfgsb
+            invocation = runner(
                 problem,
                 candidate,
                 settings,
@@ -541,6 +544,10 @@ def _fit_triexponential(
             s.seconds,
             s.derivative_statuses,
             s.safeguard_trials,
+            s.solver,
+            s.residual_evaluations,
+            s.jacobian_evaluations,
+            s.inward_start_coordinates,
         )
         for i, s in enumerate(starts)
     )

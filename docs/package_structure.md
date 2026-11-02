@@ -1,8 +1,16 @@
 # Package architecture and post-Issue-12 import cleanup
 
+Issue #37 PR 2B adds `estimation._poisson_residuals`,
+`benchmarks._triexponential_audit` and `benchmarks.triexponential`.
+The current inventory is **57 substantive implementations and 74 production
+Python files**. The audit has no production-module dependencies; development
+orchestration composes the audit and fitter only through explicit calls.
+See the [PR 2B contract](design/issue37_pr2b_numerics.md). No experiments or
+production-policy selection are implied by this software checkpoint.
+
 Issue #37 PR 2A adds `estimation.triexponential` and three private numerical
 modules: `_fixed_k_initialization`, `_fixed_k_solvers`, and `_fixed_k_search`.
-The current inventory is **54 substantive implementations and 71 production
+The PR 2A inventory was **54 substantive implementations and 71 production
 Python files**. The module-qualified K=3 API requires explicit development
 settings; no production policy or scientific qualification has been selected.
 Existing mono/bi implementations, root exports and schema remain unchanged.

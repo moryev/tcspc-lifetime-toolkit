@@ -70,8 +70,16 @@ class TriexponentialFitSettings:
     derivative_reductions: int = 3
     validation_steps: tuple[float, ...] = (1e-4, 1e-2)
     descent_tolerance: float = 0.001
+    solver: str = "lbfgsb"
+    recovery_solver: str | None = None
 
     def __post_init__(self):
+        if self.solver not in ("lbfgsb", "trf") or self.recovery_solver not in (
+            None,
+            "lbfgsb",
+            "trf",
+        ):
+            raise ValueError("solver must be lbfgsb or trf")
         for name in (
             "max_seed_starts",
             "max_optimization_calls",
@@ -164,6 +172,10 @@ class TriexponentialStartDiagnostics:
     elapsed_seconds: float
     derivative_statuses: tuple[str, ...]
     safeguard_trials: int
+    solver: str = "lbfgsb"
+    residual_evaluations: int = 0
+    jacobian_evaluations: int = 0
+    inward_start_coordinates: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)

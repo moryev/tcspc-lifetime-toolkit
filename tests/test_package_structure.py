@@ -354,6 +354,7 @@ PHYSICS_IMPORTS = {
     },
 }
 CLASSICAL_IMPORTS = {
+    f"{ESTIMATION}._poisson_residuals": {"dataclasses", "numpy"},
     f"{ESTIMATION}.triexponential": {
         "__future__",
         "collections.abc",
@@ -379,6 +380,7 @@ CLASSICAL_IMPORTS = {
         "numpy",
         "scipy.optimize",
         f"{ESTIMATION}._fixed_k_objective",
+        f"{ESTIMATION}._poisson_residuals",
     },
     f"{ESTIMATION}._fixed_k_search": {
         "dataclasses",
@@ -1106,6 +1108,9 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
 # Final Issue-#3 inventory. Namespace-only initializers count as support, not
 # scientific implementations. Historical facades remain supported through #12.
 CLOSURE_CANONICAL_FILES = {
+    "estimation/_poisson_residuals.py",
+    "benchmarks/_triexponential_audit.py",
+    "benchmarks/triexponential.py",
     "estimation/triexponential.py",
     "estimation/_fixed_k_initialization.py",
     "estimation/_fixed_k_solvers.py",
@@ -1572,11 +1577,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 71
-    assert len(CLOSURE_CANONICAL_FILES) == 54
+    assert len(actual) == 74
+    assert len(CLOSURE_CANONICAL_FILES) == 57
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 54 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 57 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))

@@ -472,6 +472,15 @@ authorization. Preserve both historical failed audit criteria (119/121 and
 
 ## Issue #37 — fixed-K multi-exponential fitting
 
+**Current PR 2B authorization (November 2, 2026):** PR 2A is locally committed
+at `56466959c9f2948bb71adee3abb75739c5a464b5`. The maintainer now authorizes
+TRF, independent direct-convolution auditing and development infrastructure,
+with deterministic tests only. This supersedes the earlier PR 2A-only execution
+boundary below. Read [the PR 2B contract](docs/design/issue37_pr2b_numerics.md).
+The operational pilot, comprehensive study, production policy selection and
+qualification remain unauthorized. Final review and one local PR 2B checkpoint
+commit are now authorized; no push or publication.
+
 - **Current numerical baseline:** `physics.forward_model` computes general K-component reconvolved expectations with a shared shift and one post-convolution background. Existing mono/bi inference is unchanged. PR 2A adds `estimation.triexponential.fit_triexponential_reconvolution` with required explicit development settings; arbitrary-K fitting and automatic model-order selection remain absent.
 - **Authorized current milestone — PR 2A only:** dedicated K=3 records/entry point, deterministic 109-template initialization, safeguarded L-BFGS-B, seed-first bounded recovery, candidate-specific validation and deterministic tests. Read [the PR-1 contract](docs/design/issue37_fixed_k_foundations.md) and [PR-2A contract/handoff](docs/design/issue37_pr2a_triexponential.md). The development manifest is nonexecuting. No TRF/audit study, production default, qualification, commit, push or PR creation is authorized by this milestone.
 - **Preferred initial scientific scope:** fixed **K=3** (eight nominal parameters: three nonnegative amplitudes, three positive bounded lifetimes, one nonnegative background and one bounded shared shift); design reusable internals for later fixed K>3 without promising arbitrary-K production support now. Preserve exact zero components, equal lifetimes, input/returned component ordering semantics and explicit singularities.
@@ -538,8 +547,9 @@ initializers remain: 61 production Python files in total.
 That completed restructuring inventory is historical. Issue #28 PR 2 added one
 canonical implementation; PR 3 added two more. Issue #37 PR 1 added three private
 foundation modules; PR 2A adds the dedicated K=3 API and three private numerical
-modules. The current inventory is 54 substantive implementations
-and 71 production Python files, with unchanged
+modules. PR 2B adds a residual module and two audit/development modules.
+The current inventory is 57 substantive implementations
+and 74 production Python files, with unchanged
 initializer APIs.
 
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.
@@ -564,7 +574,7 @@ Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
 - #28 PRs 1–3 are merged; #28 remains open and its original failed 119/121 audit criterion and evidence are immutable;
 - #33 PR #35 is merged; **#33 remains open but deferred**, with the new failed 99/100 strict audit target and required-recovery-capacity limitation explicitly retained;
-- **current authorized scope:** Issue #37 PR 2A K=3 optimizer foundations and deterministic tests only; stop with an uncommitted checkpoint before PR 2B audits/development experiments or PR 3 measurement integration/scientific qualification;
+- **current authorized scope:** Issue #37 PR 2B final review, deterministic validation and one local checkpoint commit; stop before pilot or comprehensive experiments, production selection, publication or PR 3 qualification;
 - preserve PR 1/2 physics/statistics, existing bi-exponential numerical contracts, the ordered 66-name root API, and all historical evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
 - do not start package movement, new scientific qualification, or automatic publishing/tagging without explicit authorization.
