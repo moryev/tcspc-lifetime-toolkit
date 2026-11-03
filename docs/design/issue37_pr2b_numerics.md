@@ -158,3 +158,86 @@ rejects a mismatched source/manifest/environment lock before cross-scoring.
 Numerical solver exceptions retain finite evidence and failed invocation records.
 Timeout cleanup is bounded and an unconfirmed process termination stops the run.
 These corrections use software fixtures only, with no pilot/development draws.
+
+## Two-stage input integrity correction
+
+The original pending proposal
+`docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_proposal.json`
+(SHA-256 `a12ce4d42f13242d910544d128f97791b219998ec9e5904d4fa50f38376626db`)
+and its preflight report remain unchanged historical planning artifacts. They
+cannot authorize the corrected runner. No pilot inputs have been generated.
+
+Execution now uses the explicit `issue37-development-execution-v2` schema.
+One authoritative fingerprint enforces all production Python files, the runner,
+`pyproject.toml`, exact manifest bytes and canonical contents, the source commit
+and confirmation that these sources are committed. It also enforces Python and
+interpreter identity, OS, installed dependency versions, relevant Python/thread
+environment controls, loaded numerical-library binary hashes and effective
+thread counts, and package/module origins. Resolved conditions, observation
+identities, RNG construction, settings, task order, budgets and deadlines are
+part of that same fingerprint. Settings resolution is shared with execution;
+this correction changes no numerical settings or algorithms. Any mismatch is
+fatal before preparation, worker execution, resume or verified reporting.
+
+Timestamps, explanatory provenance, review notes and aggregate display counts
+outside `fingerprint` are informational. Authorization still requires a true
+`execution_authorized` field and a real, nonempty `maintainer_review`; the whole
+approved lock is also hashed into the evidence. `inspect` is metadata-only and
+emits a pending lock. A proposal made from this uncommitted correction records
+`committed_sources=false`, and cannot execute even if its approval flag is flipped.
+After a separately approved commit, regenerate and review the lock against the
+new commit before authorizing execution. Old-schema locks fail closed.
+
+The commands are deliberately separate:
+
+1. `prepare --pilot --directory RUN --execution-lock APPROVED`: requires a fresh
+   directory. Writes the approved lock and a durable preparation-start marker,
+   prepares every required input exactly once, saves hashed input checkpoints,
+   and atomically publishes `input_inventory.json` only after all inputs pass.
+   It re-reads the seal and every checkpoint before returning. It never launches
+   a fit or audit. An exception/interruption leaves evidence and an incomplete
+   preparation; neither `prepare` nor `run` retries it in that directory.
+2. `run --pilot --directory RUN --execution-lock APPROVED`: generates no inputs.
+   It verifies the current execution fingerprint, seal, every input, complete
+   task mappings and all existing attempts before starting workers. The worker
+   repeats these checks before accessing its input and publishing its result.
+   Missing/corrupted sealed inputs are fatal, never reconstructed from a seed.
+3. `report --pilot --directory RUN --execution-lock APPROVED`: requires the same
+   verified provenance. It performs no fitting. Missing numerical outcomes stay
+   in the planned denominator, but unverified input/execution provenance blocks
+   cross-scoring and the report. Save report output outside the run's checkpoint
+   directory; unknown JSON evidence inside that directory is rejected.
+
+Each sealed entry binds problem/observation/assumed-IRF identity, deterministic
+versus raw-count kind, shape/dtype and little-endian float64 hashes of grid,
+observation, assumed/generating kernels and mean, truth metadata, input filename,
+raw checkpoint hash and canonical payload hash. The inventory binds the complete
+task-to-input map, approved lock, fingerprint and manifest. Its independently
+verifiable canonical payload hash is the inventory identity. Paired assumptions
+must have identical observation/grid/generating/truth identities. Declared array
+hashes are recomputed from saved arrays, not trusted as labels.
+
+Per-task immutable start receipts prevent a deleted result from being treated
+as a never-attempted task. Worker start receipts permit only one worker per
+attempt. Running, exception, timeout and completed attempts are never replaced
+on resume. A start receipt with a missing checkpoint is reported as interrupted;
+running/interrupted attempts block new workers until termination is reconciled
+under separate controlled authorization. There is no automatic recovery command.
+Reports may still describe these verified incomplete attempts. Unknown, duplicate
+or conflicting evidence and receipts fail verification.
+
+Task checkpoints and worker transports bind the same execution-lock hash,
+inventory hash and exact input checkpoint. Worker transport is verified before
+publication as a result and rechecked on every resume and report, including
+transports retained beside terminal attempts. Derived cross-scores/recovery summaries are separate
+from original hashed result payloads. Signed gaps, censored time and unknown
+partial work remain explicit. SHA-256 checks detect inconsistent evidence;
+they are integrity records, not signatures against an actor rewriting an entire
+evidence directory. The workflow remains single-writer and serial.
+
+All correction tests use tiny fixed software arrays. The six pilot problems,
+D00-D17 manifest, namespaces, settings, 24-minute worker ceiling and bounded
+cleanup procedure remain unchanged. Source/environment verification overhead
+is distinct from physical-model work; external worker deadlines include startup
+and worker verification. Operational cost remains unmeasured until separately
+authorized execution. No production default or qualification claim is implied.

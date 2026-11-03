@@ -155,7 +155,18 @@ def test_script_import_is_inert_and_execution_lock_is_required(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "change", ["source", "manifest", "scope", "threads", "permission"]
+    "change",
+    [
+        "source",
+        "manifest",
+        "manifest_bytes",
+        "scope",
+        "threads",
+        "permission",
+        "environment",
+        "settings",
+        "uncommitted",
+    ],
 )
 def test_execution_fingerprint_rejects_changed_authorization(
     tmp_path, monkeypatch, change
@@ -169,9 +180,27 @@ def test_execution_fingerprint_rejects_changed_authorization(
     runner.write_text("# software runner\n")
     monkeypatch.setitem(module, "ROOT", tmp_path)
     monkeypatch.setitem(module, "__file__", str(runner))
+    monkeypatch.setitem(
+        module,
+        "repository_identity",
+        lambda paths: dict(commit="software", committed_sources=True),
+    )
+    monkeypatch.setitem(
+        module,
+        "execution_environment",
+        lambda: dict(
+            threads=__import__("os").environ.get("OMP_NUM_THREADS"),
+            dependency="software-v1",
+        ),
+    )
     monkeypatch.setenv("OMP_NUM_THREADS", "1")
     m = manifest()
+    (tmp_path / "pyproject.toml").write_text("# software fixture\n")
+    manifest_path = tmp_path / "configs/issue37_pr2_development_v1.json"
+    manifest_path.parent.mkdir()
+    manifest_path.write_text(json.dumps(m))
     lock = dict(
+        schema=development.EXECUTION_SCHEMA,
         execution_authorized=True,
         maintainer_review="software-test-only",
         fingerprint=script["fingerprint"](m, True),
@@ -184,10 +213,29 @@ def test_execution_fingerprint_rejects_changed_authorization(
         source.write_text("# changed software fixture\n")
     elif change == "manifest":
         m["defaults"]["signal_photons"] += 1
+        manifest_path.write_text(json.dumps(m))
+    elif change == "manifest_bytes":
+        manifest_path.write_text(json.dumps(m, indent=2))
     elif change == "scope":
         pilot = False
     elif change == "threads":
         monkeypatch.setenv("OMP_NUM_THREADS", "2")
+    elif change == "environment":
+        monkeypatch.setitem(
+            module, "execution_environment", lambda: {"dependency": "changed"}
+        )
+    elif change == "settings":
+        lock["fingerprint"]["execution"]["settings"]["audit"]["model_calls"] += 1
+        path.write_text(json.dumps(lock))
+    elif change == "uncommitted":
+        monkeypatch.setitem(
+            module,
+            "repository_identity",
+            lambda paths: dict(commit="software", committed_sources=False),
+        )
+        # Even an internally matching lock cannot authorize uncommitted source.
+        lock["fingerprint"] = script["fingerprint"](m, True)
+        path.write_text(json.dumps(lock))
     else:
         lock["execution_authorized"] = False
         path.write_text(json.dumps(lock))
@@ -217,34 +265,41 @@ def test_report_rejects_foreign_fingerprint_before_cross_scoring(tmp_path, monke
 
 def test_sealed_store_reporting_does_not_mutate_attempts(tmp_path, monkeypatch):
     from test_triexponential_audit import completed_control, control, fake_fit
+    from test_triexponential_integrity import pack_input, software_lock
 
     audit = completed_control(monkeypatch)
     time, observed, kernel = control()
     problem = dict(
         id="software:mean:matched",
+        observation_id="software:mean",
+        seed=None,
         control=True,
         assumed_irf="matched",
-        condition=dict(stratum="software"),
+        condition=dict(
+            stratum="software", bins=len(time), bin_width_ns=0.25, time_origin_ns=0
+        ),
     )
     tasks = [
         dict(id=problem["id"] + ":" + config, problem=problem, configuration=config)
         for config in ("audit", "trf:compact")
     ]
-    store = development.DevelopmentStore(tmp_path, {"software_test": True})
-    store.execute(
-        "input:" + problem["id"],
-        lambda: dict(
-            time=time,
-            observed=observed,
-            kernel=kernel,
+    lock = software_lock(tasks)
+    store = development.DevelopmentStore(tmp_path, lock, verify_execution=lambda: lock)
+    store.prepare_inputs(
+        tasks,
+        lambda *args: pack_input(
+            time,
+            observed,
+            kernel,
             truth=dict(lifetimes_ns=[1, 2, 3], amplitudes=[0, 0, 0]),
         ),
     )
-    store.execute(tasks[0]["id"], lambda: audit)
+    store.execute_attempt(tasks[0], tasks, lambda binding: audit)
     p = fake_fit(audit.parameters, time, kernel, observed)
-    store.execute(
-        tasks[1]["id"],
-        lambda: dict(
+    store.execute_attempt(
+        tasks[1],
+        tasks,
+        lambda binding: dict(
             parameters=vars(p.parameters),
             numerical=vars(p.numerical),
             expected_counts=p.expected_counts,
@@ -253,7 +308,9 @@ def test_sealed_store_reporting_does_not_mutate_attempts(tmp_path, monkeypatch):
     )
     before = {p.name: p.read_bytes() for p in tmp_path.glob("*.json")}
     report = development.report_store(tasks, store)
-    assert report["attempts"][1]["result"]["cross_score"]["status"] == "agreement"
+    assert report["analyses"][0]["cross_score"]["status"] == "agreement"
+    assert "cross_score" not in report["attempts"][1]["result"]
+    assert report["provenance"]["verified"]
     assert before == {p.name: p.read_bytes() for p in tmp_path.glob("*.json")}
 
 
@@ -314,17 +371,10 @@ def test_unconfirmed_cleanup_is_bounded(monkeypatch):
 def test_cleanup_failure_persists_timeout_and_stops_execution_and_resume(
     tmp_path, monkeypatch
 ):
-    script = runpy.run_path(str(ROOT / "scripts/develop_triexponential.py"))
-    module = script["main"].__globals__
-    lock = {"software_fixture": True}
-    monkeypatch.setitem(module, "require_authorization", lambda *a: lock)
-    monkeypatch.setitem(
-        module,
-        "construct_problem",
-        lambda *a, **kw: {
-            "observation_sha256": "software-only-no-generated-observation",
-        },
-    )
+    from test_triexponential_integrity import store_fixture, mock_script
+
+    store, tasks, lock = store_fixture(tmp_path)
+    script, module = mock_script(monkeypatch, tasks, lock)
     calls = []
 
     def unconfirmed(*args):
@@ -344,8 +394,6 @@ def test_cleanup_failure_persists_timeout_and_stops_execution_and_resume(
         with pytest.raises(script["WorkerCleanupError"], match="run stopped"):
             script["main"](argv)
     assert len(calls) == 1  # No further task or resume retry after cleanup failure.
-    store = development.DevelopmentStore(tmp_path, lock)
-    tasks = development.task_inventory(manifest(), pilot=True)
     records = [store.read(t["id"]) for t in tasks]
     assert records[0]["result"]["failure"] == "external_worker_timeout"
     assert records[0]["result"]["cleanup_complete"] is False

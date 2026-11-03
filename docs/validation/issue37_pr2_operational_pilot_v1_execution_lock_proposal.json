@@ -1,0 +1,1912 @@
+{
+  "approval_transition": {
+    "approved_lock_path": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\docs\\validation\\issue37_pr2_operational_pilot_v1_execution_lock_approved.json",
+    "command_status": "NOT READY: pending approval and input-inventory gate",
+    "proposal_remains_immutable": true,
+    "proposed_powershell_command": "Set-Location 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition'\n$env:OMP_NUM_THREADS = '1'\n$env:OPENBLAS_NUM_THREADS = '1'\n$env:MKL_NUM_THREADS = '1'\n$env:VECLIB_MAXIMUM_THREADS = '1'\n$env:NUMEXPR_NUM_THREADS = '1'\n$env:BLIS_NUM_THREADS = '1'\n& 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe' 'scripts/develop_triexponential.py' run --pilot --manifest 'configs/issue37_pr2_development_v1.json' --directory 'data/generated/issue37_pr2_operational_pilot_v1' --execution-lock 'docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved.json'",
+    "requirements": "Resolve the input-inventory blocker under explicit maintainer direction first. After execution approval, create a separate approved lock referencing this proposal hash and the actual reviewed source/environment; set execution_authorized=true and a nonempty real review identifier. If source changes, regenerate/review the entire lock; do not reuse this source fingerprint."
+  },
+  "authorization_status": "pending_maintainer_execution_approval",
+  "comprehensive_namespace": [
+    37,
+    2,
+    20261101,
+    1
+  ],
+  "created_utc": "2026-11-02T15:15:18.645106+00:00",
+  "environment": {
+    "dependencies": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "tcspc-lifetime-toolkit": "0.8.0"
+    },
+    "installed_distributions": [
+      {
+        "name": "anyio",
+        "version": "4.14.2"
+      },
+      {
+        "name": "argon2-cffi",
+        "version": "25.1.0"
+      },
+      {
+        "name": "argon2-cffi-bindings",
+        "version": "25.1.0"
+      },
+      {
+        "name": "arrow",
+        "version": "1.4.0"
+      },
+      {
+        "name": "asttokens",
+        "version": "3.0.2"
+      },
+      {
+        "name": "async-lru",
+        "version": "2.3.0"
+      },
+      {
+        "name": "attrs",
+        "version": "26.1.0"
+      },
+      {
+        "name": "babel",
+        "version": "2.18.0"
+      },
+      {
+        "name": "beautifulsoup4",
+        "version": "4.15.0"
+      },
+      {
+        "name": "bleach",
+        "version": "6.4.0"
+      },
+      {
+        "name": "build",
+        "version": "1.6.1"
+      },
+      {
+        "name": "certifi",
+        "version": "2026.6.17"
+      },
+      {
+        "name": "cffi",
+        "version": "2.1.0"
+      },
+      {
+        "name": "charset-normalizer",
+        "version": "3.4.9"
+      },
+      {
+        "name": "colorama",
+        "version": "0.4.6"
+      },
+      {
+        "name": "comm",
+        "version": "0.2.3"
+      },
+      {
+        "name": "contourpy",
+        "version": "1.3.3"
+      },
+      {
+        "name": "coverage",
+        "version": "7.16.2"
+      },
+      {
+        "name": "cycler",
+        "version": "0.12.1"
+      },
+      {
+        "name": "debugpy",
+        "version": "1.8.21"
+      },
+      {
+        "name": "decorator",
+        "version": "5.3.1"
+      },
+      {
+        "name": "defusedxml",
+        "version": "0.7.1"
+      },
+      {
+        "name": "docutils",
+        "version": "0.23"
+      },
+      {
+        "name": "emcee",
+        "version": "3.1.6"
+      },
+      {
+        "name": "executing",
+        "version": "2.2.1"
+      },
+      {
+        "name": "fastjsonschema",
+        "version": "2.21.2"
+      },
+      {
+        "name": "fonttools",
+        "version": "4.63.0"
+      },
+      {
+        "name": "fqdn",
+        "version": "1.5.1"
+      },
+      {
+        "name": "h11",
+        "version": "0.16.0"
+      },
+      {
+        "name": "httpcore",
+        "version": "1.0.9"
+      },
+      {
+        "name": "httpx",
+        "version": "0.28.1"
+      },
+      {
+        "name": "id",
+        "version": "1.6.1"
+      },
+      {
+        "name": "idna",
+        "version": "3.18"
+      },
+      {
+        "name": "iniconfig",
+        "version": "2.3.0"
+      },
+      {
+        "name": "ipykernel",
+        "version": "7.3.0"
+      },
+      {
+        "name": "ipython",
+        "version": "9.15.0"
+      },
+      {
+        "name": "ipython_pygments_lexers",
+        "version": "1.1.1"
+      },
+      {
+        "name": "ipywidgets",
+        "version": "8.1.8"
+      },
+      {
+        "name": "isoduration",
+        "version": "20.11.0"
+      },
+      {
+        "name": "jaraco.classes",
+        "version": "3.4.0"
+      },
+      {
+        "name": "jaraco.context",
+        "version": "6.1.2"
+      },
+      {
+        "name": "jaraco.functools",
+        "version": "4.6.0"
+      },
+      {
+        "name": "jedi",
+        "version": "0.20.0"
+      },
+      {
+        "name": "Jinja2",
+        "version": "3.1.6"
+      },
+      {
+        "name": "joblib",
+        "version": "1.5.3"
+      },
+      {
+        "name": "json5",
+        "version": "0.15.0"
+      },
+      {
+        "name": "jsonpointer",
+        "version": "3.1.1"
+      },
+      {
+        "name": "jsonschema",
+        "version": "4.26.0"
+      },
+      {
+        "name": "jsonschema-specifications",
+        "version": "2025.9.1"
+      },
+      {
+        "name": "jupyter",
+        "version": "1.1.1"
+      },
+      {
+        "name": "jupyter-console",
+        "version": "6.6.3"
+      },
+      {
+        "name": "jupyter-events",
+        "version": "0.12.1"
+      },
+      {
+        "name": "jupyter-lsp",
+        "version": "2.3.1"
+      },
+      {
+        "name": "jupyter_builder",
+        "version": "1.1.1"
+      },
+      {
+        "name": "jupyter_client",
+        "version": "8.9.1"
+      },
+      {
+        "name": "jupyter_core",
+        "version": "5.9.1"
+      },
+      {
+        "name": "jupyter_server",
+        "version": "2.20.0"
+      },
+      {
+        "name": "jupyter_server_terminals",
+        "version": "0.5.4"
+      },
+      {
+        "name": "jupyterlab",
+        "version": "4.6.1"
+      },
+      {
+        "name": "jupyterlab_pygments",
+        "version": "0.3.0"
+      },
+      {
+        "name": "jupyterlab_server",
+        "version": "2.28.0"
+      },
+      {
+        "name": "jupyterlab_widgets",
+        "version": "3.0.16"
+      },
+      {
+        "name": "keyring",
+        "version": "25.7.0"
+      },
+      {
+        "name": "kiwisolver",
+        "version": "1.5.0"
+      },
+      {
+        "name": "lark",
+        "version": "1.3.1"
+      },
+      {
+        "name": "markdown-it-py",
+        "version": "4.2.0"
+      },
+      {
+        "name": "MarkupSafe",
+        "version": "3.0.3"
+      },
+      {
+        "name": "matplotlib",
+        "version": "3.11.1"
+      },
+      {
+        "name": "matplotlib-inline",
+        "version": "0.2.2"
+      },
+      {
+        "name": "mdurl",
+        "version": "0.1.2"
+      },
+      {
+        "name": "mistune",
+        "version": "3.3.3"
+      },
+      {
+        "name": "more-itertools",
+        "version": "11.2.1"
+      },
+      {
+        "name": "narwhals",
+        "version": "2.24.0"
+      },
+      {
+        "name": "nbclient",
+        "version": "0.11.0"
+      },
+      {
+        "name": "nbconvert",
+        "version": "7.17.1"
+      },
+      {
+        "name": "nbformat",
+        "version": "5.10.4"
+      },
+      {
+        "name": "nest-asyncio2",
+        "version": "1.7.2"
+      },
+      {
+        "name": "nh3",
+        "version": "0.3.7"
+      },
+      {
+        "name": "notebook",
+        "version": "7.6.0"
+      },
+      {
+        "name": "notebook_shim",
+        "version": "0.2.4"
+      },
+      {
+        "name": "numpy",
+        "version": "2.5.1"
+      },
+      {
+        "name": "packaging",
+        "version": "26.2"
+      },
+      {
+        "name": "pandas",
+        "version": "3.0.3"
+      },
+      {
+        "name": "pandocfilters",
+        "version": "1.5.1"
+      },
+      {
+        "name": "parso",
+        "version": "0.8.7"
+      },
+      {
+        "name": "pillow",
+        "version": "12.3.0"
+      },
+      {
+        "name": "pip",
+        "version": "26.2"
+      },
+      {
+        "name": "platformdirs",
+        "version": "4.10.1"
+      },
+      {
+        "name": "pluggy",
+        "version": "1.6.0"
+      },
+      {
+        "name": "prometheus_client",
+        "version": "0.25.0"
+      },
+      {
+        "name": "prompt_toolkit",
+        "version": "3.0.52"
+      },
+      {
+        "name": "psutil",
+        "version": "7.2.2"
+      },
+      {
+        "name": "pure_eval",
+        "version": "0.2.3"
+      },
+      {
+        "name": "pycparser",
+        "version": "3.0"
+      },
+      {
+        "name": "Pygments",
+        "version": "2.20.0"
+      },
+      {
+        "name": "pyparsing",
+        "version": "3.3.2"
+      },
+      {
+        "name": "pyproject_hooks",
+        "version": "1.3.3"
+      },
+      {
+        "name": "pytest",
+        "version": "9.1.1"
+      },
+      {
+        "name": "pytest-cov",
+        "version": "7.1.0"
+      },
+      {
+        "name": "python-dateutil",
+        "version": "2.9.0.post0"
+      },
+      {
+        "name": "python-json-logger",
+        "version": "4.1.0"
+      },
+      {
+        "name": "pywin32-ctypes",
+        "version": "0.2.3"
+      },
+      {
+        "name": "pywinpty",
+        "version": "3.0.5"
+      },
+      {
+        "name": "PyYAML",
+        "version": "6.0.3"
+      },
+      {
+        "name": "pyzmq",
+        "version": "27.1.0"
+      },
+      {
+        "name": "readme_renderer",
+        "version": "46.0"
+      },
+      {
+        "name": "referencing",
+        "version": "0.37.0"
+      },
+      {
+        "name": "requests",
+        "version": "2.34.2"
+      },
+      {
+        "name": "requests-toolbelt",
+        "version": "1.0.0"
+      },
+      {
+        "name": "rfc3339-validator",
+        "version": "0.1.4"
+      },
+      {
+        "name": "rfc3986",
+        "version": "2.0.0"
+      },
+      {
+        "name": "rfc3986-validator",
+        "version": "0.1.1"
+      },
+      {
+        "name": "rfc3987-syntax",
+        "version": "1.1.0"
+      },
+      {
+        "name": "rich",
+        "version": "15.0.0"
+      },
+      {
+        "name": "rpds-py",
+        "version": "2026.6.3"
+      },
+      {
+        "name": "ruff",
+        "version": "0.17.1"
+      },
+      {
+        "name": "scikit-learn",
+        "version": "1.9.0"
+      },
+      {
+        "name": "scipy",
+        "version": "1.18.0"
+      },
+      {
+        "name": "Send2Trash",
+        "version": "2.1.0"
+      },
+      {
+        "name": "six",
+        "version": "1.17.0"
+      },
+      {
+        "name": "soupsieve",
+        "version": "2.9"
+      },
+      {
+        "name": "stack-data",
+        "version": "0.6.3"
+      },
+      {
+        "name": "tcspc-lifetime-toolkit",
+        "version": "0.8.0"
+      },
+      {
+        "name": "tcspc-lifetime-toolkit",
+        "version": "0.8.0"
+      },
+      {
+        "name": "terminado",
+        "version": "0.18.1"
+      },
+      {
+        "name": "threadpoolctl",
+        "version": "3.6.0"
+      },
+      {
+        "name": "tinycss2",
+        "version": "1.5.1"
+      },
+      {
+        "name": "tornado",
+        "version": "6.5.7"
+      },
+      {
+        "name": "traitlets",
+        "version": "5.15.1"
+      },
+      {
+        "name": "twine",
+        "version": "7.0.0"
+      },
+      {
+        "name": "typing_extensions",
+        "version": "4.16.0"
+      },
+      {
+        "name": "tzdata",
+        "version": "2026.3"
+      },
+      {
+        "name": "uri-template",
+        "version": "1.3.0"
+      },
+      {
+        "name": "urllib3",
+        "version": "2.7.0"
+      },
+      {
+        "name": "wcwidth",
+        "version": "0.8.2"
+      },
+      {
+        "name": "webcolors",
+        "version": "25.10.0"
+      },
+      {
+        "name": "webencodings",
+        "version": "0.5.1"
+      },
+      {
+        "name": "websocket-client",
+        "version": "1.9.0"
+      },
+      {
+        "name": "widgetsnbextension",
+        "version": "4.0.15"
+      }
+    ],
+    "loaded_threadpools": [
+      {
+        "architecture": "Haswell",
+        "binary_sha256": "b788215d9d47792bcba3a2e2a71143205a57282828a483f1fb071ca2c159f616",
+        "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\numpy.libs\\libscipy_openblas64_-b788215d9d47792bcba3a2e2a7114320.dll",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.33.112.0"
+      },
+      {
+        "architecture": "Haswell",
+        "binary_sha256": "197ee2fc9b4d071f7e048078cac741151a6585d871061cf5f88c0c73e31963a5",
+        "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\scipy.libs\\libscipy_openblas-197ee2fc9b4d071f7e048078cac74115.dll",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "threading_layer": "pthreads",
+        "user_api": "blas",
+        "version": "0.3.31.dev"
+      },
+      {
+        "binary_sha256": "f96f3a14d88d8846f31f3ab38a490304ce7d6e4f70fae4304c63e59c7aea2d30",
+        "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "vcomp",
+        "user_api": "openmp",
+        "version": null
+      }
+    ],
+    "module_origins": {
+      "audit": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\src\\tcspc_toolkit\\benchmarks\\_triexponential_audit.py",
+      "development": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\src\\tcspc_toolkit\\benchmarks\\triexponential.py",
+      "numpy": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\numpy\\__init__.py",
+      "scipy": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\scipy\\__init__.py"
+    },
+    "operating_system": {
+      "machine": "AMD64",
+      "platform": "Windows-11-10.0.26300-SP0",
+      "release": "11",
+      "system": "Windows",
+      "version": "10.0.26300"
+    },
+    "python": {
+      "base_prefix": "C:\\Users\\Yevhenii\\AppData\\Local\\Programs\\Python\\Python312",
+      "cache_tag": "cpython-312",
+      "executable": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe",
+      "executable_sha256": "d55736b9f3d6b4ca7985b82db8ce11edfa09994cf93ce31c6b506543b74f32eb",
+      "implementation": "CPython",
+      "prefix": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv",
+      "version": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+      "version_short": "3.12.0"
+    },
+    "serial_workers": 1,
+    "thread_environment": {
+      "BLIS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    }
+  },
+  "environment_fingerprint_sha256": "439bcd2bd4ac9ad50ee91ba2331f535ce60fdde0eb604c29b8e9f09b18657dd7",
+  "execution_authorized": false,
+  "fingerprint": {
+    "dependencies": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "tcspc-lifetime-toolkit": "0.8.0"
+    },
+    "manifest_sha256": "2ee094bd326df30438f0f154d1c14f602cf6065d856a2fed4b1565a6542ca491",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.0",
+    "scope": "pilot",
+    "source_lf_sha256": {
+      "scripts/develop_triexponential.py": "b2f251c661455e96e0a04d5a7bded472673a3002dc257168959832497b817038",
+      "src/tcspc_toolkit/__init__.py": "110ec547cb9dcc9e356d1ddb15d8bec67123539801bff1f5ddad576f0e220dd6",
+      "src/tcspc_toolkit/__main__.py": "41abcd1ba6b7a64133bfc2030bfc81b19c962ca9705eabbceb4235210bd700cb",
+      "src/tcspc_toolkit/benchmarks/__init__.py": "121f229a1d32371a9e68b13f0580d716da79bab9dbd262222ed0519144e81b43",
+      "src/tcspc_toolkit/benchmarks/_triexponential_audit.py": "f33276a41df7115f84bdf10a354b9a16392404735b115a39412298b6f055db53",
+      "src/tcspc_toolkit/benchmarks/bayesian_calibration.py": "175d69dad2f774c0aba11ccf96354ecd06cfcf8a490572747ca75b4c1c6e11ff",
+      "src/tcspc_toolkit/benchmarks/bayesian_mismatch.py": "87490171e46876ad8363e6aaaeff3d33ee2c0808c758a1347d3b34d3310220a8",
+      "src/tcspc_toolkit/benchmarks/generalization.py": "2eff970859b0f07b427d6915cf0ab77f12cfa85ace6d6783d67bf088e59fc173",
+      "src/tcspc_toolkit/benchmarks/generalization_datasets.py": "0e0973eb61351edec1034aa344e752d254b440713f857e5f17a682b62f236747",
+      "src/tcspc_toolkit/benchmarks/generalization_protocol.py": "6aa0a938c3ea495ab76217b358b2bf586af4360a7cb8061f2cad27e7c5a4961e",
+      "src/tcspc_toolkit/benchmarks/irf.py": "ca189495b5eb1b8ba3979998bcf1fa8188fafa023bc4db5a0f32af1ce83e707a",
+      "src/tcspc_toolkit/benchmarks/mismatch.py": "f64b285f0fd1bc758c8e44629997fb6ac48d2480494dda85c1f4dde05ffedb19",
+      "src/tcspc_toolkit/benchmarks/multiexponential.py": "4b9931700d43a46133766934e4622f46b8c995bdfa618b2592881327fcef412b",
+      "src/tcspc_toolkit/benchmarks/timing.py": "9b27f75c649db49399816b815b6ee4538f04b681625ed4fb20609922c27f1cce",
+      "src/tcspc_toolkit/benchmarks/triexponential.py": "8740b54b0bb5966b4e99c9c7c3c78508116f27f2ea4c53fc82c47718194c4f37",
+      "src/tcspc_toolkit/benchmarks/uncertainty.py": "09781891a1ee0bc2d53e8252d5af1eba22b38fa0b52e8e1dba43bb0e7068fd73",
+      "src/tcspc_toolkit/cli.py": "d3120157c2bbf1684f5e600c0a13eadbb0db8dedf353ac668dea50f6a9835f7b",
+      "src/tcspc_toolkit/config.py": "d0a1d612366990bfebc38a3cc96c7ebc2bb2f3a9d9092b3181d6412f8d4b826f",
+      "src/tcspc_toolkit/estimation/__init__.py": "35e1f200becd46510227f9601e8cd0aeb73c6e36ca8e576166307608cb219121",
+      "src/tcspc_toolkit/estimation/_fixed_k.py": "415b368bf2d1380a9a5c26ec5d79f86a4503b1db2039d67cd40505a7acba8493",
+      "src/tcspc_toolkit/estimation/_fixed_k_diagnostics.py": "ed1dd5868534a131c16cda8d24858388d813eec18e301e4ec0c02e0ae237cc5c",
+      "src/tcspc_toolkit/estimation/_fixed_k_initialization.py": "d7fee40d09017e76d5425a5c018fc0ff91e4bd182fe4ffafc3de47729000ca45",
+      "src/tcspc_toolkit/estimation/_fixed_k_objective.py": "39c1cc29b3454bbaeb3486734f603381f20c7d67364a1dd3083e89513544b3a7",
+      "src/tcspc_toolkit/estimation/_fixed_k_search.py": "494b101cf449b77acf8fa2b1788967b0267eca2071c766e38be8398292d1e486",
+      "src/tcspc_toolkit/estimation/_fixed_k_solvers.py": "2919896d952cc442ffcb031b091bd089e14998f38955170cbee0da812139abc9",
+      "src/tcspc_toolkit/estimation/_poisson_residuals.py": "54da752cbc3aa8a9bc0323d356417dc67388858916113f401303388a4f39dbf4",
+      "src/tcspc_toolkit/estimation/api.py": "de3f5c0c9e3ceacff44a110aff6b991d752d775b7b81aefdde70eb7baf644a70",
+      "src/tcspc_toolkit/estimation/baselines.py": "07bb9c01cf1fea38c964cf7533e11a39918d136de3d0f527c22dbdecbee200ff",
+      "src/tcspc_toolkit/estimation/bayesian/__init__.py": "64ef94b5c1bdaaedeeabe5fa60b3386447180955bbba77523ec284f6570e969b",
+      "src/tcspc_toolkit/estimation/bayesian/posterior.py": "6b6c06569139e9fafe1322718c0c279c46744038db6f5b6b16e66dd921ad8957",
+      "src/tcspc_toolkit/estimation/bayesian/predictive.py": "e449ea934d6497bf881bccdeec432f5a7098cc4de47b6497db56d23a72d4e293",
+      "src/tcspc_toolkit/estimation/bayesian/sampling.py": "9cdf96d07a42082b7570a36bcf0f3ee869c0c3f945e48f8d028e2bd6bc897a02",
+      "src/tcspc_toolkit/estimation/classical.py": "6ac496b93ce1242c16b8d99700ba1af783cadfa89168f93f1c9c19c4eea86e5d",
+      "src/tcspc_toolkit/estimation/fitting.py": "861fbd5fd452f5a437d406340b45b13ca0e1c7f62859d09206296f7bcf6dcc79",
+      "src/tcspc_toolkit/estimation/multiexponential.py": "56ed8bf360ce500c8df26d7e6f555028cdbfe95785440a38721531a7e11413f6",
+      "src/tcspc_toolkit/estimation/triexponential.py": "0f3a8de312cd8f8dc70ce7790b1233bcb21a78a10e765f35827188bfd3732176",
+      "src/tcspc_toolkit/evaluation/__init__.py": "2f89be6978ed58c3039c930b828d75c5a7a0e815273504e2c9a2df98de6f1300",
+      "src/tcspc_toolkit/evaluation/attachments.py": "e28b7222daa5c71ba89575636f1f0768e021bded2174359cfd304229cdc2b998",
+      "src/tcspc_toolkit/evaluation/conditional.py": "921fc66234aa772524d2148912f4f587b1bf19e53ee975fbff588a23e550cc27",
+      "src/tcspc_toolkit/evaluation/core.py": "17e2ee863bc39084e256033771f8219f5a376523178659ae8dec170f59ce0495",
+      "src/tcspc_toolkit/evaluation/diagnostics.py": "2ca2d50536dc7b3205186d4a789335e9d3a4db17a026fe26830c7463355ba6e4",
+      "src/tcspc_toolkit/evaluation/plots.py": "9e06a5d23ea919b83be14eb9b890a57baf5bac67ce00bf465b8dd5a7a3497856",
+      "src/tcspc_toolkit/evaluation/reconvolution.py": "0b736f46e78a910abca56f3888cd309e9e8ccc92cc7512cd9cab94de5f95f530",
+      "src/tcspc_toolkit/evaluation/results.py": "b0a0784c5df5571614f662df5e1cc4a2d87c5dd5ab19e1987332ba6e2709542f",
+      "src/tcspc_toolkit/exceptions.py": "6a7e3e21713d83a953af43e9fb3e165f36976f6a84f6f007004e3ca1c9c5d3a3",
+      "src/tcspc_toolkit/irf/__init__.py": "99a53bc8c57691ad3ba40c88b08d4a9912c48a29af759eaea1417513bdf4d9a5",
+      "src/tcspc_toolkit/irf/estimation.py": "9eb9bc91ebaaa1eb6b4c57cb64989ff293d81b8a1cc7d1e03f7d283871cb0d40",
+      "src/tcspc_toolkit/irf/preparation.py": "dcc220067a8266da6fe41617ada174ba9a012124e87251c6521ad842a357da83",
+      "src/tcspc_toolkit/irf/profiles.py": "b3db44d3a58b6ad5fc3b1cdb6e54ffac2b589055fedffed544afdcfa8f3b3a3d",
+      "src/tcspc_toolkit/irf/selection.py": "a1045c2018cbf522608fc4ba212570d7917e931b5df5746725a951ed7027745e",
+      "src/tcspc_toolkit/measurement/__init__.py": "1e7e5f113a3f41f31a3d43f823e60a847b7f68a9dfc4589efce92122a968d905",
+      "src/tcspc_toolkit/measurement/adapters.py": "9779289c98302f3473429c3302552fb332c82b17189935d31f99d4439f8f956e",
+      "src/tcspc_toolkit/measurement/io.py": "4541962061de2791ba7e5b221000415a88e6ece249db47b127d75f53965d14e1",
+      "src/tcspc_toolkit/measurement/records.py": "728abb4eebdee6c55f9558b45ed2011e08650fd69295615e9a57b8c542d120dd",
+      "src/tcspc_toolkit/ml/__init__.py": "222f407a6275f3083adda03a127aebcf6265e3d19e2725ebfdbb8c262a5ec706",
+      "src/tcspc_toolkit/ml/cross_validation.py": "1ab7a135d404ecfb2719bfcc840ada997945f25a156e4d404ba5ff16b45b4ee4",
+      "src/tcspc_toolkit/ml/evaluation.py": "7c98677c324230bb2775c6ce35a6f7144bc18e49091ac3d4ff1170f2b2c90226",
+      "src/tcspc_toolkit/ml/models.py": "8b1221f81d9b54fbb7add53dcf67addb4991a3f5ba61bca26f9cc90293f6d4ef",
+      "src/tcspc_toolkit/persistence/__init__.py": "a7627de9bde823ff22a091d78668e360c5c662455546733f22e815e99cc43fb9",
+      "src/tcspc_toolkit/persistence/sqlite.py": "da3eadf0f6695fba99e7b5b13f44654bc7130aa600561827a5fc3eda1660b336",
+      "src/tcspc_toolkit/physics/__init__.py": "8ded58643818a77bb16d644cbb869f4dba8d9dba36bd081e1303b5d9beef5c11",
+      "src/tcspc_toolkit/physics/convolution.py": "8620e4e8f0da3b7159a542273e030841077fcb5cdcb120b98c32c426c524eabc",
+      "src/tcspc_toolkit/physics/forward_model.py": "c090276d5719cf9ceb558de3ce03e5da42e03f96d086b6e49f54875fcbaa88f3",
+      "src/tcspc_toolkit/physics/models.py": "5d5edc940d8089be8ffea6d3d7a66e06a94e82041ef11e0ea8ff575cc7403197",
+      "src/tcspc_toolkit/preprocessing/__init__.py": "b426e812da2984f033c45c7724f47445b02fe7a1a421b7ef356f388e25cbd5e3",
+      "src/tcspc_toolkit/preprocessing/features.py": "eab6dfdb03d46faaa0782e88a1ba1265e8bb11458a7f072e00cd875516d381cf",
+      "src/tcspc_toolkit/preprocessing/histograms.py": "b33a8f6ae9b5af9575e4d7daaaa607d105a02a4b7b9dbae1361d57a84521272f",
+      "src/tcspc_toolkit/preprocessing/representations.py": "408e1bf7e19a2fe56f1a07fa3403a3e734989ba3d6e334051bfbc9f262393472",
+      "src/tcspc_toolkit/simulation/__init__.py": "9c4a801a9037a75b161d29756eda2f99612cd8220f3e1534d13344caebd91cc0",
+      "src/tcspc_toolkit/simulation/datasets.py": "0d806a8b8925a1caecfb3246f61ff35c676f19989578f6b9850982e715827293",
+      "src/tcspc_toolkit/simulation/histograms.py": "539787768e60730f0e8694d8e94f5d1b7748d33d10acb81730f915a0c8716e38",
+      "src/tcspc_toolkit/uncertainty/__init__.py": "3459dd95790588e1d9f69ed6f56f376d0c25dcc094e3fdc0c0b223063e963917",
+      "src/tcspc_toolkit/uncertainty/classical.py": "5769fdd318adcbc6de945de3909a3c5d9754e4e673c432d26ab10ee5976ead1e",
+      "src/tcspc_toolkit/uncertainty/evaluation.py": "b0ec7c29cb8c5dcaaf04507b45d861e2cdcd56b320a90d0bd8cec642ba80028a",
+      "src/tcspc_toolkit/uncertainty/ml.py": "51061c67b4373a48357f955d0e0a285749fc32dc446d7485c3820774947169ba"
+    },
+    "thread_environment": {
+      "BLIS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    }
+  },
+  "maintainer_review": null,
+  "manifest": {
+    "canonical_json_sha256": "2ee094bd326df30438f0f154d1c14f602cf6065d856a2fed4b1565a6542ca491",
+    "lf_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+    "path": "configs/issue37_pr2_development_v1.json",
+    "protocol_id": "issue37-pr2-development-v1-draft",
+    "raw_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+    "unchanged_from_pr2a": true
+  },
+  "persistence": {
+    "checkpoint_fields": [
+      "id",
+      "status",
+      "lock",
+      "payload_sha256",
+      "result or exception details"
+    ],
+    "filename_rule": "SHA256(UTF-8 task ID).json; input ID is input:PROBLEM_ID; worker transport is SHA256(task ID).worker.json",
+    "input_checkpoint_count": 6,
+    "input_inventory_file": "input_inventory.json (required gate absent)",
+    "lock_file": "lock.json",
+    "output_directory": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\data\\generated\\issue37_pr2_operational_pilot_v1",
+    "output_directory_created": false,
+    "report_stdout_capture": "Use a separately named immutable report JSON; do not overwrite prior reports or search checkpoints.",
+    "result_checkpoint_count": 18,
+    "result_publication": "exclusive attempt creation, hashed running record, fsync temporary result, atomic replacement",
+    "resume": "Verify the full approved lock and sealed input inventory; skip existing completed, exception, interrupted/running and timed-out attempts; execute only never-attempted missing task IDs. Missing sealed inputs and unconfirmed cleanup stop."
+  },
+  "pilot_id": "issue37_pr2_operational_pilot_v1",
+  "pilot_namespace": [
+    37,
+    2,
+    20261101,
+    0
+  ],
+  "preflight_blockers": [
+    {
+      "id": "INPUT_INVENTORY_GATE_ABSENT",
+      "observed": "The runner stores individually hashed input checkpoints but creates no aggregate input inventory. Its run path calls store.execute for each input, regenerating a missing checkpoint, including on resume. The worker verifies an individual checkpoint payload only.",
+      "requirement": "After all six inputs exist, seal their exact hashes in an immutable aggregate inventory and verify it before every task or resume; do not regenerate missing sealed inputs.",
+      "resolution": "Maintainer review required; no source change, input generation or protocol relaxation performed. Existing runner command is not ready for approval alone.",
+      "source": "scripts/develop_triexponential.py:150-172"
+    }
+  ],
+  "preflight_warnings": [
+    {
+      "detail": "execution_authorized=false and maintainer_review=null intentionally reject execution; no authorization will be inferred from elapsed time or design approval.",
+      "id": "PENDING_AUTHORIZATION"
+    },
+    {
+      "detail": "Existing require_authorization checks fingerprint only (75 source hashes, canonical manifest, scope, Python/platform, NumPy/SciPy/toolkit versions and six thread variables). Commit/tree and supplementary installed-distribution/BLAS identity are recorded here but require explicit preflight verification at execution/resume.",
+      "id": "EXTENDED_METADATA_NOT_AUTOMATICALLY_ENFORCED"
+    },
+    {
+      "detail": "Externally terminated workers retain the scheduled attempt and censored time; partial model/component work is unknown, never reported as zero.",
+      "id": "TIMEOUT_WORK_CENSORED"
+    },
+    {
+      "detail": "Resolver condition dictionaries retain comprehensive defaults poisson_replicates=3; the pilot enumerator explicitly uses one Poisson replicate. Effective pilot task inventory is six problems, 18 tasks; no manifest or resolver field was edited.",
+      "id": "INHERITED_REPLICATE_METADATA"
+    },
+    {
+      "detail": "v1 retains bounded_trf_deferred and audit implemented=false as historical planning labels; checkpoint documentation records implementation. Manifest is unchanged.",
+      "id": "MANIFEST_PLANNING_LABELS"
+    },
+    {
+      "detail": "Pilot shares model/IRF definitions with comprehensive development. It is operational development evidence, not untouched qualification; no production default or scientific criterion is selected.",
+      "id": "DEVELOPMENT_ONLY"
+    }
+  ],
+  "reporting": {
+    "all_attempt_denominator": 18,
+    "configuration_names": [
+      "audit",
+      "lbfgsb:compact",
+      "trf:compact"
+    ],
+    "objective_gap": "production minus audit; +/-0.01 descriptive agreement tolerance requires complete consistent audit; negative excess indicates audit search limitation; incomplete audits cannot establish agreement",
+    "per_configuration_denominator": 6,
+    "production_default_selected": false,
+    "qualification": false,
+    "quantities": [
+      "model calls by phase and invocation",
+      "component convolutions and unknown failed work",
+      "seed/solver/recovery starts",
+      "candidate-specific numerical acceptance",
+      "audit completeness",
+      "signed production-minus-audit centered-NLL gaps",
+      "cross-implementation consistency",
+      "conditional component recovery and contributor counts",
+      "all-attempt denominators"
+    ],
+    "runtime": "Retain exact completed times and censored deadline contributors; report unavailable partial work honestly.",
+    "source_review": "Read-only inspection of summarize_tasks/report_store/execute_task and DevelopmentStore; no report cross-scoring invoked.",
+    "statuses": [
+      "accepted",
+      "rejected",
+      "missing_task",
+      "running/interrupted",
+      "exception",
+      "external_worker_timeout"
+    ],
+    "target_kind": "mean targets remain deterministic_expected_counts; Poisson targets are raw_counts"
+  },
+  "repository": {
+    "branch": "feat/issue-37-pr2-triexponential-fitting",
+    "commit": "5002d76a404e59a1633dd1bd69e1eec9e2b24d8b",
+    "git_tree_listing_encoding": "Exact bytes from git ls-tree -r COMMIT; modes, blob IDs and paths for every tracked file",
+    "git_tree_listing_sha256": "a3dd23ed0e98f0ac230764a4183e95248a03a910a518f989187ef2cab37184b5",
+    "git_tree_oid": "3e677a43c3c755c15f8e19cf4255ef062c519f58",
+    "parent_commit": "56466959c9f2948bb71adee3abb75739c5a464b5",
+    "production_python_files": 74,
+    "runner_files": 1,
+    "runtime_fingerprint_sha256": "dcbb61fc83b0caaf04413d1fb2db58833bcc42119ef900db8e570c122911d1ff",
+    "source_lf_inventory_sha256": "79a2d1dea58ffc696dc8217a444be6bb0852f3f4e8bf75f9511807f8b27078a2"
+  },
+  "resolved_problems": [
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P00:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 0.5,
+      "condition_id": "P00",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "gaussian",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "last_time_ns": 7.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P00:mean:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0.5,
+        "background_counts_per_bin": 0.5,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "gaussian",
+        "id": "P00",
+        "irf": "gaussian",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0.043,
+        "signal_photons": 20000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "d620faa6128cb2b9d6cb50de2efb8b14d75e5cdc6245d8c2a564e219428849ca.json",
+      "input_checkpoint_id": "input:P00:mean:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "center_ns": 0.8,
+        "fwhm_ns": 0.18
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P00:mean",
+      "observation_sha256": null,
+      "seed": null,
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": 0.043,
+      "signal_photons": 20000,
+      "target_kind": "deterministic_expected_counts"
+    },
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P00:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 0.5,
+      "condition_id": "P00",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "gaussian",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "last_time_ns": 7.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P00:poisson-0:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0.5,
+        "background_counts_per_bin": 0.5,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "gaussian",
+        "id": "P00",
+        "irf": "gaussian",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0.043,
+        "signal_photons": 20000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "460db23a8ea4096cd8fb0e6dc4dbb4d7a90b65fda5b7d832847f3cc90d0b0ab6.json",
+      "input_checkpoint_id": "input:P00:poisson-0:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "center_ns": 0.8,
+        "fwhm_ns": 0.18
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P00:poisson-0",
+      "observation_sha256": null,
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        0,
+        0
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": 0.043,
+      "signal_photons": 20000,
+      "target_kind": "raw_counts"
+    },
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P01:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 1,
+      "condition_id": "P01",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "emg",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "last_time_ns": 7.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P01:mean:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 1,
+        "background_counts_per_bin": 1,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "emg",
+        "id": "P01",
+        "irf": "emg",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          1,
+          1.2,
+          3
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": -0.043,
+        "signal_photons": 5000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "459ecf757e144d1cb51a70d666a844a8b7f9b2dc7d6d7c64dc0730cd8690cc5f.json",
+      "input_checkpoint_id": "input:P01:mean:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "center_ns": 0.8,
+        "gaussian_fwhm_ns": 0.18,
+        "tail_ns": 0.35
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        1,
+        1.2,
+        3
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P01:mean",
+      "observation_sha256": null,
+      "seed": null,
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": -0.043,
+      "signal_photons": 5000,
+      "target_kind": "deterministic_expected_counts"
+    },
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P01:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 1,
+      "condition_id": "P01",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "emg",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "last_time_ns": 7.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P01:poisson-0:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 1,
+        "background_counts_per_bin": 1,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "emg",
+        "id": "P01",
+        "irf": "emg",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          1,
+          1.2,
+          3
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": -0.043,
+        "signal_photons": 5000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "bec7fd10d9314153c7809599a97505b2096feb18fbcbbc5f70f53f03229758ae.json",
+      "input_checkpoint_id": "input:P01:poisson-0:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "center_ns": 0.8,
+        "gaussian_fwhm_ns": 0.18,
+        "tail_ns": 0.35
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        1,
+        1.2,
+        3
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P01:poisson-0",
+      "observation_sha256": null,
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        1,
+        0
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": -0.043,
+      "signal_photons": 5000,
+      "target_kind": "raw_counts"
+    },
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P02:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 0,
+      "condition_id": "P02",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "sampled_nonzero_endpoints",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "last_time_ns": 3.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P02:mean:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0,
+        "background_counts_per_bin": 0,
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "sampled_nonzero_endpoints",
+        "id": "P02",
+        "irf": "sampled_nonzero_endpoints",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0,
+        "signal_photons": 2000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "9503510fc5646ced69ce37295a6dffda010d299ab1db9003b2567dac3beb7b6d.json",
+      "input_checkpoint_id": "input:P02:mean:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "add_before_normalization": 0.02,
+        "base": "sampled",
+        "resolved_base": {
+          "interpolation": "linear on actual target coordinates",
+          "provenance": "explicit synthetic sampled fixture; not measured",
+          "times_ns": [
+            0,
+            0.5,
+            0.625,
+            0.75,
+            0.875,
+            1,
+            1.25,
+            1.75,
+            3.96875
+          ],
+          "values": [
+            0,
+            0,
+            0.15,
+            1,
+            0.7,
+            0.35,
+            0.08,
+            0,
+            0
+          ]
+        }
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P02:mean",
+      "observation_sha256": null,
+      "seed": null,
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": 0,
+      "signal_photons": 2000,
+      "target_kind": "deterministic_expected_counts"
+    },
+    {
+      "amplitude_construction": "signal_photons * detected_signal_fractions[j] / sum(unit component counts[j]) on this grid and shifted generating IRF",
+      "assumed_irf": "matched",
+      "assumed_irf_identity": "P02:matched",
+      "assumed_irf_sha256": null,
+      "background_counts_per_bin": 0,
+      "condition_id": "P02",
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "effective_targets_per_condition": {
+        "deterministic": 1,
+        "poisson": 1
+      },
+      "generating_irf": "sampled_nonzero_endpoints",
+      "grid": {
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "last_time_ns": 3.96875,
+        "time_origin_ns": 0
+      },
+      "id": "P02:poisson-0:matched",
+      "inherited_resolver_condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0,
+        "background_counts_per_bin": 0,
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "sampled_nonzero_endpoints",
+        "id": "P02",
+        "irf": "sampled_nonzero_endpoints",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0,
+        "signal_photons": 2000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "input_checkpoint_filename": "c13c8dc05ca9ec9a7b245702d46a00bef59a5e071e7907d299f906e1de5b6e10.json",
+      "input_checkpoint_id": "input:P02:poisson-0:matched",
+      "input_status": "not_generated",
+      "irf_definition": {
+        "add_before_normalization": 0.02,
+        "base": "sampled",
+        "resolved_base": {
+          "interpolation": "linear on actual target coordinates",
+          "provenance": "explicit synthetic sampled fixture; not measured",
+          "times_ns": [
+            0,
+            0.5,
+            0.625,
+            0.75,
+            0.875,
+            1,
+            1.25,
+            1.75,
+            3.96875
+          ],
+          "values": [
+            0,
+            0,
+            0.15,
+            1,
+            0.7,
+            0.35,
+            0.08,
+            0,
+            0
+          ]
+        }
+      },
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "normalization": "Existing explicit trapezoidal unit-area IRF normalization; no endpoint zeroing",
+      "observation_id": "P02:poisson-0",
+      "observation_sha256": null,
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        2,
+        0
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "shift_ns": 0,
+      "signal_photons": 2000,
+      "target_kind": "raw_counts"
+    }
+  ],
+  "resolved_problems_sha256": "9a5f7c45f1239a1a10b76b324461f05278b62141b6b4f832fdb9185cbf6059ec",
+  "resource_limits": {
+    "audit": {
+      "assessment_calls": 2,
+      "charged_component_convolutions": 120000,
+      "external_deadline_seconds": 120,
+      "first_22_start_model_leases": 1656,
+      "internal_wall_seconds": 120,
+      "last_2_start_model_leases": 1655,
+      "per_start_seconds": 4.25,
+      "powell_starts": 8,
+      "search_calls": 39742,
+      "total_direct_model_calls": 40000,
+      "total_starts": 24,
+      "trf_starts": 16,
+      "validation_calls": 256
+    },
+    "cleanup": {
+      "max_all_18_timeouts_seconds": 180,
+      "max_per_timeout_seconds": 10,
+      "os_latency_not_a_numerical_guarantee": true,
+      "pipe_cleanup_seconds": 5,
+      "stop_if_termination_unconfirmed": true,
+      "windows_process_tree_termination_seconds": 5
+    },
+    "fit": {
+      "assessment_calls": 32,
+      "charged_component_convolutions": 65472,
+      "diagnostic_calls": 256,
+      "external_deadline_seconds": 60,
+      "initialization_calls": 512,
+      "initialization_seconds": 3.0,
+      "internal_wall_seconds": 60,
+      "optimization_model_calls": 20000,
+      "recovery_invocation_model_lease": 1000,
+      "recovery_invocation_seconds": 3.0,
+      "recovery_model_calls": 4000,
+      "reserved_recovery_starts": 4,
+      "seed_invocation_model_lease": 1000,
+      "seed_invocation_seconds": 2.4375,
+      "seed_optimization_model_calls": 16000,
+      "seed_starts": 16,
+      "total_model_calls": 21824,
+      "total_starts": 20,
+      "validation_calls": 1024
+    },
+    "postseal_cross_scoring": {
+      "component_convolutions": 144,
+      "max_comparisons": 12,
+      "model_calls": 48,
+      "outside_search_budgets": true
+    },
+    "retry_policy": "No automatic retries, continuations, observations regenerated on sealed resume, hidden restarts or budget increases.",
+    "total": {
+      "audit_attempts": 6,
+      "charged_worker_component_convolutions": 1505664,
+      "fit_attempts": 12,
+      "fitting_problems": 6,
+      "max_solver_invocations": 384,
+      "scheduled_attempts": 18,
+      "serial_workers": 1,
+      "worker_model_calls": 501888,
+      "worker_seconds": 1440
+    }
+  },
+  "schema_contract": {
+    "authority": "scripts/develop_triexponential.py::require_authorization at 5002d76a404e59a1633dd1bd69e1eec9e2b24d8b",
+    "existing_runtime_keys": [
+      "execution_authorized",
+      "maintainer_review",
+      "fingerprint"
+    ],
+    "extension_semantics": "Other fields are review metadata; they do not add runtime enforcement or change the existing schema gate."
+  },
+  "settings": {
+    "audit": {
+      "assessment_calls": 2,
+      "descent_tolerance": 0.001,
+      "max_iterations": 1000,
+      "model_calls": 40000,
+      "powell_starts": 8,
+      "trf_starts": 16,
+      "validation_calls": 256,
+      "wall_seconds": 120
+    },
+    "lbfgsb:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "lbfgsb",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    },
+    "trf:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "trf",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    }
+  },
+  "task_inventory": [
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "dcf7bde629f5a38e85573d1c8823ba692254584d36513ea95b57d2bafb6148dc.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P00:mean:matched:audit",
+      "input_checkpoint_id": "input:P00:mean:matched",
+      "observation_id": "P00:mean",
+      "problem_id": "P00:mean:matched",
+      "sequence": 0,
+      "settings_key": "audit",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "dcf7bde629f5a38e85573d1c8823ba692254584d36513ea95b57d2bafb6148dc.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "e6b7ce3c131d63f532edc3640dba50d4763a459a75276315fbc5d0167b22fd5b.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P00:mean:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P00:mean:matched",
+      "observation_id": "P00:mean",
+      "problem_id": "P00:mean:matched",
+      "sequence": 1,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "e6b7ce3c131d63f532edc3640dba50d4763a459a75276315fbc5d0167b22fd5b.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "a9bba7c4895a64bb0516467ee489e45b5aebec0a77f2e95a71de3fe794cfc7c3.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P00:mean:matched:trf:compact",
+      "input_checkpoint_id": "input:P00:mean:matched",
+      "observation_id": "P00:mean",
+      "problem_id": "P00:mean:matched",
+      "sequence": 2,
+      "settings_key": "trf:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "a9bba7c4895a64bb0516467ee489e45b5aebec0a77f2e95a71de3fe794cfc7c3.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "c400a3afc3cb4033a0bba7d23289c0006d5dfd064a8faa4bfc6da46d7102d037.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P00:poisson-0:matched:audit",
+      "input_checkpoint_id": "input:P00:poisson-0:matched",
+      "observation_id": "P00:poisson-0",
+      "problem_id": "P00:poisson-0:matched",
+      "sequence": 3,
+      "settings_key": "audit",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "c400a3afc3cb4033a0bba7d23289c0006d5dfd064a8faa4bfc6da46d7102d037.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "f84a9e6a9655e6fb67980eebf13351814a0592cad0e7ac205a62cc9dbe85b04c.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P00:poisson-0:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P00:poisson-0:matched",
+      "observation_id": "P00:poisson-0",
+      "problem_id": "P00:poisson-0:matched",
+      "sequence": 4,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "f84a9e6a9655e6fb67980eebf13351814a0592cad0e7ac205a62cc9dbe85b04c.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P00:matched",
+      "checkpoint_filename": "08e24fc834d17a30e12dc4160573ddf0dc3665c856371e9567d6e933967a852f.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P00:poisson-0:matched:trf:compact",
+      "input_checkpoint_id": "input:P00:poisson-0:matched",
+      "observation_id": "P00:poisson-0",
+      "problem_id": "P00:poisson-0:matched",
+      "sequence": 5,
+      "settings_key": "trf:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "08e24fc834d17a30e12dc4160573ddf0dc3665c856371e9567d6e933967a852f.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "b7654f9cdf5ba5dee1748974876e41a8b72851086cfcfedfd02df660b7c9f673.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P01:mean:matched:audit",
+      "input_checkpoint_id": "input:P01:mean:matched",
+      "observation_id": "P01:mean",
+      "problem_id": "P01:mean:matched",
+      "sequence": 6,
+      "settings_key": "audit",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "b7654f9cdf5ba5dee1748974876e41a8b72851086cfcfedfd02df660b7c9f673.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "e2e0709403a7b9c3701100a5233083562ef127740c8ccc7de8d0765eb94b90e1.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P01:mean:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P01:mean:matched",
+      "observation_id": "P01:mean",
+      "problem_id": "P01:mean:matched",
+      "sequence": 7,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "e2e0709403a7b9c3701100a5233083562ef127740c8ccc7de8d0765eb94b90e1.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "bafd50d88a2bf1d0dd37007f030878df97a933deaa933dc1ab2c8c28e5b7deca.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P01:mean:matched:trf:compact",
+      "input_checkpoint_id": "input:P01:mean:matched",
+      "observation_id": "P01:mean",
+      "problem_id": "P01:mean:matched",
+      "sequence": 8,
+      "settings_key": "trf:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "bafd50d88a2bf1d0dd37007f030878df97a933deaa933dc1ab2c8c28e5b7deca.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "657115ec5ec31c92b1408fee8f66b4a6b6773ad3d24add1edc47238d8b095b3c.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P01:poisson-0:matched:audit",
+      "input_checkpoint_id": "input:P01:poisson-0:matched",
+      "observation_id": "P01:poisson-0",
+      "problem_id": "P01:poisson-0:matched",
+      "sequence": 9,
+      "settings_key": "audit",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "657115ec5ec31c92b1408fee8f66b4a6b6773ad3d24add1edc47238d8b095b3c.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "838e27f245e550f8d78951b1fca61ee8f7d3d14db8bf3bc7de387d757fbc9fe8.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P01:poisson-0:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P01:poisson-0:matched",
+      "observation_id": "P01:poisson-0",
+      "problem_id": "P01:poisson-0:matched",
+      "sequence": 10,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "838e27f245e550f8d78951b1fca61ee8f7d3d14db8bf3bc7de387d757fbc9fe8.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P01:matched",
+      "checkpoint_filename": "190d1197d0b804e7007c88572d6ea3d137caddde4c1ab98004651aecd018b6f9.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P01:poisson-0:matched:trf:compact",
+      "input_checkpoint_id": "input:P01:poisson-0:matched",
+      "observation_id": "P01:poisson-0",
+      "problem_id": "P01:poisson-0:matched",
+      "sequence": 11,
+      "settings_key": "trf:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "190d1197d0b804e7007c88572d6ea3d137caddde4c1ab98004651aecd018b6f9.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "0a8519ade4cc7cfe23695e43b0b8b396bf303b9039600d54b0770c2316f77c25.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P02:mean:matched:audit",
+      "input_checkpoint_id": "input:P02:mean:matched",
+      "observation_id": "P02:mean",
+      "problem_id": "P02:mean:matched",
+      "sequence": 12,
+      "settings_key": "audit",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "0a8519ade4cc7cfe23695e43b0b8b396bf303b9039600d54b0770c2316f77c25.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "88a5a10707608130b398c54ae22f371932357af472cbdf2c258e246e625ac248.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P02:mean:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P02:mean:matched",
+      "observation_id": "P02:mean",
+      "problem_id": "P02:mean:matched",
+      "sequence": 13,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "88a5a10707608130b398c54ae22f371932357af472cbdf2c258e246e625ac248.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "a682efd1f66b7af507e38cc56e88a00b134011c3650c0dd01160bf77493a5faf.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P02:mean:matched:trf:compact",
+      "input_checkpoint_id": "input:P02:mean:matched",
+      "observation_id": "P02:mean",
+      "problem_id": "P02:mean:matched",
+      "sequence": 14,
+      "settings_key": "trf:compact",
+      "target_kind": "deterministic_expected_counts",
+      "worker_transport_filename": "a682efd1f66b7af507e38cc56e88a00b134011c3650c0dd01160bf77493a5faf.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "8cd6828f72cf531c32a4b719e7ab665286704edd4ac9a88f554cdf3ee276668f.json",
+      "configuration": "audit",
+      "external_deadline_seconds": 120,
+      "id": "P02:poisson-0:matched:audit",
+      "input_checkpoint_id": "input:P02:poisson-0:matched",
+      "observation_id": "P02:poisson-0",
+      "problem_id": "P02:poisson-0:matched",
+      "sequence": 15,
+      "settings_key": "audit",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "8cd6828f72cf531c32a4b719e7ab665286704edd4ac9a88f554cdf3ee276668f.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "274714bd07fa1df8baa3b1a8dd3bdcc47b680882324b16cba1b1e9396e451568.json",
+      "configuration": "lbfgsb:compact",
+      "external_deadline_seconds": 60,
+      "id": "P02:poisson-0:matched:lbfgsb:compact",
+      "input_checkpoint_id": "input:P02:poisson-0:matched",
+      "observation_id": "P02:poisson-0",
+      "problem_id": "P02:poisson-0:matched",
+      "sequence": 16,
+      "settings_key": "lbfgsb:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "274714bd07fa1df8baa3b1a8dd3bdcc47b680882324b16cba1b1e9396e451568.worker.json"
+    },
+    {
+      "assumed_irf_identity": "P02:matched",
+      "checkpoint_filename": "e4521488c581eda15b38cd6d011bca488eb7912d2e243e6eecab152f4c6dca75.json",
+      "configuration": "trf:compact",
+      "external_deadline_seconds": 60,
+      "id": "P02:poisson-0:matched:trf:compact",
+      "input_checkpoint_id": "input:P02:poisson-0:matched",
+      "observation_id": "P02:poisson-0",
+      "problem_id": "P02:poisson-0:matched",
+      "sequence": 17,
+      "settings_key": "trf:compact",
+      "target_kind": "raw_counts",
+      "worker_transport_filename": "e4521488c581eda15b38cd6d011bca488eb7912d2e243e6eecab152f4c6dca75.worker.json"
+    }
+  ],
+  "task_inventory_sha256": "5b71f44c6b7c96a8f4ec52e67792b9c2e971bc40280caac73bb88221ab05e1c3",
+  "two_stage_input_integrity": {
+    "current_runner_support": "Individual payload/identity/lock verification exists; aggregate seal, per-task inventory verification and no-regeneration resume gate do not.",
+    "input_hash_encoding": "Raw checkpoint file SHA256; canonical payload SHA256; array bytes as contiguous little-endian float64 in C order, with shape/dtype/target-kind recorded.",
+    "input_inventory_path": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\data\\generated\\issue37_pr2_operational_pilot_v1\\input_inventory.json",
+    "required_entries": [
+      {
+        "checkpoint_id": "input:P00:mean:matched",
+        "filename": "d620faa6128cb2b9d6cb50de2efb8b14d75e5cdc6245d8c2a564e219428849ca.json",
+        "observation_id": "P00:mean",
+        "problem_id": "P00:mean:matched",
+        "target_kind": "deterministic_expected_counts"
+      },
+      {
+        "checkpoint_id": "input:P00:poisson-0:matched",
+        "filename": "460db23a8ea4096cd8fb0e6dc4dbb4d7a90b65fda5b7d832847f3cc90d0b0ab6.json",
+        "observation_id": "P00:poisson-0",
+        "problem_id": "P00:poisson-0:matched",
+        "target_kind": "raw_counts"
+      },
+      {
+        "checkpoint_id": "input:P01:mean:matched",
+        "filename": "459ecf757e144d1cb51a70d666a844a8b7f9b2dc7d6d7c64dc0730cd8690cc5f.json",
+        "observation_id": "P01:mean",
+        "problem_id": "P01:mean:matched",
+        "target_kind": "deterministic_expected_counts"
+      },
+      {
+        "checkpoint_id": "input:P01:poisson-0:matched",
+        "filename": "bec7fd10d9314153c7809599a97505b2096feb18fbcbbc5f70f53f03229758ae.json",
+        "observation_id": "P01:poisson-0",
+        "problem_id": "P01:poisson-0:matched",
+        "target_kind": "raw_counts"
+      },
+      {
+        "checkpoint_id": "input:P02:mean:matched",
+        "filename": "9503510fc5646ced69ce37295a6dffda010d299ab1db9003b2567dac3beb7b6d.json",
+        "observation_id": "P02:mean",
+        "problem_id": "P02:mean:matched",
+        "target_kind": "deterministic_expected_counts"
+      },
+      {
+        "checkpoint_id": "input:P02:poisson-0:matched",
+        "filename": "c13c8dc05ca9ec9a7b245702d46a00bef59a5e071e7907d299f906e1de5b6e10.json",
+        "observation_id": "P02:poisson-0",
+        "problem_id": "P02:poisson-0:matched",
+        "target_kind": "raw_counts"
+      }
+    ],
+    "stage_1": "Seal approved source/manifest/environment/settings/task inventory before creating any observation.",
+    "stage_1_status": "pending_approval_hash_sealed_proposal",
+    "stage_2": "During separately authorized execution, generate and save all six inputs before launching the first fit or audit; seal exact file, payload, time-grid, observation and assumed-kernel hashes in input_inventory.json; verify inventory and input hashes before every task/resume. Missing/corrupt sealed inputs must stop, not regenerate.",
+    "stage_2_status": "not_generated; current runner gate missing"
+  }
+}

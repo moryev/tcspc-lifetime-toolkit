@@ -478,8 +478,11 @@ TRF, independent direct-convolution auditing and development infrastructure,
 with deterministic tests only. This supersedes the earlier PR 2A-only execution
 boundary below. Read [the PR 2B contract](docs/design/issue37_pr2b_numerics.md).
 The operational pilot, comprehensive study, production policy selection and
-qualification remain unauthorized. Final review and one local PR 2B checkpoint
-commit are now authorized; no push or publication.
+qualification remain unauthorized. PR 2B is locally committed at
+`5002d76a404e59a1633dd1bd69e1eec9e2b24d8b`. The current follow-up authorizes only
+the two-stage input-integrity correction, deterministic tests and a new pending
+preflight. Preserve the original pending proposal/preflight as historical planning
+artifacts. Stop uncommitted; no pilot inputs, execution, push or publication.
 
 - **Current numerical baseline:** `physics.forward_model` computes general K-component reconvolved expectations with a shared shift and one post-convolution background. Existing mono/bi inference is unchanged. PR 2A adds `estimation.triexponential.fit_triexponential_reconvolution` with required explicit development settings; arbitrary-K fitting and automatic model-order selection remain absent.
 - **Authorized current milestone — PR 2A only:** dedicated K=3 records/entry point, deterministic 109-template initialization, safeguarded L-BFGS-B, seed-first bounded recovery, candidate-specific validation and deterministic tests. Read [the PR-1 contract](docs/design/issue37_fixed_k_foundations.md) and [PR-2A contract/handoff](docs/design/issue37_pr2a_triexponential.md). The development manifest is nonexecuting. No TRF/audit study, production default, qualification, commit, push or PR creation is authorized by this milestone.
@@ -574,7 +577,7 @@ Current task orientation:
 - v0.8.0 and #14/#15 are complete; do not reopen their release gates without a concrete regression;
 - #28 PRs 1–3 are merged; #28 remains open and its original failed 119/121 audit criterion and evidence are immutable;
 - #33 PR #35 is merged; **#33 remains open but deferred**, with the new failed 99/100 strict audit target and required-recovery-capacity limitation explicitly retained;
-- **current authorized scope:** Issue #37 PR 2B final review, deterministic validation and one local checkpoint commit; stop before pilot or comprehensive experiments, production selection, publication or PR 3 qualification;
+- **current authorized scope:** Issue #37 two-stage pilot input integrity, strict resume/reporting and enforced execution identity; deterministic validation and pending preflight only; stop uncommitted before pilot input generation, execution, production selection or PR 3 qualification;
 - preserve PR 1/2 physics/statistics, existing bi-exponential numerical contracts, the ordered 66-name root API, and all historical evidence;
 - leave #13 deferred until realistic experiment-specific or photonic-simulation inputs are available;
 - do not start package movement, new scientific qualification, or automatic publishing/tagging without explicit authorization.

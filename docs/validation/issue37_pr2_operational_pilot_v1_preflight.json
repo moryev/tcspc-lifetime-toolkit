@@ -1,0 +1,128 @@
+{
+  "approval_required": true,
+  "blockers": [
+    {
+      "id": "INPUT_INVENTORY_GATE_ABSENT",
+      "observed": "The runner stores individually hashed input checkpoints but creates no aggregate input inventory. Its run path calls store.execute for each input, regenerating a missing checkpoint, including on resume. The worker verifies an individual checkpoint payload only.",
+      "requirement": "After all six inputs exist, seal their exact hashes in an immutable aggregate inventory and verify it before every task or resume; do not regenerate missing sealed inputs.",
+      "resolution": "Maintainer review required; no source change, input generation or protocol relaxation performed. Existing runner command is not ready for approval alone.",
+      "source": "scripts/develop_triexponential.py:150-172"
+    }
+  ],
+  "command_executed": false,
+  "environment_fingerprint_sha256": "439bcd2bd4ac9ad50ee91ba2331f535ce60fdde0eb604c29b8e9f09b18657dd7",
+  "expected_output_directory": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\data\\generated\\issue37_pr2_operational_pilot_v1",
+  "forbidden_callbacks_invoked": 0,
+  "full_environment_runtime_enforcement": "Existing fingerprint subset only; supplementary environment/tree data require explicit launch/resume verification.",
+  "historical_integrity": {
+    "issue28_evidence_files": 7825,
+    "issue28_source_hashes": 66,
+    "issue33_evidence_files": 2173,
+    "issue33_source_hashes": 72,
+    "status": "PASS"
+  },
+  "inputs_created": 0,
+  "manifest": {
+    "canonical_json_sha256": "2ee094bd326df30438f0f154d1c14f602cf6065d856a2fed4b1565a6542ca491",
+    "lf_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+    "path": "configs/issue37_pr2_development_v1.json",
+    "protocol_id": "issue37-pr2-development-v1-draft",
+    "raw_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+    "unchanged_from_pr2a": true
+  },
+  "observations_created": 0,
+  "pilot_id": "issue37_pr2_operational_pilot_v1",
+  "population": {
+    "audit_attempts": 6,
+    "comprehensive_conditions": 18,
+    "comprehensive_controls": 8,
+    "comprehensive_observations": 72,
+    "comprehensive_problems": 80,
+    "comprehensive_robustness": 72,
+    "comprehensive_tasks": 560,
+    "fit_attempts": 12,
+    "pilot_problems": 6,
+    "pilot_tasks": 18
+  },
+  "proposal_path": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\docs\\validation\\issue37_pr2_operational_pilot_v1_execution_lock_proposal.json",
+  "proposal_sha256": "a12ce4d42f13242d910544d128f97791b219998ec9e5904d4fa50f38376626db",
+  "proposed_command": "Set-Location 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition'\n$env:OMP_NUM_THREADS = '1'\n$env:OPENBLAS_NUM_THREADS = '1'\n$env:MKL_NUM_THREADS = '1'\n$env:VECLIB_MAXIMUM_THREADS = '1'\n$env:NUMEXPR_NUM_THREADS = '1'\n$env:BLIS_NUM_THREADS = '1'\n& 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe' 'scripts/develop_triexponential.py' run --pilot --manifest 'configs/issue37_pr2_development_v1.json' --directory 'data/generated/issue37_pr2_operational_pilot_v1' --execution-lock 'docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved.json'",
+  "repository_verified": {
+    "branch": "feat/issue-37-pr2-triexponential-fitting",
+    "clean_before_proposal": true,
+    "head": "5002d76a404e59a1633dd1bd69e1eec9e2b24d8b",
+    "parent": "56466959c9f2948bb71adee3abb75739c5a464b5",
+    "pr2a_preserved": true,
+    "pr2b_preserved": true,
+    "protected_paths_unchanged": true
+  },
+  "runtime_fingerprint_sha256": "dcbb61fc83b0caaf04413d1fb2db58833bcc42119ef900db8e570c122911d1ff",
+  "runtime_gate_test": {
+    "message": "reviewed, explicitly authorized matching execution lock required",
+    "status": "EXPECTED_REJECTION"
+  },
+  "scope": "Metadata-only preflight; no input generation, photon sampling, model evaluation, fit, audit or cross-score",
+  "solver_invocations": 0,
+  "source_lf_inventory_sha256": "79a2d1dea58ffc696dc8217a444be6bb0852f3f4e8bf75f9511807f8b27078a2",
+  "source_tree_fingerprint_sha256": "a3dd23ed0e98f0ac230764a4183e95248a03a910a518f989187ef2cab37184b5",
+  "status": "BLOCKED_FOR_EXECUTION",
+  "thread_control_validation": [
+    {
+      "architecture": "Haswell",
+      "binary_sha256": "b788215d9d47792bcba3a2e2a71143205a57282828a483f1fb071ca2c159f616",
+      "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\numpy.libs\\libscipy_openblas64_-b788215d9d47792bcba3a2e2a7114320.dll",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "prefix": "libscipy_openblas",
+      "threading_layer": "pthreads",
+      "user_api": "blas",
+      "version": "0.3.33.112.0"
+    },
+    {
+      "architecture": "Haswell",
+      "binary_sha256": "197ee2fc9b4d071f7e048078cac741151a6585d871061cf5f88c0c73e31963a5",
+      "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\scipy.libs\\libscipy_openblas-197ee2fc9b4d071f7e048078cac74115.dll",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "prefix": "libscipy_openblas",
+      "threading_layer": "pthreads",
+      "user_api": "blas",
+      "version": "0.3.31.dev"
+    },
+    {
+      "binary_sha256": "f96f3a14d88d8846f31f3ab38a490304ce7d6e4f70fae4304c63e59c7aea2d30",
+      "filepath": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll",
+      "internal_api": "openmp",
+      "num_threads": 1,
+      "prefix": "vcomp",
+      "user_api": "openmp",
+      "version": null
+    }
+  ],
+  "warnings": [
+    {
+      "detail": "execution_authorized=false and maintainer_review=null intentionally reject execution; no authorization will be inferred from elapsed time or design approval.",
+      "id": "PENDING_AUTHORIZATION"
+    },
+    {
+      "detail": "Existing require_authorization checks fingerprint only (75 source hashes, canonical manifest, scope, Python/platform, NumPy/SciPy/toolkit versions and six thread variables). Commit/tree and supplementary installed-distribution/BLAS identity are recorded here but require explicit preflight verification at execution/resume.",
+      "id": "EXTENDED_METADATA_NOT_AUTOMATICALLY_ENFORCED"
+    },
+    {
+      "detail": "Externally terminated workers retain the scheduled attempt and censored time; partial model/component work is unknown, never reported as zero.",
+      "id": "TIMEOUT_WORK_CENSORED"
+    },
+    {
+      "detail": "Resolver condition dictionaries retain comprehensive defaults poisson_replicates=3; the pilot enumerator explicitly uses one Poisson replicate. Effective pilot task inventory is six problems, 18 tasks; no manifest or resolver field was edited.",
+      "id": "INHERITED_REPLICATE_METADATA"
+    },
+    {
+      "detail": "v1 retains bounded_trf_deferred and audit implemented=false as historical planning labels; checkpoint documentation records implementation. Manifest is unchanged.",
+      "id": "MANIFEST_PLANNING_LABELS"
+    },
+    {
+      "detail": "Pilot shares model/IRF definitions with comprehensive development. It is operational development evidence, not untouched qualification; no production default or scientific criterion is selected.",
+      "id": "DEVELOPMENT_ONLY"
+    }
+  ]
+}

@@ -53,6 +53,62 @@ def digest(value):
     ).hexdigest()
 
 
+EXECUTION_SCHEMA = "issue37-development-execution-v2"
+
+
+class ExecutionIntegrityError(ValueError):
+    """Evidence cannot be verified; never reinterpret this as numerical failure."""
+
+
+def settings_for_task(configuration, *, pilot=False):
+    """Resolve the actual execution settings without generation or optimization."""
+    if configuration == "audit":
+        settings = AuditSettings.development_candidate()
+        return (
+            replace(settings, model_calls=40000, wall_seconds=120)
+            if pilot
+            else settings
+        )
+    solver, policy = configuration.split(":")
+    settings = replace(TriexponentialFitSettings.development(policy), solver=solver)
+    return (
+        replace(settings, max_optimization_calls=20000, wall_seconds=60)
+        if pilot
+        else settings
+    )
+
+
+def execution_specification(manifest, *, pilot=False):
+    """The settings/task specification enforced by the execution fingerprint."""
+    tasks = task_inventory(manifest, pilot=pilot)
+    settings = {
+        name: jsonable(settings_for_task(name, pilot=pilot))
+        for name in sorted({t["configuration"] for t in tasks})
+    }
+    return jsonable(
+        dict(
+            tasks=tasks,
+            settings=settings,
+            worker_deadlines={k: v["wall_seconds"] for k, v in settings.items()},
+            serial_workers=1,
+            termination_seconds=5,
+            cleanup_seconds=5,
+            retries=False,
+            continuations=False,
+            input_generation=dict(
+                procedure="benchmarks.triexponential.construct_problem",
+                construction=manifest["construction"],
+                irfs=manifest["irfs"],
+                namespace=manifest["operational_pilot"]["namespace"]
+                if pilot
+                else manifest["construction"]["observation_namespace"],
+                deterministic_target_kind="deterministic_expected_counts",
+                sampled_target_kind="raw_counts",
+            ),
+        )
+    )
+
+
 def problem_inventory(manifest, *, pilot=False):
     """Resolve identities only: no RNG, physical model or optimizer calls."""
     if [r["id"] for r in manifest["conditions"]] != [f"D{i:02d}" for i in range(18)]:
@@ -319,6 +375,90 @@ def component_recovery(problem, truth, parameters):
     )
 
 
+def _planned_inputs(tasks):
+    problems, identities = {}, set()
+    for task in tasks:
+        p = task["problem"]
+        if (
+            task["id"] in identities
+            or task["id"] != p["id"] + ":" + task["configuration"]
+        ):
+            raise ExecutionIntegrityError("duplicate or conflicting task identity")
+        identities.add(task["id"])
+        if p["id"] in problems and problems[p["id"]] != p:
+            raise ExecutionIntegrityError("conflicting input identity")
+        problems[p["id"]] = p
+    if not problems:
+        raise ExecutionIntegrityError("empty task inventory")
+    return problems
+
+
+def _input_binding(problem):
+    return dict(
+        problem_id=problem["id"],
+        problem_sha256=digest(problem),
+        observation_id=problem["observation_id"],
+        target_kind="deterministic_expected_counts"
+        if problem["seed"] is None
+        else "raw_counts",
+        assumed_irf=problem["assumed_irf"],
+    )
+
+
+def _array_identity(values):
+    array = np.asarray(values, dtype="<f8")
+    if array.ndim != 1 or array.size < 2 or not np.all(np.isfinite(array)):
+        raise ExecutionIntegrityError("invalid input vector")
+    return dict(
+        shape=list(array.shape),
+        dtype="<f8",
+        sha256=hashlib.sha256(array.tobytes()).hexdigest(),
+    )
+
+
+def _read_hashed(path):
+    try:
+        record = json.loads(path.read_text(encoding="utf8"))
+        if not isinstance(record, dict) or record.get("payload_sha256") != digest(
+            {k: v for k, v in record.items() if k != "payload_sha256"}
+        ):
+            raise ExecutionIntegrityError(
+                "checkpoint payload hash mismatch: " + path.name
+            )
+        return record
+    except (OSError, json.JSONDecodeError) as error:
+        raise ExecutionIntegrityError(
+            "missing or corrupt evidence: " + path.name
+        ) from error
+
+
+def _publish_record(path, payload, *, replace_existing=False):
+    """Atomic publication; preparation marker gives the seal a single writer."""
+    if path.exists() and not replace_existing:
+        raise ExecutionIntegrityError("evidence already exists: " + path.name)
+    record = dict(payload, payload_sha256=digest(payload))
+    fd, name = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf8") as stream:
+            json.dump(record, stream, sort_keys=True, allow_nan=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+    return record
+
+
+def _start_receipt(path, payload):
+    """Exclusive durable intent: even a torn receipt blocks automatic repetition."""
+    record = dict(payload, payload_sha256=digest(payload))
+    with path.open("x", encoding="utf8") as stream:
+        json.dump(record, stream, sort_keys=True, allow_nan=False)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 class DevelopmentStore:
     """Single-writer atomic JSON checkpoints; interrupted attempts are retained.
 
@@ -326,31 +466,38 @@ class DevelopmentStore:
     rerun requires a new, explicitly reviewed run directory, not silent retries.
     """
 
-    def __init__(self, directory, lock):
+    def __init__(self, directory, lock, *, create=True, verify_execution=None):
         self.directory = Path(directory)
-        self.directory.mkdir(parents=True, exist_ok=True)
+        if create:
+            self.directory.mkdir(parents=True, exist_ok=True)
         self.lock = jsonable(lock)
+        self.verify_execution = verify_execution
         path = self.directory / "lock.json"
         if path.exists():
             if json.loads(path.read_text()) != self.lock:
                 raise ValueError("execution lock mismatch")
-        else:
+        elif create:
             with path.open("x", encoding="utf8") as f:
                 json.dump(self.lock, f, sort_keys=True)
+        else:
+            raise ExecutionIntegrityError("execution directory/lock missing")
 
     def path(self, identity):
         return self.directory / (
             hashlib.sha256(identity.encode()).hexdigest() + ".json"
         )
 
-    def execute(self, identity, operation):
+    def execute(self, identity, operation, *, binding=None):
         path = self.path(identity)
         if path.exists():
-            return self.read(identity)
+            return self.read(identity, binding=binding)
         pending = dict(id=identity, status="running", lock=digest(self.lock))
+        if binding is not None:
+            pending["binding"] = binding
         pending["payload_sha256"] = digest(pending)
         with path.open("x", encoding="utf8") as f:
             json.dump(pending, f)
+        integrity_error = None
         try:
             payload = dict(
                 id=identity,
@@ -359,6 +506,8 @@ class DevelopmentStore:
                 result=jsonable(operation()),
             )
         except Exception as error:
+            if isinstance(error, ExecutionIntegrityError):
+                integrity_error = error
             payload = dict(
                 id=identity,
                 status="exception",
@@ -366,30 +515,341 @@ class DevelopmentStore:
                 exception=type(error).__name__,
                 message=str(error),
             )
-        payload["payload_sha256"] = digest(payload)
-        fd, name = tempfile.mkstemp(dir=self.directory, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf8") as f:
-                json.dump(payload, f, sort_keys=True, allow_nan=False)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(name, path)
-        finally:
-            if os.path.exists(name):
-                os.unlink(name)
-        return payload
+        if binding is not None:
+            payload["binding"] = binding
+        record = _publish_record(path, payload, replace_existing=True)
+        if integrity_error is not None:
+            raise integrity_error
+        return record
 
-    def read(self, identity):
+    def read(self, identity, *, binding=None):
         path = self.path(identity)
         if not path.exists():
             return dict(id=identity, status="missing_task")
-        record = json.loads(path.read_text())
+        record = _read_hashed(path)
         if record["id"] != identity or record["lock"] != digest(self.lock):
-            raise ValueError("checkpoint identity/lock mismatch")
-        if record.get("payload_sha256") != digest(
-            {k: v for k, v in record.items() if k != "payload_sha256"}
+            raise ExecutionIntegrityError("checkpoint identity/lock mismatch")
+        if record.get("status") not in ("running", "completed", "exception"):
+            raise ExecutionIntegrityError("unknown checkpoint status")
+        if binding is not None and record.get("binding") != binding:
+            raise ExecutionIntegrityError(
+                "checkpoint input/inventory association mismatch"
+            )
+        return record
+
+    def _execution_identity(self, tasks):
+        if (
+            self.verify_execution is None
+            or self.verify_execution() != self.lock
+            or self.lock.get("schema") != EXECUTION_SCHEMA
+            or self.lock.get("execution_authorized") is not True
+            or not self.lock.get("maintainer_review")
+            or self.lock["fingerprint"]["execution"]["tasks"] != jsonable(tasks)
         ):
-            raise ValueError("checkpoint payload hash mismatch")
+            raise ExecutionIntegrityError(
+                "unverified execution/source/environment/task identity"
+            )
+        if json.loads((self.directory / "lock.json").read_text()) != self.lock:
+            raise ExecutionIntegrityError("saved execution lock mismatch")
+        return dict(
+            lock_sha256=digest(self.lock),
+            fingerprint_sha256=digest(self.lock["fingerprint"]),
+            manifest_sha256=self.lock["fingerprint"]["manifest_file_sha256"],
+            tasks_sha256=digest(tasks),
+        )
+
+    def _input_entry(self, problem):
+        identity = "input:" + problem["id"]
+        binding = _input_binding(problem)
+        record = self.read(identity, binding=binding)
+        if record["status"] != "completed":
+            raise ExecutionIntegrityError("input preparation incomplete: " + identity)
+        arrays = record["result"]
+        condition = problem["condition"]
+        grid = (
+            condition["time_origin_ns"]
+            + np.arange(condition["bins"]) * condition["bin_width_ns"]
+        )
+        if not np.array_equal(arrays["time"], grid):
+            raise ExecutionIntegrityError("input grid differs from approved condition")
+        identities = {
+            name: _array_identity(arrays[name])
+            for name in ("time", "observed", "kernel", "generating_kernel", "mean")
+        }
+        if len({tuple(v["shape"]) for v in identities.values()}) != 1:
+            raise ExecutionIntegrityError("input vector alignment mismatch")
+        if (
+            np.any(np.diff(arrays["time"]) <= 0)
+            or any(
+                np.any(np.asarray(arrays[n]) < 0)
+                for n in ("observed", "kernel", "generating_kernel", "mean")
+            )
+            or (
+                binding["target_kind"] == "raw_counts"
+                and np.any(
+                    np.asarray(arrays["observed"]) != np.floor(arrays["observed"])
+                )
+            )
+            or arrays["observation_sha256"] != identities["observed"]["sha256"]
+            or arrays["assumed_irf_sha256"] != identities["kernel"]["sha256"]
+            or (
+                binding["target_kind"] == "deterministic_expected_counts"
+                and not np.array_equal(arrays["observed"], arrays["mean"])
+            )
+        ):
+            raise ExecutionIntegrityError(
+                "observation/kernel hash or target-kind mismatch"
+            )
+        entry = dict(
+            **binding,
+            checkpoint_id=identity,
+            filename=self.path(identity).name,
+            file_sha256=hashlib.sha256(self.path(identity).read_bytes()).hexdigest(),
+            payload_sha256=record["payload_sha256"],
+            arrays=identities,
+            truth_sha256=digest(arrays["truth"]),
+        )
+        return entry, arrays
+
+    def prepare_inputs(self, tasks, builder):
+        """One attempt to prepare and seal inputs. Never a resume/generation path."""
+        identity = self._execution_identity(tasks)
+        problems = _planned_inputs(tasks)
+        if set(p.name for p in self.directory.iterdir()) != {"lock.json"}:
+            raise ExecutionIntegrityError(
+                "preparation already started; incomplete preparation needs controlled recovery"
+            )
+        marker = dict(id="preparation_started", **identity)
+        # Exclusive durable marker precedes the first call to the generator.
+        marker["payload_sha256"] = digest(marker)
+        with (self.directory / "preparation_started.json").open(
+            "x", encoding="utf8"
+        ) as stream:
+            json.dump(marker, stream, sort_keys=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        observations, entries = {}, []
+        for problem in problems.values():
+            self._execution_identity(tasks)
+            self.execute(
+                "input:" + problem["id"],
+                lambda p=problem: builder(p, observations.get(p["observation_id"])),
+                binding=_input_binding(problem),
+            )
+            entry, arrays = self._input_entry(problem)
+            observations.setdefault(problem["observation_id"], arrays)
+            entries.append(entry)
+        self._execution_identity(tasks)
+        self._verify_pairing(entries)
+        inventory = dict(
+            schema=EXECUTION_SCHEMA,
+            id="input_inventory",
+            **identity,
+            inputs=entries,
+            task_inputs=self._task_inputs(tasks, entries),
+        )
+        _publish_record(self.directory / "input_inventory.json", inventory)
+        return self.verify_inventory(tasks)
+
+    @staticmethod
+    def _verify_pairing(entries):
+        paired = {}
+        for entry in entries:
+            shared = {
+                name: entry["arrays"][name]
+                for name in ("time", "observed", "generating_kernel", "mean")
+            }
+            shared["truth_sha256"] = entry["truth_sha256"]
+            previous = paired.setdefault(entry["observation_id"], shared)
+            if previous != shared:
+                raise ExecutionIntegrityError("paired observation identity mismatch")
+
+    @staticmethod
+    def _task_inputs(tasks, entries):
+        inputs = {e["problem_id"]: e for e in entries}
+        return [
+            dict(
+                task_id=t["id"],
+                configuration=t["configuration"],
+                input_id=inputs[t["problem"]["id"]]["checkpoint_id"],
+                input_payload_sha256=inputs[t["problem"]["id"]]["payload_sha256"],
+            )
+            for t in tasks
+        ]
+
+    def verify_inventory(self, tasks):
+        """Re-read the full seal, every input, and every existing attempt. No writes."""
+        identity = self._execution_identity(tasks)
+        problems = _planned_inputs(tasks)
+        seal = self.directory / "input_inventory.json"
+        if not seal.exists():
+            raise ExecutionIntegrityError(
+                "incomplete preparation: sealed input inventory missing"
+            )
+        inventory = _read_hashed(seal)
+        marker = _read_hashed(self.directory / "preparation_started.json")
+        if any(
+            inventory.get(k) != v or marker.get(k) != v for k, v in identity.items()
+        ):
+            raise ExecutionIntegrityError(
+                "inventory execution/source/manifest mismatch"
+            )
+        entries = [self._input_entry(p)[0] for p in problems.values()]
+        expected = dict(
+            schema=EXECUTION_SCHEMA,
+            id="input_inventory",
+            **identity,
+            inputs=entries,
+            task_inputs=self._task_inputs(tasks, entries),
+        )
+        if inventory != dict(expected, payload_sha256=digest(expected)):
+            raise ExecutionIntegrityError("sealed inventory/input identity mismatch")
+        self._verify_pairing(entries)
+        allowed = {"lock.json", "preparation_started.json", "input_inventory.json"}
+        allowed.update(e["filename"] for e in entries)
+        for task in tasks:
+            path = self.path(task["id"])
+            allowed.update(
+                path.stem + suffix
+                for suffix in (
+                    ".json",
+                    ".worker.json",
+                    ".started.json",
+                    ".worker_started.json",
+                )
+            )
+            record = self.read_attempt(task, inventory)
+            if record["status"] == "missing_task" and (
+                path.with_suffix(".worker.json").exists()
+                or path.with_suffix(".worker_started.json").exists()
+            ):
+                raise ExecutionIntegrityError("orphan worker result without an attempt")
+            if path.with_suffix(".worker.json").exists():
+                self._verified_worker_record(task, self.task_binding(task, inventory))
+        if any(p.name not in allowed for p in self.directory.glob("*.json")):
+            raise ExecutionIntegrityError("foreign or duplicate checkpoint evidence")
+        return inventory
+
+    @staticmethod
+    def task_binding(task, inventory):
+        matches = [r for r in inventory["task_inputs"] if r["task_id"] == task["id"]]
+        if len(matches) != 1:
+            raise ExecutionIntegrityError("missing or conflicting task input reference")
+        return dict(inventory_sha256=inventory["payload_sha256"], **matches[0])
+
+    def execute_attempt(self, task, tasks, operation):
+        inventory = self.verify_inventory(tasks)
+        binding = self.task_binding(task, inventory)
+        existing = self.read_attempt(task, inventory)
+        if existing["status"] != "missing_task":
+            return existing
+        _start_receipt(
+            self.path(task["id"]).with_suffix(".started.json"),
+            dict(
+                id=task["id"],
+                kind="attempt_started",
+                lock=digest(self.lock),
+                binding=binding,
+            ),
+        )
+        record = self.execute(task["id"], lambda: operation(binding), binding=binding)
+        self.verify_inventory(tasks)
+        return record
+
+    def read_attempt(self, task, inventory):
+        binding = self.task_binding(task, inventory)
+        path = self.path(task["id"])
+        receipt_path = path.with_suffix(".started.json")
+        if not receipt_path.exists():
+            if path.exists():
+                raise ExecutionIntegrityError("attempt checkpoint has no start receipt")
+            return dict(id=task["id"], status="missing_task")
+        receipt = _read_hashed(receipt_path)
+        expected = dict(
+            id=task["id"],
+            kind="attempt_started",
+            lock=digest(self.lock),
+            binding=binding,
+        )
+        if receipt != dict(expected, payload_sha256=digest(expected)):
+            raise ExecutionIntegrityError("attempt start receipt identity mismatch")
+        worker = path.with_suffix(".worker_started.json")
+        if worker.exists():
+            claim = _read_hashed(worker)
+            if any(
+                claim.get(k) != v
+                for k, v in (dict(expected, kind="worker_started")).items()
+            ):
+                raise ExecutionIntegrityError("worker start receipt identity mismatch")
+        record = self.read(task["id"], binding=binding)
+        if record["status"] == "missing_task":
+            return dict(
+                id=task["id"],
+                status="interrupted",
+                lock=digest(self.lock),
+                binding=binding,
+                receipt_sha256=receipt["payload_sha256"],
+                reason="attempt_checkpoint_missing",
+            )
+        return record
+
+    def worker_input(self, task, tasks):
+        inventory = self.verify_inventory(tasks)
+        binding = self.task_binding(task, inventory)
+        if self.read_attempt(task, inventory)["status"] != "running":
+            raise ExecutionIntegrityError(
+                "worker requires its existing bound running attempt"
+            )
+        _start_receipt(
+            self.path(task["id"]).with_suffix(".worker_started.json"),
+            dict(
+                id=task["id"],
+                kind="worker_started",
+                lock=digest(self.lock),
+                binding=binding,
+                pid=os.getpid(),
+            ),
+        )
+        record = self.read(binding["input_id"], binding=_input_binding(task["problem"]))
+        return record["result"], binding
+
+    def write_worker_result(self, task, tasks, result, binding):
+        inventory = self.verify_inventory(tasks)
+        if binding != self.task_binding(task, inventory):
+            raise ExecutionIntegrityError("worker inventory changed")
+        if (
+            not self.path(task["id"]).with_suffix(".worker_started.json").exists()
+            or self.read_attempt(task, inventory)["status"] != "running"
+        ):
+            raise ExecutionIntegrityError(
+                "worker result requires its active start receipt"
+            )
+        _publish_record(
+            self.path(task["id"]).with_suffix(".worker.json"),
+            dict(
+                id=task["id"],
+                lock=digest(self.lock),
+                binding=binding,
+                result=jsonable(result),
+            ),
+        )
+
+    def read_worker_result(self, task, tasks, binding):
+        inventory = self.verify_inventory(tasks)
+        if binding != self.task_binding(task, inventory):
+            raise ExecutionIntegrityError("worker inventory changed")
+        return self._verified_worker_record(task, binding)["result"]
+
+    def _verified_worker_record(self, task, binding):
+        record = _read_hashed(self.path(task["id"]).with_suffix(".worker.json"))
+        if (
+            record.get("id") != task["id"]
+            or record.get("lock") != digest(self.lock)
+            or record.get("binding") != binding
+            or not self.path(task["id"]).with_suffix(".worker_started.json").exists()
+            or "result" not in record
+        ):
+            raise ExecutionIntegrityError("worker result execution/input mismatch")
         return record
 
 
@@ -441,6 +901,7 @@ def reported_correctness(fit):
 
 def summarize_tasks(tasks, records):
     """Every planned task contributes, including missing/interrupted attempts."""
+    _planned_inputs(tasks)
     known = {r["id"]: r for r in records}
     if len(known) != len(records) or set(known) - {t["id"] for t in tasks}:
         raise ValueError("duplicate or foreign task records")
@@ -485,7 +946,8 @@ def summarize_tasks(tasks, records):
         group["unknown_work"] += bool(
             result.get(
                 "work_unknown",
-                row["status"] in ("missing_task", "running", "exception"),
+                row["status"]
+                in ("missing_task", "running", "interrupted", "exception"),
             )
         )
         optimization = result.get("optimization", {})
@@ -559,9 +1021,12 @@ def summarize_tasks(tasks, records):
 
 def report_store(tasks, store):
     """Read sealed attempts; cross-score without changing search checkpoints."""
-    records = [store.read(task["id"]) for task in tasks]
+    inventory = store.verify_inventory(tasks)
+    records = [store.read_attempt(task, inventory) for task in tasks]
     lookup = {r["id"]: r for r in records}
-    for task, row in zip(tasks, records, strict=True):
+    enriched = jsonable(records)
+    analyses = []
+    for task, row in zip(tasks, enriched, strict=True):
         if task["configuration"] == "audit" or row["status"] != "completed":
             continue
         fit = row["result"]
@@ -591,16 +1056,32 @@ def report_store(tasks, store):
             fit["cross_score"] = cross_score(
                 arrays["time"], arrays["observed"], arrays["kernel"], p, a
             )
-    return dict(summary=summarize_tasks(tasks, records), attempts=records)
+        analyses.append(
+            dict(
+                id=task["id"],
+                recovery=fit["recovery"],
+                cross_score=fit.get("cross_score"),
+            )
+        )
+    # Derived analysis is separate from the original hashed checkpoint payloads.
+    store.verify_inventory(tasks)
+    return dict(
+        summary=summarize_tasks(tasks, enriched),
+        attempts=records,
+        analyses=analyses,
+        provenance=dict(
+            execution_sha256=digest(store.lock),
+            inventory_sha256=inventory["payload_sha256"],
+            verified=True,
+        ),
+    )
 
 
 def execute_task(task, arrays, *, pilot=False):
     """One explicit task, used only after an external execution-lock gate."""
     c = task["problem"]["condition"]
+    settings = settings_for_task(task["configuration"], pilot=pilot)
     if task["configuration"] == "audit":
-        settings = AuditSettings.development_candidate()
-        if pilot:
-            settings = replace(settings, model_calls=40000, wall_seconds=120)
         return run_audit(
             arrays["time"],
             arrays["observed"],
@@ -609,10 +1090,6 @@ def execute_task(task, arrays, *, pilot=False):
             shift_bounds=c["shift_bounds_ns"],
             settings=settings,
         )
-    solver, policy = task["configuration"].split(":")
-    settings = replace(TriexponentialFitSettings.development(policy), solver=solver)
-    if pilot:
-        settings = replace(settings, max_optimization_calls=20000, wall_seconds=60)
     return _fit_triexponential(
         arrays["time"],
         arrays["observed"],
