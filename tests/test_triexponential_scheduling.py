@@ -23,6 +23,13 @@ def false_success(fun, x, **kwargs):
 
 def test_seed_coverage_precedes_recovery_and_unused_calls_are_not_loaned(monkeypatch):
     monkeypatch.setattr(solvers, "minimize", false_success)
+    validate = search._validate_full
+
+    def needs_recovery(*args):
+        # Schedule testing must not depend on which finite seed happens to win.
+        return replace(validate(*args), complete=True, passed=False, best_probe=None)
+
+    monkeypatch.setattr(search, "_validate_full", needs_recovery)
     result = fit(np.arange(33) % 4 + 1)
     o = result.optimization
     assert [s.kind for s in o.starts] == ["seed"] * 10 + ["required_recovery"] * 2
@@ -119,9 +126,13 @@ def test_explicit_promotion_exhaustion_is_rejected_and_reassessed(monkeypatch):
     assert result.numerical.validation.candidate != result.parameters
     assert "validation_for_different_candidate" in result.numerical.reasons
     assert result.numerical.recomputed_centered_nll == result.centered_nll
+    assert result.identifiability.candidate == result.parameters
     assert (
-        result.identifiability.conditioning_status == "candidate_changed_or_unavailable"
+        result.identifiability.conditioning_status != "candidate_changed_or_unavailable"
     )
+    assert result.numerical.fresh_prediction_consistent
+    assert not result.numerical.validation_matches_candidate
+    assert not result.numerical.required_recovery_complete
 
 
 @pytest.mark.parametrize("approximate", [False, True])

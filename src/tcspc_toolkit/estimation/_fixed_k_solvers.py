@@ -64,10 +64,21 @@ class _Invocation:
     residual_evaluations: int = 0
     jacobian_evaluations: int = 0
     inward_start_coordinates: tuple | None = None
+    failure_events: int = 0
+    failure_diagnostics: tuple = ()
 
 
 def _run_lbfgsb(
-    problem, candidate, settings, *, kind, seed_id, calls, seconds, fix_zero_face=False
+    problem,
+    candidate,
+    settings,
+    *,
+    kind,
+    seed_id,
+    calls,
+    seconds,
+    fix_zero_face=False,
+    invocation_id=None,
 ):
     started = problem.work.clock()
     before = problem.work.phases["optimization"]["model_calls"]
@@ -94,6 +105,10 @@ def _run_lbfgsb(
     success = status = None
     termination = "not_invoked"
     previous_observer = problem.evaluation_observer
+    previous_identity = problem.invocation_identity
+    problem.invocation_identity = (invocation_id, kind, seed_id, "lbfgsb")
+    failure_before = problem.failure_events
+    last_evaluation = candidate
 
     def observe(evaluation):
         nonlocal best
@@ -110,9 +125,10 @@ def _run_lbfgsb(
         return x
 
     def fun(values):
-        nonlocal anchor, statuses
+        nonlocal anchor, statuses, last_evaluation
         x = expand(values)
         base = problem.evaluate(x, phase="optimization", origin=kind)
+        last_evaluation = base
         if not base.finite:
             raise _UnusablePair(base.status)
         derivative = _objective_derivatives(
@@ -201,7 +217,10 @@ def _run_lbfgsb(
                             ):
                                 break
     finally:
+        if success is not True:
+            problem.record_failure(last_evaluation, termination, active_indices=free)
         problem.evaluation_observer = previous_observer
+        problem.invocation_identity = previous_identity
     return _Invocation(
         kind,
         seed_id,
@@ -217,11 +236,24 @@ def _run_lbfgsb(
         problem.work.clock() - started,
         statuses,
         trials,
+        failure_events=problem.failure_events - failure_before,
+        failure_diagnostics=tuple(
+            f for f in problem.recent_failures if f.event > failure_before
+        ),
     )
 
 
 def _run_trf(
-    problem, candidate, settings, *, kind, seed_id, calls, seconds, fix_zero_face=False
+    problem,
+    candidate,
+    settings,
+    *,
+    kind,
+    seed_id,
+    calls,
+    seconds,
+    fix_zero_face=False,
+    invocation_id=None,
 ):
     """One restricted or joint TRF call; every physical evaluation is charged.
 
@@ -245,6 +277,10 @@ def _run_trf(
     free = tuple(i for i in range(8) if i not in fixed)
     best, endpoint = candidate, None
     previous = problem.evaluation_observer
+    previous_identity = problem.invocation_identity
+    problem.invocation_identity = (invocation_id, kind, seed_id, "trf")
+    failure_before = problem.failure_events
+    last_evaluation = candidate
     residual_calls = jacobian_calls = 0
     inward = None
     statuses = ()
@@ -264,7 +300,9 @@ def _run_trf(
         return x
 
     def evaluate(values, origin):
+        nonlocal last_evaluation
         e = problem.evaluate(expand(values), phase="optimization", origin=origin)
+        last_evaluation = e
         if not e.finite:
             raise _UnusablePair(e.status)
         return e
@@ -346,7 +384,10 @@ def _run_trf(
             ) as error:
                 termination = f"solver_numerical_failure:{type(error).__name__}:{error}"
     finally:
+        if success is not True:
+            problem.record_failure(last_evaluation, termination, active_indices=free)
         problem.evaluation_observer = previous
+        problem.invocation_identity = previous_identity
     return _Invocation(
         kind,
         seed_id,
@@ -366,4 +407,6 @@ def _run_trf(
         residual_calls,
         jacobian_calls,
         inward,
+        problem.failure_events - failure_before,
+        tuple(f for f in problem.recent_failures if f.event > failure_before),
     )

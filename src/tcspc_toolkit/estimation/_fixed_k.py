@@ -358,6 +358,31 @@ class _DerivativePolicy:
 
 
 @dataclass(frozen=True)
+class _StencilPoint:
+    refinement: int
+    requested_step: float
+    coordinate: float
+    coordinate_step: float
+    physical_value: float | None
+    physical_step: float | None
+    effective_step: float | None
+    evaluation_id: int | None
+    status: str
+
+
+@dataclass(frozen=True)
+class _SideStencil:
+    direction: int
+    feasible_room: float
+    requested_step: float
+    status: str
+    refinements: int = 0
+    points: tuple[_StencilPoint, ...] = ()
+    points_attempted: int = 0
+    stencil_type: str = "three_point_actual_displacements"
+
+
+@dataclass(frozen=True)
 class _CoordinateDerivative:
     value: float | None
     left: float | None
@@ -368,6 +393,30 @@ class _CoordinateDerivative:
     right_status: str | None = None
     left_step: float | None = None
     right_step: float | None = None
+    left_stencil: _SideStencil | None = None
+    right_stencil: _SideStencil | None = None
+
+
+@dataclass(frozen=True)
+class _NumericalFailure:
+    """Bounded scalar evidence; never retains expected-count curves."""
+
+    event: int
+    invocation: tuple | None
+    candidate_id: int
+    phase: str
+    origin: str
+    reason: str
+    coordinates: tuple[float, ...]
+    parameters: _FixedKParameters | None
+    coordinate_bounds: tuple[tuple[float, float], ...]
+    physical_bounds: tuple[tuple[float, float], ...]
+    active_indices: tuple[int, ...]
+    shift_geometry: object
+    derivatives: tuple[_CoordinateDerivative, ...] = ()
+    zero_expectation_bins: int | None = None
+    positive_target_zero_expectation_bins: int | None = None
+    coordinate_shape: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

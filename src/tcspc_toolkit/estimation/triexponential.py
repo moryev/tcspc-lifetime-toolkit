@@ -176,6 +176,8 @@ class TriexponentialStartDiagnostics:
     residual_evaluations: int = 0
     jacobian_evaluations: int = 0
     inward_start_coordinates: tuple[float, ...] | None = None
+    failure_events: int = 0
+    failure_diagnostics: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -193,6 +195,8 @@ class TriexponentialWork:
     statistics_calculations: int
     total_seconds: float
     overhead_seconds: float
+    failure_events: int = 0
+    recent_failures: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -228,6 +232,15 @@ class TriexponentialNumericalAssessment:
     signed_objective_gap: float | None
     consistent: bool
     validation: TriexponentialLocalValidation | None
+    fresh_prediction_consistent: bool | None = None
+    fresh_prediction_reasons: tuple[str, ...] = ()
+    validation_matches_candidate: bool = False
+    required_recovery_complete: bool = False
+    objective_gradient_available: bool | None = None
+    residual_jacobian_available: bool | None = None
+    diagnostic_improvement: float | None = None
+    diagnostic_best_parameters: TriexponentialParameters | None = None
+    diagnostic_best_centered_nll: float | None = None
 
 
 @dataclass(frozen=True)
@@ -282,6 +295,10 @@ class TriexponentialIdentifiabilityDiagnostics:
     condition_number: float | None
     rank_tolerance: float | None
     derivative_statuses: tuple[str, ...]
+    candidate: TriexponentialParameters | None = None
+    candidate_evaluation_id: int | None = None
+    restricted: Any = None
+    derivative_details: tuple = ()
 
 
 @dataclass(frozen=True)

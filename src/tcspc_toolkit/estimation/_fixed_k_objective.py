@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from collections import deque
 from time import monotonic
 from types import MappingProxyType
 
@@ -19,6 +20,9 @@ from tcspc_toolkit.estimation._fixed_k import (
     _positive_integer,
     _readonly,
     _scalar,
+    _StencilPoint,
+    _SideStencil,
+    _NumericalFailure,
 )
 from tcspc_toolkit.evaluation.diagnostics import calculate_poisson_deviance
 from tcspc_toolkit.physics.forward_model import (
@@ -158,6 +162,57 @@ class _FixedKProblem:
         self.evaluation_observer = None
         self._evaluation_id = 0
         self._identity = object()
+        self.invocation_identity = None
+        self.failure_events = 0
+        self.recent_failures = deque(maxlen=8)
+
+    def record_failure(self, evaluation, reason, *, derivatives=(), active_indices=()):
+        self.failure_events += 1
+        p = self.coordinates
+        same_problem = evaluation.problem_id is self._identity
+        geometry = (
+            _shift_geometry(
+                self.inputs.time_ns,
+                self.inputs.kernel,
+                evaluation.parameters.temporal_shift_ns,
+            )
+            if same_problem and evaluation.parameters is not None
+            else None
+        )
+        self.recent_failures.append(
+            _NumericalFailure(
+                self.failure_events,
+                self.invocation_identity,
+                evaluation.evaluation_id,
+                evaluation.phase,
+                evaluation.origin,
+                reason,
+                tuple(map(float, evaluation.coordinates.ravel()[: p.dimension])),
+                evaluation.parameters,
+                tuple(zip(map(float, p.lower), map(float, p.upper))),
+                ((0.0, np.inf),) * p.n_components
+                + (p.lifetime_bounds_ns,) * p.n_components
+                + ((0.0, np.inf), p.temporal_shift_bounds_ns),
+                tuple(active_indices),
+                geometry,
+                tuple(derivatives),
+                int(np.sum(evaluation.expected_counts == 0))
+                if same_problem
+                and evaluation.expected_counts is not None
+                and evaluation.expected_counts.shape == self.inputs.targets.shape
+                else None,
+                int(
+                    np.sum(
+                        (evaluation.expected_counts == 0) & (self.inputs.targets > 0)
+                    )
+                )
+                if same_problem
+                and evaluation.expected_counts is not None
+                and evaluation.expected_counts.shape == self.inputs.targets.shape
+                else None,
+                tuple(evaluation.coordinates.shape),
+            )
+        )
 
     def _model(self, parameters, phase, *, objective):
         reason = self.work.reserve(phase, parameters.n_components, objective=objective)
@@ -229,6 +284,8 @@ class _FixedKProblem:
             origin,
             self._identity,
         )
+        if not result.finite:
+            self.record_failure(result, result.status)
         # Validation/assessment/diagnostics never silently select a candidate.
         if (
             result.finite
@@ -291,24 +348,69 @@ class _ModelDerivatives:
     jacobian: object
     column_errors: object
     columns: tuple = ()
+    errors: tuple = ()
 
 
 def _shape_side(problem, base, index, sign, step, policy, phase):
-    """Three-point one-sided differences at h and h/2, bounded refinements."""
+    """Three-point differences using actual decoded displacements, not nominal h.
+
+    Shift displacements are divided by the declared scale; lifetime displacements
+    are measured in log coordinates. No physical endpoint is moved or snapped.
+    Only the latest twelve scalar probe records are retained per side.
+    """
     x = base.coordinates
     previous = {}
+    trace = deque(maxlen=12)
+    attempted = 0
     reason = "unstable_stencil"
+    p = problem.coordinates
+    shift = index == p.dimension - 1
+    physical_base = (
+        base.parameters.temporal_shift_ns
+        if shift
+        else base.parameters.lifetimes_ns[index - p.n_components]
+    )
+    room = x[index] - p.lower[index] if sign < 0 else p.upper[index] - x[index]
+
+    def finish(column, error, status, h, refinements):
+        return (
+            column,
+            error,
+            status,
+            h,
+            _SideStencil(
+                sign, float(room), step, status, refinements, tuple(trace), attempted
+            ),
+        )
+
     for reduction in range(policy.max_reductions):
         h = step / 2**reduction
         values = []
+        displacements = []
         for multiple in (0.5, 1.0, 2.0):
             offset = sign * multiple * h
             trial = x.copy()
             trial[index] += offset
+            attempted += 1
+            actual = float(trial[index] - x[index])
+            physical = delta = effective = None
+            result = None
+            status = "unrepresentable_stencil"
             if trial[index] == x[index] or not problem.coordinates.feasible(trial):
-                return None, None, "unrepresentable_stencil", h
-            if not np.isclose(trial[index] - x[index], offset, rtol=1e-6, atol=0):
-                return None, None, "unrepresentable_stencil", h
+                trace.append(
+                    _StencilPoint(
+                        reduction,
+                        offset,
+                        float(trial[index]),
+                        actual,
+                        None,
+                        None,
+                        None,
+                        None,
+                        status,
+                    )
+                )
+                return finish(None, None, status, h, reduction + 1)
             key = float(trial[index])
             if key not in previous:
                 result = problem.evaluate(
@@ -316,31 +418,57 @@ def _shape_side(problem, base, index, sign, step, policy, phase):
                 )
                 previous[key] = result
             result = previous[key]
+            if result.parameters is not None:
+                physical = (
+                    result.parameters.temporal_shift_ns
+                    if shift
+                    else result.parameters.lifetimes_ns[index - p.n_components]
+                )
+                delta = physical - physical_base
+                with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+                    effective = (
+                        delta / p.shift_scale
+                        if shift
+                        else float(np.log1p(delta / physical_base))
+                    )
             if not result.finite:
-                return None, None, result.status, h
-            # Distinct coordinates can decode to the same floating-point physics.
-            if result.parameters == base.parameters:
-                return None, None, "unrepresentable_stencil", h
-            if index == problem.coordinates.dimension - 1 and not np.isclose(
-                result.parameters.temporal_shift_ns - base.parameters.temporal_shift_ns,
-                offset * problem.coordinates.shift_scale,
-                rtol=1e-6,
-                atol=0,
+                status = result.status
+            elif (
+                effective is not None
+                and np.isfinite(effective)
+                and sign * effective > 0
+                and np.isclose(effective, actual, rtol=1e-6, atol=0)
+                and (not displacements or abs(effective) > abs(displacements[-1]))
             ):
-                return None, None, "unrepresentable_stencil", h
+                status = "finite"
+            trace.append(
+                _StencilPoint(
+                    reduction,
+                    offset,
+                    float(trial[index]),
+                    actual,
+                    physical,
+                    delta,
+                    effective,
+                    result.evaluation_id,
+                    status,
+                )
+            )
+            if status != "finite":
+                return finish(None, None, status, h, reduction + 1)
             values.append(result.expected_counts)
+            displacements.append(effective)
         half, full, twice = values
+        dh, df, dt = displacements
         with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
             coarse = (
-                sign
-                * (4 * (full - base.expected_counts) - (twice - base.expected_counts))
-                / (2 * h)
-            )
+                (dt / df) * (full - base.expected_counts)
+                - (df / dt) * (twice - base.expected_counts)
+            ) / (dt - df)
             fine = (
-                sign
-                * (4 * (half - base.expected_counts) - (full - base.expected_counts))
-                / h
-            )
+                (df / dh) * (half - base.expected_counts)
+                - (dh / df) * (full - base.expected_counts)
+            ) / (df - dh)
             error = np.abs(fine - coarse)
         if (
             np.all(np.isfinite(fine))
@@ -351,8 +479,8 @@ def _shape_side(problem, base, index, sign, step, policy, phase):
                 + policy.relative_tolerance * np.maximum(np.abs(fine), np.abs(coarse))
             )
         ):
-            return fine, error, "available", h
-    return None, None, reason, step / 2 ** (policy.max_reductions - 1)
+            return finish(fine, error, "available", h, reduction + 1)
+    return finish(None, None, reason, h, policy.max_reductions)
 
 
 def _model_derivatives(
@@ -377,6 +505,9 @@ def _model_derivatives(
         or not p.feasible(base.coordinates)
         or p.decode(base.coordinates) != base.parameters
     ):
+        problem.record_failure(
+            base, "invalid_derivative_anchor", active_indices=sorted(active)
+        )
         return _ModelDerivatives(
             _DerivativeEvaluation(
                 base, (unavailable,) * p.dimension, "unavailable", False
@@ -467,8 +598,17 @@ def _model_derivatives(
                 else geometry.discontinuous_right
             )
             if room == 0 or blocked_jump:
+                why = "bound" if room == 0 else "discontinuous_side"
                 sides.append(
-                    (None, None, "bound" if room == 0 else "discontinuous_side", None)
+                    (None, None, why, None, _SideStencil(sign, float(room), h, why))
+                )
+            elif room < 4 * h:
+                # A near bound is feasible, not an exact active face. Do not
+                # collapse the stencil into roundoff merely to use both sides.
+                # The other side must independently pass its two-scale check.
+                why = "insufficient_bound_room"
+                sides.append(
+                    (None, None, why, None, _SideStencil(sign, float(room), h, why))
                 )
             else:
                 sides.append(
@@ -506,6 +646,13 @@ def _model_derivatives(
         elif len(available) == 1 and any(s[2] == "bound" for s in sides):
             column, error = available[0][:2]
             status = "one_sided_bound"
+        elif (
+            len(available) == 1
+            and any(s[2] == "insufficient_bound_room" for s in sides)
+            and (not shift or geometry.region == "smooth")
+        ):
+            column, error = available[0][:2]
+            status = "feasible_side_near_bound"
         elif not available:
             status = ";".join(s[2] for s in sides)
         with np.errstate(over="ignore", invalid="ignore"):
@@ -514,7 +661,16 @@ def _model_derivatives(
             value, status = None, "nonfinite_score"
         columns[index], errors[index] = column, error
         descriptions[index] = _CoordinateDerivative(
-            value, *directional, status, h, left[2], right[2], left[3], right[3]
+            value,
+            *directional,
+            status,
+            h,
+            left[2],
+            right[2],
+            left[3],
+            right[3],
+            left[4],
+            right[4],
         )
     complete = (
         all(d.value is not None for d in descriptions)
@@ -526,11 +682,19 @@ def _model_derivatives(
         else None
     )
     error_array = _readonly(np.column_stack(errors)) if jacobian is not None else None
+    if any(columns[i] is None or descriptions[i].value is None for i in active):
+        problem.record_failure(
+            base,
+            "derivative_unavailable",
+            derivatives=descriptions,
+            active_indices=sorted(active),
+        )
     return _ModelDerivatives(
         _DerivativeEvaluation(base, tuple(descriptions), geometry.region, complete),
         jacobian,
         error_array,
         tuple(_readonly(c) if c is not None else None for c in columns),
+        tuple(_readonly(e) if e is not None else None for e in errors),
     )
 
 

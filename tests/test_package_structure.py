@@ -395,6 +395,7 @@ CLASSICAL_IMPORTS = {
         f"{ESTIMATION}._fixed_k_initialization",
         f"{ESTIMATION}._fixed_k_solvers",
         f"{ESTIMATION}._fixed_k_diagnostics",
+        f"{ESTIMATION}._poisson_residuals",
         DIAGNOSTICS,
         f"{IRF}.preparation",
     },
@@ -411,6 +412,7 @@ CLASSICAL_IMPORTS = {
     },
     f"{ESTIMATION}._fixed_k_objective": {
         "__future__",
+        "collections",
         "dataclasses",
         "time",
         "types",

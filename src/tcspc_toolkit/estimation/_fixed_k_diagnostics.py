@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import combinations
 
 import numpy as np
@@ -116,6 +116,8 @@ class _NumericalAssessment:
     validation_passed: bool | None
     complete: bool
     reasons: tuple[str, ...]
+    prediction_consistent: bool = False
+    prediction_reasons: tuple[str, ...] = ()
 
 
 def _assess_candidate(
@@ -144,6 +146,7 @@ def _assess_candidate(
             reasons.append("expectation_mismatch")
         if not np.array_equal(candidate.component_counts, fresh.component_counts):
             reasons.append("component_mismatch")
+    prediction_reasons = tuple(reasons)
     matches = bool(validation is not None and validation.candidate is candidate)
     if validation is not None and not matches:
         reasons.append("validation_for_different_candidate")
@@ -156,6 +159,8 @@ def _assess_candidate(
         validation.passed if matches else None,
         complete,
         tuple(reasons),
+        complete and not prediction_reasons,
+        prediction_reasons,
     )
 
 
@@ -218,6 +223,19 @@ def _component_structure(candidate):
 
 
 @dataclass(frozen=True, eq=False)
+class _RestrictedConditioning:
+    """Sensitivity conditional on fixing every excluded coordinate."""
+
+    coordinate_names: tuple[str, ...]
+    fixed_coordinate_names: tuple[str, ...]
+    status: str
+    rank: int | None
+    rank_tolerance: float | None
+    singular_values: tuple[float, ...] | None
+    condition_number: float | None
+
+
+@dataclass(frozen=True, eq=False)
 class _ConditioningDiagnostic:
     status: str
     n_bins: int
@@ -229,6 +247,42 @@ class _ConditioningDiagnostic:
     coordinate_names: tuple[str, ...]
     derivative: object
     active_bounds: tuple[str, ...]
+    candidate_id: int | None = None
+    restricted: _RestrictedConditioning | None = None
+
+
+def _weighted_sensitivity(candidate, jacobian, error):
+    """Same declared error-aware rank rule for full and restricted columns."""
+    rank = tolerance = singular = condition = None
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        weight = 1 / np.sqrt(candidate.expected_counts)
+        jacobian = jacobian * weight[:, None]
+        error = error * weight[:, None]
+    status = "available"
+    if not np.all(np.isfinite(jacobian)) or not np.all(np.isfinite(error)):
+        status = "nonfinite_weighted_jacobian"
+    else:
+        try:
+            singular_array = np.linalg.svd(jacobian, compute_uv=False)
+            tolerance = float(
+                max(
+                    max(jacobian.shape) * np.finfo(float).eps * singular_array[0],
+                    np.linalg.norm(error),
+                )
+            )
+            if not np.isfinite(tolerance):
+                status = "unrepresentable_rank_tolerance"
+            else:
+                rank = int(np.sum(singular_array > tolerance))
+                singular = tuple(map(float, singular_array))
+                condition = (
+                    float(singular_array[0] / singular_array[-1])
+                    if rank == jacobian.shape[1]
+                    else np.inf
+                )
+        except np.linalg.LinAlgError:
+            status = "svd_failure"
+    return status, rank, tolerance, singular, condition
 
 
 def _conditioning_diagnostic(problem, candidate, policy):
@@ -237,6 +291,7 @@ def _conditioning_diagnostic(problem, candidate, policy):
     n, p = problem.inputs.time_ns.size, problem.coordinates.dimension
     status = "available"
     rank = tolerance = singular = condition = None
+    restricted = None
     if derivative.jacobian is None:
         status = "derivative_unavailable"
     elif np.any(candidate.expected_counts <= 0):
@@ -244,35 +299,34 @@ def _conditioning_diagnostic(problem, candidate, policy):
     elif problem.work.deadline_reached:
         status = "wall_time_limit"
     else:
-        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
-            weight = 1 / np.sqrt(candidate.expected_counts)
-            jacobian = derivative.jacobian * weight[:, None]
-            error = derivative.column_errors * weight[:, None]
-        if not np.all(np.isfinite(jacobian)) or not np.all(np.isfinite(error)):
-            status = "nonfinite_weighted_jacobian"
-        else:
-            try:
-                singular_array = np.linalg.svd(jacobian, compute_uv=False)
-                tolerance = float(
-                    max(
-                        max(n, p) * np.finfo(float).eps * singular_array[0],
-                        np.linalg.norm(error),
-                    )
-                )
-                if not np.isfinite(tolerance):
-                    status = "unrepresentable_rank_tolerance"
-                else:
-                    rank = int(np.sum(singular_array > tolerance))
-                    singular = tuple(map(float, singular_array))
-                    condition = (
-                        float(singular_array[0] / singular_array[-1])
-                        if rank == p
-                        else np.inf
-                    )
-            except np.linalg.LinAlgError:
-                status = "svd_failure"
-    if problem.work.deadline_reached and status == "available":
+        status, rank, tolerance, singular, condition = _weighted_sensitivity(
+            candidate, derivative.jacobian, derivative.column_errors
+        )
+    if derivative.jacobian is None and np.all(candidate.expected_counts > 0):
+        indices = [
+            i for i, column in enumerate(derivative.columns) if column is not None
+        ]
+        if indices and derivative.errors and not problem.work.deadline_reached:
+            facts = _weighted_sensitivity(
+                candidate,
+                np.column_stack([derivative.columns[i] for i in indices]),
+                np.column_stack([derivative.errors[i] for i in indices]),
+            )
+            restricted = _RestrictedConditioning(
+                tuple(problem.coordinates.names[i] for i in indices),
+                tuple(
+                    problem.coordinates.names[i] for i in range(p) if i not in indices
+                ),
+                *facts,
+            )
+    if any(
+        phase == "diagnostics" and "limit" in why for phase, why in problem.work.blocked
+    ):
+        status = "diagnostic_budget_exhausted"
+    if problem.work.deadline_reached:
         status = "wall_time_limit"
+        if restricted is not None:
+            restricted = replace(restricted, status="wall_time_limit")
     return _ConditioningDiagnostic(
         status,
         n,
@@ -294,4 +348,6 @@ def _conditioning_diagnostic(problem, candidate, policy):
             )
             if value == lo or value == hi
         ),
+        candidate.evaluation_id,
+        restricted,
     )

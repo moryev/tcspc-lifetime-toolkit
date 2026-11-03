@@ -23,6 +23,7 @@ from tcspc_toolkit.estimation._fixed_k_objective import (
 )
 from tcspc_toolkit.estimation._fixed_k_initialization import _build_seed_bank, _SeedBank
 from tcspc_toolkit.estimation._fixed_k_solvers import _run_lbfgsb, _run_trf, _lease
+from tcspc_toolkit.estimation._poisson_residuals import _poisson_residuals
 from tcspc_toolkit.estimation._fixed_k_diagnostics import (
     _validate_candidate,
     _ValidationProbe,
@@ -378,23 +379,17 @@ def _fit_triexponential(
             seed_id=name,
             calls=allowance,
             seconds=0.65 * settings.wall_seconds / n,
+            invocation_id=len(starts),
         )
         starts.append(invocation)
         attempted.append(name)
         seconds["optimization"] += invocation.seconds
     candidate = canonical(best_observed) if best_observed is not None else None
     check = assessment = conditioning = diagnostic_anchor = None
+    diagnostic_best = None
+    diagnostic_improvement = None
+    objective_available = residual_available = None
     if candidate is not None:
-        # Diagnostic probes can be evidence, never inherited acceptance.
-        mark = clock()
-        diagnostic_anchor = candidate
-        conditioning = _conditioning_diagnostic(
-            problem, candidate, settings.derivative_policy
-        )
-        seconds["diagnostics"] += clock() - mark
-        if best_observed.centered_nll < candidate.centered_nll:
-            promotions.append("diagnostic_or_search_best")
-            candidate = canonical(best_observed)
         while True:
             mark = clock()
             check = _validate_full(problem, candidate, settings)
@@ -436,6 +431,7 @@ def _fit_triexponential(
                 seconds=0.2 * settings.wall_seconds / settings.reserved_recovery_starts,
                 fix_zero_face=check.best_probe is not None
                 and check.best_probe.origin.startswith("zero_face"),
+                invocation_id=len(starts),
             )
             starts.append(invocation)
             recovery_used += 1
@@ -453,6 +449,50 @@ def _fit_triexponential(
             relative_tolerance=1e-12,
         )
         seconds["assessment"] += clock() - mark
+        # Freeze selection after assessment. Diagnostic probes are retained as
+        # separate evidence and can reject acceptance, never silently replace it.
+        mark = clock()
+        diagnostic_anchor = candidate
+
+        def diagnostic_observer(evaluation):
+            nonlocal diagnostic_best
+            retain(evaluation)
+            if evaluation.finite and (
+                diagnostic_best is None
+                or evaluation.centered_nll < diagnostic_best.centered_nll
+            ):
+                diagnostic_best = evaluation
+
+        problem.evaluation_observer = diagnostic_observer
+        try:
+            conditioning = _conditioning_diagnostic(
+                problem, candidate, settings.derivative_policy
+            )
+        finally:
+            problem.evaluation_observer = retain
+        seconds["diagnostics"] += clock() - mark
+        diagnostic_improvement = (
+            max(0.0, candidate.centered_nll - diagnostic_best.centered_nll)
+            if diagnostic_best is not None
+            else 0.0
+        )
+        derivative = conditioning.derivative
+        objective_available = derivative.objective.complete
+        residual_available = False
+        if derivative.jacobian is not None:
+            residual = _poisson_residuals(inputs.targets, candidate.expected_counts)
+            if np.all(residual.derivative_available):
+                with np.errstate(over="ignore", invalid="ignore"):
+                    residual_available = (
+                        bool(
+                            np.all(
+                                np.isfinite(
+                                    derivative.jacobian * residual.derivatives[:, None]
+                                )
+                            )
+                        )
+                        and not problem.work.deadline_reached
+                    )
 
     unattempted = tuple(name for name, _ in bank.selected if name not in attempted)
     stages = (
@@ -481,6 +521,11 @@ def _fit_triexponential(
         reasons.append("candidate_validation_failed_or_unavailable")
     if problem.work.deadline_reached:
         reasons.append("wall_time_limit")
+    if (
+        diagnostic_improvement is not None
+        and diagnostic_improvement > settings.descent_tolerance
+    ):
+        reasons.append("diagnostic_descent_detected")
     if assessment is not None:
         reasons.extend(assessment.reasons)
     summary = stats = structure = None
@@ -496,7 +541,14 @@ def _fit_triexponential(
             stats = calculate_poisson_fit_statistics(
                 inputs.targets, candidate.expected_counts, n_parameters=8
             )
-    same_diagnostic = candidate is diagnostic_anchor
+    same_diagnostic = (
+        candidate is diagnostic_anchor
+        and conditioning is not None
+        and conditioning.derivative.objective.base is candidate
+        and conditioning.candidate_id == candidate.evaluation_id
+    )
+    if not same_diagnostic:
+        objective_available = residual_available = None
     identifiability = api.TriexponentialIdentifiabilityDiagnostics(
         8,
         structure.zero_amplitude_components if structure else (),
@@ -525,6 +577,10 @@ def _fit_triexponential(
         tuple(d.status for d in conditioning.derivative.objective.derivatives)
         if same_diagnostic and conditioning
         else (),
+        _public(candidate.parameters) if same_diagnostic else None,
+        candidate.evaluation_id if same_diagnostic else None,
+        conditioning.restricted if same_diagnostic else None,
+        conditioning.derivative.objective.derivatives if same_diagnostic else (),
     )
     records = tuple(
         api.TriexponentialStartDiagnostics(
@@ -548,6 +604,8 @@ def _fit_triexponential(
             s.residual_evaluations,
             s.jacobian_evaluations,
             s.inward_start_coordinates,
+            s.failure_events,
+            s.failure_diagnostics,
         )
         for i, s in enumerate(starts)
     )
@@ -568,6 +626,8 @@ def _fit_triexponential(
         int(stats is not None),
         clock() - started,
         0.0,
+        problem.failure_events,
+        tuple(problem.recent_failures),
     )
     if problem.work.deadline_reached and "wall_time_limit" not in reasons:
         reasons.append("wall_time_limit")
@@ -580,6 +640,15 @@ def _fit_triexponential(
         assessment.signed_objective_gap if assessment else None,
         assessment.consistent if assessment else False,
         _validation_record(check),
+        assessment.prediction_consistent if assessment else None,
+        assessment.prediction_reasons if assessment else (),
+        assessment.validation_matches if assessment else False,
+        candidate is not None and recovery_reason is None,
+        objective_available,
+        residual_available,
+        diagnostic_improvement,
+        _public(diagnostic_best.parameters) if diagnostic_best else None,
+        diagnostic_best.centered_nll if diagnostic_best else None,
     )
     optimization = api.TriexponentialOptimizationDiagnostics(
         bank.generated,
