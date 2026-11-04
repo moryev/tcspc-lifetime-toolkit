@@ -1,8 +1,12 @@
 # Package architecture and post-Issue-12 import cleanup
 
+Issue #37 PR 2C-1 adds private `benchmarks._triexponential_verification` for the
+explicit fit-only verification scope. It reuses the development runner and sealed
+input store, with no new root exports or numerical solver changes.
+
 Issue #37 PR 2B adds `estimation._poisson_residuals`,
 `benchmarks._triexponential_audit` and `benchmarks.triexponential`.
-The current inventory is **57 substantive implementations and 74 production
+The current inventory is **58 substantive implementations and 75 production
 Python files**. The audit has no production-module dependencies; development
 orchestration composes the audit and fitter only through explicit calls.
 See the [PR 2B contract](design/issue37_pr2b_numerics.md). No experiments or

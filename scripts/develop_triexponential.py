@@ -9,8 +9,10 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+from time import perf_counter
 
 from threadpoolctl import threadpool_info
+from tcspc_toolkit.benchmarks._triexponential_verification import VERIFICATION_SCOPE
 
 from tcspc_toolkit.benchmarks.triexponential import (
     DevelopmentStore,
@@ -156,9 +158,10 @@ def execution_environment():
     )
 
 
-def fingerprint(manifest, pilot, manifest_path=None):
+def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
+    default_name = VERIFICATION_SCOPE if verification else "issue37_pr2_development_v1"
     manifest_path = Path(
-        manifest_path or ROOT / "configs/issue37_pr2_development_v1.json"
+        manifest_path or ROOT / ("configs/" + default_name + ".json")
     ).resolve()
     raw = manifest_path.read_bytes()
     if json.loads(raw) != manifest:
@@ -172,7 +175,11 @@ def fingerprint(manifest, pilot, manifest_path=None):
         repository=repository_identity([*paths, manifest_path]),
         manifest_file_sha256=hashlib.sha256(raw).hexdigest(),
         manifest_sha256=digest(manifest),
-        scope="pilot" if pilot else "comprehensive",
+        scope=VERIFICATION_SCOPE
+        if verification
+        else "pilot"
+        if pilot
+        else "comprehensive",
         source_lf_sha256={
             p.relative_to(ROOT).as_posix(): hashlib.sha256(
                 p.read_bytes().replace(b"\r\n", b"\n")
@@ -180,22 +187,54 @@ def fingerprint(manifest, pilot, manifest_path=None):
             for p in paths
         },
         environment=execution_environment(),
-        execution=execution_specification(manifest, pilot=pilot),
+        execution=execution_specification(
+            manifest, pilot=pilot, verification=verification
+        ),
     )
 
 
-def require_authorization(path, manifest, pilot, manifest_path=None):
+def require_authorization(
+    path, manifest, pilot, manifest_path=None, *, verification=False
+):
     lock = json.loads(Path(path).read_text())
     if (
         lock.get("schema") != EXECUTION_SCHEMA
         or lock.get("execution_authorized") is not True
         or not lock.get("maintainer_review")
-        or lock.get("fingerprint") != fingerprint(manifest, pilot, manifest_path)
+        or lock.get("fingerprint")
+        != fingerprint(manifest, pilot, manifest_path, verification=verification)
         or lock["fingerprint"]["repository"]["committed_sources"] is not True
     ):
         raise ValueError(
             "reviewed, explicitly authorized matching execution lock required"
         )
+    if verification:
+        controls = lock["fingerprint"]["environment"]
+        expected = dict.fromkeys(
+            (
+                "OMP_NUM_THREADS",
+                "OPENBLAS_NUM_THREADS",
+                "MKL_NUM_THREADS",
+                "VECLIB_MAXIMUM_THREADS",
+                "NUMEXPR_NUM_THREADS",
+                "BLIS_NUM_THREADS",
+            ),
+            "1",
+        )
+        expected.update(
+            OMP_DYNAMIC="FALSE",
+            MKL_DYNAMIC="FALSE",
+            PYTHONHASHSEED="0",
+            OPENBLAS_CORETYPE=None,
+            PYTHONPATH=None,
+            PYTHONHOME=None,
+        )
+        if controls["environment"] != expected or any(
+            p["num_threads"] != 1 for p in controls["numerical_libraries"]
+        ):
+            raise ExecutionIntegrityError(
+                "verification requires the declared one-thread environment"
+            )
     return lock
 
 
@@ -204,24 +243,37 @@ def main(argv=None):
     parser.add_argument(
         "command", choices=("inspect", "prepare", "run", "report", "_worker")
     )
-    parser.add_argument("--manifest", type=Path, default=DEFAULT)
-    parser.add_argument("--pilot", action="store_true")
+    parser.add_argument("--manifest", type=Path)
+    scopes = parser.add_mutually_exclusive_group()
+    scopes.add_argument("--pilot", action="store_true")
+    scopes.add_argument("--verification", action="store_true")
     parser.add_argument("--directory", type=Path)
     parser.add_argument("--execution-lock", type=Path)
     parser.add_argument("--task-id")
     args = parser.parse_args(argv)
+    command_started = perf_counter()
+    args.manifest = args.manifest or (
+        ROOT / ("configs/" + VERIFICATION_SCOPE + ".json")
+        if args.verification
+        else DEFAULT
+    )
+    scope = dict(verification=True) if args.verification else {}
     manifest = json.loads(args.manifest.read_text())
-    tasks = task_inventory(manifest, pilot=args.pilot)
+    tasks = task_inventory(manifest, pilot=args.pilot, **scope)
     if args.command == "inspect":
         print(
             json.dumps(
                 dict(
                     schema=EXECUTION_SCHEMA,
-                    fingerprint=fingerprint(manifest, args.pilot, args.manifest),
+                    fingerprint=fingerprint(
+                        manifest, args.pilot, args.manifest, **scope
+                    ),
                     execution_authorized=False,
                     maintainer_review=None,
                     tasks=len(tasks),
-                    problems=len(problem_inventory(manifest, pilot=args.pilot)),
+                    problems=len(
+                        problem_inventory(manifest, pilot=args.pilot, **scope)
+                    ),
                 ),
                 indent=2,
             )
@@ -237,10 +289,16 @@ def main(argv=None):
 
     def verify_execution():
         return require_authorization(
-            authorization_path, manifest, args.pilot, args.manifest
+            authorization_path, manifest, args.pilot, args.manifest, **scope
         )
 
     lock = verify_execution()
+    if (
+        args.verification
+        and args.directory.resolve()
+        != (ROOT / lock["fingerprint"]["execution"]["output_directory"]).resolve()
+    ):
+        raise ExecutionIntegrityError("verification output directory differs from lock")
     preparing = args.command == "prepare"
     if preparing and args.directory.exists():
         raise ExecutionIntegrityError(
@@ -250,12 +308,25 @@ def main(argv=None):
         args.directory, lock, create=preparing, verify_execution=verify_execution
     )
     if preparing:
-        store.prepare_inputs(
+        prepared = store.prepare_inputs(
             tasks,
             lambda p, observation: construct_problem(
-                manifest, p, observation=observation
+                manifest, p, observation=observation, **scope
             ),
         )
+        if args.verification:
+            print(
+                json.dumps(
+                    dict(
+                        command="prepare",
+                        scope=VERIFICATION_SCOPE,
+                        elapsed_seconds=perf_counter() - command_started,
+                        inventory_sha256=prepared["payload_sha256"],
+                        inputs=len(prepared["inputs"]),
+                    ),
+                    indent=2,
+                )
+            )
         return
     inventory = store.verify_inventory(tasks)
     if args.command == "report":
@@ -276,7 +347,7 @@ def main(argv=None):
     if args.command == "_worker":
         task = next(t for t in tasks if t["id"] == args.task_id)
         arrays, binding = store.worker_input(task, tasks)
-        result = jsonable(execute_task(task, arrays, pilot=args.pilot))
+        result = jsonable(execute_task(task, arrays, pilot=args.pilot, **scope))
         store.write_worker_result(task, tasks, result, binding)
         return
     for task in tasks:
@@ -297,35 +368,82 @@ def main(argv=None):
             ]
             if args.pilot:
                 command.append("--pilot")
+            if args.verification:
+                command.append("--verification")
             ceiling = lock["fingerprint"]["execution"]["worker_deadlines"][
                 task["configuration"]
             ]
             # Hard parent timeout includes worker startup. Internal budgets remain
             # cooperative and are recorded independently. No automatic retry.
+            started = perf_counter()
+
+            def timed(result, elapsed, *, censored=False):
+                if args.verification:
+                    result = result | dict(
+                        external_worker_timing=dict(
+                            elapsed_including_cleanup_seconds=elapsed,
+                            deadline_seconds=ceiling,
+                            right_censored=censored,
+                            runtime_lower_bound_seconds=ceiling if censored else None,
+                            cleanup_allowance_seconds=10,
+                        )
+                    )
+                return result
+
             try:
                 finished = bounded_worker(command, ceiling)
+                elapsed = perf_counter() - started
             except WorkerCleanupError as error:
-                return dict(
-                    failure="external_worker_timeout",
-                    work_unknown=True,
-                    hard_wall_seconds=ceiling,
-                    cleanup_complete=False,
-                    cleanup_error=str(error),
+                elapsed = perf_counter() - started
+                return timed(
+                    dict(
+                        failure="external_worker_timeout",
+                        work_unknown=True,
+                        hard_wall_seconds=ceiling,
+                        cleanup_complete=False,
+                        cleanup_error=str(error),
+                    ),
+                    elapsed,
+                    censored=True,
+                )
+            except RuntimeError as error:
+                if not args.verification:
+                    raise
+                return timed(
+                    dict(failure="worker_failed", error=str(error), work_unknown=True),
+                    perf_counter() - started,
                 )
             if not finished:
-                return dict(
-                    failure="external_worker_timeout",
-                    work_unknown=True,
-                    hard_wall_seconds=ceiling,
-                    cleanup_complete=True,
+                return timed(
+                    dict(
+                        failure="external_worker_timeout",
+                        work_unknown=True,
+                        hard_wall_seconds=ceiling,
+                        cleanup_complete=True,
+                    ),
+                    elapsed,
+                    censored=True,
                 )
-            return store.read_worker_result(task, tasks, binding)
+            return timed(store.read_worker_result(task, tasks, binding), elapsed)
 
         record = store.execute_attempt(task, tasks, run_one)
         if record.get("result", {}).get("cleanup_complete") is False:
             raise WorkerCleanupError(
                 "saved timeout has unconfirmed cleanup; run stopped"
             )
+    if args.verification:
+        print(
+            json.dumps(
+                dict(
+                    command="run",
+                    scope=VERIFICATION_SCOPE,
+                    coordinator_inclusive_elapsed_seconds=perf_counter()
+                    - command_started,
+                    planned_tasks=len(tasks),
+                ),
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":

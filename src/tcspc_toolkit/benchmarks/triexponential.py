@@ -16,6 +16,7 @@ from types import SimpleNamespace
 
 import numpy as np
 from scipy.stats import exponnorm
+from tcspc_toolkit.benchmarks import _triexponential_verification as verification_scope
 
 from tcspc_toolkit.benchmarks._triexponential_audit import (
     AuditSettings,
@@ -60,8 +61,14 @@ class ExecutionIntegrityError(ValueError):
     """Evidence cannot be verified; never reinterpret this as numerical failure."""
 
 
-def settings_for_task(configuration, *, pilot=False):
+def settings_for_task(configuration, *, pilot=False, verification=False):
     """Resolve the actual execution settings without generation or optimization."""
+    if verification:
+        if pilot or configuration not in ("lbfgsb:compact", "trf:compact"):
+            raise ValueError(
+                "verification requires only the two compact fit configurations"
+            )
+        pilot = True  # Identical settings, without inheriting the pilot task inventory.
     if configuration == "audit":
         settings = AuditSettings.development_candidate()
         return (
@@ -78,13 +85,38 @@ def settings_for_task(configuration, *, pilot=False):
     )
 
 
-def execution_specification(manifest, *, pilot=False):
+def execution_specification(manifest, *, pilot=False, verification=False):
     """The settings/task specification enforced by the execution fingerprint."""
-    tasks = task_inventory(manifest, pilot=pilot)
+    tasks = task_inventory(manifest, pilot=pilot, verification=verification)
     settings = {
-        name: jsonable(settings_for_task(name, pilot=pilot))
+        name: jsonable(settings_for_task(name, pilot=pilot, verification=verification))
         for name in sorted({t["configuration"] for t in tasks})
     }
+    if verification:
+        if settings != manifest["configurations"]:
+            raise ExecutionIntegrityError("resolved verification settings changed")
+        return jsonable(
+            dict(
+                tasks=tasks,
+                settings=settings,
+                worker_deadlines={k: v["wall_seconds"] for k, v in settings.items()},
+                serial_workers=1,
+                termination_seconds=5,
+                cleanup_seconds=5,
+                retries=False,
+                continuations=False,
+                input_generation=dict(
+                    procedure="benchmarks.triexponential.construct_problem",
+                    construction=manifest["construction"],
+                    irfs=manifest["irfs"],
+                ),
+                preparation_model_call_limit=18,
+                reporting_model_call_limit=15,
+                output_directory="data/generated/"
+                + verification_scope.VERIFICATION_SCOPE,
+                historical_baseline=manifest.get("historical_baseline", {}),
+            )
+        )
     return jsonable(
         dict(
             tasks=tasks,
@@ -109,8 +141,12 @@ def execution_specification(manifest, *, pilot=False):
     )
 
 
-def problem_inventory(manifest, *, pilot=False):
+def problem_inventory(manifest, *, pilot=False, verification=False):
     """Resolve identities only: no RNG, physical model or optimizer calls."""
+    if verification:
+        if pilot:
+            raise ValueError("pilot and verification scopes are exclusive")
+        return verification_scope.problems(manifest)
     if [r["id"] for r in manifest["conditions"]] != [f"D{i:02d}" for i in range(18)]:
         raise ValueError("D00-D17 required")
     common = manifest["defaults"]
@@ -170,7 +206,18 @@ def problem_inventory(manifest, *, pilot=False):
     return tuple(result)
 
 
-def task_inventory(manifest, *, pilot=False):
+def task_inventory(manifest, *, pilot=False, verification=False):
+    if (
+        not verification
+        and manifest.get("study_id") == verification_scope.VERIFICATION_SCOPE
+    ):
+        raise ValueError("explicit verification scope required")
+    if verification:
+        return tuple(
+            dict(id=p["id"] + ":" + name, problem=p, configuration=name)
+            for p in problem_inventory(manifest, pilot=pilot, verification=True)
+            for name in ("lbfgsb:compact", "trf:compact")
+        )
     policies = ("compact",) if pilot else tuple(manifest["candidate_policies"])
     return tuple(
         dict(id=p["id"] + ":" + name, problem=p, configuration=name)
@@ -205,8 +252,22 @@ def _kernel(manifest, name, time):
     return values / np.trapezoid(values, time)
 
 
-def construct_problem(manifest, problem, *, observation=None):
+def construct_problem(manifest, problem, *, observation=None, verification=False):
     """Explicit construction only; caller persists hashes before any fitting."""
+    if verification:
+        return verification_scope.construct(manifest, problem, observation)
+    return _construct_problem(
+        manifest,
+        problem,
+        observation=observation,
+        model=multiexponential_reconvolution_expected_counts,
+    )
+
+
+def _construct_problem(
+    manifest, problem, *, observation, model, declared_amplitudes=None
+):
+    """Shared physical construction; the verification caller counts each call."""
     c = problem["condition"]
     if observation is not None:
         time = np.asarray(observation["time"])
@@ -225,7 +286,7 @@ def construct_problem(manifest, problem, *, observation=None):
     generating = _kernel(manifest, c["generating_irf"], time)
     tau = np.asarray(c["lifetimes_ns"])
     unit = [
-        multiexponential_reconvolution_expected_counts(
+        model(
             time,
             generating,
             amplitudes=[1],
@@ -239,6 +300,13 @@ def construct_problem(manifest, problem, *, observation=None):
         * np.asarray(c["detected_signal_fractions"])
         / np.sum(unit, axis=1)
     )
+    if declared_amplitudes is not None:
+        declared = np.asarray(declared_amplitudes, dtype=float)
+        if not np.array_equal(amplitudes, declared):
+            raise ExecutionIntegrityError(
+                "declared amplitudes differ from detected-window construction"
+            )
+        amplitudes = declared
     mean = np.sum(amplitudes[:, None] * unit, axis=0) + c["background_counts_per_bin"]
     observed = (
         mean
@@ -515,6 +583,8 @@ class DevelopmentStore:
                 exception=type(error).__name__,
                 message=str(error),
             )
+            if hasattr(error, "verification_work"):
+                payload["preparation_work"] = jsonable(error.verification_work)
         if binding is not None:
             payload["binding"] = binding
         record = _publish_record(path, payload, replace_existing=True)
@@ -1021,6 +1091,8 @@ def summarize_tasks(tasks, records):
 
 def report_store(tasks, store):
     """Read sealed attempts; cross-score without changing search checkpoints."""
+    if store.lock["fingerprint"].get("scope") == verification_scope.VERIFICATION_SCOPE:
+        return verification_scope.report(tasks, store)
     inventory = store.verify_inventory(tasks)
     records = [store.read_attempt(task, inventory) for task in tasks]
     lookup = {r["id"]: r for r in records}
@@ -1077,10 +1149,12 @@ def report_store(tasks, store):
     )
 
 
-def execute_task(task, arrays, *, pilot=False):
+def execute_task(task, arrays, *, pilot=False, verification=False):
     """One explicit task, used only after an external execution-lock gate."""
     c = task["problem"]["condition"]
-    settings = settings_for_task(task["configuration"], pilot=pilot)
+    settings = settings_for_task(
+        task["configuration"], pilot=pilot, verification=verification
+    )
     if task["configuration"] == "audit":
         return run_audit(
             arrays["time"],
