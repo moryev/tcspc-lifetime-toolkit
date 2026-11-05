@@ -1,7 +1,6 @@
 """Bounded K=3 seed-first search and explicit candidate assessment."""
 
 from dataclasses import replace
-from fractions import Fraction
 from itertools import combinations
 from time import monotonic
 from types import MappingProxyType
@@ -19,7 +18,6 @@ from tcspc_toolkit.estimation._fixed_k import (
 from tcspc_toolkit.estimation._fixed_k_objective import (
     _FixedKProblem,
     _WorkLimits,
-    _shift_geometry,
 )
 from tcspc_toolkit.estimation._fixed_k_initialization import _build_seed_bank, _SeedBank
 from tcspc_toolkit.estimation._fixed_k_solvers import _run_lbfgsb, _run_trf, _lease
@@ -46,53 +44,55 @@ def _public(parameters):
     )
 
 
-def _neighbor_shifts(time, shift, bounds):
-    """At most three nearby knots and sided interior points, using actual time."""
+def _adjacent_shift_knots(time, shift):
+    """Closest supplied-abscissa differences, without shift/subtraction cancellation."""
     q = time - shift
-    left = np.searchsorted(time, q, side="left") - 1
+    left = np.searchsorted(time, q, side="left")
     right = np.searchsorted(time, q, side="right")
-    knots = []
-    mask = left >= 0
-    if np.any(mask):
-        knots.append(shift + float(np.min(q[mask] - time[left[mask]])))
-    mask = right < time.size
-    if np.any(mask):
-        knots.append(shift - float(np.min(time[right[mask]] - q[mask])))
-    if np.any(
-        np.searchsorted(time, q, side="left") != np.searchsorted(time, q, side="right")
-    ):
-        knots.append(shift)
+    differences = []
+    for index in (left - 1, left, right, right + 1):
+        mask = (index >= 0) & (index < time.size)
+        differences.extend((time[mask] - time[index[mask]]).tolist())
+    values = np.unique(differences)
+    below, above = values[values < shift], values[values > shift]
+    return tuple(
+        ([float(below[-1])] if below.size else [])
+        + ([shift] if shift in values else [])
+        + ([float(above[0])] if above.size else [])
+    )
+
+
+def _neighbor_shifts(time, shift, bounds):
+    """At most three actual knots and two representable sided points per knot."""
     result = []
     unavailable = []
-    for knot in knots:
+    for knot in _adjacent_shift_knots(time, shift):
         if bounds[0] <= knot <= bounds[1]:
             result.append(knot)
-            distance = _shift_geometry(
-                time, np.zeros_like(time), knot
-            ).distance_to_next_knot_ns
+            adjacent = _adjacent_shift_knots(time, knot)
             for sign in (-1, 1):
-                room = knot - bounds[0] if sign < 0 else bounds[1] - knot
-                h = min(distance / 4, room / 2)
-                value = knot + sign * h
-                if h > 0 and value != knot and np.isfinite(value):
+                bound = bounds[int(sign > 0)]
+                if knot == bound:
+                    continue
+                neighbors = [v for v in adjacent if sign * (v - knot) > 0]
+                edge = (
+                    min(neighbors, key=lambda v: abs(v - knot)) if neighbors else bound
+                )
+                edge = max(edge, bound) if sign < 0 else min(edge, bound)
+                value = knot + (edge - knot) / 4
+                if value == knot:
+                    value = float(np.nextafter(knot, edge))
+                # A real interval without a representable interior remains unavailable.
+                if min(knot, edge) < value < max(knot, edge):
                     result.append(value)
-                elif room > 0:
+                else:
                     unavailable.append(sign)
     return tuple(dict.fromkeys(result)), tuple(dict.fromkeys(unavailable))
 
 
-def _mathematically_feasible(coordinates, vector, step, lower, upper):
-    """Check declared float inputs exactly, without overflow in probe arithmetic."""
-    for x, v, lo, hi in zip(coordinates, vector, lower, upper, strict=True):
-        value = Fraction(float(x)) + Fraction(float(step)) * Fraction(float(v))
-        if (np.isfinite(lo) and value < Fraction(float(lo))) or (
-            np.isfinite(hi) and value > Fraction(float(hi))
-        ):
-            return False
-    return True
-
-
 def _probe_status(probe, candidate):
+    if probe.status is not None:
+        return probe.status
     if probe.evaluation is not None:
         if probe.feasible and probe.evaluation.parameters == candidate.parameters:
             return "unrepresentable_probe"
@@ -113,28 +113,6 @@ def _validate_full(problem, candidate, settings):
             absolute_tolerance=settings.descent_tolerance,
             relative_tolerance=0,
         )
-    # A failed numeric construction is not proof that the direction violates
-    # physical bounds. Also reject coordinate steps lost on physical decoding.
-    probes = []
-    complete = check.complete
-    for probe in check.probes:
-        if not probe.feasible and _mathematically_feasible(
-            candidate.coordinates,
-            probe.vector,
-            probe.signed_step,
-            problem.coordinates.lower,
-            problem.coordinates.upper,
-        ):
-            probe = replace(probe, feasible=True)
-        if _probe_status(probe, candidate) == "unrepresentable_probe":
-            complete = False
-        probes.append(probe)
-    check = replace(
-        check,
-        probes=tuple(probes),
-        complete=complete,
-        passed=check.passed if complete else None,
-    )
     if not check.complete:
         return check
     p = problem.coordinates
@@ -143,12 +121,12 @@ def _validate_full(problem, candidate, settings):
         for indices in combinations((0, 1, 2, 6), size):
             x = candidate.coordinates.copy()
             x[list(indices)] = 0
-            extra.append(("zero_face:" + ",".join(map(str, indices)), x))
+            extra.append(("zero_face:" + ",".join(map(str, indices)), x, None))
     for i in (3, 4, 5, 7):
         for value in (p.lower[i], p.upper[i]):
             x = candidate.coordinates.copy()
             x[i] = value
-            extra.append((f"bound:{p.names[i]}", x))
+            extra.append((f"bound:{p.names[i]}", x, None))
     shifts, unavailable = _neighbor_shifts(
         problem.inputs.time_ns,
         candidate.parameters.temporal_shift_ns,
@@ -157,7 +135,7 @@ def _validate_full(problem, candidate, settings):
     for shift in shifts:
         x = candidate.coordinates.copy()
         x[7] = (shift - p.shift_mid) / p.shift_scale
-        extra.append(("shift_interval", x))
+        extra.append(("shift_interval", x, shift))
     probes = list(check.probes)
     best = check.best_probe
     complete = not unavailable
@@ -171,11 +149,45 @@ def _validate_full(problem, candidate, settings):
                 None,
             )
         )
-    seen = {tuple(candidate.coordinates)}
-    for name, x in extra:
-        if tuple(x) in seen:
+    seen = {candidate.parameters}
+    for name, x, requested_shift in extra:
+        # Endpoint/face requests already attained physically are redundant.
+        # They do not establish directional coverage or consume a model call.
+        try:
+            decoded = p.decode(x)
+        except (ValueError, FloatingPointError, OverflowError):
+            decoded = None
+        if (
+            requested_shift is not None
+            and requested_shift != candidate.parameters.temporal_shift_ns
+            and decoded == candidate.parameters
+        ):
+            complete = False
+            probes.append(
+                _ValidationProbe(
+                    name,
+                    _readonly(x - candidate.coordinates),
+                    1.0,
+                    True,
+                    None,
+                    "unrepresentable_shift_probe",
+                )
+            )
             continue
-        seen.add(tuple(x))
+        if decoded in seen:
+            probes.append(
+                _ValidationProbe(
+                    name,
+                    _readonly(x - candidate.coordinates),
+                    1.0,
+                    True,
+                    None,
+                    "redundant_physical_candidate",
+                )
+            )
+            continue
+        if decoded is not None:
+            seen.add(decoded)
         feasible = p.feasible(x)
         result = (
             problem.evaluate(x, phase="validation", origin=name) if feasible else None
@@ -440,6 +452,13 @@ def _fit_triexponential(
             if best_observed.centered_nll < candidate.centered_nll:
                 promotions.append("recovery_best")
                 candidate = canonical(best_observed)
+        if check.candidate is not candidate:
+            # One terminal pass closes the identity gap after a last promotion.
+            # Freeze selection here. Its better probes remain best-observed
+            # evidence, and no omitted recovery stage is waived by this pass.
+            mark = clock()
+            check = _validate_full(problem, candidate, settings)
+            seconds["validation"] += clock() - mark
         mark = clock()
         assessment = _assess_candidate(
             problem,

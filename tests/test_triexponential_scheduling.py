@@ -123,16 +123,21 @@ def test_explicit_promotion_exhaustion_is_rejected_and_reassessed(monkeypatch):
     result = fit(np.arange(33) % 4 + 1, config=settings(reserved_recovery_starts=0))
     assert "validation_probe" in result.optimization.promotions
     assert result.numerical.candidate == result.parameters
-    assert result.numerical.validation.candidate != result.parameters
-    assert "validation_for_different_candidate" in result.numerical.reasons
+    assert result.numerical.validation.candidate == result.parameters
+    assert "validation_for_different_candidate" not in result.numerical.reasons
     assert result.numerical.recomputed_centered_nll == result.centered_nll
     assert result.identifiability.candidate == result.parameters
     assert (
         result.identifiability.conditioning_status != "candidate_changed_or_unavailable"
     )
     assert result.numerical.fresh_prediction_consistent
-    assert not result.numerical.validation_matches_candidate
+    assert result.numerical.validation_matches_candidate
     assert not result.numerical.required_recovery_complete
+    assert (
+        result.optimization.recovery_unavailable_reason
+        == "required_recovery_start_limit"
+    )
+    assert not result.numerical.accepted
 
 
 @pytest.mark.parametrize("approximate", [False, True])
@@ -172,8 +177,8 @@ def test_unrepresentable_shift_probe_makes_validation_incomplete(monkeypatch):
     base = problem.evaluate(x, phase="initialization", origin="base")
     monkeypatch.setattr(
         search,
-        "_shift_geometry",
-        lambda *args: SimpleNamespace(distance_to_next_knot_ns=np.nextafter(0.0, 1.0)),
+        "_neighbor_shifts",
+        lambda *args: ((), (-1, 1)),
     )
     check = search._validate_full(problem, base, settings())
     assert not check.complete and check.passed is None
@@ -197,10 +202,12 @@ def test_overflowing_feasible_probe_cannot_be_classified_as_out_of_bounds():
     assert not check.complete and check.passed is None
     probes = search._validation_record(check).probes
     assert any(p.feasible and p.status == "unrepresentable_probe" for p in probes)
-    assert any(not p.feasible and p.status == "infeasible" for p in probes)
+    # The negative step reaches the zero face before the positive overflow.
+    assert probes[0].parameters.amplitudes[0] == 0
+    assert probes[0].feasible
 
 
-def test_coordinate_step_lost_in_physical_shift_is_not_a_completed_probe():
+def test_coordinate_step_lost_in_physical_shift_is_enlarged_before_evaluation():
     problem, _ = make_problem(targets=np.full(65, 3.0))
     problem.coordinates = replace(
         problem.coordinates, temporal_shift_bounds_ns=(1e16, 1e16 + 4)
@@ -211,13 +218,13 @@ def test_coordinate_step_lost_in_physical_shift_is_not_a_completed_probe():
     )
     assert candidate.finite and candidate.centered_nll == 0
     check = search._validate_full(problem, candidate, settings())
-    assert not check.complete and check.passed is None
-    assert any(
-        p.status == "unrepresentable_probe"
-        and p.feasible
-        and p.parameters == search._public(candidate.parameters)
-        for p in search._validation_record(check).probes
-    )
+    assert check.complete and check.passed
+    probes = [
+        p for p in search._validation_record(check).probes if p.direction == "shift"
+    ]
+    assert probes
+    assert {p.parameters.temporal_shift_ns for p in probes} == {1e16, 1e16 + 4}
+    assert all(p.status == "finite" for p in probes)
 
 
 def test_global_deadline_retains_last_completed_candidate_and_blocks_fresh_acceptance(

@@ -37,9 +37,10 @@ def test_conditioning_runs_after_assessment_on_exact_promoted_return(monkeypatch
     assert r.identifiability.candidate_evaluation_id == events[1][1].evaluation_id
     assert r.numerical.fresh_prediction_consistent
     assert r.numerical.fresh_prediction_reasons == ()
-    assert not r.numerical.validation_matches_candidate
+    assert r.numerical.validation_matches_candidate
     assert not r.numerical.required_recovery_complete
-    assert not r.numerical.accepted and not r.numerical.consistent
+    assert not r.numerical.accepted and r.numerical.consistent
+    assert r.numerical.validation.best_improvement > 0.001
 
 
 @pytest.mark.parametrize("improvement", [0.0005, 0.002])

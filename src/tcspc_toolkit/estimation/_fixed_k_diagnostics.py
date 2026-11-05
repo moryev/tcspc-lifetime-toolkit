@@ -18,6 +18,7 @@ class _ValidationProbe:
     signed_step: float
     feasible: bool
     evaluation: _Evaluation | None
+    status: str | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -43,6 +44,82 @@ def _validation_directions(coordinates):
     return tuple((name, _readonly(v)) for name, v in directions)
 
 
+def _physical_vector(parameters):
+    return np.array(
+        (
+            *parameters.amplitudes,
+            *parameters.lifetimes_ns,
+            parameters.background,
+            parameters.temporal_shift_ns,
+        )
+    )
+
+
+def _validation_trial(coordinates, candidate, vector, signed_step):
+    """Construct a distinct feasible scalar probe before charging physical work.
+
+    Clip the step to directional bound room. If decoding loses displacement,
+    enlarge from a machine-resolution step, with at most eight metadata trials.
+    Every changed coordinate must move physically in the requested direction.
+    Failure with positive physical room is unavailable, never infeasible.
+    """
+    direction = np.sign(signed_step) * vector
+    active = direction != 0
+    physical = _physical_vector(candidate.parameters)
+    k = coordinates.n_components
+    lower = np.array(
+        [0.0] * k
+        + [coordinates.lifetime_bounds_ns[0]] * k
+        + [0.0, coordinates.temporal_shift_bounds_ns[0]]
+    )
+    upper = np.array(
+        [np.inf] * k
+        + [coordinates.lifetime_bounds_ns[1]] * k
+        + [np.inf, coordinates.temporal_shift_bounds_ns[1]]
+    )
+    if np.any((direction < 0) & (physical <= lower)) or np.any(
+        (direction > 0) & (physical >= upper)
+    ):
+        return None, False
+    x = candidate.coordinates
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        room = np.where(direction > 0, coordinates.upper - x, x - coordinates.lower)
+        maximum = float(np.min(room[active] / np.abs(direction[active])))
+        resolution = 4 * np.finfo(float).eps * (1 + np.abs(x))
+        resolution[k : 2 * k] += 4 * np.finfo(float).eps * abs(coordinates.log_mid)
+        neighbor = np.nextafter(physical, np.where(direction > 0, np.inf, -np.inf))
+        resolution[:k] = np.maximum(
+            resolution[:k],
+            np.abs(neighbor[:k] - physical[:k]) / coordinates.amplitude_scale,
+        )
+        resolution[-2] = max(
+            resolution[-2],
+            abs(neighbor[-2] - physical[-2]) / coordinates.background_scale,
+        )
+        resolution[-1] = max(
+            resolution[-1], abs(neighbor[-1] - physical[-1]) / coordinates.shift_scale
+        )
+        minimum = float(np.max(resolution[active] / np.abs(direction[active])))
+    step = min(abs(signed_step), maximum)
+    for _ in range(8):
+        with np.errstate(over="ignore", invalid="ignore"):
+            trial = x + step * direction
+        if step <= 0 or not np.all(np.isfinite(trial)):
+            break
+        trial = np.clip(trial, coordinates.lower, coordinates.upper)
+        try:
+            decoded = _physical_vector(coordinates.decode(trial))
+        except (ValueError, FloatingPointError, OverflowError):
+            decoded = physical
+        moved = np.where(direction > 0, decoded > physical, decoded < physical)
+        if np.all(moved[active]):
+            return trial, True
+        if step == maximum:
+            break
+        step = min(max(2 * step, minimum), maximum)
+    return None, True
+
+
 def _validate_candidate(
     problem, candidate, *, steps, absolute_tolerance, relative_tolerance
 ):
@@ -65,11 +142,12 @@ def _validate_candidate(
     for name, vector in _validation_directions(problem.coordinates):
         for step in steps:
             for sign in (-1, 1):
-                x = candidate.coordinates + sign * step * vector
-                feasible = problem.coordinates.feasible(x)
+                x, feasible = _validation_trial(
+                    problem.coordinates, candidate, vector, sign * step
+                )
                 result = None
                 if feasible:
-                    if np.array_equal(x, candidate.coordinates):
+                    if x is None:
                         complete = False
                     else:
                         result = problem.evaluate(x, phase="validation", origin=name)
@@ -80,7 +158,13 @@ def _validate_candidate(
                         if result.status not in ("finite", "infinite_objective"):
                             complete = False
                 probes.append(
-                    _ValidationProbe(name, vector, sign * step, feasible, result)
+                    _ValidationProbe(
+                        name,
+                        vector if x is None else _readonly(x - candidate.coordinates),
+                        sign * step if x is None else 1.0,
+                        feasible,
+                        result,
+                    )
                 )
                 if not complete or problem.work.deadline_reached:
                     complete = False
