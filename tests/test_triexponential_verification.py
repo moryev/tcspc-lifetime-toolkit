@@ -157,10 +157,10 @@ def fixture_input(problem, observation=None):
     return pack_input(time, observed, kernel, truth=p)
 
 
-def fixture_store(directory, *, prepare=True):
+def fixture_store(directory, *, prepare=True, scope=verification.VERIFICATION_SCOPE):
     tasks = [t for t in tiny_tasks() if t["configuration"] != "audit"]
     lock = software_lock(tasks)
-    lock["fingerprint"]["scope"] = verification.VERIFICATION_SCOPE
+    lock["fingerprint"]["scope"] = scope
     lock["fingerprint"]["execution"]["output_directory"] = str(directory)
     store = shared.DevelopmentStore(directory, lock, verify_execution=lambda: lock)
     if prepare:

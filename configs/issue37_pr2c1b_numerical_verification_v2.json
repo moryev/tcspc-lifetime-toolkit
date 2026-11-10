@@ -1,0 +1,1238 @@
+{
+  "schema": "issue37.pr2c1b.verification-proposal.v2",
+  "study_id": "issue37_pr2c1b_numerical_verification_v2",
+  "status": "infrastructure_implemented_pending_review_and_execution_lock",
+  "execution_authorized": false,
+  "maintainer_execution_approval": null,
+  "purpose": "Regression verification of scalar-probe representability, terminal candidate validation and required-recovery accounting on inspected development controls.",
+  "baseline_commit": "cb3d0ad0aff42d8dbb0dc29e455dc1f25db07dcc",
+  "baseline_source_tree": "d738e8dc786b05dce2f4bcaddb508130f3352639",
+  "historical_reference": {
+    "pilot_lock_path": "docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved_v3.json",
+    "pilot_lock_file_sha256": "bac11203b2dbb42aa232e1f8d8420a11065644b88b5dfbd557cab9c662b0dfe0",
+    "development_manifest_path": "configs/issue37_pr2_development_v1.json",
+    "development_manifest_file_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+    "original_pilot_audit_complete": 0,
+    "original_pilot_audits": 6,
+    "original_pilot_fit_acceptance": {
+      "lbfgsb:compact": {
+        "accepted": 6,
+        "attempts": 6
+      },
+      "trf:compact": {
+        "accepted": 4,
+        "attempts": 6
+      }
+    },
+    "original_artifacts_immutable": true,
+    "deterministic_overlap": "All three scientific conditions intentionally match the inspected pilot; deterministic mean targets are expected to reproduce its target bytes after fresh preparation. These controls are reused development evidence, not untouched evidence.",
+    "poisson_comparison": "Fresh branch-3 observations. Earlier branches contain different draws and support descriptive comparisons only."
+  },
+  "construction": {
+    "time": "time_origin_ns + arange(bins) * bin_width_ns, including zero and last_time_ns",
+    "components": "Unchanged general-K finite-window reconvolution; one shared positive-later IRF shift; bin-width convolution factor; nonnegative FFT-roundoff clamp unchanged",
+    "background": "One post-convolution background in counts per bin",
+    "kernel_normalization": "Existing trapezoidal normalization on each supplied target grid; no endpoint zeroing or hidden preprocessing",
+    "amplitudes": "Use the declared pre-exponential amplitudes and verify their original detected-window fraction construction before sealing",
+    "mean": "sum_j A[j] * unit_component(time, prepared_generating_kernel, tau[j], shift) + background",
+    "sampling": "numpy.random.Generator(PCG64(SeedSequence(rng_entropy))).poisson(mean), once per Poisson observation identity",
+    "deterministic_kind": "deterministic_expected_counts; use the existing explicit deterministic-objective path, never relabel as observed raw counts",
+    "poisson_kind": "raw_counts",
+    "namespace": [
+      37,
+      2,
+      20261101,
+      3
+    ],
+    "namespace_suffix": [
+      "condition_index (0, 1, 2)",
+      "replicate 0"
+    ],
+    "reserved_namespaces": {
+      "original_pilot": [
+        37,
+        2,
+        20261101,
+        0
+      ],
+      "comprehensive_development": [
+        37,
+        2,
+        20261101,
+        1
+      ],
+      "previous_verification": [
+        37,
+        2,
+        20261101,
+        2
+      ]
+    },
+    "pairing": "Each problem has one immutable observation/kernel checkpoint shared byte-for-byte by L-BFGS-B and TRF; no solver-specific sampling.",
+    "inputs_generated_now": false
+  },
+  "irfs": {
+    "gaussian": {
+      "center_ns": 0.8,
+      "fwhm_ns": 0.18
+    },
+    "emg": {
+      "center_ns": 0.8,
+      "gaussian_fwhm_ns": 0.18,
+      "tail_ns": 0.35
+    },
+    "sampled": {
+      "times_ns": [
+        0,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1,
+        1.25,
+        1.75,
+        "t_last"
+      ],
+      "values": [
+        0,
+        0,
+        0.15,
+        1,
+        0.7,
+        0.35,
+        0.08,
+        0,
+        0
+      ],
+      "interpolation": "linear on actual target coordinates",
+      "provenance": "explicit synthetic sampled fixture; not measured"
+    },
+    "sampled_nonzero_endpoints": {
+      "base": "sampled",
+      "add_before_normalization": 0.02
+    }
+  },
+  "conditions": [
+    {
+      "bins": 256,
+      "bin_width_ns": 0.03125,
+      "time_origin_ns": 0,
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "signal_photons": 20000,
+      "background_counts_per_bin": 0.5,
+      "shift_ns": 0.043,
+      "generating_irf": "gaussian",
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "id": "V00",
+      "condition_index": 0,
+      "original_pilot_condition": "P00",
+      "last_time_ns": 7.96875,
+      "amplitudes": [
+        253.75289213587928,
+        143.54246275610197,
+        50.25038078226651
+      ],
+      "amplitude_semantics": "Pre-exponential amplitudes; exact binary64 values copied from the immutable historical generating-parameter record, not estimates or initialization.",
+      "amplitude_rule": "signal_photons * detected_signal_fractions[j] / sum(unit shifted reconvolved component j); verify derived values equal declared amplitudes during future preparation, otherwise stop",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:generating:gaussian",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:assumed:matched",
+      "assumed_irf": "matched",
+      "source_kind": "synthetic_analytic_profile"
+    },
+    {
+      "bins": 256,
+      "bin_width_ns": 0.03125,
+      "time_origin_ns": 0,
+      "lifetimes_ns": [
+        1,
+        1.2,
+        3
+      ],
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "signal_photons": 5000,
+      "background_counts_per_bin": 1,
+      "shift_ns": -0.043,
+      "generating_irf": "emg",
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "id": "V01",
+      "condition_index": 1,
+      "original_pilot_condition": "P01",
+      "last_time_ns": 7.96875,
+      "amplitudes": [
+        38.50094632228498,
+        58.03373958171306,
+        17.295449818881043
+      ],
+      "amplitude_semantics": "Pre-exponential amplitudes; exact binary64 values copied from the immutable historical generating-parameter record, not estimates or initialization.",
+      "amplitude_rule": "signal_photons * detected_signal_fractions[j] / sum(unit shifted reconvolved component j); verify derived values equal declared amplitudes during future preparation, otherwise stop",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:generating:emg",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:assumed:matched",
+      "assumed_irf": "matched",
+      "source_kind": "synthetic_analytic_profile"
+    },
+    {
+      "bins": 128,
+      "bin_width_ns": 0.03125,
+      "time_origin_ns": 0,
+      "lifetimes_ns": [
+        0.6,
+        2,
+        4.8
+      ],
+      "detected_signal_fractions": [
+        0.25,
+        0.45,
+        0.3
+      ],
+      "signal_photons": 2000,
+      "background_counts_per_bin": 0,
+      "shift_ns": 0,
+      "generating_irf": "sampled_nonzero_endpoints",
+      "lifetime_bounds_ns": [
+        0.1,
+        10
+      ],
+      "shift_bounds_ns": [
+        -0.3,
+        0.3
+      ],
+      "id": "V02",
+      "condition_index": 2,
+      "original_pilot_condition": "P02",
+      "last_time_ns": 3.96875,
+      "amplitudes": [
+        26.213845249683697,
+        18.69393821313789,
+        8.70618886723992
+      ],
+      "amplitude_semantics": "Pre-exponential amplitudes; exact binary64 values copied from the immutable historical generating-parameter record, not estimates or initialization.",
+      "amplitude_rule": "signal_photons * detected_signal_fractions[j] / sum(unit shifted reconvolved component j); verify derived values equal declared amplitudes during future preparation, otherwise stop",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:generating:sampled_nonzero_endpoints",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:assumed:matched",
+      "assumed_irf": "matched",
+      "source_kind": "synthetic_sampled_fixture"
+    }
+  ],
+  "problems": [
+    {
+      "id": "V00:mean:matched",
+      "condition_id": "V00",
+      "observation_id": "V00:mean",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V00:mean",
+      "target_kind": "deterministic_expected_counts",
+      "rng_entropy": null,
+      "replicate": null,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:generating:gaussian",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:assumed:matched",
+      "input_checkpoint_id": "input:V00:mean:matched",
+      "input_checkpoint_filename": "7b14ed579c2a069b0a4421daec74dcdd351b86930900f2dbdb7f9cd3f31aa520.json",
+      "historical_comparator": "P00:mean:matched"
+    },
+    {
+      "id": "V00:poisson-0:matched",
+      "condition_id": "V00",
+      "observation_id": "V00:poisson-0",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V00:poisson-0",
+      "target_kind": "raw_counts",
+      "rng_entropy": [
+        37,
+        2,
+        20261101,
+        3,
+        0,
+        0
+      ],
+      "replicate": 0,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:generating:gaussian",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V00:assumed:matched",
+      "input_checkpoint_id": "input:V00:poisson-0:matched",
+      "input_checkpoint_filename": "3955307b69c00d40cf574b8363a4b98bb9ceca112305af742927d40099f73663.json",
+      "historical_comparator": "P00:poisson-0:matched"
+    },
+    {
+      "id": "V01:mean:matched",
+      "condition_id": "V01",
+      "observation_id": "V01:mean",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V01:mean",
+      "target_kind": "deterministic_expected_counts",
+      "rng_entropy": null,
+      "replicate": null,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:generating:emg",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:assumed:matched",
+      "input_checkpoint_id": "input:V01:mean:matched",
+      "input_checkpoint_filename": "8ffe171750b1d5378bb4c0bfea53405b38f1d8848d9de0408503a5fc6d94e089.json",
+      "historical_comparator": "P01:mean:matched"
+    },
+    {
+      "id": "V01:poisson-0:matched",
+      "condition_id": "V01",
+      "observation_id": "V01:poisson-0",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V01:poisson-0",
+      "target_kind": "raw_counts",
+      "rng_entropy": [
+        37,
+        2,
+        20261101,
+        3,
+        1,
+        0
+      ],
+      "replicate": 0,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:generating:emg",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V01:assumed:matched",
+      "input_checkpoint_id": "input:V01:poisson-0:matched",
+      "input_checkpoint_filename": "07d7d9506c65e43e0eee42055d6c3568a6b80c879dfa2866aa3b06d3ba485ce7.json",
+      "historical_comparator": "P01:poisson-0:matched"
+    },
+    {
+      "id": "V02:mean:matched",
+      "condition_id": "V02",
+      "observation_id": "V02:mean",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V02:mean",
+      "target_kind": "deterministic_expected_counts",
+      "rng_entropy": null,
+      "replicate": null,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:generating:sampled_nonzero_endpoints",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:assumed:matched",
+      "input_checkpoint_id": "input:V02:mean:matched",
+      "input_checkpoint_filename": "68916a6363ecc5b4e9e504f5eba27e13880dd16867c1e27320dc3d61f06d768c.json",
+      "historical_comparator": "P02:mean:matched"
+    },
+    {
+      "id": "V02:poisson-0:matched",
+      "condition_id": "V02",
+      "observation_id": "V02:poisson-0",
+      "observation_identity": "issue37_pr2c1b_numerical_verification_v2/V02:poisson-0",
+      "target_kind": "raw_counts",
+      "rng_entropy": [
+        37,
+        2,
+        20261101,
+        3,
+        2,
+        0
+      ],
+      "replicate": 0,
+      "assumed_irf": "matched",
+      "generating_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:generating:sampled_nonzero_endpoints",
+      "assumed_kernel_id": "issue37_pr2c1b_numerical_verification_v2/V02:assumed:matched",
+      "input_checkpoint_id": "input:V02:poisson-0:matched",
+      "input_checkpoint_filename": "f663c024ca1ff53620db685171c3fe5854e169e10bad1a40e373dfae3adf1c27.json",
+      "historical_comparator": "P02:poisson-0:matched"
+    }
+  ],
+  "configurations": {
+    "lbfgsb:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "lbfgsb",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    },
+    "trf:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "trf",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    }
+  },
+  "initial_guesses": null,
+  "initialization": "Unchanged data-only 109-template bank/NNLS/deduplication/diversity selection; no generating truth or historical production estimates as starts",
+  "scheduling": {
+    "seed_first": true,
+    "optional_continuations": false,
+    "automatic_retries": false,
+    "serial_workers": 1,
+    "recovery_call_reservation_fraction": 0.2,
+    "seed_optimization_calls": 16000,
+    "recovery_optimization_calls": 4000,
+    "seed_call_lease_when_16_selected": 1000,
+    "seed_call_lease_rule": "Split 16000 across actual n_selected with integer quotient/remainder, unchanged from the scheduler; incomplete required seed coverage remains a rejection reason.",
+    "recovery_call_lease": 1000,
+    "seed_invocation_seconds_when_16_selected": 2.4375,
+    "seed_invocation_seconds_rule": "0.65 * 60 / n_selected; no invocation when n_selected is zero",
+    "recovery_invocation_seconds": 3.0,
+    "seed_cap": 16,
+    "reserved_recovery_cap": 4,
+    "total_start_cap": 20,
+    "unused_recovery_capacity_not_loaned_to_seeds": true
+  },
+  "numerical_acceptance": {
+    "policy": "Unchanged per-fit implementation at baseline commit. Solver success alone is insufficient; no aggregate acceptance percentage is required for calling this development verification complete.",
+    "descent_tolerance": 0.001,
+    "fresh_objective_absolute_tolerance": 1e-09,
+    "fresh_objective_relative_tolerance": 1e-12,
+    "required": [
+      "valid finite physical candidate and predictions",
+      "required seed/recovery stages complete",
+      "candidate-specific local validation complete and passed",
+      "fresh predictions/components/objective consistent for exact returned candidate",
+      "no global deadline failure",
+      "no diagnostic descent above existing tolerance"
+    ],
+    "diagnostics": "Full/restricted/unavailable conditioning remains distinct from acceptance and physical identifiability; stale validation cannot confer acceptance.",
+    "no_new_acceptance_thresholds": true
+  },
+  "tasks": [
+    {
+      "id": "V00:mean:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V00:mean:matched:lbfgsb:compact",
+      "problem_id": "V00:mean:matched",
+      "observation_id": "V00:mean",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V00:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "b6d962a0038bda79a55b7de29c2298e2983735488e951af48960f7870b61a27d.json",
+      "attempt_checkpoint_filename": "b6d962a0038bda79a55b7de29c2298e2983735488e951af48960f7870b61a27d.started.json",
+      "worker_started_filename": "b6d962a0038bda79a55b7de29c2298e2983735488e951af48960f7870b61a27d.worker_started.json",
+      "worker_transport_filename": "b6d962a0038bda79a55b7de29c2298e2983735488e951af48960f7870b61a27d.worker.json"
+    },
+    {
+      "id": "V00:mean:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V00:mean:matched:trf:compact",
+      "problem_id": "V00:mean:matched",
+      "observation_id": "V00:mean",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V00:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "40afb34b5eafd0db24af92751387a7ec0cab047b27997078d9a6046a2b324141.json",
+      "attempt_checkpoint_filename": "40afb34b5eafd0db24af92751387a7ec0cab047b27997078d9a6046a2b324141.started.json",
+      "worker_started_filename": "40afb34b5eafd0db24af92751387a7ec0cab047b27997078d9a6046a2b324141.worker_started.json",
+      "worker_transport_filename": "40afb34b5eafd0db24af92751387a7ec0cab047b27997078d9a6046a2b324141.worker.json"
+    },
+    {
+      "id": "V00:poisson-0:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V00:poisson-0:matched:lbfgsb:compact",
+      "problem_id": "V00:poisson-0:matched",
+      "observation_id": "V00:poisson-0",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V00:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "c799a3a44bed435e97327122c1e9c095ec57be75020ce0fa0e56ecae3649c1dc.json",
+      "attempt_checkpoint_filename": "c799a3a44bed435e97327122c1e9c095ec57be75020ce0fa0e56ecae3649c1dc.started.json",
+      "worker_started_filename": "c799a3a44bed435e97327122c1e9c095ec57be75020ce0fa0e56ecae3649c1dc.worker_started.json",
+      "worker_transport_filename": "c799a3a44bed435e97327122c1e9c095ec57be75020ce0fa0e56ecae3649c1dc.worker.json"
+    },
+    {
+      "id": "V00:poisson-0:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V00:poisson-0:matched:trf:compact",
+      "problem_id": "V00:poisson-0:matched",
+      "observation_id": "V00:poisson-0",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V00:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "78959b6218512afc95c5b9acfd13ab2a03b5bb47138eafd06935104177040877.json",
+      "attempt_checkpoint_filename": "78959b6218512afc95c5b9acfd13ab2a03b5bb47138eafd06935104177040877.started.json",
+      "worker_started_filename": "78959b6218512afc95c5b9acfd13ab2a03b5bb47138eafd06935104177040877.worker_started.json",
+      "worker_transport_filename": "78959b6218512afc95c5b9acfd13ab2a03b5bb47138eafd06935104177040877.worker.json"
+    },
+    {
+      "id": "V01:mean:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V01:mean:matched:lbfgsb:compact",
+      "problem_id": "V01:mean:matched",
+      "observation_id": "V01:mean",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V01:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "067add0d86692ad4d0928ccf350c38caaa18c2102419813bc5d65a6adefed6bb.json",
+      "attempt_checkpoint_filename": "067add0d86692ad4d0928ccf350c38caaa18c2102419813bc5d65a6adefed6bb.started.json",
+      "worker_started_filename": "067add0d86692ad4d0928ccf350c38caaa18c2102419813bc5d65a6adefed6bb.worker_started.json",
+      "worker_transport_filename": "067add0d86692ad4d0928ccf350c38caaa18c2102419813bc5d65a6adefed6bb.worker.json"
+    },
+    {
+      "id": "V01:mean:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V01:mean:matched:trf:compact",
+      "problem_id": "V01:mean:matched",
+      "observation_id": "V01:mean",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V01:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "c8dd129a949720fb8c4e9984cad72bad3e80e3b38d5e23235c8ee8c1f04ff0e5.json",
+      "attempt_checkpoint_filename": "c8dd129a949720fb8c4e9984cad72bad3e80e3b38d5e23235c8ee8c1f04ff0e5.started.json",
+      "worker_started_filename": "c8dd129a949720fb8c4e9984cad72bad3e80e3b38d5e23235c8ee8c1f04ff0e5.worker_started.json",
+      "worker_transport_filename": "c8dd129a949720fb8c4e9984cad72bad3e80e3b38d5e23235c8ee8c1f04ff0e5.worker.json"
+    },
+    {
+      "id": "V01:poisson-0:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V01:poisson-0:matched:lbfgsb:compact",
+      "problem_id": "V01:poisson-0:matched",
+      "observation_id": "V01:poisson-0",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V01:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "a6536670b9aaa12e6d389c6cd22060e434b3363deca82cc72408638587410726.json",
+      "attempt_checkpoint_filename": "a6536670b9aaa12e6d389c6cd22060e434b3363deca82cc72408638587410726.started.json",
+      "worker_started_filename": "a6536670b9aaa12e6d389c6cd22060e434b3363deca82cc72408638587410726.worker_started.json",
+      "worker_transport_filename": "a6536670b9aaa12e6d389c6cd22060e434b3363deca82cc72408638587410726.worker.json"
+    },
+    {
+      "id": "V01:poisson-0:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V01:poisson-0:matched:trf:compact",
+      "problem_id": "V01:poisson-0:matched",
+      "observation_id": "V01:poisson-0",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V01:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "99b6efe6ed14cefba22bf6b4682284243b4756584ca53c6c1723cd602737abde.json",
+      "attempt_checkpoint_filename": "99b6efe6ed14cefba22bf6b4682284243b4756584ca53c6c1723cd602737abde.started.json",
+      "worker_started_filename": "99b6efe6ed14cefba22bf6b4682284243b4756584ca53c6c1723cd602737abde.worker_started.json",
+      "worker_transport_filename": "99b6efe6ed14cefba22bf6b4682284243b4756584ca53c6c1723cd602737abde.worker.json"
+    },
+    {
+      "id": "V02:mean:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V02:mean:matched:lbfgsb:compact",
+      "problem_id": "V02:mean:matched",
+      "observation_id": "V02:mean",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V02:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "0fc68a1646dbe51346599e8bd1e3e8cba9280822339a998f5722f519abb7c6e3.json",
+      "attempt_checkpoint_filename": "0fc68a1646dbe51346599e8bd1e3e8cba9280822339a998f5722f519abb7c6e3.started.json",
+      "worker_started_filename": "0fc68a1646dbe51346599e8bd1e3e8cba9280822339a998f5722f519abb7c6e3.worker_started.json",
+      "worker_transport_filename": "0fc68a1646dbe51346599e8bd1e3e8cba9280822339a998f5722f519abb7c6e3.worker.json"
+    },
+    {
+      "id": "V02:mean:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V02:mean:matched:trf:compact",
+      "problem_id": "V02:mean:matched",
+      "observation_id": "V02:mean",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V02:mean:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "9b2f72764ddf8680dcda26164fcb674a8390955768fd79f436eb672e484d73f1.json",
+      "attempt_checkpoint_filename": "9b2f72764ddf8680dcda26164fcb674a8390955768fd79f436eb672e484d73f1.started.json",
+      "worker_started_filename": "9b2f72764ddf8680dcda26164fcb674a8390955768fd79f436eb672e484d73f1.worker_started.json",
+      "worker_transport_filename": "9b2f72764ddf8680dcda26164fcb674a8390955768fd79f436eb672e484d73f1.worker.json"
+    },
+    {
+      "id": "V02:poisson-0:matched:lbfgsb:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V02:poisson-0:matched:lbfgsb:compact",
+      "problem_id": "V02:poisson-0:matched",
+      "observation_id": "V02:poisson-0",
+      "configuration": "lbfgsb:compact",
+      "input_checkpoint_id": "input:V02:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "35427b714e82a9ecf6f4a69d3574d19fc9941bfc14277ebc5165dafad0124437.json",
+      "attempt_checkpoint_filename": "35427b714e82a9ecf6f4a69d3574d19fc9941bfc14277ebc5165dafad0124437.started.json",
+      "worker_started_filename": "35427b714e82a9ecf6f4a69d3574d19fc9941bfc14277ebc5165dafad0124437.worker_started.json",
+      "worker_transport_filename": "35427b714e82a9ecf6f4a69d3574d19fc9941bfc14277ebc5165dafad0124437.worker.json"
+    },
+    {
+      "id": "V02:poisson-0:matched:trf:compact",
+      "execution_task_identity": "issue37_pr2c1b_numerical_verification_v2/V02:poisson-0:matched:trf:compact",
+      "problem_id": "V02:poisson-0:matched",
+      "observation_id": "V02:poisson-0",
+      "configuration": "trf:compact",
+      "input_checkpoint_id": "input:V02:poisson-0:matched",
+      "external_worker_seconds": 60,
+      "result_checkpoint_filename": "6b592af630d4097cd833793cd940c12072ce9c71505f756f1a079a700b9abd33.json",
+      "attempt_checkpoint_filename": "6b592af630d4097cd833793cd940c12072ce9c71505f756f1a079a700b9abd33.started.json",
+      "worker_started_filename": "6b592af630d4097cd833793cd940c12072ce9c71505f756f1a079a700b9abd33.worker_started.json",
+      "worker_transport_filename": "6b592af630d4097cd833793cd940c12072ce9c71505f756f1a079a700b9abd33.worker.json"
+    }
+  ],
+  "resources": {
+    "problems": 6,
+    "deterministic_targets": 3,
+    "new_poisson_observations": 3,
+    "production_fit_tasks": 12,
+    "independent_audit_tasks": 0,
+    "per_fit": {
+      "assessment_calls": 32,
+      "charged_component_convolution_ceiling": 65472,
+      "diagnostic_calls": 256,
+      "external_worker_seconds": 60,
+      "initialization_calls": 512,
+      "optimization_model_calls": 20000,
+      "recovery_optimization_calls_reserved": 4000,
+      "recovery_starts_reserved": 4,
+      "seed_starts": 16,
+      "total_phase_model_call_ceiling": 21824,
+      "total_start_limit": 20,
+      "validation_calls": 1024
+    },
+    "max_fit_solver_invocations": 240,
+    "max_fit_model_calls": 261888,
+    "max_fit_charged_component_convolutions": 785664,
+    "worker_seconds": 720,
+    "termination_seconds_per_timeout": 5,
+    "cleanup_seconds_per_timeout": 5,
+    "maximum_cleanup_seconds": 120,
+    "worker_plus_cleanup_seconds": 840,
+    "ceiling_excludes": "Preparation, coordinator verification/persistence and reporting; record their wall time separately. Worker startup and worker-side integrity checks are inside the external worker deadline.",
+    "cleanup_failure": "Stop immediately if process-tree termination cannot be confirmed; no next task or automatic retry.",
+    "preparation_accounting_proposal": {
+      "max_forward_calls": 18,
+      "max_component_convolutions": 18,
+      "basis": "Six inputs, three K=1 unit-component evaluations each; no preparation optimization or retries. Instrument actual/failed work; do not infer it from success counts."
+    },
+    "reporting_accounting_proposal": {
+      "max_forward_calls": 15,
+      "max_component_convolutions": 45,
+      "basis": "At most one K=3 returned-prediction recheck per fit plus one K=3 generating-parameter reference per deterministic problem; no search, derivative probes, audits or refitting."
+    },
+    "numerical_generation_and_reporting_ceilings_require_review": true
+  },
+  "environment_controls": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "BLIS_NUM_THREADS": "1",
+    "OMP_DYNAMIC": "FALSE",
+    "MKL_DYNAMIC": "FALSE",
+    "PYTHONHASHSEED": "0",
+    "OPENBLAS_CORETYPE": null,
+    "PYTHONPATH": null,
+    "PYTHONHOME": null
+  },
+  "execution_lock_requirements": {
+    "status": "Not generated; manifest draft is not an execution lock",
+    "execution_authorized": false,
+    "committed_source_required": true,
+    "enforced": [
+      "exact committed execution HEAD and committed source bytes",
+      "all numerical package Python files, every invoked preparation/worker/report script, pyproject.toml and any new execution-relevant adapter/configuration",
+      "raw manifest SHA-256 and canonical manifest digest",
+      "resolved settings, physical conditions, RNG procedure/namespaces, all six input mappings and all 12 task identities",
+      "Python version/executable hash, OS/machine, all installed dependency versions, module origins/hashes, loaded numerical-library binary hashes and actual thread counts",
+      "all listed environment/thread controls and deadlines/cleanup policy",
+      "distinct output location and lock identity"
+    ],
+    "informational_only": [
+      "human review prose",
+      "creation timestamps",
+      "historical comparison narrative"
+    ],
+    "future_source_changes": "Any execution adapter change requires review, tests and a new committed execution HEAD/fingerprint. It cannot be authorized by changing a Boolean in an older lock.",
+    "old_lock_reuse_forbidden": true
+  },
+  "input_integrity": {
+    "stage1": "Seal and review source/environment/manifest/settings/task/RNG lock before input generation; obtain explicit execution approval.",
+    "stage2": "Fresh output directory only. Durable preparation marker; generate and save all six individual hashed inputs; seal complete aggregate input_inventory.json atomically; re-read and verify every payload/hash/mapping before first worker.",
+    "bindings": [
+      "study identity",
+      "execution-lock identity",
+      "authoritative fingerprint",
+      "manifest bytes/digest",
+      "sealed input-inventory identity",
+      "problem/observation/kernel identity",
+      "exact input payload hash"
+    ],
+    "resume": "Verify execution identity, sealed aggregate inventory, every input and every prior attempt/result/transport before executing genuinely missing tasks. Never regenerate missing/corrupted inputs or overwrite/retry failed, timed-out, interrupted or completed attempts.",
+    "unsealed_preparation": "Explicit incomplete_preparation; stop for separate recovery decision, never implicit retry.",
+    "reporting": "Reject mixed/invalid provenance and corrupted transports; missing numerical outcomes remain in the planned denominator, but invalid provenance cannot yield verified scientific results."
+  },
+  "outputs": {
+    "directory": "data/generated/issue37_pr2c1b_numerical_verification_v2",
+    "directory_created": false,
+    "lock_filename": "lock.json",
+    "preparation_marker": "preparation_started.json",
+    "inventory_filename": "input_inventory.json",
+    "inventory_identity": "Canonical payload SHA-256, with exact file hashes for all six inputs; bind all 12 tasks.",
+    "immutable_checkpoint_names": "Exact input/task filenames listed above; no replacement. Separate immutable attempt/start/worker transport evidence.",
+    "reports_directory": "docs/validation",
+    "report_prefix": "issue37_pr2c1b_numerical_verification_v2",
+    "original_pilot_directory_forbidden": true
+  },
+  "reporting": {
+    "denominators": {
+      "planned_problems": 6,
+      "planned_fit_attempts": 12,
+      "attempts_per_solver": 6,
+      "deterministic_attempts": 6,
+      "poisson_attempts": 6
+    },
+    "outcomes": [
+      "accepted",
+      "numerically_rejected",
+      "worker_failed",
+      "timed_out",
+      "interrupted_or_running_unreconciled",
+      "genuinely_missing_not_attempted",
+      "invalid_provenance"
+    ],
+    "required": [
+      "returned candidate/objective and best finite parameters/objective",
+      "numerical acceptance, complete reasons and solver termination separately",
+      "objective-gradient/residual-Jacobian availability; bounded failure coordinates, physical bounds, stencil evidence and omitted-event counts",
+      "joint versus conditional invocation counts; free/fixed coordinates, reported success, explicit failure/exhaustion and scalar numerical acceptance separately",
+      "planned/attempted/unattempted seeds, reserved/used recovery, required recovery completeness and capacity exhaustion",
+      "explicit promotions; returned, validation, assessment and diagnostic anchor identities",
+      "full/restricted/unavailable conditioning, included/fixed coordinates and reasons",
+      "model requests/calls, objective/residual/Jacobian evaluations, NNLS work, charged/completed component convolutions, unknown partial work, phase/call leases",
+      "numerical wall time, external worker wall time, timeout censoring, termination/cleanup, preparation/coordinator/report wall time separately"
+    ],
+    "deterministic_objective_gap": "For each mean target record C(y_mean, mu_returned) - C(y_mean, mu_generating), signed and unclipped; also show best-finite gap and computed C at generating parameters (mathematically zero, finite-arithmetic differences retained). No independent audit/global-optimum claim.",
+    "paired_solver_gap": "On identical input hashes report signed C_LBFGSB - C_TRF for all finite outcomes, alongside acceptance and missing-result status.",
+    "parameter_errors": "Canonical ordered lifetime/amplitude signed and absolute relative errors where truths are positive/distinct; background absolute error (relative only for nonzero truth); shift absolute ns error; detected-window fractions. Mark undefined/nonidentifiable component associations; report all finite and accepted-only denominators.",
+    "historical_comparison": "Compare deterministic targets only after checking grid/kernel/mean hashes; disclose reused conditions. Different Poisson draws permit descriptive outcomes only, not controlled before/after attribution. Old 0/6 audit completeness stays historical; new audit status is not_scheduled.",
+    "interpretation": "Mandatory provenance/numerical correctness separate from objective quality and scientific recovery. No 12/12 acceptance target, policy selection, 100/100 qualification target, discarded observations, automatic tuning or budget escalation.",
+    "diagnostic_targets": {
+      "A": "Complete physical scalar-probe coverage wherever representable, with actual decoded displacement and redundant-candidate statuses.",
+      "B": "Accurate classification of infeasible and genuinely unavailable feasible directions, including exhausted metadata adjustment.",
+      "C": "Candidate-specific validation following promotion.",
+      "D": "Preservation of detected objective descent above 0.001 and its acceptance consequence.",
+      "E": "Recovery reservations, leases, attempted/unattempted work and omitted-required-recovery reasons.",
+      "F": "Fresh assessment and full/restricted conditioning tied to returned candidates.",
+      "G": "Objective-quality and computational-cost summaries using all 12 attempts and six-per-solver denominators."
+    },
+    "development_role": "Already-inspected numerical-development controls. Independent qualification requires a separately frozen protocol."
+  },
+  "execution_blockers": [
+    "New committed runner source and reviewed source/environment execution lock.",
+    "Explicit maintainer execution authorization.",
+    "Prepare, seal and verify all six inputs before any worker."
+  ],
+  "historical_baseline": {
+    "source": "read-only original pilot sealed checkpoints",
+    "inventory_sha256": "fce9bc03c447881afc49b726b13951a827fceea9fdc24ee186a6b220a67d546d",
+    "problems": {
+      "V00:mean:matched": {
+        "original_problem_id": "P00:mean:matched",
+        "arrays": {
+          "generating_kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "mean": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "observed": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 0.24082323816067716,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 1,
+            "recovery_calls_used": 1000,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 7609,
+              "charged_component_convolutions": 22827,
+              "completed_component_convolutions": 22827,
+              "total_seconds": 7.061999999999898
+            },
+            "checkpoint_sha256": "6d949ef7fbb98851f8c545d5dcacc683538ee66be6f6a4481f4c51533e012b91"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 0.000698130298782969,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 2,
+            "recovery_calls_used": 1341,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 4282,
+              "charged_component_convolutions": 12846,
+              "completed_component_convolutions": 12846,
+              "total_seconds": 4.219000000000051
+            },
+            "checkpoint_sha256": "2f4debcb72e4686431aa77c8ae6e3f6ebd7420122dc8f19a6cbf55b9961cc2fc"
+          }
+        }
+      },
+      "V00:poisson-0:matched": {
+        "original_problem_id": "P00:poisson-0:matched",
+        "arrays": {
+          "generating_kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "mean": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "observed": "947e58f629b18a7846a4cecdcbcdfcbdc3fcf2963cbd9e40d1be1f98661af12b",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 137.60962578094967,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 2,
+            "recovery_calls_used": 2000,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 8918,
+              "charged_component_convolutions": 26754,
+              "completed_component_convolutions": 26754,
+              "total_seconds": 8.20299999999952
+            },
+            "checkpoint_sha256": "daa985c833b0804312ce0201f8e3ed7861e33e9bce9c71499a0345bf80277390"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 138.45412407993774,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 2,
+            "recovery_calls_used": 1734,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 4809,
+              "charged_component_convolutions": 14427,
+              "completed_component_convolutions": 14427,
+              "total_seconds": 4.594000000000051
+            },
+            "checkpoint_sha256": "6160c718dc937b0360b6e8714383dd2cb41286f663904cea563624854f1e919b"
+          }
+        }
+      },
+      "V01:mean:matched": {
+        "original_problem_id": "P01:mean:matched",
+        "arrays": {
+          "generating_kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "mean": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "observed": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 0.029302347086973705,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 0,
+            "recovery_calls_used": 0,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 10480,
+              "charged_component_convolutions": 31440,
+              "completed_component_convolutions": 31440,
+              "total_seconds": 9.639999999999418
+            },
+            "checkpoint_sha256": "1507bcdeae5419dea8362c6fb2cd4a995eb2ae970f4adb6276aef97f15f15a95"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 1.9743189539302417,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "fresh_assessment_failed_or_incomplete",
+              "candidate_validation_failed_or_unavailable",
+              "validation_for_different_candidate"
+            ],
+            "recovery_starts_used": 4,
+            "recovery_calls_used": 96,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 4387,
+              "charged_component_convolutions": 13161,
+              "completed_component_convolutions": 13161,
+              "total_seconds": 4.063000000000102
+            },
+            "checkpoint_sha256": "71913baee96e3b6b2b5beae5eaa28c0ccd42442cd3125192b908cab9606dd4e4"
+          }
+        }
+      },
+      "V01:poisson-0:matched": {
+        "original_problem_id": "P01:poisson-0:matched",
+        "arrays": {
+          "generating_kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "mean": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "observed": "c827416ae0ea3550cf839a936d023dccc4f3b63f0af4d3c51bb5d6e55078c5f2",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 131.40833669607872,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 0,
+            "recovery_calls_used": 0,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 10795,
+              "charged_component_convolutions": 32385,
+              "completed_component_convolutions": 32385,
+              "total_seconds": 9.70299999999952
+            },
+            "checkpoint_sha256": "4be10c316414c9a2044b7d1c3ff735639d386e1f5594595ce1d54b885d912a1f"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 133.1596263166656,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "fresh_assessment_failed_or_incomplete",
+              "candidate_validation_failed_or_unavailable",
+              "validation_for_different_candidate"
+            ],
+            "recovery_starts_used": 4,
+            "recovery_calls_used": 112,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 4810,
+              "charged_component_convolutions": 14430,
+              "completed_component_convolutions": 14430,
+              "total_seconds": 4.515000000000327
+            },
+            "checkpoint_sha256": "fdfc6bc5d9bd6a8468edec664c1c991fc59687d1417b00c34f380cf7ee72bb43"
+          }
+        }
+      },
+      "V02:mean:matched": {
+        "original_problem_id": "P02:mean:matched",
+        "arrays": {
+          "generating_kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "mean": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "observed": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "time": "1d66d19c7eae912287b97d1608de4ac1bf08a7a8929c7d36c99956d660d0007b"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 3.713435189048824e-05,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 0,
+            "recovery_calls_used": 0,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 9649,
+              "charged_component_convolutions": 28947,
+              "completed_component_convolutions": 28947,
+              "total_seconds": 8.234999999999673
+            },
+            "checkpoint_sha256": "30445ce0ceac7635c8ed9ac566e572e9ac3b059901805d6dbdb6c7fbc03c83ae"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 8.900249752283506e-07,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 0,
+            "recovery_calls_used": 0,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 3671,
+              "charged_component_convolutions": 11013,
+              "completed_component_convolutions": 11013,
+              "total_seconds": 3.2340000000003783
+            },
+            "checkpoint_sha256": "5202f98e85178ab926dc0d7ae70458b68f4cdcbb22d056cab7930b8d71c2724f"
+          }
+        }
+      },
+      "V02:poisson-0:matched": {
+        "original_problem_id": "P02:poisson-0:matched",
+        "arrays": {
+          "generating_kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "mean": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "observed": "de56905db1bc83bef4d43116e75e46e9b6229a16d5985c418cad07ee04f05c39",
+          "time": "1d66d19c7eae912287b97d1608de4ac1bf08a7a8929c7d36c99956d660d0007b"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 78.99768781014905,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 0,
+            "recovery_calls_used": 0,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 7711,
+              "charged_component_convolutions": 23133,
+              "completed_component_convolutions": 23133,
+              "total_seconds": 6.608999999999469
+            },
+            "checkpoint_sha256": "a8bff2f799d0ab01e657dd097400a21b2380f2a63742ac53ab02af5a56eaf86e"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 79.0812008582514,
+            "accepted": true,
+            "reasons": [],
+            "recovery_starts_used": 1,
+            "recovery_calls_used": 56,
+            "conditioning_status": "candidate_changed_or_unavailable",
+            "work": {
+              "model_calls": 2279,
+              "charged_component_convolutions": 6837,
+              "completed_component_convolutions": 6837,
+              "total_seconds": 2.094000000000051
+            },
+            "checkpoint_sha256": "39e873b9caef9534e7e1c8999907d5247ce93af552347e8cd0c972bcd3042c0d"
+          }
+        }
+      }
+    }
+  },
+  "execution_commit": null,
+  "previous_verification_reference": {
+    "manifest_path": "configs/issue37_pr2c1_numerical_verification_v1.json",
+    "manifest_file_sha256": "98a84aa4cd7666680c53a5142aa1fea0a72f241637ce4fa351fe4e112e902006",
+    "results_path": "docs/validation/issue37_pr2c1_numerical_verification_v1_results.json",
+    "results_file_sha256": "825fce07e2620298881be88ef4d38135171c1d2c3c629aaae1722d1d9107ba0b",
+    "accepted": 8,
+    "attempts": 12
+  },
+  "infrastructure_review": {
+    "supported_by_current_runner": true,
+    "required_changes": [],
+    "review_question": "Should a passing final validation clear an earlier incomplete-validation stop? Current ordering rejects omitted required stages.",
+    "execution_requirements": [
+      "New committed runner source and reviewed source/environment execution lock.",
+      "Explicit maintainer execution authorization.",
+      "Prepare, seal and verify all six inputs before any worker."
+    ]
+  },
+  "previous_verification_baseline": {
+    "source": "read-only sealed verification-v1 inventory and results",
+    "reference": {
+      "manifest_path": "configs/issue37_pr2c1_numerical_verification_v1.json",
+      "manifest_file_sha256": "98a84aa4cd7666680c53a5142aa1fea0a72f241637ce4fa351fe4e112e902006",
+      "results_path": "docs/validation/issue37_pr2c1_numerical_verification_v1_results.json",
+      "results_file_sha256": "825fce07e2620298881be88ef4d38135171c1d2c3c629aaae1722d1d9107ba0b",
+      "accepted": 8,
+      "attempts": 12
+    },
+    "inventory_file_sha256": "34add9b0f81ea5d24af7697cc21c6a7ed22e74f0867579bcfe2111e6b1dbb160",
+    "inventory_sha256": "50171d19e24a38e9e7f976be9fb1beb5c28166dae96d6396e4a292473685ff6a",
+    "problems": {
+      "V00:mean:matched": {
+        "arrays": {
+          "generating_kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "mean": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "observed": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 0.28250552265711715,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "fresh_assessment_failed_or_incomplete",
+              "candidate_validation_failed_or_unavailable",
+              "diagnostic_descent_detected",
+              "validation_for_different_candidate"
+            ],
+            "checkpoint_payload_sha256": "5dad2b69233a8bd3281f71f2b872eb0c0b34a7abdfbe7945ea71e107316a7d23"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 2.8191688870192106e-05,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "24c19619656af33b37a51b2a2caba5e631c511608c99f10bbbfc7ddc41b21529"
+          }
+        }
+      },
+      "V00:poisson-0:matched": {
+        "arrays": {
+          "generating_kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "kernel": "73b62e46dd9b6b47d9624a6a2e47952ceab34394040e1e9d100adfb01e2c626d",
+          "mean": "e206293c091e027cfd13b544cbf79ff8116544365c7f99b81aacea43d8967e93",
+          "observed": "65e664668f5dcfde596f0948d6b9e9495e6b9b245b4243046ac763059da4191e",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 127.45873795652491,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "7c7b8ebc2454a9c3888a8bec3b1068f0522303faad87877320db9e9765927096"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 127.45426781312594,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "candidate_validation_failed_or_unavailable"
+            ],
+            "checkpoint_payload_sha256": "6c877e7d82b6b09b428c96f5d562021100fc78e6b859f0e8653f67c8f396c670"
+          }
+        }
+      },
+      "V01:mean:matched": {
+        "arrays": {
+          "generating_kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "mean": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "observed": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 0.029386251192295564,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "5546c014e14dff18a0f05e4682637f9eaa3975baabf2141b7bce79e9f13de06f"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 1.3520520982889003e-09,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "candidate_validation_failed_or_unavailable"
+            ],
+            "checkpoint_payload_sha256": "fc497a8922ec3db29f45b216e3aac421071b2a409a44de7564f5d99235cc11fc"
+          }
+        }
+      },
+      "V01:poisson-0:matched": {
+        "arrays": {
+          "generating_kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "kernel": "cbbb56795821add3b9410a007b7dad8ce9c931ec1af5ebe78530193bbc0dc1a2",
+          "mean": "64dfac17764803e8c811a8e5dcb1e490c81dd188395be102c35d75e36c330dcb",
+          "observed": "ba3fe2367474db3f1553b9136927dfb30d73f4a48df7731324c30e78b514c1e2",
+          "time": "955b10fe107f6474305132fa8578e463e3de380707ed90483c1564d9cc5d1bc9"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 147.08063515864623,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "5f59205eca21e5abbb3393b3ebd5ad48918c3c8771b6ff12033af6440cf2ef4a"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 146.44372499082982,
+            "accepted": false,
+            "reasons": [
+              "required_stages_incomplete",
+              "candidate_validation_failed_or_unavailable"
+            ],
+            "checkpoint_payload_sha256": "d0dee7638807f7eb908fdfb760c15b67a3e3492c51fc8b0bcef0fbbef23c2b3f"
+          }
+        }
+      },
+      "V02:mean:matched": {
+        "arrays": {
+          "generating_kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "mean": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "observed": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "time": "1d66d19c7eae912287b97d1608de4ac1bf08a7a8929c7d36c99956d660d0007b"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 3.714538792854527e-05,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "48ae89bea506a411e414fa7127ba5639c405b58d4b10cff0a12fbfac2028efd4"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 6.596999177479614e-09,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "6205a840b451ff1703fbf2e71dc70fbd13e9a45ec13f0bd72026568cf2d4ac2a"
+          }
+        }
+      },
+      "V02:poisson-0:matched": {
+        "arrays": {
+          "generating_kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "kernel": "38a1512da474683d68dcdc05e1365bb2557c597855f78f877830d5f2e2fe46b0",
+          "mean": "9854750975a284208896bfe4480a958e7ae033a6d0aa31a8e35aeee3bd7d41dc",
+          "observed": "473d704781b3ea09615b0ad6fae1172a7816c1d573a843925b9d4dcd0ea94c80",
+          "time": "1d66d19c7eae912287b97d1608de4ac1bf08a7a8929c7d36c99956d660d0007b"
+        },
+        "fits": {
+          "lbfgsb:compact": {
+            "status": "completed",
+            "centered_nll": 71.57812846385227,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "5b80cfdd113ad143519c428f8c330e8e31d29d78b80c85db5222a91bf23b3307"
+          },
+          "trf:compact": {
+            "status": "completed",
+            "centered_nll": 71.5781264814691,
+            "accepted": true,
+            "reasons": [],
+            "checkpoint_payload_sha256": "ff3bcc0bb53606f401d10c2be03709fa8107384f4716e0e1e53000750cb2da2a"
+          }
+        }
+      }
+    }
+  }
+}

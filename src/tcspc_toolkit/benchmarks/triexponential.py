@@ -93,6 +93,7 @@ def execution_specification(manifest, *, pilot=False, verification=False):
         for name in sorted({t["configuration"] for t in tasks})
     }
     if verification:
+        protocol = verification_scope.validate_manifest(manifest)
         if settings != manifest["configurations"]:
             raise ExecutionIntegrityError("resolved verification settings changed")
         return jsonable(
@@ -112,9 +113,18 @@ def execution_specification(manifest, *, pilot=False, verification=False):
                 ),
                 preparation_model_call_limit=18,
                 reporting_model_call_limit=15,
-                output_directory="data/generated/"
-                + verification_scope.VERIFICATION_SCOPE,
+                output_directory=protocol.output_directory,
                 historical_baseline=manifest.get("historical_baseline", {}),
+                **(
+                    dict(
+                        previous_verification_baseline=manifest[
+                            "previous_verification_baseline"
+                        ],
+                        report_schema=protocol.report_schema,
+                    )
+                    if protocol.report_schema is not None
+                    else {}
+                ),
             )
         )
     return jsonable(
@@ -207,10 +217,7 @@ def problem_inventory(manifest, *, pilot=False, verification=False):
 
 
 def task_inventory(manifest, *, pilot=False, verification=False):
-    if (
-        not verification
-        and manifest.get("study_id") == verification_scope.VERIFICATION_SCOPE
-    ):
+    if not verification and manifest.get("study_id") in verification_scope.PROTOCOLS:
         raise ValueError("explicit verification scope required")
     if verification:
         return tuple(
@@ -1091,8 +1098,11 @@ def summarize_tasks(tasks, records):
 
 def report_store(tasks, store):
     """Read sealed attempts; cross-score without changing search checkpoints."""
-    if store.lock["fingerprint"].get("scope") == verification_scope.VERIFICATION_SCOPE:
+    scope = store.lock["fingerprint"].get("scope")
+    if scope in verification_scope.PROTOCOLS:
         return verification_scope.report(tasks, store)
+    if scope not in (None, "pilot", "comprehensive"):
+        raise ExecutionIntegrityError("unknown execution report scope")
     inventory = store.verify_inventory(tasks)
     records = [store.read_attempt(task, inventory) for task in tasks]
     lookup = {r["id"]: r for r in records}

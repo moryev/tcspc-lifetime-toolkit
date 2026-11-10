@@ -177,6 +177,9 @@ def inspect_artifacts(
         "tests/test_triexponential_verification.py",
         "configs/issue37_pr2c1_numerical_verification_v1.json",
         "docs/design/issue37_pr2c1_verification_protocol_v1.md",
+        "configs/issue37_pr2c1b_numerical_verification_v2.json",
+        "docs/design/issue37_verification_versions.md",
+        "tests/test_triexponential_verification_versions.py",
         "docs/design/issue37_pr2b_numerics.md",
     }
     # A reviewed deletion in an uncommitted release-preparation diff should

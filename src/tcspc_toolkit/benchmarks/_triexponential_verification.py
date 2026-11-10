@@ -6,9 +6,11 @@ modules. Imports of the shared benchmark module are local to avoid an eager cycl
 
 from collections import Counter
 import copy
+from dataclasses import dataclass
 import hashlib
 import json
 from time import perf_counter
+from types import MappingProxyType
 
 import numpy as np
 
@@ -32,22 +34,78 @@ CONTRACT_KEYS = (
 CONTRACT_SHA256 = "f53733d261f3cee8fa0ffe1af79455897b186335a709b9b7b1cc3d7d1b842f4b"
 
 
+@dataclass(frozen=True)
+class VerificationProtocol:
+    scope: str
+    manifest_schema: str
+    contract_sha256: str
+    manifest_path: str
+    output_directory: str
+    task_ids: tuple[str, ...]
+    # V1 retains its historical schema-less report representation.
+    report_schema: str | None
+
+
+_TASK_IDS = tuple(
+    f"V{i:02d}:{target}:matched:{solver}:compact"
+    for i in range(3)
+    for target in ("mean", "poisson-0")
+    for solver in ("lbfgsb", "trf")
+)
+PROTOCOLS = MappingProxyType(
+    {
+        p.scope: p
+        for p in (
+            VerificationProtocol(
+                VERIFICATION_SCOPE,
+                "issue37.pr2c1.verification-proposal.v1",
+                CONTRACT_SHA256,
+                "configs/issue37_pr2c1_numerical_verification_v1.json",
+                "data/generated/issue37_pr2c1_numerical_verification_v1",
+                _TASK_IDS,
+                None,
+            ),
+            VerificationProtocol(
+                "issue37_pr2c1b_numerical_verification_v2",
+                "issue37.pr2c1b.verification-proposal.v2",
+                "27c5238c32a9aa388f614dcc2c8a6ef2813baad985e9db3de681a031a4ddeb17",
+                "configs/issue37_pr2c1b_numerical_verification_v2.json",
+                "data/generated/issue37_pr2c1b_numerical_verification_v2",
+                _TASK_IDS,
+                "issue37.pr2c1b.verification-report.v2",
+            ),
+        )
+    }
+)
+
+
+def protocol_for_scope(scope):
+    """Resolve only explicitly reviewed versions, with no fallback protocol."""
+    try:
+        return PROTOCOLS[scope]
+    except (KeyError, TypeError) as error:
+        raise ValueError("unknown reviewed verification scope") from error
+
+
 def validate_manifest(manifest):
     try:
+        protocol = protocol_for_scope(manifest["study_id"])
         contract = {k: manifest[k] for k in CONTRACT_KEYS}
         encoded = json.dumps(
             contract, sort_keys=True, separators=(",", ":"), allow_nan=False
         )
         valid = (
-            manifest["study_id"] == VERIFICATION_SCOPE
-            and manifest["schema"] == "issue37.pr2c1.verification-proposal.v1"
+            manifest["schema"] == protocol.manifest_schema
             and manifest["execution_authorized"] is False
-            and hashlib.sha256(encoded.encode()).hexdigest() == CONTRACT_SHA256
+            and hashlib.sha256(encoded.encode()).hexdigest() == protocol.contract_sha256
+            and tuple(t["id"] for t in manifest["tasks"]) == protocol.task_ids
+            and manifest["outputs"]["directory"] == protocol.output_directory
         )
     except (KeyError, TypeError, ValueError):
         valid = False
     if not valid:
         raise ValueError("exact reviewed fit-only verification manifest required")
+    return protocol
 
 
 def problems(manifest):
@@ -144,7 +202,7 @@ def _objective(arrays, parameters, work):
     return mu, 0.5 * shared.calculate_poisson_deviance(arrays["observed"], mu)
 
 
-def _history(task, entry, fit, baseline):
+def _history(task, entry, fit, baseline, *, previous_verification=False):
     """Compare to manifest-bound historical metadata, never initialize a search."""
     reference = baseline.get("problems", {}).get(task["problem"]["id"])
     if reference is None:
@@ -172,7 +230,52 @@ def _history(task, entry, fit, baseline):
         else None,
         controlled_poisson_before_after=False,
         reused_development_conditions=True,
-        original_audit_completeness="0/6; unchanged",
+        **(
+            dict(audit_status="not_applicable", comparison="verification_v1")
+            if previous_verification
+            else dict(original_audit_completeness="0/6; unchanged")
+        ),
+    )
+
+
+def _validation_summary(fit):
+    """Expose recorded final-candidate facts without inferring a solver success."""
+    numerical = fit.get("numerical", {})
+    validation = numerical.get("validation") or {}
+    optimization = fit.get("optimization", {})
+    probes = validation.get("probes", [])
+    improvement = validation.get("best_improvement")
+    diagnostic = numerical.get("diagnostic_improvement")
+    return dict(
+        complete=validation.get("complete"),
+        passed=validation.get("passed"),
+        candidate=validation.get("candidate"),
+        matches_returned_candidate=numerical.get("validation_matches_candidate"),
+        probe_statuses=dict(Counter(p["status"] for p in probes)),
+        redundant_physical_candidates=[
+            p for p in probes if p["status"] == "redundant_physical_candidate"
+        ],
+        unavailable_feasible_directions=[
+            p
+            for p in probes
+            if p["feasible"]
+            and p["centered_nll"] is None
+            and p["status"] != "redundant_physical_candidate"
+        ],
+        detected_descent_above_tolerance=(
+            (improvement is not None and improvement > 0.001)
+            or (diagnostic is not None and diagnostic > 0.001)
+        )
+        if improvement is not None or diagnostic is not None
+        else None,
+        tolerance=0.001,
+        promotions=optimization.get("promotions", []),
+        required_recovery_complete=numerical.get("required_recovery_complete"),
+        recovery_unavailable_reason=optimization.get("recovery_unavailable_reason"),
+        stopping_reason=optimization.get("stopping_reason"),
+        # Final validation is serialized by the fitter. No claim about an
+        # unrecorded earlier pass or separate terminal-pass invocation is inferred.
+        terminal_validation_history="final_candidate_record_only",
     )
 
 
@@ -181,6 +284,7 @@ def report(tasks, store):
     from tcspc_toolkit.benchmarks import triexponential as shared
 
     started = perf_counter()
+    protocol = protocol_for_scope(store.lock["fingerprint"]["scope"])
     inventory = store.verify_inventory(tasks)
     records = [store.read_attempt(t, inventory) for t in tasks]
     if any(t["configuration"] not in ("lbfgsb:compact", "trf:compact") for t in tasks):
@@ -198,6 +302,9 @@ def report(tasks, store):
     work = _Work(15, "reporting")
     entries = {e["problem_id"]: e for e in inventory["inputs"]}
     baseline = store.lock["fingerprint"]["execution"].get("historical_baseline", {})
+    previous = store.lock["fingerprint"]["execution"].get(
+        "previous_verification_baseline", {}
+    )
     arrays_by_id = {p: store.read("input:" + p)["result"] for p in entries}
     truth_scores = {}
     for task in tasks:
@@ -242,6 +349,11 @@ def report(tasks, store):
             reported_correctness=shared.reported_correctness(fit),
             historical_comparison=_history(task, entries[p["id"]], fit, baseline),
         )
+        if protocol.report_schema is not None:
+            analysis["final_validation"] = _validation_summary(fit)
+            analysis["previous_verification_comparison"] = _history(
+                task, entries[p["id"]], fit, previous, previous_verification=True
+            )
         if (
             row["status"] == "completed"
             and "numerical" in fit
@@ -371,7 +483,8 @@ def report(tasks, store):
     store.verify_inventory(tasks)
     return shared.jsonable(
         dict(
-            scope=VERIFICATION_SCOPE,
+            scope=protocol.scope,
+            **(dict(schema=protocol.report_schema) if protocol.report_schema else {}),
             summary=summary,
             attempts=records,
             analyses=analyses,

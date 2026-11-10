@@ -12,7 +12,10 @@ import sys
 from time import perf_counter
 
 from threadpoolctl import threadpool_info
-from tcspc_toolkit.benchmarks._triexponential_verification import VERIFICATION_SCOPE
+from tcspc_toolkit.benchmarks._triexponential_verification import (
+    VERIFICATION_SCOPE,
+    validate_manifest,
+)
 
 from tcspc_toolkit.benchmarks.triexponential import (
     DevelopmentStore,
@@ -159,10 +162,13 @@ def execution_environment():
 
 
 def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
-    default_name = VERIFICATION_SCOPE if verification else "issue37_pr2_development_v1"
-    manifest_path = Path(
-        manifest_path or ROOT / ("configs/" + default_name + ".json")
-    ).resolve()
+    protocol = validate_manifest(manifest) if verification else None
+    default_path = (
+        protocol.manifest_path
+        if protocol
+        else "configs/issue37_pr2_development_v1.json"
+    )
+    manifest_path = Path(manifest_path or ROOT / default_path).resolve()
     raw = manifest_path.read_bytes()
     if json.loads(raw) != manifest:
         raise ExecutionIntegrityError("manifest object differs from supplied file")
@@ -175,11 +181,7 @@ def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
         repository=repository_identity([*paths, manifest_path]),
         manifest_file_sha256=hashlib.sha256(raw).hexdigest(),
         manifest_sha256=digest(manifest),
-        scope=VERIFICATION_SCOPE
-        if verification
-        else "pilot"
-        if pilot
-        else "comprehensive",
+        scope=protocol.scope if verification else "pilot" if pilot else "comprehensive",
         source_lf_sha256={
             p.relative_to(ROOT).as_posix(): hashlib.sha256(
                 p.read_bytes().replace(b"\r\n", b"\n")
@@ -259,6 +261,7 @@ def main(argv=None):
     )
     scope = dict(verification=True) if args.verification else {}
     manifest = json.loads(args.manifest.read_text())
+    protocol = validate_manifest(manifest) if args.verification else None
     tasks = task_inventory(manifest, pilot=args.pilot, **scope)
     if args.command == "inspect":
         print(
@@ -319,7 +322,7 @@ def main(argv=None):
                 json.dumps(
                     dict(
                         command="prepare",
-                        scope=VERIFICATION_SCOPE,
+                        scope=protocol.scope,
                         elapsed_seconds=perf_counter() - command_started,
                         inventory_sha256=prepared["payload_sha256"],
                         inputs=len(prepared["inputs"]),
@@ -436,7 +439,7 @@ def main(argv=None):
             json.dumps(
                 dict(
                     command="run",
-                    scope=VERIFICATION_SCOPE,
+                    scope=protocol.scope,
                     coordinator_inclusive_elapsed_seconds=perf_counter()
                     - command_started,
                     planned_tasks=len(tasks),
