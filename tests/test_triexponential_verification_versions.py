@@ -366,7 +366,9 @@ def test_final_validation_reporting_keeps_rejection_and_descent_separate():
                         feasible=True,
                         centered_nll=None,
                     ),
-                    dict(status="unrepresentable", feasible=True, centered_nll=None),
+                    dict(
+                        status="unrepresentable_probe", feasible=True, centered_nll=None
+                    ),
                 ],
             ),
         ),

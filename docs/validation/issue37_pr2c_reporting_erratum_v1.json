@@ -1,0 +1,4325 @@
+{
+  "schema": "issue37.pr2c.reporting-erratum.v1",
+  "evidence_kind": "read_only_reporting_correction_and_saved_record_forensics",
+  "executed_new_numerical_work": false,
+  "original_head": "f8f02349cce80a62053f525022b1383680336ed0",
+  "reporting_code": {
+    "path": "src/tcspc_toolkit/benchmarks/_triexponential_verification.py",
+    "raw_sha256": "2a8ed422c0c8990332f56251ed7b6f2d0f15961a718aa220bfd086d671e4bddb",
+    "lf_sha256": "2a8ed422c0c8990332f56251ed7b6f2d0f15961a718aa220bfd086d671e4bddb",
+    "committed": false
+  },
+  "original_report": {
+    "path": "docs/validation/issue37_pr2c1b_numerical_verification_v2_results.json",
+    "sha256": "179f1defe14a47ef24d3cb08e534d1833691e8f90dc4d2b3abd40a92958658ee"
+  },
+  "approved_lock_sha256": "0ca894bc4cacc330c14b18bd94a57acc9cf4099f33912e160485cebbe6b7be63",
+  "sealed_input_inventory_identity": "df3584336b6e7377180d2a9b4dceca08e484be08bb94178c6398576a011a0f7f",
+  "all_attempt_denominator": 12,
+  "accepted": 12,
+  "audits": 0,
+  "final_probe_denominator": 1026,
+  "classification_counts": {
+    "finite_objective": 944,
+    "positive_infinite_objective": 43,
+    "infeasible": 16,
+    "redundant_physical_candidate": 23
+  },
+  "classification_scope": "Final validation records only, each task counted once. Earlier full validation histories are unavailable. Derivative-failure stencil records are separate evidence.",
+  "original_report_preserved": true,
+  "fitting_acceptance_unchanged": true,
+  "tasks": [
+    {
+      "task_id": "V00:mean:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 83,
+        "positive_infinite_objective": 2
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.06217071480034701,
+              -0.4441224495543699,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.0063923129273610975,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                139.9032003251872
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.23340343096276528,
+                0.7582008112097701,
+                3.208394568889611
+              ],
+              "temporal_shift_ns": 0.04387855295193647
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.06217071480034701,
+              -0.4441224495543699,
+              -0.22574590196184569,
+              0.0,
+              0.0,
+              0.0,
+              -0.0063923129273610975,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.23340343096276528,
+                0.7582008112097701,
+                3.208394568889611
+              ],
+              "temporal_shift_ns": 0.04387855295193647
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V00:mean:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 81,
+        "positive_infinite_objective": 4
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 64,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.2266490666250994,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.006359538124943457,
+              0.0
+            ],
+            "direction": "zero_face:1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                252.43598603231504,
+                0.0,
+                54.69482863816038
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.5983123925117945,
+                1.9560708353104648,
+                4.639623164392348
+              ],
+              "temporal_shift_ns": 0.043007375583842766
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.40732727501611987,
+              -0.2266490666250994,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.006359538124943457,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                54.69482863816038
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.5983123925117945,
+                1.9560708353104648,
+                4.639623164392348
+              ],
+              "temporal_shift_ns": 0.043007375583842766
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 69,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.2266490666250994,
+              -0.08825483187568806,
+              0.0,
+              0.0,
+              0.0,
+              -0.006359538124943457,
+              0.0
+            ],
+            "direction": "zero_face:1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                252.43598603231504,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.5983123925117945,
+                1.9560708353104648,
+                4.639623164392348
+              ],
+              "temporal_shift_ns": 0.043007375583842766
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.40732727501611987,
+              -0.2266490666250994,
+              -0.08825483187568806,
+              0.0,
+              0.0,
+              0.0,
+              -0.006359538124943457,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.5983123925117945,
+                1.9560708353104648,
+                4.639623164392348
+              ],
+              "temporal_shift_ns": 0.043007375583842766
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V00:poisson-0:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 81,
+        "positive_infinite_objective": 4
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 62,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.010579192211631405,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.01006805191822911,
+              0.0
+            ],
+            "direction": "zero_face:0,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                297.2866554378732,
+                127.3127049920198
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.3435277676047869,
+                0.7800137190865623,
+                3.4515087854459883
+              ],
+              "temporal_shift_ns": 0.04027914805255727
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.010579192211631405,
+              -0.47805889063414736,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.01006805191822911,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                127.3127049920198
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.3435277676047869,
+                0.7800137190865623,
+                3.4515087854459883
+              ],
+              "temporal_shift_ns": 0.04027914805255727
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 68,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.010579192211631405,
+              0.0,
+              -0.20472822913114772,
+              0.0,
+              0.0,
+              0.0,
+              -0.01006805191822911,
+              0.0
+            ],
+            "direction": "zero_face:0,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                297.2866554378732,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.3435277676047869,
+                0.7800137190865623,
+                3.4515087854459883
+              ],
+              "temporal_shift_ns": 0.04027914805255727
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.010579192211631405,
+              -0.47805889063414736,
+              -0.20472822913114772,
+              0.0,
+              0.0,
+              0.0,
+              -0.01006805191822911,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.3435277676047869,
+                0.7800137190865623,
+                3.4515087854459883
+              ],
+              "temporal_shift_ns": 0.04027914805255727
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V00:poisson-0:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 81,
+        "positive_infinite_objective": 4
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 64,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.15874104126938582,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.010078151666479695,
+              0.0
+            ],
+            "direction": "zero_face:1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                209.57046311808983,
+                0.0,
+                122.58183908906166
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.7000162666725066,
+                0.9805340261772658,
+                3.5175838347407717
+              ],
+              "temporal_shift_ns": 0.040198763955046256
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.3370047772926543,
+              -0.15874104126938582,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.010078151666479695,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                122.58183908906166
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.7000162666725066,
+                0.9805340261772658,
+                3.5175838347407717
+              ],
+              "temporal_shift_ns": 0.040198763955046256
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 69,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.15874104126938582,
+              -0.19712064747910238,
+              0.0,
+              0.0,
+              0.0,
+              -0.010078151666479695,
+              0.0
+            ],
+            "direction": "zero_face:1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                209.57046311808983,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.7000162666725066,
+                0.9805340261772658,
+                3.5175838347407717
+              ],
+              "temporal_shift_ns": 0.040198763955046256
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.3370047772926543,
+              -0.15874104126938582,
+              -0.19712064747910238,
+              0.0,
+              0.0,
+              0.0,
+              -0.010078151666479695,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.7000162666725066,
+                0.9805340261772658,
+                3.5175838347407717
+              ],
+              "temporal_shift_ns": 0.040198763955046256
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V01:mean:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 77,
+        "positive_infinite_objective": 8
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 59,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                44.506404604432035,
+                44.506404604451696,
+                25.64228724737408
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 62,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.27490632912226143,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:0,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                44.506404604451696,
+                25.64228724737408
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 64,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.2749063291223829,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                44.506404604432035,
+                0.0,
+                25.64228724737408
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 65,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              -0.15838680118349102,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                44.506404604432035,
+                44.506404604451696,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.27490632912226143,
+              -0.2749063291223829,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                25.64228724737408
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 68,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.27490632912226143,
+              0.0,
+              -0.15838680118349102,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:0,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                44.506404604451696,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 69,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.2749063291223829,
+              -0.15838680118349102,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                44.506404604432035,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.27490632912226143,
+              -0.2749063291223829,
+              -0.15838680118349102,
+              0.0,
+              0.0,
+              0.0,
+              -0.04908350267057376,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0442063687987655,
+                1.044206368800776,
+                2.5831761854424005
+              ],
+              "temporal_shift_ns": -0.041928480574304906
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V01:mean:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 84,
+        "positive_infinite_objective": 1
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.25856961889001745,
+              -0.33794886484582193,
+              -0.10658304488223569,
+              0.0,
+              0.0,
+              0.0,
+              -0.04870620952845172,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.00683814361944,
+                1.2077845196683095,
+                3.0019692097431303
+              ],
+              "temporal_shift_ns": -0.043000299077322605
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V01:poisson-0:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 81,
+        "positive_infinite_objective": 4
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 62,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.2711054882901097,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05618421564382236,
+              0.0
+            ],
+            "direction": "zero_face:0,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                44.859737724656206,
+                28.289371812588463
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0357880313210297,
+                1.035788031328372,
+                2.3896741551009755
+              ],
+              "temporal_shift_ns": -0.038802842630978863
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.2711054882901097,
+              -0.27110548829031367,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05618421564382236,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                28.289371812588463
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0357880313210297,
+                1.035788031328372,
+                2.3896741551009755
+              ],
+              "temporal_shift_ns": -0.038802842630978863
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 68,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.2711054882901097,
+              0.0,
+              -0.17096408377935535,
+              0.0,
+              0.0,
+              0.0,
+              -0.05618421564382236,
+              0.0
+            ],
+            "direction": "zero_face:0,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                44.859737724656206,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0357880313210297,
+                1.035788031328372,
+                2.3896741551009755
+              ],
+              "temporal_shift_ns": -0.038802842630978863
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.2711054882901097,
+              -0.27110548829031367,
+              -0.17096408377935535,
+              0.0,
+              0.0,
+              0.0,
+              -0.05618421564382236,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0357880313210297,
+                1.035788031328372,
+                2.3896741551009755
+              ],
+              "temporal_shift_ns": -0.038802842630978863
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V01:poisson-0:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 77,
+        "positive_infinite_objective": 8
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 59,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                97.0093428720177,
+                1.9232697396273936e-10,
+                20.531859089939115
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 62,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.5862665856288702,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:0,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                1.9232697396273936e-10,
+                20.531859089939115
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 64,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -1.1623094746474355e-12,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                97.0093428720177,
+                0.0,
+                20.531859089939115
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 65,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              -0.1240823055687742,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                97.0093428720177,
+                1.9232697396273936e-10,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 67,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.5862665856288702,
+              -1.1623094746474355e-12,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:0,1,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                20.531859089939115
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 68,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.5862665856288702,
+              0.0,
+              -0.1240823055687742,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:0,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                1.9232697396273936e-10,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 69,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -1.1623094746474355e-12,
+              -0.1240823055687742,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                97.0093428720177,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.5862665856288702,
+              -1.1623094746474355e-12,
+              -0.1240823055687742,
+              0.0,
+              0.0,
+              0.0,
+              -0.05602272703024763,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                1.0895204195787174,
+                1.1437385303686194,
+                2.706238657189478
+              ],
+              "temporal_shift_ns": -0.03851856386306154
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V02:mean:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 88,
+      "corrected_classification_counts": {
+        "finite_objective": 73,
+        "infeasible": 2,
+        "positive_infinite_objective": 4,
+        "redundant_physical_candidate": 9
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 29,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0001
+            ],
+            "direction": "shift",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.25182968485367924,
+                29.23245996163242,
+                24.180286095733084
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.10924530999069507,
+                0.6407606871379466,
+                2.9459684048804324
+              ],
+              "temporal_shift_ns": 3e-05
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 31,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01
+            ],
+            "direction": "shift",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.25182968485367924,
+                29.23245996163242,
+                24.180286095733084
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.10924530999069507,
+                0.6407606871379466,
+                2.9459684048804324
+              ],
+              "temporal_shift_ns": 0.003
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 66,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.0037543319410583854,
+              -0.4358038974374055,
+              -0.3604849860566959,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.10924530999069507,
+                0.6407606871379466,
+                2.9459684048804324
+              ],
+              "temporal_shift_ns": 0.0
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 78,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "direction": "bound:shift",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.25182968485367924,
+                29.23245996163242,
+                24.180286095733084
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.10924530999069507,
+                0.6407606871379466,
+                2.9459684048804324
+              ],
+              "temporal_shift_ns": 0.3
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V02:mean:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 88,
+      "corrected_classification_counts": {
+        "finite_objective": 86,
+        "positive_infinite_objective": 1,
+        "redundant_physical_candidate": 1
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.3936243180241632,
+              -0.30644722960634857,
+              -0.09920966076431402,
+              0.0,
+              0.0,
+              0.0,
+              -8.891604291688731e-08,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.601427167531244,
+                2.11082442667711,
+                5.522409313962232
+              ],
+              "temporal_shift_ns": 0.0
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V02:poisson-0:matched:lbfgsb:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "infeasible": 14,
+        "finite_objective": 56,
+        "redundant_physical_candidate": 13,
+        "positive_infinite_objective": 2
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 63,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              -0.4151833752882778,
+              -0.4458950878532299,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "direction": "zero_face:1,2",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.1,
+                0.3942247834655033,
+                2.59875704309309
+              ],
+              "temporal_shift_ns": 3.5114671191549816e-08
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        },
+        {
+          "index": 78,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.999999882951096
+            ],
+            "direction": "bound:shift",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                28.127788165453783,
+                30.20844118925434
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.1,
+                0.3942247834655033,
+                2.59875704309309
+              ],
+              "temporal_shift_ns": 0.3
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "V02:poisson-0:matched:trf:compact",
+      "accepted": true,
+      "final_probe_denominator": 85,
+      "corrected_classification_counts": {
+        "finite_objective": 84,
+        "positive_infinite_objective": 1
+      },
+      "unavailable_feasible_directions": [],
+      "reclassified_probes": [
+        {
+          "index": 70,
+          "classification": "positive_infinite_objective",
+          "probe": {
+            "centered_nll": null,
+            "coordinate_direction": [
+              -0.4458852609245167,
+              -0.3300077547074766,
+              -0.05883358169638809,
+              0.0,
+              0.0,
+              0.0,
+              -1e-10,
+              0.0
+            ],
+            "direction": "zero_face:0,1,2,6",
+            "feasible": true,
+            "parameters": {
+              "amplitudes": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "background": 0.0,
+              "lifetimes_ns": [
+                0.48891855437415194,
+                2.991408508596538,
+                3.051907695729902
+              ],
+              "temporal_shift_ns": 2.6567101430220658e-08
+            },
+            "signed_step": 1.0,
+            "status": "infinite_objective"
+          }
+        }
+      ]
+    }
+  ],
+  "lbfgsb_forensics": [
+    {
+      "task_id": "V00:mean:matched:lbfgsb:compact",
+      "returned_centered_nll": 0.18755819966968834,
+      "generating_truth_centered_nll": 0.0,
+      "best_search_invocation_centered_nll": 0.18755819966968834,
+      "best_observed_centered_nll": 0.18670606742412066,
+      "final_validation_best_centered_nll": 0.18684044481006434,
+      "diagnostic_best_centered_nll": 0.18670606742412066,
+      "seed_shift_counts": {
+        "-0.3": 4,
+        "0.0": 7,
+        "0.3": 5
+      },
+      "seed_calls": 8768,
+      "unused_seed_allowance": 7232,
+      "recovery_calls": 2000,
+      "unused_recovery_allowance": 2000,
+      "optimization": {
+        "available_seeds": 109,
+        "background_repairs": 14,
+        "best_observed_centered_nll": 0.18670606742412066,
+        "duplicate_candidates": 0,
+        "generated_templates": 109,
+        "initialization_complete": true,
+        "missing_coverage": [],
+        "nnls_failures": 0,
+        "nnls_projections": 105,
+        "promotions": [
+          "validation_probe",
+          "recovery_best",
+          "validation_probe",
+          "recovery_best"
+        ],
+        "recovery_calls_reserved": 4000,
+        "recovery_calls_used": 2000,
+        "recovery_starts_reserved": 4,
+        "recovery_starts_used": 2,
+        "recovery_unavailable_reason": null,
+        "rejected_candidates": 0,
+        "scaling_fallback": false,
+        "screened_candidates": 123,
+        "selected_candidate_origin": "derivative_stencil",
+        "selected_seed_ids": [
+          "grid-0-333",
+          "grid-0-003",
+          "grid-0-013",
+          "grid-1-222",
+          "grid-1-223",
+          "grid-1-234:background_repair",
+          "grid-2-222",
+          "grid-2-002",
+          "grid-2-012",
+          "background",
+          "grid-1-023",
+          "grid-2-044",
+          "grid-1-123",
+          "grid-0-044",
+          "grid-1-233",
+          "grid-2-444"
+        ],
+        "stopping_reason": "accepted",
+        "unattempted_seed_ids": []
+      },
+      "starts": [
+        {
+          "best_centered_nll": 326.9988640719298,
+          "best_parameters": {
+            "amplitudes": [
+              215.5803885350538,
+              100.8613731049375,
+              100.86137310419208
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.6440190841754996,
+              2.872194832055432,
+              2.8715888189482732
+            ],
+            "temporal_shift_ns": 0.05239264088378115
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "infinite_objective;infinite_objective"
+          ],
+          "elapsed_seconds": 0.5630000000019209,
+          "endpoint_centered_nll": null,
+          "failure_events": 5,
+          "fixed_coordinates": [],
+          "index": 0,
+          "initial_parameters": {
+            "amplitudes": [
+              236.42211088771688,
+              0.0,
+              0.0
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              3.1622776601683813,
+              3.1622776601683813,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 627,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 19,
+          "seed_id": "grid-0-333",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 3,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 5,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 251.22058892989008,
+          "best_parameters": {
+            "amplitudes": [
+              38.549142178331806,
+              38.549142178331806,
+              333.9084329808768
+            ],
+            "background": 6.504118954263411,
+            "lifetimes_ns": [
+              0.1001519127811076,
+              0.1001519127811076,
+              1.7510421926857644
+            ],
+            "temporal_shift_ns": 0.030847998906421623
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.6559999999954016,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [],
+          "index": 1,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              0.0,
+              236.42211088771688
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.1,
+              0.1,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 593,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 16,
+          "seed_id": "grid-0-003",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2,
+            "infeasible_coordinates": 1
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 118.01082153667606,
+          "best_parameters": {
+            "amplitudes": [
+              25.262410915823246,
+              140.25514259050973,
+              273.5583628068381
+            ],
+            "background": 1.6251559023594784,
+            "lifetimes_ns": [
+              0.10012217670284258,
+              0.31844277341305866,
+              2.1582085588307773
+            ],
+            "temporal_shift_ns": 0.029476023642489538
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.6719999999986612,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [],
+          "index": 2,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              0.0,
+              236.42211088771688
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.1,
+              0.31622776601683805,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 633,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 17,
+          "seed_id": "grid-0-013",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2,
+            "infeasible_coordinates": 1
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 139.86074508792348,
+          "best_parameters": {
+            "amplitudes": [
+              154.63349906284586,
+              117.76971220733148,
+              117.76971220733826
+            ],
+            "background": 1.475711522841028,
+            "lifetimes_ns": [
+              2.732716830384384,
+              0.9949116711498794,
+              0.9949116711498057
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "infinite_objective;infinite_objective",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.2190000000045984,
+          "endpoint_centered_nll": null,
+          "failure_events": 4,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 3,
+          "initial_parameters": {
+            "amplitudes": [
+              404.76316008763877,
+              0.0,
+              0.0
+            ],
+            "background": 27.27341389050793,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 256,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 18,
+          "seed_id": "grid-1-222",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 4,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 88.0998061432462,
+          "best_parameters": {
+            "amplitudes": [
+              245.83568364686698,
+              42.03023567683685,
+              101.44060562994324
+            ],
+            "background": 0.4022420667841675,
+            "lifetimes_ns": [
+              1.0052051761270702,
+              1.005209069734794,
+              3.8576670887573052
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.9059999999954016,
+          "endpoint_centered_nll": null,
+          "failure_events": 7,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 4,
+          "initial_parameters": {
+            "amplitudes": [
+              277.272039170725,
+              0.0,
+              118.38832255590813
+            ],
+            "background": 1.2462137538802303,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-223",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 5,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 7,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 88.09980614261532,
+          "best_parameters": {
+            "amplitudes": [
+              287.866289943505,
+              101.44032623580107,
+              0.0
+            ],
+            "background": 0.4022428860917084,
+            "lifetimes_ns": [
+              1.0052061333357263,
+              3.8576746331793927,
+              10.0
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "zero_component",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": 88.09980614261532,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 5,
+          "initial_parameters": {
+            "amplitudes": [
+              302.5878417340766,
+              81.48479290693155,
+              18.498765764825286
+            ],
+            "background": 0.78625,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              3.1622776601683813,
+              10.0
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 954,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "grid-1-234:background_repair",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 1982.9733094862333,
+          "best_parameters": {
+            "amplitudes": [
+              359.9114211701718,
+              32.194314690737876,
+              32.194314690737926
+            ],
+            "background": 27.39942657426257,
+            "lifetimes_ns": [
+              0.9491576918288269,
+              0.9980153931658231,
+              0.9980153931657978
+            ],
+            "temporal_shift_ns": 0.20196347847085055
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "infinite_objective;infinite_objective",
+            "safeguarded",
+            "infinite_objective;infinite_objective",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.14100000000325963,
+          "endpoint_centered_nll": null,
+          "failure_events": 6,
+          "fixed_coordinates": [],
+          "index": 6,
+          "initial_parameters": {
+            "amplitudes": [
+              326.7650423361851,
+              0.0,
+              0.0
+            ],
+            "background": 37.17977015454221,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 150,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 17,
+          "seed_id": "grid-2-222",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 4,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 6,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 0.28495243703896267,
+          "best_parameters": {
+            "amplitudes": [
+              284.4555263714254,
+              32.686648054248195,
+              142.0205677318741
+            ],
+            "background": 0.4941430977401965,
+            "lifetimes_ns": [
+              0.7356660698731422,
+              0.1318573057628941,
+              3.1834671638334875
+            ],
+            "temporal_shift_ns": 0.044066141658362354
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "unavailable_stencil",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.8899999999994179,
+          "endpoint_centered_nll": null,
+          "failure_events": 8,
+          "fixed_coordinates": [],
+          "index": 7,
+          "initial_parameters": {
+            "amplitudes": [
+              352.27111545901744,
+              0.0,
+              263.93349901227003
+            ],
+            "background": 40.021811055645294,
+            "lifetimes_ns": [
+              0.1,
+              0.1,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-2-002",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 163.18815886116892,
+          "best_parameters": {
+            "amplitudes": [
+              290.7382582154433,
+              72.66370548753248,
+              294.1538656302921
+            ],
+            "background": 2.7697843203219903,
+            "lifetimes_ns": [
+              0.10011249413998803,
+              0.3157395793212089,
+              2.031798883106861
+            ],
+            "temporal_shift_ns": 0.057747880728719336
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "one_sided_bound",
+            "zero_component",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.18800000000192085,
+          "endpoint_centered_nll": null,
+          "failure_events": 2,
+          "fixed_coordinates": [],
+          "index": 8,
+          "initial_parameters": {
+            "amplitudes": [
+              352.27111545901744,
+              0.0,
+              263.93349901227003
+            ],
+            "background": 40.021811055645294,
+            "lifetimes_ns": [
+              0.1,
+              0.31622776601683805,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 202,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 13,
+          "seed_id": "grid-2-012",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2
+          },
+          "retained_failure_records": 2,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 289.0888073455175,
+          "best_parameters": {
+            "amplitudes": [
+              105.90814874848851,
+              105.90814874848851,
+              105.90814875012842
+            ],
+            "background": 1.9120799033636482,
+            "lifetimes_ns": [
+              1.9669197520511514,
+              1.9669197520511514,
+              1.966919752042055
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.375,
+          "endpoint_centered_nll": 289.0888073455175,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 9,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "background": 78.625,
+            "lifetimes_ns": [
+              1.0000000000000002,
+              1.0000000000000002,
+              1.0000000000000002
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 423,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "background",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 88.0998061426202,
+          "best_parameters": {
+            "amplitudes": [
+              0.0,
+              287.866268557017,
+              101.44035782820029
+            ],
+            "background": 0.4022426120587202,
+            "lifetimes_ns": [
+              0.1,
+              1.0052059996892824,
+              3.857673823897232
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "zero_component",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.4059999999954016,
+          "endpoint_centered_nll": 88.0998061426202,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 10,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              277.272039170725,
+              118.38832255590813
+            ],
+            "background": 1.2462137538802303,
+            "lifetimes_ns": [
+              0.1,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 463,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "grid-1-023",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 2978.6251892189603,
+          "best_parameters": {
+            "amplitudes": [
+              941.5437543470975,
+              2.8872167196968035,
+              89.38705050207516
+            ],
+            "background": 7.639188921768725,
+            "lifetimes_ns": [
+              0.11393054277846232,
+              8.713215629208571,
+              9.118089226346674
+            ],
+            "temporal_shift_ns": 0.10627441780425458
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "zero_component",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.2970000000059372,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [],
+          "index": 11,
+          "initial_parameters": {
+            "amplitudes": [
+              828.4847243824828,
+              71.41905953695591,
+              0.0
+            ],
+            "background": 22.002256478358607,
+            "lifetimes_ns": [
+              0.1,
+              10.0,
+              10.0
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 333,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 21,
+          "seed_id": "grid-2-044",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2,
+            "infeasible_coordinates": 1
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 88.09980614261566,
+          "best_parameters": {
+            "amplitudes": [
+              0.0,
+              287.86630061037727,
+              101.44031727637554
+            ],
+            "background": 0.4022428895325892,
+            "lifetimes_ns": [
+              0.31622776601683805,
+              1.0052061561189793,
+              3.857674898336676
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "zero_component",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.43699999999807915,
+          "endpoint_centered_nll": 88.09980614261566,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 12,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              277.272039170725,
+              118.38832255590813
+            ],
+            "background": 1.2462137538802303,
+            "lifetimes_ns": [
+              0.31622776601683805,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 491,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "grid-1-123",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 864.2351485559291,
+          "best_parameters": {
+            "amplitudes": [
+              12.785289303309204,
+              234.82420104707757,
+              39.05060684887818
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.1000192892134435,
+              1.2405166407874837,
+              9.931972952025292
+            ],
+            "temporal_shift_ns": 0.00899937932783514
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "insufficient_bound_room;infinite_objective",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "infinite_objective;infinite_objective"
+          ],
+          "elapsed_seconds": 0.43800000000192085,
+          "endpoint_centered_nll": null,
+          "failure_events": 6,
+          "fixed_coordinates": [],
+          "index": 13,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              134.00211607779698,
+              0.0
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.1,
+              10.0,
+              10.0
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 491,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 19,
+          "seed_id": "grid-0-044",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 4,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 6,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 88.09980614262584,
+          "best_parameters": {
+            "amplitudes": [
+              287.8663195074204,
+              101.44032496162065,
+              0.0
+            ],
+            "background": 0.4022429533658123,
+            "lifetimes_ns": [
+              1.0052060581545392,
+              3.8576746951850356,
+              3.169080179796959
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "zero_component",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.8439999999973224,
+          "endpoint_centered_nll": 88.09980614262584,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 14,
+          "initial_parameters": {
+            "amplitudes": [
+              277.272039170725,
+              118.38832255590813,
+              0.0
+            ],
+            "background": 1.2462137538802303,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              3.1622776601683813,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 953,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "grid-1-233",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 8305.240521480775,
+          "best_parameters": {
+            "amplitudes": [
+              2.8292438623223077,
+              37.76902069430893,
+              37.76902069430907
+            ],
+            "background": 32.90128454049621,
+            "lifetimes_ns": [
+              8.669275110000864,
+              9.943545317194546,
+              9.943545317194546
+            ],
+            "temporal_shift_ns": 0.21754786343590993
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "zero_component",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.17100000000209548,
+          "endpoint_centered_nll": null,
+          "failure_events": 2,
+          "fixed_coordinates": [],
+          "index": 15,
+          "initial_parameters": {
+            "amplitudes": [
+              90.2863685077678,
+              0.0,
+              0.0
+            ],
+            "background": 22.287676271756773,
+            "lifetimes_ns": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 199,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 20,
+          "seed_id": "grid-2-444",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 2
+          },
+          "retained_failure_records": 2,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 0.2342796921752709,
+          "best_parameters": {
+            "amplitudes": [
+              25.021685576914905,
+              284.85587702929365,
+              146.3191950107433
+            ],
+            "background": 0.5028322618543758,
+            "lifetimes_ns": [
+              0.1338577828022813,
+              0.7139608318233652,
+              3.129053327655269
+            ],
+            "temporal_shift_ns": 0.04395682357064315
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "unavailable_stencil",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.8910000000032596,
+          "endpoint_centered_nll": null,
+          "failure_events": 8,
+          "fixed_coordinates": [],
+          "index": 16,
+          "initial_parameters": {
+            "amplitudes": [
+              32.686648054248195,
+              284.4555263714254,
+              142.0205677318741
+            ],
+            "background": 0.4941430977401965,
+            "lifetimes_ns": [
+              0.13318249371707938,
+              0.7356660698731422,
+              3.1834671638334875
+            ],
+            "temporal_shift_ns": 0.044066141658362354
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "required_recovery",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": null,
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 0.18755819966968834,
+          "best_parameters": {
+            "amplitudes": [
+              38.52952320057219,
+              275.23933541623904,
+              139.9032003251872
+            ],
+            "background": 0.5025956039137663,
+            "lifetimes_ns": [
+              0.23340343096276528,
+              0.7582008112097701,
+              3.208394568889611
+            ],
+            "temporal_shift_ns": 0.04387855295193647
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "unavailable_stencil",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.8910000000032596,
+          "endpoint_centered_nll": null,
+          "failure_events": 8,
+          "fixed_coordinates": [],
+          "index": 17,
+          "initial_parameters": {
+            "amplitudes": [
+              25.021685576914905,
+              284.85587702929365,
+              146.3191950107433
+            ],
+            "background": 0.5028322618543758,
+            "lifetimes_ns": [
+              0.13520307588496047,
+              0.7139608318233652,
+              3.129053327655269
+            ],
+            "temporal_shift_ns": 0.04395682357064315
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "required_recovery",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": null,
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        }
+      ],
+      "phase_work": {
+        "assessment": {
+          "component_convolutions": 6,
+          "model_calls": 2,
+          "objective_attempts": 2,
+          "objective_calls": 2,
+          "requests": 2
+        },
+        "diagnostics": {
+          "component_convolutions": 75,
+          "model_calls": 25,
+          "objective_attempts": 24,
+          "objective_calls": 24,
+          "requests": 25
+        },
+        "initialization": {
+          "component_convolutions": 696,
+          "model_calls": 232,
+          "objective_attempts": 123,
+          "objective_calls": 123,
+          "requests": 232
+        },
+        "optimization": {
+          "component_convolutions": 32304,
+          "model_calls": 10768,
+          "objective_attempts": 10162,
+          "objective_calls": 10162,
+          "requests": 10794
+        },
+        "validation": {
+          "component_convolutions": 765,
+          "model_calls": 255,
+          "objective_attempts": 255,
+          "objective_calls": 255,
+          "requests": 255
+        }
+      },
+      "final_validation": {
+        "best_improvement": 0.000717754859623998,
+        "best_probe": {
+          "amplitudes": [
+            38.52952320057219,
+            275.17736166650127,
+            139.9032003251872
+          ],
+          "background": 0.5025956039137663,
+          "lifetimes_ns": [
+            0.23340343096276528,
+            0.7582008112097701,
+            3.208394568889611
+          ],
+          "temporal_shift_ns": 0.04387855295193647
+        },
+        "candidate": {
+          "amplitudes": [
+            38.52952320057219,
+            275.23933541623904,
+            139.9032003251872
+          ],
+          "background": 0.5025956039137663,
+          "lifetimes_ns": [
+            0.23340343096276528,
+            0.7582008112097701,
+            3.208394568889611
+          ],
+          "temporal_shift_ns": 0.04387855295193647
+        },
+        "complete": true,
+        "passed": true,
+        "submitted_objective": 0.18755819966968834,
+        "tolerance": 0.001
+      },
+      "final_conditioning": {
+        "active_bounds": [],
+        "candidate": {
+          "amplitudes": [
+            38.52952320057219,
+            275.23933541623904,
+            139.9032003251872
+          ],
+          "background": 0.5025956039137663,
+          "lifetimes_ns": [
+            0.23340343096276528,
+            0.7582008112097701,
+            3.208394568889611
+          ],
+          "temporal_shift_ns": 0.04387855295193647
+        },
+        "candidate_evaluation_id": 10475,
+        "condition_number": 1474.911003510221,
+        "conditioning_status": "available",
+        "derivative_statuses": [
+          "analytic",
+          "analytic",
+          "analytic",
+          "safeguarded",
+          "safeguarded",
+          "safeguarded",
+          "analytic",
+          "safeguarded"
+        ],
+        "equal_lifetime_pairs": [],
+        "lifetime_ratios": [
+          [
+            0,
+            1,
+            3.248456152003719
+          ],
+          [
+            0,
+            2,
+            13.746132846699432
+          ],
+          [
+            1,
+            2,
+            4.231589470038103
+          ]
+        ],
+        "nominal_parameters": 8,
+        "rank_tolerance": 5.103051761888935e-07,
+        "restricted": null,
+        "singular_values": [
+          562.6051810722948,
+          396.61861316684485,
+          134.1269724601522,
+          102.21935985436807,
+          42.70705482732163,
+          17.083196981069847,
+          5.783493107085362,
+          0.3814502568177471
+        ],
+        "weighted_jacobian_rank": 8,
+        "zero_amplitude_components": []
+      },
+      "final_objective_coordinate_derivatives": [
+        0.9431518383249098,
+        7.9994007599353,
+        10.500125735899399,
+        0.0352939523092112,
+        2.360779944712466,
+        2.840563834747724,
+        9.653047101722466,
+        5.609871615435258
+      ],
+      "interpretation_limit": "Saved finite candidates and retained failure snapshots. No complete accepted-iterate trajectory or earlier validation-pass history."
+    },
+    {
+      "task_id": "V01:mean:matched:lbfgsb:compact",
+      "returned_centered_nll": 0.029386251192295564,
+      "generating_truth_centered_nll": 0.0,
+      "best_search_invocation_centered_nll": 0.029386251192295564,
+      "best_observed_centered_nll": 0.029274179748296346,
+      "final_validation_best_centered_nll": 0.029317748063104287,
+      "diagnostic_best_centered_nll": 0.029274179748296346,
+      "seed_shift_counts": {
+        "-0.3": 4,
+        "0.0": 7,
+        "0.3": 5
+      },
+      "seed_calls": 12374,
+      "unused_seed_allowance": 3626,
+      "recovery_calls": 0,
+      "unused_recovery_allowance": 4000,
+      "optimization": {
+        "available_seeds": 109,
+        "background_repairs": 16,
+        "best_observed_centered_nll": 0.029274179748296346,
+        "duplicate_candidates": 0,
+        "generated_templates": 109,
+        "initialization_complete": true,
+        "missing_coverage": [],
+        "nnls_failures": 0,
+        "nnls_projections": 105,
+        "promotions": [],
+        "recovery_calls_reserved": 4000,
+        "recovery_calls_used": 0,
+        "recovery_starts_reserved": 4,
+        "recovery_starts_used": 0,
+        "recovery_unavailable_reason": null,
+        "rejected_candidates": 0,
+        "scaling_fallback": false,
+        "screened_candidates": 125,
+        "selected_candidate_origin": "canonical_candidate",
+        "selected_seed_ids": [
+          "grid-0-222",
+          "grid-0-223",
+          "grid-0-023",
+          "grid-1-222",
+          "grid-1-223",
+          "grid-1-023",
+          "grid-2-222",
+          "grid-2-002",
+          "grid-2-012",
+          "background",
+          "grid-1-123",
+          "grid-0-000",
+          "grid-1-233",
+          "grid-2-444",
+          "grid-1-234",
+          "grid-2-044"
+        ],
+        "stopping_reason": "accepted",
+        "unattempted_seed_ids": []
+      },
+      "starts": [
+        {
+          "best_centered_nll": 314.23645181853146,
+          "best_parameters": {
+            "amplitudes": [
+              103.06436758453852,
+              0.0,
+              0.0
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              1.6183661041020652,
+              1.0096193890585972,
+              1.0096193890586336
+            ],
+            "temporal_shift_ns": -0.14366453125727643
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "infinite_objective;infinite_objective",
+            "zero_component",
+            "zero_component",
+            "analytic",
+            "infinite_objective;infinite_objective"
+          ],
+          "elapsed_seconds": 0.10900000000401633,
+          "endpoint_centered_nll": null,
+          "failure_events": 6,
+          "fixed_coordinates": [],
+          "index": 0,
+          "initial_parameters": {
+            "amplitudes": [
+              104.80570930716577,
+              0.0,
+              0.0
+            ],
+            "background": 7.236128474581653,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 125,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 15,
+          "seed_id": "grid-0-222",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 4,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 6,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 10.774789498334261,
+          "best_parameters": {
+            "amplitudes": [
+              72.75385955774968,
+              27.537516656102074,
+              11.707816799638126
+            ],
+            "background": 1.937919838351339,
+            "lifetimes_ns": [
+              1.3006669493282217,
+              1.0253603826862348,
+              2.0099688964864666
+            ],
+            "temporal_shift_ns": -0.029531493659725128
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "unavailable_stencil"
+          ],
+          "elapsed_seconds": 0.9069999999992433,
+          "endpoint_centered_nll": null,
+          "failure_events": 4,
+          "fixed_coordinates": [],
+          "index": 1,
+          "initial_parameters": {
+            "amplitudes": [
+              48.6375431765037,
+              0.0,
+              45.20024923425786
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-0-223",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 2,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 4,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 5.819366651662771,
+          "best_parameters": {
+            "amplitudes": [
+              0.0,
+              85.3233108901753,
+              20.937237462192048
+            ],
+            "background": 1.3470086423498946,
+            "lifetimes_ns": [
+              0.10000022253535641,
+              1.3111316470857983,
+              2.0524376901580332
+            ],
+            "temporal_shift_ns": -0.05601446218713216
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "zero_component",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "unavailable_stencil"
+          ],
+          "elapsed_seconds": 0.9059999999954016,
+          "endpoint_centered_nll": null,
+          "failure_events": 4,
+          "fixed_coordinates": [],
+          "index": 2,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              48.6375431765037,
+              45.20024923425786
+            ],
+            "background": 0.0,
+            "lifetimes_ns": [
+              0.1,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-0-023",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 2,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 4,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 8.203850866701181,
+          "best_parameters": {
+            "amplitudes": [
+              81.29124008498309,
+              28.702935301881972,
+              28.702935302308898
+            ],
+            "background": 1.4021117881802683,
+            "lifetimes_ns": [
+              1.6360784908045902,
+              0.34820982696335084,
+              0.34820982695675773
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.9060000000026776,
+          "endpoint_centered_nll": null,
+          "failure_events": 7,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 3,
+          "initial_parameters": {
+            "amplitudes": [
+              120.41485097962568,
+              0.0,
+              0.0
+            ],
+            "background": 5.26059481889503,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-222",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 5,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 7,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 7.4222627810064346,
+          "best_parameters": {
+            "amplitudes": [
+              83.78475881385347,
+              6.538258332386003,
+              89.29823045213767
+            ],
+            "background": 1.4714768552280921,
+            "lifetimes_ns": [
+              0.1,
+              0.9950692686358205,
+              1.5447145578447208
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "one_sided_bound",
+            "safeguarded",
+            "unavailable_stencil",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.9060000000026776,
+          "endpoint_centered_nll": null,
+          "failure_events": 4,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 4,
+          "initial_parameters": {
+            "amplitudes": [
+              102.11879129756983,
+              0.0,
+              16.559920095482855
+            ],
+            "background": 1.7617771246634741,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-223",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 2,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 4,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 3.4745463830982586,
+          "best_parameters": {
+            "amplitudes": [
+              71.11697286373595,
+              95.82214298104653,
+              5.679058622184219
+            ],
+            "background": 1.1504141155036751,
+            "lifetimes_ns": [
+              0.1,
+              1.3048514533223599,
+              4.872458404267909
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "one_sided_bound",
+            "safeguarded",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 5,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 5,
+          "initial_parameters": {
+            "amplitudes": [
+              38.29370683649515,
+              90.36698574714949,
+              22.245607737524363
+            ],
+            "background": 0.6968324078639435,
+            "lifetimes_ns": [
+              0.1,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-023",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 3,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 5,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 0.029386251192295564,
+          "best_parameters": {
+            "amplitudes": [
+              25.64228724737408,
+              44.506404604432035,
+              44.506404604451696
+            ],
+            "background": 1.0077456642052174,
+            "lifetimes_ns": [
+              2.5831761854424005,
+              1.0442063687987655,
+              1.044206368800776
+            ],
+            "temporal_shift_ns": -0.041928480574304906
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 11,
+          "fixed_coordinates": [],
+          "index": 6,
+          "initial_parameters": {
+            "amplitudes": [
+              107.72355026938163,
+              0.0,
+              0.0
+            ],
+            "background": 6.875582602295504,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              1.0000000000000004,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-2-222",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 1.2012239122766002,
+          "best_parameters": {
+            "amplitudes": [
+              57.31204901034658,
+              0.13020083752624562,
+              58.26903978938902
+            ],
+            "background": 1.2169023221305886,
+            "lifetimes_ns": [
+              0.8354484776042547,
+              0.10001737842826788,
+              1.8474934345291922
+            ],
+            "temporal_shift_ns": -0.04046575853615279
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "feasible_side_near_bound",
+            "unavailable_stencil",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 6,
+          "fixed_coordinates": [],
+          "index": 7,
+          "initial_parameters": {
+            "amplitudes": [
+              194.76589219766285,
+              0.0,
+              79.92794720759191
+            ],
+            "background": 7.564359629242978,
+            "lifetimes_ns": [
+              0.1,
+              0.1,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-2-002",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 4,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 6,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 0.3057107418766948,
+          "best_parameters": {
+            "amplitudes": [
+              1.1653557040622005,
+              74.05065015978448,
+              40.39115310868683
+            ],
+            "background": 1.092395119469975,
+            "lifetimes_ns": [
+              0.10481141683150534,
+              0.9463916210930089,
+              2.1554909062911625
+            ],
+            "temporal_shift_ns": -0.04114411968564704
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 9,
+          "fixed_coordinates": [],
+          "index": 8,
+          "initial_parameters": {
+            "amplitudes": [
+              194.76589219766285,
+              0.0,
+              79.92794720759191
+            ],
+            "background": 7.564359629242978,
+            "lifetimes_ns": [
+              0.1,
+              0.31622776601683805,
+              1.0000000000000004
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-2-012",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 23.00596560163804,
+          "best_parameters": {
+            "amplitudes": [
+              36.62563586163132,
+              36.62563586163132,
+              36.62563586161487
+            ],
+            "background": 2.2327383158921896,
+            "lifetimes_ns": [
+              1.324556613130569,
+              1.324556613130569,
+              1.3245566131300894
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.3129999999946449,
+          "endpoint_centered_nll": 23.00596560163804,
+          "failure_events": 0,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 9,
+          "initial_parameters": {
+            "amplitudes": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "background": 20.531249999999996,
+            "lifetimes_ns": [
+              1.0000000000000002,
+              1.0000000000000002,
+              1.0000000000000002
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 363,
+          "optimizer_reported_success": true,
+          "residual_evaluations": 0,
+          "safeguard_trials": 0,
+          "seed_id": "background",
+          "solver": "lbfgsb",
+          "solver_status": 0,
+          "termination": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+          "retained_failure_reason_counts": {},
+          "retained_failure_records": 0,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 3.522697042217851,
+          "best_parameters": {
+            "amplitudes": [
+              69.55330505834927,
+              91.14825705909801,
+              11.142273274530357
+            ],
+            "background": 1.165758068805917,
+            "lifetimes_ns": [
+              0.1,
+              1.244589618461987,
+              3.329249696286035
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "one_sided_bound",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 7,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 10,
+          "initial_parameters": {
+            "amplitudes": [
+              14.51336892718125,
+              91.24447726276868,
+              20.57909599287428
+            ],
+            "background": 1.1260034468647258,
+            "lifetimes_ns": [
+              0.31622776601683805,
+              1.0000000000000004,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-123",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 5,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 7,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 144.1239280832222,
+          "best_parameters": {
+            "amplitudes": [
+              69.42793314578202,
+              91.72361695181951,
+              91.72361695150423
+            ],
+            "background": 4.280850506474734,
+            "lifetimes_ns": [
+              1.5480941476397432,
+              0.13533048164134373,
+              0.13533048164286737
+            ],
+            "temporal_shift_ns": 0.12712794170576672
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "unavailable_stencil"
+          ],
+          "elapsed_seconds": 0.5620000000053551,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [],
+          "index": 11,
+          "initial_parameters": {
+            "amplitudes": [
+              106.39747809448824,
+              0.0,
+              0.0
+            ],
+            "background": 18.982668213467417,
+            "lifetimes_ns": [
+              0.1,
+              0.1,
+              0.1
+            ],
+            "temporal_shift_ns": -0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 649,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 14,
+          "seed_id": "grid-0-000",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 1,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 4.125151942114397,
+          "best_parameters": {
+            "amplitudes": [
+              56.335402658481016,
+              84.35884859866678,
+              22.64809166396195
+            ],
+            "background": 1.1746524105480418,
+            "lifetimes_ns": [
+              0.10504933181116273,
+              1.113772832680119,
+              2.5329138227521923
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "invocation_model_limit;invocation_model_limit",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.875,
+          "endpoint_centered_nll": null,
+          "failure_events": 9,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 12,
+          "initial_parameters": {
+            "amplitudes": [
+              102.11879129756983,
+              16.559920095482855,
+              0.0
+            ],
+            "background": 1.7617771246634741,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              3.1622776601683813,
+              3.1622776601683813
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 1000,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 1,
+          "seed_id": "grid-1-233",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "invocation_model_limit": 6,
+            "derivative_unavailable": 2
+          },
+          "retained_failure_records": 8,
+          "call_lease_exhausted": true,
+          "recorded_lease_block": true
+        },
+        {
+          "best_centered_nll": 1453.9159632202202,
+          "best_parameters": {
+            "amplitudes": [
+              0.26717608794983233,
+              12.265294102918851,
+              12.265294102915252
+            ],
+            "background": 5.038917374338276,
+            "lifetimes_ns": [
+              2.18311732751486,
+              3.0296254016758017,
+              3.0296254016755206
+            ],
+            "temporal_shift_ns": 0.001377829126354202
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "safeguarded",
+            "analytic",
+            "safeguarded"
+          ],
+          "elapsed_seconds": 0.1569999999992433,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [],
+          "index": 13,
+          "initial_parameters": {
+            "amplitudes": [
+              17.402517119064743,
+              0.0,
+              0.0
+            ],
+            "background": 10.068704692668602,
+            "lifetimes_ns": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 180,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 3,
+          "seed_id": "grid-2-444",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 3
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 4.794570109491962,
+          "best_parameters": {
+            "amplitudes": [
+              55.01233597379784,
+              100.17141755945254,
+              2.469726114366144
+            ],
+            "background": 1.3737731395637096,
+            "lifetimes_ns": [
+              0.12681220346999617,
+              1.3234809431012904,
+              9.941887327342588
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "safeguarded",
+            "safeguarded",
+            "feasible_side_near_bound",
+            "analytic",
+            "fixed_coordinate"
+          ],
+          "elapsed_seconds": 0.7809999999954016,
+          "endpoint_centered_nll": null,
+          "failure_events": 3,
+          "fixed_coordinates": [
+            "shift"
+          ],
+          "index": 14,
+          "initial_parameters": {
+            "amplitudes": [
+              102.11879129756983,
+              16.559920095482855,
+              0.0
+            ],
+            "background": 1.7617771246634741,
+            "lifetimes_ns": [
+              1.0000000000000004,
+              3.1622776601683813,
+              10.0
+            ],
+            "temporal_shift_ns": 0.0
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 860,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 9,
+          "seed_id": "grid-1-234",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "infinite_objective",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 3
+          },
+          "retained_failure_records": 3,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        },
+        {
+          "best_centered_nll": 793.9363515939265,
+          "best_parameters": {
+            "amplitudes": [
+              446.20722665794335,
+              16.490693037904276,
+              0.0
+            ],
+            "background": 2.814326217870471,
+            "lifetimes_ns": [
+              0.12376428057334819,
+              8.519226611405703,
+              10.0
+            ],
+            "temporal_shift_ns": 0.2122842792512628
+          },
+          "derivative_statuses": [
+            "analytic",
+            "analytic",
+            "analytic",
+            "infinite_objective;infinite_objective",
+            "safeguarded",
+            "zero_component",
+            "analytic",
+            "unavailable_stencil"
+          ],
+          "elapsed_seconds": 0.1870000000053551,
+          "endpoint_centered_nll": null,
+          "failure_events": 6,
+          "fixed_coordinates": [],
+          "index": 15,
+          "initial_parameters": {
+            "amplitudes": [
+              434.6050027308994,
+              19.26796905264118,
+              0.0
+            ],
+            "background": 2.6216397645036276,
+            "lifetimes_ns": [
+              0.1,
+              10.0,
+              10.0
+            ],
+            "temporal_shift_ns": 0.3
+          },
+          "inward_start_coordinates": null,
+          "jacobian_evaluations": 0,
+          "kind": "seed",
+          "model_call_limit": 1000,
+          "model_calls": 197,
+          "optimizer_reported_success": null,
+          "residual_evaluations": 0,
+          "safeguard_trials": 18,
+          "seed_id": "grid-2-044",
+          "solver": "lbfgsb",
+          "solver_status": null,
+          "termination": "derivative_unavailable",
+          "retained_failure_reason_counts": {
+            "infinite_objective": 3,
+            "derivative_unavailable": 2,
+            "infeasible_coordinates": 1
+          },
+          "retained_failure_records": 6,
+          "call_lease_exhausted": false,
+          "recorded_lease_block": false
+        }
+      ],
+      "phase_work": {
+        "assessment": {
+          "component_convolutions": 6,
+          "model_calls": 2,
+          "objective_attempts": 2,
+          "objective_calls": 2,
+          "requests": 2
+        },
+        "diagnostics": {
+          "component_convolutions": 75,
+          "model_calls": 25,
+          "objective_attempts": 24,
+          "objective_calls": 24,
+          "requests": 25
+        },
+        "initialization": {
+          "component_convolutions": 702,
+          "model_calls": 234,
+          "objective_attempts": 125,
+          "objective_calls": 125,
+          "requests": 234
+        },
+        "optimization": {
+          "component_convolutions": 37122,
+          "model_calls": 12374,
+          "objective_attempts": 11728,
+          "objective_calls": 11728,
+          "requests": 12421
+        },
+        "validation": {
+          "component_convolutions": 255,
+          "model_calls": 85,
+          "objective_attempts": 85,
+          "objective_calls": 85,
+          "requests": 85
+        }
+      },
+      "final_validation": {
+        "best_improvement": 6.850312919127674e-05,
+        "best_probe": {
+          "amplitudes": [
+            44.506404604432035,
+            44.506404604451696,
+            25.64228724737408
+          ],
+          "background": 1.0077456642052174,
+          "lifetimes_ns": [
+            1.0443107946568513,
+            1.044206368800776,
+            2.5829178807393065
+          ],
+          "temporal_shift_ns": -0.041928480574304906
+        },
+        "candidate": {
+          "amplitudes": [
+            44.506404604432035,
+            44.506404604451696,
+            25.64228724737408
+          ],
+          "background": 1.0077456642052174,
+          "lifetimes_ns": [
+            1.0442063687987655,
+            1.044206368800776,
+            2.5831761854424005
+          ],
+          "temporal_shift_ns": -0.041928480574304906
+        },
+        "complete": true,
+        "passed": true,
+        "submitted_objective": 0.029386251192295564,
+        "tolerance": 0.001
+      },
+      "final_conditioning": {
+        "active_bounds": [],
+        "candidate": {
+          "amplitudes": [
+            44.506404604432035,
+            44.506404604451696,
+            25.64228724737408
+          ],
+          "background": 1.0077456642052174,
+          "lifetimes_ns": [
+            1.0442063687987655,
+            1.044206368800776,
+            2.5831761854424005
+          ],
+          "temporal_shift_ns": -0.041928480574304906
+        },
+        "candidate_evaluation_id": 11901,
+        "condition_number": null,
+        "conditioning_status": "available",
+        "derivative_statuses": [
+          "analytic",
+          "analytic",
+          "analytic",
+          "safeguarded",
+          "safeguarded",
+          "safeguarded",
+          "analytic",
+          "safeguarded"
+        ],
+        "equal_lifetime_pairs": [],
+        "lifetime_ratios": [
+          [
+            0,
+            1,
+            1.0000000000019256
+          ],
+          [
+            0,
+            2,
+            2.4738176883694316
+          ],
+          [
+            1,
+            2,
+            2.4738176883646683
+          ]
+        ],
+        "nominal_parameters": 8,
+        "rank_tolerance": 2.570180527463927e-07,
+        "restricted": null,
+        "singular_values": [
+          229.68687395865933,
+          113.75195227339454,
+          57.820639297584876,
+          33.135681215372315,
+          10.951549231681335,
+          1.661631031932614,
+          2.3365593230813445e-10,
+          2.5453087288233708e-14
+        ],
+        "weighted_jacobian_rank": 6,
+        "zero_amplitude_components": []
+      },
+      "final_objective_coordinate_derivatives": [
+        -0.6547000120312025,
+        -0.6547000120355009,
+        -0.6913850749276773,
+        -0.6138607660518269,
+        -0.6138607660356079,
+        0.10127124840833396,
+        0.30107341690364886,
+        0.19356171402970232
+      ],
+      "interpretation_limit": "Saved finite candidates and retained failure snapshots. No complete accepted-iterate trajectory or earlier validation-pass history."
+    }
+  ]
+}

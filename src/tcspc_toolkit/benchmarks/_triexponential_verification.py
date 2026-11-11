@@ -238,12 +238,83 @@ def _history(task, entry, fit, baseline, *, previous_verification=False):
     )
 
 
+def _probe_classification(probe):
+    """Classify serialized scalar probes by recorded status, preserving null limits.
+
+    JSON null represents both unavailable values and nonfinite floats. Only the
+    evaluator's explicit ``infinite_objective`` status establishes the valid
+    positive-infinite Poisson limit. Unknown or contradictory records remain
+    incomplete. This reporting interpretation never changes fit acceptance.
+    """
+    if not isinstance(probe, dict) or type(probe.get("feasible")) is not bool:
+        return "incomplete_or_missing"
+    status = probe.get("status")
+    if not isinstance(status, str):
+        return "incomplete_or_missing"
+    if status in ("infeasible", "infeasible_coordinates"):
+        return "infeasible"
+    if not probe["feasible"]:
+        return "incomplete_or_missing"
+    if status == "finite":
+        value = probe.get("centered_nll")
+        if type(value) in (int, float) and 0 <= value <= float(np.finfo(float).max):
+            return "finite_objective"
+        return "incomplete_or_missing"
+    if status == "infinite_objective":
+        if "centered_nll" not in probe:
+            return "incomplete_or_missing"
+        value = probe["centered_nll"]
+        if value is None or (type(value) is float and value == np.inf):
+            return "positive_infinite_objective"
+        return "incomplete_or_missing"
+    if status in (
+        "unrepresentable_probe",
+        "unrepresentable_shift_probe",
+        "unrepresentable_parameters",
+    ):
+        return "unrepresentable_feasible_direction"
+    if status in (
+        "model_numerical_failure",
+        "invalid_model_output",
+        "nonfinite_expectation",
+        "objective_overflow",
+    ):
+        return "numerical_evaluation_failure"
+    if status == "redundant_physical_candidate":
+        return "redundant_physical_candidate"
+    # Includes resource-exhausted probes and absent/unrecognized statuses.
+    return "incomplete_or_missing"
+
+
+def _probe_summary(probes):
+    """Use the same partition for any explicitly recorded validation pass.
+
+    Each supplied record contributes once, including malformed records. An
+    absent collection has unknown coverage. Earlier unrecorded passes cannot
+    be reconstructed from the final validation or derivative-failure snapshots.
+    """
+    present = isinstance(probes, list)
+    records = probes if present else []
+    categories = [_probe_classification(p) for p in records]
+    return dict(
+        records_present=present,
+        recorded_probe_denominator=len(records),
+        classification_counts=dict(Counter(categories)),
+        classified_records=[
+            dict(index=i, classification=category, probe=probe)
+            for i, (probe, category) in enumerate(zip(records, categories, strict=True))
+        ],
+    )
+
+
 def _validation_summary(fit):
     """Expose recorded final-candidate facts without inferring a solver success."""
     numerical = fit.get("numerical", {})
     validation = numerical.get("validation") or {}
     optimization = fit.get("optimization", {})
-    probes = validation.get("probes", [])
+    probes = validation.get("probes")
+    summary = _probe_summary(probes)
+    records = probes if isinstance(probes, list) else []
     improvement = validation.get("best_improvement")
     diagnostic = numerical.get("diagnostic_improvement")
     return dict(
@@ -251,16 +322,24 @@ def _validation_summary(fit):
         passed=validation.get("passed"),
         candidate=validation.get("candidate"),
         matches_returned_candidate=numerical.get("validation_matches_candidate"),
-        probe_statuses=dict(Counter(p["status"] for p in probes)),
+        probe_statuses=dict(
+            Counter(
+                p["status"]
+                if isinstance(p, dict) and isinstance(p.get("status"), str)
+                else "missing_or_malformed_status"
+                for p in records
+            )
+        ),
+        probe_classification=summary,
         redundant_physical_candidates=[
-            p for p in probes if p["status"] == "redundant_physical_candidate"
+            r["probe"]
+            for r in summary["classified_records"]
+            if r["classification"] == "redundant_physical_candidate"
         ],
         unavailable_feasible_directions=[
-            p
-            for p in probes
-            if p["feasible"]
-            and p["centered_nll"] is None
-            and p["status"] != "redundant_physical_candidate"
+            r["probe"]
+            for r in summary["classified_records"]
+            if r["classification"] == "unrepresentable_feasible_direction"
         ],
         detected_descent_above_tolerance=(
             (improvement is not None and improvement > 0.001)

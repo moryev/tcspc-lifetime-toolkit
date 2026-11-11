@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 import runpy
+from copy import deepcopy
+from collections import Counter
 
 import numpy as np
 import pytest
@@ -684,3 +686,159 @@ def test_fresh_report_detects_numerical_inconsistency_without_rewriting_acceptan
     assert not analysis["fresh_reporting_assessment"]["consistent"]
     assert not analysis["recovery"]["available"]
     assert analysis["fresh_reporting_assessment"]["signed_reported_objective_gap"] == -1
+
+
+@pytest.mark.parametrize(
+    "status,value,feasible,classification",
+    [
+        ("infinite_objective", None, True, "positive_infinite_objective"),
+        ("infinite_objective", np.inf, True, "positive_infinite_objective"),
+        ("finite", 0.0, True, "finite_objective"),
+        ("finite", 2.5, True, "finite_objective"),
+        ("finite", 10**100, True, "finite_objective"),
+        ("objective_overflow", None, True, "numerical_evaluation_failure"),
+        ("objective_overflow", np.inf, True, "numerical_evaluation_failure"),
+        ("model_numerical_failure", None, True, "numerical_evaluation_failure"),
+        ("invalid_model_output", None, True, "numerical_evaluation_failure"),
+        ("nonfinite_expectation", float("nan"), True, "numerical_evaluation_failure"),
+        ("unrepresentable_probe", None, True, "unrepresentable_feasible_direction"),
+        (
+            "unrepresentable_shift_probe",
+            None,
+            True,
+            "unrepresentable_feasible_direction",
+        ),
+        (
+            "unrepresentable_parameters",
+            None,
+            True,
+            "unrepresentable_feasible_direction",
+        ),
+        ("redundant_physical_candidate", None, True, "redundant_physical_candidate"),
+        ("infeasible", None, False, "infeasible"),
+        ("infeasible_coordinates", None, True, "infeasible"),
+        ("invocation_model_limit", None, True, "incomplete_or_missing"),
+        ("wall_time_limit", None, True, "incomplete_or_missing"),
+        ("unknown", None, True, "incomplete_or_missing"),
+        (None, 0.0, True, "incomplete_or_missing"),
+        ([], None, True, "incomplete_or_missing"),
+        ("finite", None, True, "incomplete_or_missing"),
+        ("finite", "0", True, "incomplete_or_missing"),
+        ("finite", [], True, "incomplete_or_missing"),
+        ("finite", True, True, "incomplete_or_missing"),
+        ("finite", float("nan"), True, "incomplete_or_missing"),
+        ("finite", np.inf, True, "incomplete_or_missing"),
+        ("finite", -1.0, True, "incomplete_or_missing"),
+        ("finite", 10**400, True, "incomplete_or_missing"),
+        ("infinite_objective", float("nan"), True, "incomplete_or_missing"),
+        ("infinite_objective", -np.inf, True, "incomplete_or_missing"),
+        ("infinite_objective", 0.0, True, "incomplete_or_missing"),
+        ("infinite_objective", "Infinity", True, "incomplete_or_missing"),
+        ("infinite_objective", None, False, "incomplete_or_missing"),
+        ("finite", 0.0, None, "incomplete_or_missing"),
+    ],
+)
+def test_recorded_probe_status_classification(status, value, feasible, classification):
+    probe = dict(status=status, centered_nll=value, feasible=feasible)
+    assert verification._probe_classification(probe) == classification
+
+
+@pytest.mark.parametrize(
+    "probe",
+    [
+        None,
+        [],
+        {},
+        {"feasible": True, "status": "finite"},
+        {"feasible": True, "status": "infinite_objective"},
+    ],
+)
+def test_missing_probe_record_or_objective_remains_incomplete(probe):
+    assert verification._probe_classification(probe) == "incomplete_or_missing"
+
+
+@pytest.mark.parametrize(
+    "observed,expected,status,category",
+    [
+        ([1.0], [0.0], "infinite_objective", "positive_infinite_objective"),
+        ([0.0], [0.0], "finite", "finite_objective"),
+        ([0.0], [2.0], "finite", "finite_objective"),
+        ([2.0], [1.0], "finite", "finite_objective"),
+    ],
+)
+def test_poisson_zero_limits_keep_status_through_serialization(
+    observed, expected, status, category
+):
+    value = shared.calculate_poisson_deviance(observed, expected) / 2
+    probe = shared.jsonable(dict(feasible=True, status=status, centered_nll=value))
+    if status == "infinite_objective":
+        assert np.isposinf(value) and probe["centered_nll"] is None
+    else:
+        assert np.isfinite(value)
+    assert verification._probe_classification(probe) == category
+
+
+def test_final_and_earlier_recorded_probe_partitions_are_consistent():
+    earlier = [
+        dict(feasible=True, status="infinite_objective", centered_nll=None),
+        None,
+    ]
+    final = [
+        dict(feasible=True, status="finite", centered_nll=0.0),
+        dict(feasible=True, status="unrepresentable_probe", centered_nll=None),
+    ]
+    counts = Counter(verification._probe_summary(earlier)["classification_counts"])
+    counts.update(verification._probe_summary(final)["classification_counts"])
+    aggregate = verification._probe_summary(earlier + final)
+    assert aggregate["classification_counts"] == counts
+    assert sum(counts.values()) == aggregate["recorded_probe_denominator"] == 4
+    assert not verification._probe_summary(None)["records_present"]
+    assert verification._probe_summary([])["records_present"]
+    fit = dict(
+        numerical=dict(
+            accepted=True, validation=dict(probes=final, complete=False, passed=False)
+        ),
+        optimization={},
+    )
+    before = deepcopy(fit)
+    summary = verification._validation_summary(fit)
+    assert summary["unavailable_feasible_directions"] == final[1:]
+    assert summary["probe_classification"] == verification._probe_summary(final)
+    assert not summary["complete"] and not summary["passed"]
+    assert fit == before
+
+
+def test_probe_reporting_preserves_acceptance_signed_gaps_and_all_attempts(tmp_path):
+    store, tasks, _ = fixture_store(
+        tmp_path, scope="issue37_pr2c1b_numerical_verification_v2"
+    )
+    probes = [
+        dict(feasible=True, status="infinite_objective", centered_nll=None),
+        dict(feasible=True, status="objective_overflow", centered_nll=None),
+        dict(feasible=True, status="unrepresentable_probe", centered_nll=None),
+        dict(feasible=True, status="finite", centered_nll=None),
+    ]
+    for task, accepted in zip(tasks[:2], (True, False), strict=True):
+
+        def operation(binding):
+            arrays, _ = store.worker_input(task, tasks)
+            result = fake_result(arrays, accepted=accepted)
+            result["numerical"]["validation"]["probes"] = probes
+            store.write_worker_result(task, tasks, result, binding)
+            return result
+
+        store.execute_attempt(task, tasks, operation)
+    before = {p.name: p.read_bytes() for p in tmp_path.glob("*.json")}
+    report = shared.report_store(tasks, store)
+    assert report["summary"]["all_attempt_denominator"] == 4
+    assert report["summary"]["outcomes"] == dict(
+        accepted=1, numerically_rejected=1, missing_task=2
+    )
+    for analysis in report["analyses"][:2]:
+        summary = analysis["final_validation"]
+        assert summary["unavailable_feasible_directions"] == probes[2:3]
+        assert summary["probe_classification"]["recorded_probe_denominator"] == 4
+        assert (
+            analysis["fresh_reporting_assessment"]["signed_reported_objective_gap"] == 0
+        )
+    assert before == {p.name: p.read_bytes() for p in tmp_path.glob("*.json")}
