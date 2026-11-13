@@ -1113,6 +1113,7 @@ CLOSURE_CANONICAL_FILES = {
     "estimation/_poisson_residuals.py",
     "benchmarks/_triexponential_audit.py",
     "benchmarks/_triexponential_verification.py",
+    "benchmarks/_triexponential_audit_verification.py",
     "benchmarks/triexponential.py",
     "estimation/triexponential.py",
     "estimation/_fixed_k_initialization.py",
@@ -1580,11 +1581,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 75
-    assert len(CLOSURE_CANONICAL_FILES) == 58
+    assert len(actual) == 76
+    assert len(CLOSURE_CANONICAL_FILES) == 59
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 58 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 59 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))

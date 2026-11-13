@@ -45,7 +45,7 @@ def package_contract(root: Path) -> dict:
         | literal(structure, "CLOSURE_SUPPORT_FILES")
         | {f"{name}/__init__.py" for name in retained}
     )
-    require(len(files) == 75, "Production module inventory changed")
+    require(len(files) == 76, "Production module inventory changed")
     return {
         "files": sorted(files),
         "removed": list(literal(structure, "REMOVED_FLAT_FACADES")),
@@ -180,6 +180,9 @@ def inspect_artifacts(
         "configs/issue37_pr2c1b_numerical_verification_v2.json",
         "docs/design/issue37_verification_versions.md",
         "tests/test_triexponential_verification_versions.py",
+        "tests/test_triexponential_audit_verification.py",
+        "configs/issue37_pr2c2_audit_verification_v1.json",
+        "docs/design/issue37_audit_verification_v1.md",
         "docs/design/issue37_pr2b_numerics.md",
     }
     # A reviewed deletion in an uncommitted release-preparation diff should

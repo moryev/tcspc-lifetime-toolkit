@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import numpy as np
 from scipy.stats import exponnorm
 from tcspc_toolkit.benchmarks import _triexponential_verification as verification_scope
+from tcspc_toolkit.benchmarks import _triexponential_audit_verification as audit_scope
 
 from tcspc_toolkit.benchmarks._triexponential_audit import (
     AuditSettings,
@@ -61,8 +62,14 @@ class ExecutionIntegrityError(ValueError):
     """Evidence cannot be verified; never reinterpret this as numerical failure."""
 
 
-def settings_for_task(configuration, *, pilot=False, verification=False):
+def settings_for_task(
+    configuration, *, pilot=False, verification=False, audit_verification=False
+):
     """Resolve the actual execution settings without generation or optimization."""
+    if audit_verification:
+        if pilot or verification:
+            raise ValueError("audit verification scope is exclusive")
+        return audit_scope.settings(configuration)
     if verification:
         if pilot or configuration not in ("lbfgsb:compact", "trf:compact"):
             raise ValueError(
@@ -85,8 +92,14 @@ def settings_for_task(configuration, *, pilot=False, verification=False):
     )
 
 
-def execution_specification(manifest, *, pilot=False, verification=False):
+def execution_specification(
+    manifest, *, pilot=False, verification=False, audit_verification=False
+):
     """The settings/task specification enforced by the execution fingerprint."""
+    if audit_verification:
+        if pilot or verification:
+            raise ValueError("audit verification scope is exclusive")
+        return jsonable(audit_scope.specification(manifest))
     tasks = task_inventory(manifest, pilot=pilot, verification=verification)
     settings = {
         name: jsonable(settings_for_task(name, pilot=pilot, verification=verification))
@@ -151,8 +164,14 @@ def execution_specification(manifest, *, pilot=False, verification=False):
     )
 
 
-def problem_inventory(manifest, *, pilot=False, verification=False):
+def problem_inventory(
+    manifest, *, pilot=False, verification=False, audit_verification=False
+):
     """Resolve identities only: no RNG, physical model or optimizer calls."""
+    if audit_verification:
+        if pilot or verification:
+            raise ValueError("audit verification scope is exclusive")
+        return audit_scope.problems(manifest)
     if verification:
         if pilot:
             raise ValueError("pilot and verification scopes are exclusive")
@@ -216,7 +235,15 @@ def problem_inventory(manifest, *, pilot=False, verification=False):
     return tuple(result)
 
 
-def task_inventory(manifest, *, pilot=False, verification=False):
+def task_inventory(
+    manifest, *, pilot=False, verification=False, audit_verification=False
+):
+    if audit_verification:
+        if pilot or verification:
+            raise ValueError("audit verification scope is exclusive")
+        return audit_scope.tasks(manifest)
+    if manifest.get("study_id") in audit_scope.PROTOCOLS:
+        raise ValueError("explicit audit verification scope required")
     if not verification and manifest.get("study_id") in verification_scope.PROTOCOLS:
         raise ValueError("explicit verification scope required")
     if verification:
@@ -259,8 +286,14 @@ def _kernel(manifest, name, time):
     return values / np.trapezoid(values, time)
 
 
-def construct_problem(manifest, problem, *, observation=None, verification=False):
+def construct_problem(
+    manifest, problem, *, observation=None, verification=False, audit_verification=False
+):
     """Explicit construction only; caller persists hashes before any fitting."""
+    if audit_verification:
+        if verification:
+            raise ValueError("audit verification scope is exclusive")
+        return audit_scope.construct(manifest, problem, observation)
     if verification:
         return verification_scope.construct(manifest, problem, observation)
     return _construct_problem(
@@ -1099,6 +1132,8 @@ def summarize_tasks(tasks, records):
 def report_store(tasks, store):
     """Read sealed attempts; cross-score without changing search checkpoints."""
     scope = store.lock["fingerprint"].get("scope")
+    if scope in audit_scope.PROTOCOLS:
+        return audit_scope.report(tasks, store)
     if scope in verification_scope.PROTOCOLS:
         return verification_scope.report(tasks, store)
     if scope not in (None, "pilot", "comprehensive"):
@@ -1159,11 +1194,16 @@ def report_store(tasks, store):
     )
 
 
-def execute_task(task, arrays, *, pilot=False, verification=False):
+def execute_task(
+    task, arrays, *, pilot=False, verification=False, audit_verification=False
+):
     """One explicit task, used only after an external execution-lock gate."""
     c = task["problem"]["condition"]
     settings = settings_for_task(
-        task["configuration"], pilot=pilot, verification=verification
+        task["configuration"],
+        pilot=pilot,
+        verification=verification,
+        **({"audit_verification": True} if audit_verification else {}),
     )
     if task["configuration"] == "audit":
         return run_audit(

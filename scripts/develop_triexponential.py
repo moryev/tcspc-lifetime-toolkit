@@ -12,6 +12,7 @@ import sys
 from time import perf_counter
 
 from threadpoolctl import threadpool_info
+from tcspc_toolkit.benchmarks import _triexponential_audit_verification as audit_scope
 from tcspc_toolkit.benchmarks._triexponential_verification import (
     VERIFICATION_SCOPE,
     validate_manifest,
@@ -161,8 +162,18 @@ def execution_environment():
     )
 
 
-def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
-    protocol = validate_manifest(manifest) if verification else None
+def fingerprint(
+    manifest, pilot, manifest_path=None, *, verification=False, audit_verification=False
+):
+    if audit_verification and (pilot or verification):
+        raise ValueError("audit verification scope is exclusive")
+    protocol = (
+        audit_scope.validate_manifest(manifest)
+        if audit_verification
+        else validate_manifest(manifest)
+        if verification
+        else None
+    )
     default_path = (
         protocol.manifest_path
         if protocol
@@ -181,7 +192,7 @@ def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
         repository=repository_identity([*paths, manifest_path]),
         manifest_file_sha256=hashlib.sha256(raw).hexdigest(),
         manifest_sha256=digest(manifest),
-        scope=protocol.scope if verification else "pilot" if pilot else "comprehensive",
+        scope=protocol.scope if protocol else "pilot" if pilot else "comprehensive",
         source_lf_sha256={
             p.relative_to(ROOT).as_posix(): hashlib.sha256(
                 p.read_bytes().replace(b"\r\n", b"\n")
@@ -190,13 +201,22 @@ def fingerprint(manifest, pilot, manifest_path=None, *, verification=False):
         },
         environment=execution_environment(),
         execution=execution_specification(
-            manifest, pilot=pilot, verification=verification
+            manifest,
+            pilot=pilot,
+            verification=verification,
+            **({"audit_verification": True} if audit_verification else {}),
         ),
     )
 
 
 def require_authorization(
-    path, manifest, pilot, manifest_path=None, *, verification=False
+    path,
+    manifest,
+    pilot,
+    manifest_path=None,
+    *,
+    verification=False,
+    audit_verification=False,
 ):
     lock = json.loads(Path(path).read_text())
     if (
@@ -204,13 +224,19 @@ def require_authorization(
         or lock.get("execution_authorized") is not True
         or not lock.get("maintainer_review")
         or lock.get("fingerprint")
-        != fingerprint(manifest, pilot, manifest_path, verification=verification)
+        != fingerprint(
+            manifest,
+            pilot,
+            manifest_path,
+            verification=verification,
+            **({"audit_verification": True} if audit_verification else {}),
+        )
         or lock["fingerprint"]["repository"]["committed_sources"] is not True
     ):
         raise ValueError(
             "reviewed, explicitly authorized matching execution lock required"
         )
-    if verification:
+    if verification or audit_verification:
         controls = lock["fingerprint"]["environment"]
         expected = dict.fromkeys(
             (
@@ -249,19 +275,35 @@ def main(argv=None):
     scopes = parser.add_mutually_exclusive_group()
     scopes.add_argument("--pilot", action="store_true")
     scopes.add_argument("--verification", action="store_true")
+    scopes.add_argument("--audit-verification", action="store_true")
     parser.add_argument("--directory", type=Path)
     parser.add_argument("--execution-lock", type=Path)
     parser.add_argument("--task-id")
     args = parser.parse_args(argv)
     command_started = perf_counter()
     args.manifest = args.manifest or (
-        ROOT / ("configs/" + VERIFICATION_SCOPE + ".json")
+        ROOT / audit_scope.PROTOCOL.manifest_path
+        if args.audit_verification
+        else ROOT / ("configs/" + VERIFICATION_SCOPE + ".json")
         if args.verification
         else DEFAULT
     )
-    scope = dict(verification=True) if args.verification else {}
+    scope = (
+        dict(audit_verification=True)
+        if args.audit_verification
+        else dict(verification=True)
+        if args.verification
+        else {}
+    )
+    verified_scope = args.verification or args.audit_verification
     manifest = json.loads(args.manifest.read_text())
-    protocol = validate_manifest(manifest) if args.verification else None
+    protocol = (
+        audit_scope.validate_manifest(manifest)
+        if args.audit_verification
+        else validate_manifest(manifest)
+        if args.verification
+        else None
+    )
     tasks = task_inventory(manifest, pilot=args.pilot, **scope)
     if args.command == "inspect":
         print(
@@ -297,7 +339,7 @@ def main(argv=None):
 
     lock = verify_execution()
     if (
-        args.verification
+        verified_scope
         and args.directory.resolve()
         != (ROOT / lock["fingerprint"]["execution"]["output_directory"]).resolve()
     ):
@@ -317,7 +359,7 @@ def main(argv=None):
                 manifest, p, observation=observation, **scope
             ),
         )
-        if args.verification:
+        if verified_scope:
             print(
                 json.dumps(
                     dict(
@@ -373,6 +415,8 @@ def main(argv=None):
                 command.append("--pilot")
             if args.verification:
                 command.append("--verification")
+            if args.audit_verification:
+                command.append("--audit-verification")
             ceiling = lock["fingerprint"]["execution"]["worker_deadlines"][
                 task["configuration"]
             ]
@@ -381,7 +425,7 @@ def main(argv=None):
             started = perf_counter()
 
             def timed(result, elapsed, *, censored=False):
-                if args.verification:
+                if verified_scope:
                     result = result | dict(
                         external_worker_timing=dict(
                             elapsed_including_cleanup_seconds=elapsed,
@@ -410,7 +454,7 @@ def main(argv=None):
                     censored=True,
                 )
             except RuntimeError as error:
-                if not args.verification:
+                if not verified_scope:
                     raise
                 return timed(
                     dict(failure="worker_failed", error=str(error), work_unknown=True),
@@ -434,7 +478,7 @@ def main(argv=None):
             raise WorkerCleanupError(
                 "saved timeout has unconfirmed cleanup; run stopped"
             )
-    if args.verification:
+    if verified_scope:
         print(
             json.dumps(
                 dict(
