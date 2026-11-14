@@ -552,8 +552,10 @@ canonical implementation; PR 3 added two more. Issue #37 PR 1 added three privat
 foundation modules; PR 2A adds the dedicated K=3 API and three private numerical
 modules. PR 2B adds a residual module and two audit/development modules.
 The audit-only verification adapter adds one private infrastructure module.
-The current inventory is 59 substantive implementations
-and 76 production Python files, with unchanged
+The experimental research adapter adds `measurement.triexponential`, reusing the
+existing measurement context while preserving the historically locked adapters.
+The current inventory is 60 substantive implementations
+and 77 production Python files, with unchanged
 initializer APIs.
 
 The final Issue-#3 regression baseline on merged `main` was **1,721 passed, 0 failed, 0 skipped**, with two known finite-invalid mismatch warnings. This is a historical pre-Issue-#12 baseline. The Issue-#14 local validation reported **1,877 passed** with two established mismatch warnings and one Windows CPU-detection fallback warning; these are recorded local results, not proof of CI portability.

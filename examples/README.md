@@ -13,6 +13,7 @@ see the separate [results guide](../docs/results.md) for accepted evidence.
 | [quickstart.py](quickstart.py) | Simulate and fit an IRF-convolved Poisson histogram | Base install; generated synthetic data | Seconds |
 | [experimental_csv.py](experimental_csv.py) | Import separate decay/IRF CSVs and reconvolve | Base; committed synthetic CSVs | Seconds |
 | [biexponential_reconvolution.py](biexponential_reconvolution.py) | Descriptive paired mono/bi raw-measurement fits | Base; committed synthetic CSVs; exhaustive bi policy | Tens of seconds |
+| [triexponential_reconvolution.py](triexponential_reconvolution.py) | Experimental K=3 raw-count fitting and coincident-component ambiguity | Base, two seeded synthetic histograms, explicit TRF settings | Tens of seconds, 60 s cooperative limit per fit |
 | [preprocessing_features.py](preprocessing_features.py) | Validate counts and extract physical features | Base; committed synthetic decay CSV | Seconds |
 | [ml_lifetime_prediction.py](ml_lifetime_prediction.py) | Train and evaluate a small Ridge pipeline | Base; generated synthetic data | Seconds |
 | [uncertainty_example.py](uncertainty_example.py) | Compare local covariance and Poisson bootstrap | Base; generated synthetic data, 100 refits | Usually under 30 seconds |

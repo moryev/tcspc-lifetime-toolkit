@@ -1,5 +1,10 @@
 # Package architecture and post-Issue-12 import cleanup
 
+Experimental K=3 measurement integration lives in `measurement.triexponential`.
+It composes the existing measurement-context resolver and numerical fitter while
+preserving the historically locked `measurement.adapters` implementation.
+See the [research workflow](triexponential_research.md).
+
 Issue #37 PR 2C-2 adds private `benchmarks._triexponential_audit_verification`
 for the closed six-audit protocol and sealed-record reporting. It reuses the
 runner, counted preparation and evidence store. Its contract is documented in
@@ -11,7 +16,7 @@ input store, with no new root exports or numerical solver changes.
 
 Issue #37 PR 2B adds `estimation._poisson_residuals`,
 `benchmarks._triexponential_audit` and `benchmarks.triexponential`.
-The current inventory is **59 substantive implementations and 76 production
+The current inventory is **60 substantive implementations and 77 production
 Python files**. The audit has no production-module dependencies; development
 orchestration composes the audit and fitter only through explicit calls.
 See the [PR 2B contract](design/issue37_pr2b_numerics.md). No experiments or

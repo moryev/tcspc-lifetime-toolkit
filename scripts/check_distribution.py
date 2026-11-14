@@ -45,7 +45,7 @@ def package_contract(root: Path) -> dict:
         | literal(structure, "CLOSURE_SUPPORT_FILES")
         | {f"{name}/__init__.py" for name in retained}
     )
-    require(len(files) == 76, "Production module inventory changed")
+    require(len(files) == 77, "Production module inventory changed")
     return {
         "files": sorted(files),
         "removed": list(literal(structure, "REMOVED_FLAT_FACADES")),
@@ -183,6 +183,10 @@ def inspect_artifacts(
         "tests/test_triexponential_audit_verification.py",
         "configs/issue37_pr2c2_audit_verification_v1.json",
         "docs/design/issue37_audit_verification_v1.md",
+        "docs/triexponential_research.md",
+        "docs/design/issue37_research_scope_amendment.md",
+        "examples/triexponential_reconvolution.py",
+        "tests/test_experimental_triexponential.py",
         "docs/design/issue37_pr2b_numerics.md",
     }
     # A reviewed deletion in an uncommitted release-preparation diff should
@@ -300,6 +304,7 @@ print("Installed explicit-settings K=3 analytical-zero smoke PASS")
     for name in (
         "quickstart",
         "experimental_csv",
+        "triexponential_reconvolution",
         "preprocessing_features",
         "ml_lifetime_prediction",
         "uncertainty_example",

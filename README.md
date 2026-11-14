@@ -29,6 +29,10 @@ Reference evidence is synthetic; a canonical CSV path also supports compatible e
   Bayesian Poisson inference with explicit priors and sampling diagnostics.
 - Optional SQLite recording and querying of scientific results and provenance.
 
+Experimental K=3 Poisson reconvolution is available through module-qualified
+research APIs with explicit settings, measurement/IRF provenance and numerical
+diagnostics. See the [research workflow and limitations](docs/triexponential_research.md).
+
 ## Installation
 
 Requires **Python 3.11 or newer**. Install from a checkout to run the committed

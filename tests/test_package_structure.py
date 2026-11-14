@@ -679,6 +679,15 @@ MEASUREMENT_IMPORTS = {
         f"{IRF}.selection",
         f"{MEASUREMENT}.records",
     },
+    f"{MEASUREMENT}.triexponential": {
+        "__future__",
+        "collections.abc",
+        "dataclasses",
+        f"{ESTIMATION}.triexponential",
+        f"{IRF}.preparation",
+        f"{MEASUREMENT}.adapters",
+        f"{MEASUREMENT}.records",
+    },
 }
 PREPROCESSING_IMPORTS = {
     PREPROCESSING: {f"{PREPROCESSING}.histograms"},
@@ -1152,6 +1161,7 @@ CLOSURE_CANONICAL_FILES = {
     "irf/profiles.py",
     "irf/selection.py",
     "measurement/adapters.py",
+    "measurement/triexponential.py",
     "measurement/io.py",
     "measurement/records.py",
     "ml/cross_validation.py",
@@ -1581,11 +1591,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 76
-    assert len(CLOSURE_CANONICAL_FILES) == 59
+    assert len(actual) == 77
+    assert len(CLOSURE_CANONICAL_FILES) == 60
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 59 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 60 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
