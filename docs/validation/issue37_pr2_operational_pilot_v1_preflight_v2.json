@@ -1,0 +1,1530 @@
+{
+  "authoritative_fingerprint_sha256": "f91bee4dc0c0215e040192ad68e1c6cd450ab4c6897055af57683d7830c607ee",
+  "authorization_status": "pending_maintainer_execution_approval",
+  "corrected_contracts": [
+    "Separate prepare/run/report commands; run and report never construct observations.",
+    "Exclusive preparation marker; per-input hashed checkpoints; complete inventory published atomically, then re-read with every input before success.",
+    "Execution, inventory and task-to-input identities bind every attempt and worker transport.",
+    "Durable attempt/worker receipts prevent repeated invocation or deleted-result retry.",
+    "Incomplete preparation and missing/corrupted sealed inputs fail closed; no automatic regeneration.",
+    "Resume retains running, interrupted, failed, timed-out and completed attempts; only truly missing tasks may start.",
+    "Every retained result and worker transport is verified on resume/report; invalid or mixed provenance prevents cross-scoring.",
+    "Derived analyses are separate from immutable original result payloads; all-attempt and censored-runtime conventions retained."
+  ],
+  "correction_file_inventory": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "a7257190cacba6b16c55d1eba5a59a5d5cfadf814ee1a0ad409ac3a1c6c0dfb0",
+      "status": "modified"
+    },
+    {
+      "path": "docs/design/issue37_pr2b_numerics.md",
+      "sha256": "99b877286f7b8f2897433a8cca2d73f090d46a116f592501b26fefa2e43abe4e",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/develop_triexponential.py",
+      "sha256": "fbc2f086591e7fdd0a74ed7e60372eede141891ca48905afca1e45a326ce16ec",
+      "status": "modified"
+    },
+    {
+      "path": "src/tcspc_toolkit/benchmarks/triexponential.py",
+      "sha256": "712fdd9c2366fdc787418e583a6de9394d577b997e341bfecf20ae195c694379",
+      "status": "modified"
+    },
+    {
+      "path": "tests/test_triexponential_development.py",
+      "sha256": "da2cd0327f81e479208043ae0fe59af30421ee3413e8f1794d590cdd7735c544",
+      "status": "modified"
+    },
+    {
+      "path": "tests/test_triexponential_integrity.py",
+      "sha256": "93df24589c6f8b29de0b6b51e3180102a4c3b31bcfbe54359e304fc84784f390",
+      "status": "added"
+    },
+    {
+      "path": "docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_proposal_v2.json",
+      "sha256": "39032979b5a570e7543314dc637b524efa2a527b327935bd4ea0fcc44d81dff0",
+      "status": "added"
+    },
+    {
+      "path": "docs/validation/issue37_pr2_operational_pilot_v1_preflight_v2.json",
+      "status": "added"
+    }
+  ],
+  "created_utc": "2026-11-03T04:21:42.782126+00:00",
+  "effective_settings": {
+    "audit": {
+      "assessment_calls": 2,
+      "descent_tolerance": 0.001,
+      "max_iterations": 1000,
+      "model_calls": 40000,
+      "powell_starts": 8,
+      "trf_starts": 16,
+      "validation_calls": 256,
+      "wall_seconds": 120
+    },
+    "lbfgsb:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "lbfgsb",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    },
+    "trf:compact": {
+      "derivative_atol": 1e-06,
+      "derivative_reductions": 3,
+      "derivative_rtol": 0.0002,
+      "derivative_step": 0.0001,
+      "descent_tolerance": 0.001,
+      "ftol": 1e-12,
+      "gtol": 1e-06,
+      "max_assessment_calls": 32,
+      "max_diagnostic_calls": 256,
+      "max_initialization_calls": 512,
+      "max_iterations": 1000,
+      "max_line_search": 40,
+      "max_optimization_calls": 20000,
+      "max_seed_starts": 16,
+      "max_validation_calls": 1024,
+      "policy": "compact",
+      "recovery_solver": null,
+      "reserved_recovery_starts": 4,
+      "solver": "trf",
+      "validation_steps": [
+        0.0001,
+        0.01
+      ],
+      "wall_seconds": 60.0
+    }
+  },
+  "enforced_scope": {
+    "commit": "the enforced source and manifest must match the named commit",
+    "environment": "all fields under fingerprint.environment: interpreter, OS, dependencies, module origins, numerical binaries, effective threads and recorded environment controls",
+    "execution": "all resolved conditions, seeds, input-generation procedure, settings, task order, budgets and deadlines",
+    "manifest": "exact bytes and canonical content",
+    "production_python_files": 74,
+    "source_files": 76
+  },
+  "environment_sha256": "1aa3ccbc042ebf21248ef3ed95c8c1c60d97b9886f30f521470a2e219559b82c",
+  "execution_authorized": false,
+  "execution_lock": {
+    "authorization_gate": "rejected_as_required",
+    "file_sha256": "39032979b5a570e7543314dc637b524efa2a527b327935bd4ea0fcc44d81dff0",
+    "path": "docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_proposal_v2.json",
+    "schema": "issue37-development-execution-v2"
+  },
+  "informational_scope": "Fields outside fingerprint are descriptive, except the required authorization flag and maintainer review. The complete approved lock is bound into saved evidence.",
+  "input_stages": {
+    "kernels_prepared": 0,
+    "observations_generated": 0,
+    "sealed_inventory_created": false,
+    "stage1": "pending lock only, not authorized",
+    "stage2": "not started",
+    "workers_started": 0
+  },
+  "limitations": [
+    "This pending lock records uncommitted corrected source and cannot execute by changing authorization fields.",
+    "Source/environment verification overhead is unmeasured operationally; worker deadlines include worker startup and verification.",
+    "Integrity hashes detect inconsistent evidence, not an actor rewriting an entire evidence directory. Workflow is serial and single-writer.",
+    "Incomplete preparation or unconfirmed interrupted workers require a separately controlled decision; no automatic recovery command."
+  ],
+  "manifest_file_sha256": "d9b33f2b88387dacb9e0edc76574616474c69d138d8eafadcda25fa22307f5aa",
+  "output": {
+    "created": false,
+    "directory": "C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\data\\generated\\issue37_pr2_operational_pilot_v1",
+    "files": [
+      "lock.json",
+      "preparation_started.json",
+      "input_inventory.json",
+      "SHA256(input:PROBLEM_ID).json",
+      "SHA256(TASK_ID).started.json",
+      "SHA256(TASK_ID).json",
+      "SHA256(TASK_ID).worker_started.json",
+      "SHA256(TASK_ID).worker.json"
+    ],
+    "report": "Capture outside the checkpoint directory; unknown JSON evidence within it is rejected."
+  },
+  "pilot_problems": [
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0.5,
+        "background_counts_per_bin": 0.5,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "gaussian",
+        "id": "P00",
+        "irf": "gaussian",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0.043,
+        "signal_photons": 20000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P00:mean:matched",
+      "observation_id": "P00:mean",
+      "seed": null
+    },
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0.5,
+        "background_counts_per_bin": 0.5,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "gaussian",
+        "id": "P00",
+        "irf": "gaussian",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0.043,
+        "signal_photons": 20000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P00:poisson-0:matched",
+      "observation_id": "P00:poisson-0",
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 1,
+        "background_counts_per_bin": 1,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "emg",
+        "id": "P01",
+        "irf": "emg",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          1,
+          1.2,
+          3
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": -0.043,
+        "signal_photons": 5000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P01:mean:matched",
+      "observation_id": "P01:mean",
+      "seed": null
+    },
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 1,
+        "background_counts_per_bin": 1,
+        "bin_width_ns": 0.03125,
+        "bins": 256,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "emg",
+        "id": "P01",
+        "irf": "emg",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          1,
+          1.2,
+          3
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": -0.043,
+        "signal_photons": 5000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P01:poisson-0:matched",
+      "observation_id": "P01:poisson-0",
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        1,
+        0
+      ]
+    },
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0,
+        "background_counts_per_bin": 0,
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "sampled_nonzero_endpoints",
+        "id": "P02",
+        "irf": "sampled_nonzero_endpoints",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0,
+        "signal_photons": 2000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P02:mean:matched",
+      "observation_id": "P02:mean",
+      "seed": null
+    },
+    {
+      "assumed_irf": "matched",
+      "condition": {
+        "assumed_irfs": [
+          "matched"
+        ],
+        "background": 0,
+        "background_counts_per_bin": 0,
+        "bin_width_ns": 0.03125,
+        "bins": 128,
+        "detected_signal_fractions": [
+          0.25,
+          0.45,
+          0.3
+        ],
+        "deterministic_targets": 1,
+        "generating_irf": "sampled_nonzero_endpoints",
+        "id": "P02",
+        "irf": "sampled_nonzero_endpoints",
+        "lifetime_bounds_ns": [
+          0.1,
+          10
+        ],
+        "lifetimes_ns": [
+          0.6,
+          2,
+          4.8
+        ],
+        "poisson_replicates": 3,
+        "shift_bounds_ns": [
+          -0.3,
+          0.3
+        ],
+        "shift_ns": 0,
+        "signal_photons": 2000,
+        "stratum": "operational_pilot",
+        "time_origin_ns": 0
+      },
+      "control": false,
+      "id": "P02:poisson-0:matched",
+      "observation_id": "P02:poisson-0",
+      "seed": [
+        37,
+        2,
+        20261101,
+        0,
+        2,
+        0
+      ]
+    }
+  ],
+  "preserved_preexisting_untracked_planning_artifacts": [
+    {
+      "path": "docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_proposal.json",
+      "sha256": "a12ce4d42f13242d910544d128f97791b219998ec9e5904d4fa50f38376626db"
+    },
+    {
+      "path": "docs/validation/issue37_pr2_operational_pilot_v1_preflight.json",
+      "sha256": "37545a0ef46a088f912f7250aa2c36f7612bc98190b3205f2a064b515cd65617"
+    }
+  ],
+  "proposed_commands": {
+    "commands": {
+      "prepare": "& 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe' scripts/develop_triexponential.py prepare --pilot --manifest configs/issue37_pr2_development_v1.json --directory data/generated/issue37_pr2_operational_pilot_v1 --execution-lock docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved_v2.json",
+      "report": "& 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe' scripts/develop_triexponential.py report --pilot --manifest configs/issue37_pr2_development_v1.json --directory data/generated/issue37_pr2_operational_pilot_v1 --execution-lock docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved_v2.json",
+      "run": "& 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition\\.venv\\Scripts\\python.exe' scripts/develop_triexponential.py run --pilot --manifest configs/issue37_pr2_development_v1.json --directory data/generated/issue37_pr2_operational_pilot_v1 --execution-lock docs/validation/issue37_pr2_operational_pilot_v1_execution_lock_approved_v2.json"
+    },
+    "environment": [
+      "Set-Location 'C:\\Users\\Yevhenii\\PycharmProjects\\scientific-python-transition'",
+      "$env:OMP_NUM_THREADS = '1'",
+      "$env:OPENBLAS_NUM_THREADS = '1'",
+      "$env:MKL_NUM_THREADS = '1'",
+      "$env:VECLIB_MAXIMUM_THREADS = '1'",
+      "$env:NUMEXPR_NUM_THREADS = '1'",
+      "$env:BLIS_NUM_THREADS = '1'"
+    ],
+    "executed": false,
+    "ready_to_execute": false
+  },
+  "remaining_requirements": [
+    "Review and separately authorize the correction commit; do not commit automatically.",
+    "After commit, regenerate and review the lock against that exact committed source and actual execution environment. This dirty-source proposal cannot become executable by changing authorization fields.",
+    "Explicitly approve execution and issue a separate approved lock with a real maintainer_review identifier.",
+    "Keep the original proposal/preflight unchanged; do not reuse old-schema execution locks."
+  ],
+  "repository": {
+    "branch": "feat/issue-37-pr2-triexponential-fitting",
+    "committed_sources": false,
+    "correction_uncommitted": true,
+    "head": "5002d76a404e59a1633dd1bd69e1eec9e2b24d8b",
+    "pr2a_checkpoint_preserved": true,
+    "staged_files": 0
+  },
+  "schema": "issue37-pilot-input-integrity-preflight-v2",
+  "scientific_status": {
+    "comprehensive_namespace": [
+      37,
+      2,
+      20261101,
+      1
+    ],
+    "development_manifest": "unchanged D00-D17; 72 observation identities, 80 fitting problems",
+    "operational_development_only": true,
+    "overlap": "Pilot deterministic condition definitions overlap development controls; any later use for revision is development evidence, not untouched qualification.",
+    "pilot_namespace": [
+      37,
+      2,
+      20261101,
+      0
+    ],
+    "production_policy_selected": false,
+    "qualification": false
+  },
+  "scope": "metadata and deterministic software validation only; operational pilot not executed",
+  "source_inventory_sha256": "82cf2a2bfeb1fbb49e39e21027efd44665f496303a31a78aea850e2fef5a0bd4",
+  "task_inventory": [
+    {
+      "configuration": "audit",
+      "id": "P00:mean:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:mean:matched",
+        "observation_id": "P00:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P00:mean:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:mean:matched",
+        "observation_id": "P00:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P00:mean:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:mean:matched",
+        "observation_id": "P00:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "audit",
+      "id": "P00:poisson-0:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:poisson-0:matched",
+        "observation_id": "P00:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P00:poisson-0:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:poisson-0:matched",
+        "observation_id": "P00:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P00:poisson-0:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0.5,
+          "background_counts_per_bin": 0.5,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "gaussian",
+          "id": "P00",
+          "irf": "gaussian",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0.043,
+          "signal_photons": 20000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P00:poisson-0:matched",
+        "observation_id": "P00:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "audit",
+      "id": "P01:mean:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:mean:matched",
+        "observation_id": "P01:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P01:mean:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:mean:matched",
+        "observation_id": "P01:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P01:mean:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:mean:matched",
+        "observation_id": "P01:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "audit",
+      "id": "P01:poisson-0:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:poisson-0:matched",
+        "observation_id": "P01:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P01:poisson-0:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:poisson-0:matched",
+        "observation_id": "P01:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P01:poisson-0:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 1,
+          "background_counts_per_bin": 1,
+          "bin_width_ns": 0.03125,
+          "bins": 256,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "emg",
+          "id": "P01",
+          "irf": "emg",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            1,
+            1.2,
+            3
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": -0.043,
+          "signal_photons": 5000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P01:poisson-0:matched",
+        "observation_id": "P01:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "audit",
+      "id": "P02:mean:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:mean:matched",
+        "observation_id": "P02:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P02:mean:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:mean:matched",
+        "observation_id": "P02:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P02:mean:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:mean:matched",
+        "observation_id": "P02:mean",
+        "seed": null
+      }
+    },
+    {
+      "configuration": "audit",
+      "id": "P02:poisson-0:matched:audit",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:poisson-0:matched",
+        "observation_id": "P02:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "lbfgsb:compact",
+      "id": "P02:poisson-0:matched:lbfgsb:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:poisson-0:matched",
+        "observation_id": "P02:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          2,
+          0
+        ]
+      }
+    },
+    {
+      "configuration": "trf:compact",
+      "id": "P02:poisson-0:matched:trf:compact",
+      "problem": {
+        "assumed_irf": "matched",
+        "condition": {
+          "assumed_irfs": [
+            "matched"
+          ],
+          "background": 0,
+          "background_counts_per_bin": 0,
+          "bin_width_ns": 0.03125,
+          "bins": 128,
+          "detected_signal_fractions": [
+            0.25,
+            0.45,
+            0.3
+          ],
+          "deterministic_targets": 1,
+          "generating_irf": "sampled_nonzero_endpoints",
+          "id": "P02",
+          "irf": "sampled_nonzero_endpoints",
+          "lifetime_bounds_ns": [
+            0.1,
+            10
+          ],
+          "lifetimes_ns": [
+            0.6,
+            2,
+            4.8
+          ],
+          "poisson_replicates": 3,
+          "shift_bounds_ns": [
+            -0.3,
+            0.3
+          ],
+          "shift_ns": 0,
+          "signal_photons": 2000,
+          "stratum": "operational_pilot",
+          "time_origin_ns": 0
+        },
+        "control": false,
+        "id": "P02:poisson-0:matched",
+        "observation_id": "P02:poisson-0",
+        "seed": [
+          37,
+          2,
+          20261101,
+          0,
+          2,
+          0
+        ]
+      }
+    }
+  ],
+  "validation": {
+    "build_cleanup": "Read-only copies of the two original planning artifacts remained in a temporary sdist directory. Their hashes were verified and only that temporary directory was removed.",
+    "compatibility": {
+      "mono_bi_physics_irfs_release_metadata": "unchanged",
+      "ordered_root_exports": 66,
+      "production_modules": 74,
+      "sqlite_schema": 1
+    },
+    "coverage": {
+      "combined_percent": 85.30800924530197,
+      "display_percent": "85.31%",
+      "json": "build/issue37-input-integrity/coverage-permitted.json",
+      "required_floor": 80,
+      "totals": {
+        "covered_branches": 3911,
+        "covered_lines": 13067,
+        "excluded_lines": 9,
+        "missing_branches": 1349,
+        "missing_lines": 1575,
+        "num_branches": 5260,
+        "num_partial_branches": 1265,
+        "num_statements": 14642,
+        "percent_branches_covered": 74.35361216730038,
+        "percent_branches_covered_display": "74.35",
+        "percent_covered": 85.30800924530197,
+        "percent_covered_display": "85.31",
+        "percent_statements_covered": 89.24327277694304,
+        "percent_statements_covered_display": "89.24"
+      }
+    },
+    "focused": {
+      "failed": 0,
+      "files": [
+        "focused-final.xml",
+        "focused-additional.xml"
+      ],
+      "passed": 382
+    },
+    "formatting": "PASS; 129 unchanged audited debt files",
+    "full_suite": {
+      "failed": 0,
+      "junit": "build/issue37-input-integrity/pytest-permitted.xml",
+      "log": "build/issue37-input-integrity/pytest-permitted.log",
+      "passed": 2818,
+      "seconds": 531.01,
+      "skipped": 1,
+      "total": 2819,
+      "warnings": 2
+    },
+    "historical_integrity": {
+      "issue28": {
+        "checkpoints": 7825,
+        "inventory_sha256": "d2f9acc213768751a333fe1b78dc008fc932c3012d5889e606d429680d63ba14",
+        "sources": 66,
+        "status": "PASS"
+      },
+      "issue33": {
+        "evidence": 2173,
+        "sources": 72,
+        "status": "PASS"
+      },
+      "pr2a_checkpoint_preserved": true,
+      "protected_implementations_and_metadata": "unchanged",
+      "staged_files": 0
+    },
+    "interruptions": [
+      "Usage-limit interruption stopped an earlier final-validation run; it was restarted.",
+      "Resumed sandbox blocked os.link in unchanged historical checkpoint tests (WinError 5). That run was stopped; the complete permitted run passed without source changes."
+    ],
+    "packaging": {
+      "artifacts": [
+        {
+          "path": "build/issue37-input-integrity/dist-final/tcspc_lifetime_toolkit-0.8.0-py3-none-any.whl",
+          "sha256": "86e9dc67a67cd3ff82e7b47293e4620a213d087573fa298a26292082e7bdbc49"
+        },
+        {
+          "path": "build/issue37-input-integrity/dist-final/tcspc_lifetime_toolkit-0.8.0.tar.gz",
+          "sha256": "402697955d8f60f7fdb9fa8e7426764074aee24a35776749f71cb865fac15dcb"
+        }
+      ],
+      "base_only_and_bayesian_extra_smokes": "PASS",
+      "build": "PASS",
+      "isolated_wheel_and_sdist_installs": "PASS",
+      "python_source_files_compared": 74,
+      "twine_strict": "PASS"
+    },
+    "ruff": "PASS",
+    "whitespace": "PASS"
+  },
+  "worker_deadlines": {
+    "audit": 120,
+    "lbfgsb:compact": 60.0,
+    "trf:compact": 60.0
+  },
+  "workload": {
+    "audit_attempts": 6,
+    "cleanup_seconds_per_timeout": 10,
+    "fit_attempts": 12,
+    "maximum_cleanup_seconds": 180,
+    "physical_model_work_excludes_metadata_hashing": true,
+    "postseal_cross_score_component_convolutions": 144,
+    "postseal_cross_score_model_calls": 48,
+    "problems": 6,
+    "scheduled_attempts": 18,
+    "serial_workers": 1,
+    "worker_seconds": 1440
+  }
+}

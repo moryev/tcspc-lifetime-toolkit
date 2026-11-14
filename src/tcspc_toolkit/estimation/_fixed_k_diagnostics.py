@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import combinations
 
 import numpy as np
@@ -18,6 +18,7 @@ class _ValidationProbe:
     signed_step: float
     feasible: bool
     evaluation: _Evaluation | None
+    status: str | None = None
 
 
 @dataclass(frozen=True, eq=False)
@@ -43,6 +44,82 @@ def _validation_directions(coordinates):
     return tuple((name, _readonly(v)) for name, v in directions)
 
 
+def _physical_vector(parameters):
+    return np.array(
+        (
+            *parameters.amplitudes,
+            *parameters.lifetimes_ns,
+            parameters.background,
+            parameters.temporal_shift_ns,
+        )
+    )
+
+
+def _validation_trial(coordinates, candidate, vector, signed_step):
+    """Construct a distinct feasible scalar probe before charging physical work.
+
+    Clip the step to directional bound room. If decoding loses displacement,
+    enlarge from a machine-resolution step, with at most eight metadata trials.
+    Every changed coordinate must move physically in the requested direction.
+    Failure with positive physical room is unavailable, never infeasible.
+    """
+    direction = np.sign(signed_step) * vector
+    active = direction != 0
+    physical = _physical_vector(candidate.parameters)
+    k = coordinates.n_components
+    lower = np.array(
+        [0.0] * k
+        + [coordinates.lifetime_bounds_ns[0]] * k
+        + [0.0, coordinates.temporal_shift_bounds_ns[0]]
+    )
+    upper = np.array(
+        [np.inf] * k
+        + [coordinates.lifetime_bounds_ns[1]] * k
+        + [np.inf, coordinates.temporal_shift_bounds_ns[1]]
+    )
+    if np.any((direction < 0) & (physical <= lower)) or np.any(
+        (direction > 0) & (physical >= upper)
+    ):
+        return None, False
+    x = candidate.coordinates
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        room = np.where(direction > 0, coordinates.upper - x, x - coordinates.lower)
+        maximum = float(np.min(room[active] / np.abs(direction[active])))
+        resolution = 4 * np.finfo(float).eps * (1 + np.abs(x))
+        resolution[k : 2 * k] += 4 * np.finfo(float).eps * abs(coordinates.log_mid)
+        neighbor = np.nextafter(physical, np.where(direction > 0, np.inf, -np.inf))
+        resolution[:k] = np.maximum(
+            resolution[:k],
+            np.abs(neighbor[:k] - physical[:k]) / coordinates.amplitude_scale,
+        )
+        resolution[-2] = max(
+            resolution[-2],
+            abs(neighbor[-2] - physical[-2]) / coordinates.background_scale,
+        )
+        resolution[-1] = max(
+            resolution[-1], abs(neighbor[-1] - physical[-1]) / coordinates.shift_scale
+        )
+        minimum = float(np.max(resolution[active] / np.abs(direction[active])))
+    step = min(abs(signed_step), maximum)
+    for _ in range(8):
+        with np.errstate(over="ignore", invalid="ignore"):
+            trial = x + step * direction
+        if step <= 0 or not np.all(np.isfinite(trial)):
+            break
+        trial = np.clip(trial, coordinates.lower, coordinates.upper)
+        try:
+            decoded = _physical_vector(coordinates.decode(trial))
+        except (ValueError, FloatingPointError, OverflowError):
+            decoded = physical
+        moved = np.where(direction > 0, decoded > physical, decoded < physical)
+        if np.all(moved[active]):
+            return trial, True
+        if step == maximum:
+            break
+        step = min(max(2 * step, minimum), maximum)
+    return None, True
+
+
 def _validate_candidate(
     problem, candidate, *, steps, absolute_tolerance, relative_tolerance
 ):
@@ -65,11 +142,12 @@ def _validate_candidate(
     for name, vector in _validation_directions(problem.coordinates):
         for step in steps:
             for sign in (-1, 1):
-                x = candidate.coordinates + sign * step * vector
-                feasible = problem.coordinates.feasible(x)
+                x, feasible = _validation_trial(
+                    problem.coordinates, candidate, vector, sign * step
+                )
                 result = None
                 if feasible:
-                    if np.array_equal(x, candidate.coordinates):
+                    if x is None:
                         complete = False
                     else:
                         result = problem.evaluate(x, phase="validation", origin=name)
@@ -80,7 +158,13 @@ def _validate_candidate(
                         if result.status not in ("finite", "infinite_objective"):
                             complete = False
                 probes.append(
-                    _ValidationProbe(name, vector, sign * step, feasible, result)
+                    _ValidationProbe(
+                        name,
+                        vector if x is None else _readonly(x - candidate.coordinates),
+                        sign * step if x is None else 1.0,
+                        feasible,
+                        result,
+                    )
                 )
                 if not complete or problem.work.deadline_reached:
                     complete = False
@@ -116,6 +200,8 @@ class _NumericalAssessment:
     validation_passed: bool | None
     complete: bool
     reasons: tuple[str, ...]
+    prediction_consistent: bool = False
+    prediction_reasons: tuple[str, ...] = ()
 
 
 def _assess_candidate(
@@ -144,6 +230,7 @@ def _assess_candidate(
             reasons.append("expectation_mismatch")
         if not np.array_equal(candidate.component_counts, fresh.component_counts):
             reasons.append("component_mismatch")
+    prediction_reasons = tuple(reasons)
     matches = bool(validation is not None and validation.candidate is candidate)
     if validation is not None and not matches:
         reasons.append("validation_for_different_candidate")
@@ -156,6 +243,8 @@ def _assess_candidate(
         validation.passed if matches else None,
         complete,
         tuple(reasons),
+        complete and not prediction_reasons,
+        prediction_reasons,
     )
 
 
@@ -218,6 +307,19 @@ def _component_structure(candidate):
 
 
 @dataclass(frozen=True, eq=False)
+class _RestrictedConditioning:
+    """Sensitivity conditional on fixing every excluded coordinate."""
+
+    coordinate_names: tuple[str, ...]
+    fixed_coordinate_names: tuple[str, ...]
+    status: str
+    rank: int | None
+    rank_tolerance: float | None
+    singular_values: tuple[float, ...] | None
+    condition_number: float | None
+
+
+@dataclass(frozen=True, eq=False)
 class _ConditioningDiagnostic:
     status: str
     n_bins: int
@@ -229,6 +331,42 @@ class _ConditioningDiagnostic:
     coordinate_names: tuple[str, ...]
     derivative: object
     active_bounds: tuple[str, ...]
+    candidate_id: int | None = None
+    restricted: _RestrictedConditioning | None = None
+
+
+def _weighted_sensitivity(candidate, jacobian, error):
+    """Same declared error-aware rank rule for full and restricted columns."""
+    rank = tolerance = singular = condition = None
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        weight = 1 / np.sqrt(candidate.expected_counts)
+        jacobian = jacobian * weight[:, None]
+        error = error * weight[:, None]
+    status = "available"
+    if not np.all(np.isfinite(jacobian)) or not np.all(np.isfinite(error)):
+        status = "nonfinite_weighted_jacobian"
+    else:
+        try:
+            singular_array = np.linalg.svd(jacobian, compute_uv=False)
+            tolerance = float(
+                max(
+                    max(jacobian.shape) * np.finfo(float).eps * singular_array[0],
+                    np.linalg.norm(error),
+                )
+            )
+            if not np.isfinite(tolerance):
+                status = "unrepresentable_rank_tolerance"
+            else:
+                rank = int(np.sum(singular_array > tolerance))
+                singular = tuple(map(float, singular_array))
+                condition = (
+                    float(singular_array[0] / singular_array[-1])
+                    if rank == jacobian.shape[1]
+                    else np.inf
+                )
+        except np.linalg.LinAlgError:
+            status = "svd_failure"
+    return status, rank, tolerance, singular, condition
 
 
 def _conditioning_diagnostic(problem, candidate, policy):
@@ -237,6 +375,7 @@ def _conditioning_diagnostic(problem, candidate, policy):
     n, p = problem.inputs.time_ns.size, problem.coordinates.dimension
     status = "available"
     rank = tolerance = singular = condition = None
+    restricted = None
     if derivative.jacobian is None:
         status = "derivative_unavailable"
     elif np.any(candidate.expected_counts <= 0):
@@ -244,35 +383,34 @@ def _conditioning_diagnostic(problem, candidate, policy):
     elif problem.work.deadline_reached:
         status = "wall_time_limit"
     else:
-        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
-            weight = 1 / np.sqrt(candidate.expected_counts)
-            jacobian = derivative.jacobian * weight[:, None]
-            error = derivative.column_errors * weight[:, None]
-        if not np.all(np.isfinite(jacobian)) or not np.all(np.isfinite(error)):
-            status = "nonfinite_weighted_jacobian"
-        else:
-            try:
-                singular_array = np.linalg.svd(jacobian, compute_uv=False)
-                tolerance = float(
-                    max(
-                        max(n, p) * np.finfo(float).eps * singular_array[0],
-                        np.linalg.norm(error),
-                    )
-                )
-                if not np.isfinite(tolerance):
-                    status = "unrepresentable_rank_tolerance"
-                else:
-                    rank = int(np.sum(singular_array > tolerance))
-                    singular = tuple(map(float, singular_array))
-                    condition = (
-                        float(singular_array[0] / singular_array[-1])
-                        if rank == p
-                        else np.inf
-                    )
-            except np.linalg.LinAlgError:
-                status = "svd_failure"
-    if problem.work.deadline_reached and status == "available":
+        status, rank, tolerance, singular, condition = _weighted_sensitivity(
+            candidate, derivative.jacobian, derivative.column_errors
+        )
+    if derivative.jacobian is None and np.all(candidate.expected_counts > 0):
+        indices = [
+            i for i, column in enumerate(derivative.columns) if column is not None
+        ]
+        if indices and derivative.errors and not problem.work.deadline_reached:
+            facts = _weighted_sensitivity(
+                candidate,
+                np.column_stack([derivative.columns[i] for i in indices]),
+                np.column_stack([derivative.errors[i] for i in indices]),
+            )
+            restricted = _RestrictedConditioning(
+                tuple(problem.coordinates.names[i] for i in indices),
+                tuple(
+                    problem.coordinates.names[i] for i in range(p) if i not in indices
+                ),
+                *facts,
+            )
+    if any(
+        phase == "diagnostics" and "limit" in why for phase, why in problem.work.blocked
+    ):
+        status = "diagnostic_budget_exhausted"
+    if problem.work.deadline_reached:
         status = "wall_time_limit"
+        if restricted is not None:
+            restricted = replace(restricted, status="wall_time_limit")
     return _ConditioningDiagnostic(
         status,
         n,
@@ -294,4 +432,6 @@ def _conditioning_diagnostic(problem, candidate, policy):
             )
             if value == lo or value == hi
         ),
+        candidate.evaluation_id,
+        restricted,
     )

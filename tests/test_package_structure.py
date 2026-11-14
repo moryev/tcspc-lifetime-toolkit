@@ -354,6 +354,51 @@ PHYSICS_IMPORTS = {
     },
 }
 CLASSICAL_IMPORTS = {
+    f"{ESTIMATION}._poisson_residuals": {"dataclasses", "numpy"},
+    f"{ESTIMATION}.triexponential": {
+        "__future__",
+        "collections.abc",
+        "dataclasses",
+        "typing",
+        "numpy",
+        "numpy.typing",
+        f"{ESTIMATION}._fixed_k",
+        f"{ESTIMATION}._fixed_k_search",
+        DIAGNOSTICS,
+        f"{IRF}.preparation",
+    },
+    f"{ESTIMATION}._fixed_k_initialization": {
+        "dataclasses",
+        "itertools",
+        "numpy",
+        "scipy.optimize",
+        f"{ESTIMATION}._fixed_k",
+    },
+    f"{ESTIMATION}._fixed_k_solvers": {
+        "contextlib",
+        "dataclasses",
+        "numpy",
+        "scipy.optimize",
+        f"{ESTIMATION}._fixed_k_objective",
+        f"{ESTIMATION}._poisson_residuals",
+    },
+    f"{ESTIMATION}._fixed_k_search": {
+        "dataclasses",
+        "fractions",
+        "itertools",
+        "time",
+        "types",
+        "numpy",
+        ESTIMATION,
+        f"{ESTIMATION}._fixed_k",
+        f"{ESTIMATION}._fixed_k_objective",
+        f"{ESTIMATION}._fixed_k_initialization",
+        f"{ESTIMATION}._fixed_k_solvers",
+        f"{ESTIMATION}._fixed_k_diagnostics",
+        f"{ESTIMATION}._poisson_residuals",
+        DIAGNOSTICS,
+        f"{IRF}.preparation",
+    },
     f"{ESTIMATION}._fixed_k": {
         "__future__",
         "copy",
@@ -367,6 +412,7 @@ CLASSICAL_IMPORTS = {
     },
     f"{ESTIMATION}._fixed_k_objective": {
         "__future__",
+        "collections",
         "dataclasses",
         "time",
         "types",
@@ -631,6 +677,15 @@ MEASUREMENT_IMPORTS = {
         f"{IRF}.preparation",
         f"{IRF}.profiles",
         f"{IRF}.selection",
+        f"{MEASUREMENT}.records",
+    },
+    f"{MEASUREMENT}.triexponential": {
+        "__future__",
+        "collections.abc",
+        "dataclasses",
+        f"{ESTIMATION}.triexponential",
+        f"{IRF}.preparation",
+        f"{MEASUREMENT}.adapters",
         f"{MEASUREMENT}.records",
     },
 }
@@ -1064,6 +1119,15 @@ assert not any(n == p or n.startswith(p + '.') for n in sys.modules for p in blo
 # Final Issue-#3 inventory. Namespace-only initializers count as support, not
 # scientific implementations. Historical facades remain supported through #12.
 CLOSURE_CANONICAL_FILES = {
+    "estimation/_poisson_residuals.py",
+    "benchmarks/_triexponential_audit.py",
+    "benchmarks/_triexponential_verification.py",
+    "benchmarks/_triexponential_audit_verification.py",
+    "benchmarks/triexponential.py",
+    "estimation/triexponential.py",
+    "estimation/_fixed_k_initialization.py",
+    "estimation/_fixed_k_solvers.py",
+    "estimation/_fixed_k_search.py",
     "estimation/_fixed_k.py",
     "estimation/_fixed_k_objective.py",
     "estimation/_fixed_k_diagnostics.py",
@@ -1097,6 +1161,7 @@ CLOSURE_CANONICAL_FILES = {
     "irf/profiles.py",
     "irf/selection.py",
     "measurement/adapters.py",
+    "measurement/triexponential.py",
     "measurement/io.py",
     "measurement/records.py",
     "ml/cross_validation.py",
@@ -1526,11 +1591,11 @@ def test_final_inventory_has_no_unplanned_flat_scientific_implementation():
         path.relative_to(SOURCE_ROOT).as_posix() for path in SOURCE_ROOT.rglob("*.py")
     }
     assert actual == expected
-    assert len(actual) == 67
-    assert len(CLOSURE_CANONICAL_FILES) == 50
+    assert len(actual) == 77
+    assert len(CLOSURE_CANONICAL_FILES) == 60
     assert len(CLOSURE_SUPPORT_FILES) == 12
     assert len(facade_files) == 5
-    assert len(expected) == 50 + 12 + 5  # Each file belongs to exactly one class.
+    assert len(expected) == 60 + 12 + 5  # Each file belongs to exactly one class.
     for relative in CLOSURE_SUPPORT_FILES:
         if "/" in relative:
             tree = ast.parse((SOURCE_ROOT / relative).read_text(encoding="utf-8"))
@@ -1617,11 +1682,15 @@ def test_no_production_module_fabricates_module_metadata():
 
 def test_developer_scripts_use_canonical_imports_and_load_without_workflows(
     package_imports,
+    monkeypatch,
 ):
     import runpy
 
     records, _ = package_imports
-    for path in sorted((SOURCE_ROOT.parents[1] / "scripts").glob("*.py")):
+    scripts = SOURCE_ROOT.parents[1] / "scripts"
+    # Match direct script execution without relying on another test's imports.
+    monkeypatch.syspath_prepend(str(scripts))
+    for path in sorted(scripts.glob("*.py")):
         source = path.read_text(encoding="utf-8")
         for _, base, names in _imports(source, path.stem):
             assert not (_targets(base, names, set(records)) & COMPATIBILITY_SURFACES), (

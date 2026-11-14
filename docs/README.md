@@ -10,6 +10,7 @@ only an installed checkout and the inputs already committed to this repository.
 | --- | --- | --- |
 | Simulate and fit a realistic histogram | [Quick start](../examples/quickstart.py) | [Forward model and parameter conventions](user_guide.md#simulation-and-reconvolution) |
 | Analyze a CSV histogram and sampled IRF | [CSV example](../examples/experimental_csv.py) | [Measurements and IRF preparation](user_guide.md#measurements-and-irf-preparation) |
+| Explore three-component reconvolution | [K=3 example](../examples/triexponential_reconvolution.py) | [Experimental research scope and limitations](triexponential_research.md) |
 | Prepare features or train an estimator | [Features and ML examples](../examples/README.md) | [Preprocessing and ML](user_guide.md#preprocessing-and-machine-learning) |
 | Interpret statistical uncertainty | [Uncertainty example](../examples/uncertainty_example.py) | [Uncertainty meanings](user_guide.md#uncertainty-and-model-validity) |
 | Sample a Bayesian posterior | [Bayesian example](../examples/bayesian_inference.py) | [Bayesian assumptions](user_guide.md#bayesian-inference) |

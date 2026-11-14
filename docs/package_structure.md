@@ -1,11 +1,40 @@
 # Package architecture and post-Issue-12 import cleanup
 
-Issue #37 PR 1 adds three private foundations modules in `estimation`:
+Experimental K=3 measurement integration lives in `measurement.triexponential`.
+It composes the existing measurement-context resolver and numerical fitter while
+preserving the historically locked `measurement.adapters` implementation.
+See the [research workflow](triexponential_research.md).
+
+Issue #37 PR 2C-2 adds private `benchmarks._triexponential_audit_verification`
+for the closed six-audit protocol and sealed-record reporting. It reuses the
+runner, counted preparation and evidence store. Its contract is documented in
+[audit-only verification v1](design/issue37_audit_verification_v1.md).
+
+Issue #37 PR 2C-1 adds private `benchmarks._triexponential_verification` for the
+explicit fit-only verification scope. It reuses the development runner and sealed
+input store, with no new root exports or numerical solver changes.
+
+Issue #37 PR 2B adds `estimation._poisson_residuals`,
+`benchmarks._triexponential_audit` and `benchmarks.triexponential`.
+The current inventory is **60 substantive implementations and 77 production
+Python files**. The audit has no production-module dependencies; development
+orchestration composes the audit and fitter only through explicit calls.
+See the [PR 2B contract](design/issue37_pr2b_numerics.md). No experiments or
+production-policy selection are implied by this software checkpoint.
+
+Issue #37 PR 2A adds `estimation.triexponential` and three private numerical
+modules: `_fixed_k_initialization`, `_fixed_k_solvers`, and `_fixed_k_search`.
+The PR 2A inventory was **54 substantive implementations and 71 production
+Python files**. The module-qualified K=3 API requires explicit development
+settings; no production policy or scientific qualification has been selected.
+Existing mono/bi implementations, root exports and schema remain unchanged.
+See the [checkpoint contract](design/issue37_pr2a_triexponential.md).
+
+Issue #37 PR 1 added three private foundations modules in `estimation`:
 `_fixed_k` (records/coordinates), `_fixed_k_objective` (counted evaluations and
 derivatives), and `_fixed_k_diagnostics` (candidate checks and local sensitivity).
-The current inventory is **50 substantive implementations and 67 production
-Python files**. Existing fitters and exports are unchanged; no K=3 fitter is
-publicly available. See the [PR-1 contract](design/issue37_fixed_k_foundations.md).
+Its inventory was **50 substantive implementations and 67 production Python
+files**. See the preserved [PR-1 contract](design/issue37_fixed_k_foundations.md).
 
 Issue #28 PR 3 added `evaluation.reconvolution` (pure paired Poisson statistics)
 and `benchmarks.multiexponential` (independent qualification machinery), bringing
