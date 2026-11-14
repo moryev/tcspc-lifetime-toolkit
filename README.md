@@ -21,17 +21,21 @@ Reference evidence is synthetic; a canonical CSV path also supports compatible e
   photon sampling, IRF convolution and constant detector background.
 - Gaussian, exponentially modified Gaussian (EMG), and sampled/measured IRF
   sources with explicit registration, resampling and preparation diagnostics.
-- Mono-exponential least-squares and Poisson reconvolution; estimation of
-  lifetime, amplitude, background and temporal shift.
+- Mono-exponential least-squares and IRF-aware Poisson reconvolution;
+  constrained bi-exponential and experimental tri-exponential (K=3) Poisson
+  reconvolution with fitted component lifetimes/amplitudes, background and
+  shared temporal shift.
 - Measurement validation, physical features, normalized/PCA representations,
   leakage-aware ML training and controlled external generalization benchmarks.
 - Local covariance, parametric bootstrap, ML/conformal uncertainty and genuine
   Bayesian Poisson inference with explicit priors and sampling diagnostics.
 - Optional SQLite recording and querying of scientific results and provenance.
 
-Experimental K=3 Poisson reconvolution is available through module-qualified
-research APIs with explicit settings, measurement/IRF provenance and numerical
-diagnostics. See the [research workflow and limitations](docs/triexponential_research.md).
+Bi-exponential reconvolution has a [paired mono/bi example](examples/biexponential_reconvolution.py)
+and [documented qualification limitations](docs/issue33_stage3_qualification_v1.md).
+Experimental K=3 reconvolution uses module-qualified research APIs with explicit
+settings, raw-measurement/IRF provenance and numerical diagnostics. See the
+[K=3 research workflow and limitations](docs/triexponential_research.md).
 
 ## Installation
 
@@ -171,6 +175,8 @@ that baseline model. Use the Python examples above for reconvolution.
 | --- | --- |
 | [Quick start](examples/quickstart.py) | Simulate and fit an IRF-convolved Poisson histogram |
 | [CSV import](examples/experimental_csv.py) | Import separate synthetic decay/IRF files using experimental APIs |
+| [Bi-exponential reconvolution](examples/biexponential_reconvolution.py) | Compare descriptive mono/bi fits of the same raw-count measurement and IRF |
+| [Tri-exponential reconvolution (experimental)](examples/triexponential_reconvolution.py) | Fit K=3 synthetic histograms and inspect ambiguous component recovery |
 | [Preprocessing/features](examples/preprocessing_features.py) | Validate raw counts and build a separate derived representation |
 | [ML prediction](examples/ml_lifetime_prediction.py) | Fit a training-only pipeline and evaluate a held-out set |
 | [Uncertainty](examples/uncertainty_example.py) | Compare local covariance with parametric Poisson bootstrap |
@@ -220,9 +226,12 @@ accepted-fit and finite-prediction metric populations.
 - Poisson likelihoods require raw, non-negative integer counts with appropriate
   counting assumptions. Normalized or background-subtracted intensities are
   derived representations, not interchangeable Poisson observations.
-- Inference here is mono-exponential with constant background and an assumed IRF.
-  Richer generating decays can expose bias; multi-component simulation does not
-  imply general multi-component inference or automatic model selection.
+- IRF-aware Poisson reconvolution is available for mono-exponential, constrained
+  bi-exponential and experimental tri-exponential (K=3) models, with constant
+  background and an assumed IRF. There is no unrestricted arbitrary-K fitter or
+  automatic model-order selection. Accurate fitted curves or numerical acceptance
+  do not establish uniquely identifiable lifetimes or physical component labels,
+  especially for weak, equal or overlapping components.
 - Units, IRF registration and resampling are explicit. Imported source traces
   retain provenance; prepared kernels are derived objects. Leading-edge proxies
   are approximate and do not recover a validated instrument response.
@@ -275,6 +284,13 @@ Purcell-enhanced sensing demonstration, is **deferred pending realistic
 experiment-specific inputs** and does not block release-readiness work.
 The [orchestration issue](https://github.com/moryev/tcspc-lifetime-toolkit/issues/5)
 records the sequence.
+
+[Issue #37](https://github.com/moryev/tcspc-lifetime-toolkit/issues/37)
+was completed under an explicitly **experimental research-use scope** in
+[PR #39](https://github.com/moryev/tcspc-lifetime-toolkit/pull/39). Its independent
+audit yielded six finite, freshly validated candidates but **0/6** complete
+audits under the original strict all-starts-complete criterion; production
+qualification and guaranteed three-component recovery were not established.
 
 The development bi-exponential optimizer includes Issue-33 numerical safeguards.
 Its [independent qualification](docs/issue33_stage3_qualification_v1.md) passed
