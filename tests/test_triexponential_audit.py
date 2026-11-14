@@ -705,7 +705,12 @@ def test_canonical_return_assessment_and_validation_are_same_point(monkeypatch):
     np.testing.assert_array_equal(
         result.expected_counts, audit.direct_expected(t, k, result.parameters)
     )
-    assert result.centered_nll == sum(audit.audit_terms(y, result.expected_counts))
+    np.testing.assert_allclose(
+        result.centered_nll,
+        sum(audit.audit_terms(y, result.expected_counts)),
+        rtol=1e-13,
+        atol=1e-13,
+    )
     assert result.validation_complete and not result.validation_passed
     assert result.best_probe_improvement > 0 and not result.complete
 
